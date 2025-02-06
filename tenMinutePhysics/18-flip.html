@@ -48,8 +48,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	
 <body>
 
-	<input type = "checkbox" checked  onclick = "scene.showParticles = !scene.showParticles">Particles &nbsp; 
-	<input type = "checkbox" onclick = "scene.showGrid = !scene.showGrid">Grid &nbsp;
+	<input type = "checkbox" checked onclick = "scene.showParticles = !scene.showParticles">Particles &nbsp; 
+	<input type = "checkbox" checked onclick = "scene.showGrid = !scene.showGrid">Grid &nbsp;
 	<input type = "checkbox" checked onclick = "scene.compensateDrift = !scene.compensateDrift">Compensate Drift &nbsp;
 	<input type = "checkbox" checked onclick = "scene.separateParticles = !scene.separateParticles">Separate Particles &nbsp;
 	PIC
@@ -98,6 +98,14 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 	canvas.width = 240 * 4;
 	canvas.height = 240 * 4;
 
+	const totalCells = 338;
+    const cubeWR = 12;
+    const cubeHR = 14;
+    const cubeWcR = 4;
+    const gapR = 2;
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
+
 	canvas.focus();
 
 	var simHeight = 3.0;	
@@ -128,10 +136,8 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
     	return (x - centerX) ** 2 + (y - centerY) ** 2 <= radius ** 2;
 	}
 
-	function drawRoundedGrid() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = "#3498db";
-
+	function createRoundedGridBuffer(gl) {
+            const vertices = [];
             let cubeIdxR = 0;
             let cursorX, cursorY;
             let row = 0;
@@ -163,17 +169,34 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
                 for (let h = 0; h < _numCubePerRowR; h++) {
                     if (cubeIdxR < totalCells) {
-                        ctx.beginPath();
-                        ctx.rect(cursorX, cursorY, cubeWR, cubeHR);
-                        ctx.fill();
-                        ctx.closePath();
+                        vertices.push(
+                            (cursorX - centerX) / (canvas.width / 2),
+                            (centerY - cursorY) / (canvas.height / 2),
+                            (cursorX + cubeWR - centerX) / (canvas.width / 2),
+                            (centerY - cursorY) / (canvas.height / 2),
+                            (cursorX - centerX) / (canvas.width / 2),
+                            (centerY - (cursorY + cubeHR)) / (canvas.height / 2),
+
+                            (cursorX + cubeWR - centerX) / (canvas.width / 2),
+                            (centerY - cursorY) / (canvas.height / 2),
+                            (cursorX + cubeWR - centerX) / (canvas.width / 2),
+                            (centerY - (cursorY + cubeHR)) / (canvas.height / 2),
+                            (cursorX - centerX) / (canvas.width / 2),
+                            (centerY - (cursorY + cubeHR)) / (canvas.height / 2)
+                        );
                         cursorX += cubeWR + gapR;
                         cubeIdxR++;
                     }
                 }
                 cursorY += cubeHR + gapR;
             }
+
+            const buffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+            return { buffer, vertexCount: vertices.length / 2 };
         }
+
 	// ----------------- start of simulator ------------------------------
 
 	class FlipFluid {

@@ -1,0 +1,229 @@
+/* Reset and base styles */
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100vh;
+    overflow: hidden;
+    background: #1a1a1a;
+    font-family: Arial, sans-serif;
+}
+
+/* Main container */
+.simulation-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    background: #1a1a1a;
+}
+
+/* Canvas styling */
+canvas {
+    border: 2px solid #333;
+    border-radius: 4px;
+    background: #000;
+    margin: 20px auto;
+    box-shadow: 0 0 20px rgba(0,0,0,0.3);
+    width: 240px;
+    height: 240px;
+    image-rendering: pixelated;
+}
+
+/* Control panel */
+.controls {
+    display: flex;
+    gap: 10px;
+    padding: 15px;
+    background: rgba(0, 0, 0, 0.8);
+    border-radius: 8px;
+    margin-top: 20px;
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    z-index: 100;
+}
+
+.button {
+    padding: 8px 16px;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 4px;
+    background: rgba(255,255,255,0.1);
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    min-width: 100px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+/* .slider-container label {
+    color: #fff;
+} */
+
+.button:hover {
+    background: rgba(255,255,255,0.2);
+    transform: translateY(-1px);
+}
+
+.button:active {
+    transform: translateY(1px);
+}
+
+/* Grid animation states */
+.cell {
+    transition: background-color 0.3s ease;
+}
+
+.cell.active {
+    background-color: #fff;
+}
+
+/* Circle overlay */
+.circle-overlay {
+    position: absolute;
+    pointer-events: none;
+    border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.2);
+}
+
+/* Simulation specific styles */
+.simulation-controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    width: 100%;
+    max-width: 800px;
+    margin-top: 20px;
+}
+
+.parameter-group {
+    background: rgba(255,255,255,0.05);
+    padding: 15px;
+    border-radius: 8px;
+}
+
+.slider-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    color: #fff; /* Added text color */
+}
+
+.checkbox-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+/* Performance metrics */
+.stats {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    background: rgba(0, 0, 0, 0.8);
+    padding: 12px;
+    border-radius: 8px;
+    color: #fff;
+    font-family: monospace;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Slider refinements */
+input[type="range"] {
+    width: 100%;
+    background: rgba(255,255,255,0.1);
+    border-radius: 4px;
+    height: 6px;
+}
+
+input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    background: #fff;
+    cursor: pointer;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .simulation-container {
+        padding: 10px;
+    }
+    
+    .controls {
+        flex-direction: column;
+    }
+    
+    canvas {
+        width: 100%;
+        max-width: 240px;
+        height: auto;
+        aspect-ratio: 1;
+    }
+
+    .simulation-controls {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Mobile optimizations */
+@media (max-width: 480px) {
+    .controls {
+        position: relative;
+        top: 0;
+        left: 0;
+        width: 100%;
+        margin-bottom: 10px;
+    }
+    
+    .stats {
+        position: relative;
+        top: 0;
+        right: 0;
+        width: 100%;
+        margin-top: 10px;
+    }
+}
+
+/* Touch device optimizations */
+@media (hover: none) {
+    .button {
+        padding: 12px 20px; /* Larger touch targets */
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+        height: 24px;
+        width: 24px;
+    }
+}
+
+/* High DPI screens */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    .stats {
+        font-size: 12px;
+    }
+    
+    canvas {
+        image-rendering: pixelated;
+    }
+}
+
+/* Dark theme enhancements */
+@media (prefers-color-scheme: dark) {
+    .simulation-container {
+        background: #121212;
+    }
+    
+    .controls, .stats {
+        background: rgba(0, 0, 0, 0.9);
+    }
+}
