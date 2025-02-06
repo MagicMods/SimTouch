@@ -9,17 +9,21 @@ class Grid {
     this.numX = 30;
     this.numY = 30;
     this.h = Math.min(width, height) / this.numX;
-    this.gravity = 0;
-    this.flipRatio = 0.9;
-    this.overRelaxation = 1.9;
-    this.numPressureIters = 100;
 
-    // Arrays
+    // FLIP parameters - single definition
+    this.gravity = -9.81;
+    this.gravityScale = 1000; // Reduced scale
+    this.velocityDamping = 1; // Adjusted damping
+    this.flipRatio = 0.95;
+    this.overRelaxation = 1.9;
+    this.numPressureIters = 40;
+    this.dt = 1 / 60;
+    this.maxVelocity = 30.0; // Added velocity limit
+
+    // Arrays initialization
     const numCells = this.numX * this.numY;
     this.u = new Float32Array(numCells);
     this.v = new Float32Array(numCells);
-    this.newU = new Float32Array(numCells);
-    this.newV = new Float32Array(numCells);
     this.p = new Float32Array(numCells);
     this.s = new Float32Array(numCells).fill(1.0);
     this.oldU = new Float32Array(numCells);
@@ -70,25 +74,24 @@ class Grid {
 
   setupParticles() {
     this.particles = [];
-    // Generate particles within container circle, not full canvas
     for (let i = 0; i < this.particleCount; i++) {
       let x, y, dist;
       do {
         x =
           this.containerCenter.x +
-          (Math.random() * 2 - 1) * this.containerRadius;
+          (Math.random() * 2 - 1) * this.containerRadius * 0.5; // Reduce initial spread
         y =
           this.containerCenter.y +
-          (Math.random() * 2 - 1) * this.containerRadius;
+          (Math.random() * 2 - 1) * this.containerRadius * 0.5;
         const dx = x - this.containerCenter.x;
         const dy = (y - this.containerCenter.y) * this.scaleY;
         dist = Math.sqrt(dx * dx + dy * dy);
-      } while (dist > this.containerRadius);
+      } while (dist > this.containerRadius * 0.5); // Keep particles more central
 
       this.particles.push({
         x: x,
         y: y,
-        vx: 0,
+        vx: 0, // Start with zero velocity
         vy: 0,
       });
     }
@@ -301,45 +304,31 @@ class Grid {
   simulate(dt) {
     this.startTiming("totalSim");
 
-    // Store current state
     this.storeVelocities();
-
-    // Update simulation
     this.transferToGrid();
     this.applyExternalForces(dt);
     this.enforceBoundaries();
-
-    this.startTiming("pressureSolve");
     this.solveIncompressibility(dt);
-    this.endTiming("pressureSolve");
-
     this.transferFromGrid();
-
-    this.startTiming("particleAdvect");
     this.advectParticles(dt);
-    this.endTiming("particleAdvect");
-
-    // Update visualization
-    this.updateGrid();
-    this.handleBoundaries();
 
     this.endTiming("totalSim");
   }
   solveIncompressibility(dt) {
     const n = this.numX;
-    const cp = this.overRelaxation;
+    const cp = this.overRelaxation / (this.h * this.h);
 
     for (let iter = 0; iter < this.numPressureIters; iter++) {
       for (let i = 1; i < this.numX - 1; i++) {
         for (let j = 1; j < this.numY - 1; j++) {
-          if (this.s[i + j * n] == 0.0) continue;
+          if (this.s[i + j * n] === 0) continue;
+          const s0 = this.s[i - 1 + j * n];
+          const s1 = this.s[i + 1 + j * n];
+          const s2 = this.s[i + (j - 1) * n];
+          const s3 = this.s[i + (j + 1) * n];
 
-          const sx0 = this.s[i - 1 + j * n];
-          const sx1 = this.s[i + 1 + j * n];
-          const sy0 = this.s[i + (j - 1) * n];
-          const sy1 = this.s[i + (j + 1) * n];
-          const s = sx0 + sx1 + sy0 + sy1;
-          if (s == 0.0) continue;
+          const sx = s0 + s1;
+          const sy = s2 + s3;
 
           const div =
             this.u[i + 1 + j * n] -
@@ -348,13 +337,11 @@ class Grid {
             this.v[i + j * n];
 
           this.p[i + j * n] =
-            (1.0 - cp) * this.p[i + j * n] +
-            (cp / s) *
-              (this.p[i - 1 + j * n] * sx0 +
-                this.p[i + 1 + j * n] * sx1 +
-                this.p[i + (j - 1) * n] * sy0 +
-                this.p[i + (j + 1) * n] * sy1 -
-                div / dt);
+            ((div / dt -
+              (this.u[i + 1 + j * n] - this.u[i + j * n]) / this.h -
+              (this.v[i + (j + 1) * n] - this.v[i + j * n]) / this.h) /
+              (sx + sy)) *
+            cp;
         }
       }
     }
@@ -400,31 +387,31 @@ class Grid {
       const i = Math.floor(x);
       const j = Math.floor(y);
 
-      const s1 = x - i;
-      const s0 = 1 - s1;
-      const t1 = y - j;
-      const t0 = 1 - t1;
+      const fx = x - i;
+      const fy = y - j;
 
-      const w00 = s0 * t0;
-      const w10 = s1 * t0;
-      const w01 = s0 * t1;
-      const w11 = s1 * t1;
+      const w00 = (1 - fx) * (1 - fy);
+      const w10 = fx * (1 - fy);
+      const w01 = (1 - fx) * fy;
+      const w11 = fx * fy;
 
       const n = this.numX;
-      this.u[i + j * n] += w00 * p.vx;
-      this.u[i + 1 + j * n] += w10 * p.vx;
-      this.u[i + (j + 1) * n] += w01 * p.vx;
-      this.u[i + 1 + (j + 1) * n] += w11 * p.vx;
+      const idx = i + j * n;
 
-      this.v[i + j * n] += w00 * p.vy;
-      this.v[i + 1 + j * n] += w10 * p.vy;
-      this.v[i + (j + 1) * n] += w01 * p.vy;
-      this.v[i + 1 + (j + 1) * n] += w11 * p.vy;
+      this.u[idx] += w00 * p.vx;
+      this.u[idx + 1] += w10 * p.vx;
+      this.u[idx + n] += w01 * p.vx;
+      this.u[idx + n + 1] += w11 * p.vx;
 
-      weights[i + j * n] += w00;
-      weights[i + 1 + j * n] += w10;
-      weights[i + (j + 1) * n] += w01;
-      weights[i + 1 + (j + 1) * n] += w11;
+      this.v[idx] += w00 * p.vy;
+      this.v[idx + 1] += w10 * p.vy;
+      this.v[idx + n] += w01 * p.vy;
+      this.v[idx + n + 1] += w11 * p.vy;
+
+      weights[idx] += w00;
+      weights[idx + 1] += w10;
+      weights[idx + n] += w01;
+      weights[idx + n + 1] += w11;
     }
 
     // Normalize velocities
@@ -436,93 +423,36 @@ class Grid {
     }
   }
   transferFromGrid() {
-    const n = this.numX;
-    this.startTiming("transferFromGrid");
-
     for (const p of this.particles) {
       const x = p.x / this.h;
       const y = p.y / this.h;
 
-      const i = Math.min(Math.max(Math.floor(x), 0), this.numX - 2);
-      const j = Math.min(Math.max(Math.floor(y), 0), this.numY - 2);
+      // Sample velocities
+      const vx = this.sampleField(p.x, p.y, this.u);
+      const vy = this.sampleField(p.x, p.y, this.v);
+      const oldVx = this.sampleField(p.x, p.y, this.oldU);
+      const oldVy = this.sampleField(p.x, p.y, this.oldV);
 
-      const s1 = x - i;
-      const s0 = 1 - s1;
-      const t1 = y - j;
-      const t0 = 1 - t1;
-
-      const w00 = s0 * t0;
-      const w10 = s1 * t0;
-      const w01 = s0 * t1;
-      const w11 = s1 * t1;
-
-      // PIC/FLIP mixing with bounds checking
-      const newVx =
-        w00 * this.u[i + j * n] +
-        w10 * this.u[i + 1 + j * n] +
-        w01 * this.u[i + (j + 1) * n] +
-        w11 * this.u[i + 1 + (j + 1) * n];
-
-      const newVy =
-        w00 * this.v[i + j * n] +
-        w10 * this.v[i + 1 + j * n] +
-        w01 * this.v[i + (j + 1) * n] +
-        w11 * this.v[i + 1 + (j + 1) * n];
-
+      // FLIP update
       p.vx =
-        this.flipRatio * (p.vx + newVx - this.oldU[i + j * n]) +
-        (1.0 - this.flipRatio) * newVx;
+        (this.flipRatio * (p.vx + vx - oldVx) + (1.0 - this.flipRatio) * vx) *
+        this.velocityDamping;
       p.vy =
-        this.flipRatio * (p.vy + newVy - this.oldV[i + j * n]) +
-        (1.0 - this.flipRatio) * newVy;
-    }
+        (this.flipRatio * (p.vy + vy - oldVy) + (1.0 - this.flipRatio) * vy) *
+        this.velocityDamping;
 
-    this.endTiming("transferFromGrid");
+      // Clamp velocities
+      p.vx = Math.max(-this.maxVelocity, Math.min(this.maxVelocity, p.vx));
+      p.vy = Math.max(-this.maxVelocity, Math.min(this.maxVelocity, p.vy));
+    }
   }
 
   advectParticles(dt) {
-    this.startTiming("particleAdvect");
-
-    for (let i = 0; i < this.particles.length; i++) {
-      const p = this.particles[i];
-
-      // Get velocity at particle position
-      const u = this.sampleField(p.x, p.y, this.u);
-      const v = this.sampleField(p.x, p.y, this.v);
-
-      // Update position
-      p.x += u * dt;
-      p.y += v * dt;
-
-      // Handle boundaries
-      p.x = Math.max(this.h, Math.min(this.width - this.h, p.x));
-      p.y = Math.max(this.h, Math.min(this.height - this.h, p.y));
-
-      // Update velocity
-      p.vx = u;
-      p.vy = v;
-
-      // Handle circle obstacle collision
-      const dx = p.x - this.circleCenter.x;
-      const dy = p.y - this.circleCenter.y;
-      const r = Math.sqrt(dx * dx + dy * dy);
-
-      if (r < this.circleRadius) {
-        const scale = this.circleRadius / r;
-        p.x = this.circleCenter.x + dx * scale;
-        p.y = this.circleCenter.y + dy * scale;
-
-        // Reflect velocity
-        const dot = (dx * p.vx + dy * p.vy) / (r * r);
-        p.vx -= 2 * dot * dx;
-        p.vy -= 2 * dot * dy;
-      }
-
-      // Check container boundaries
+    for (const p of this.particles) {
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
       this.checkBoundaries(p);
     }
-
-    this.endTiming("particleAdvect");
   }
 
   // Utility methods
@@ -708,14 +638,17 @@ class Grid {
 
   // Add applyExternalForces method
   applyExternalForces(dt) {
+    const gravity = this.gravity * this.gravityScale;
     const n = this.numX;
+
     for (let i = 0; i < this.numX; i++) {
       for (let j = 0; j < this.numY; j++) {
-        this.v[i + j * n] += this.gravity * dt;
+        if (this.s[i + j * n] !== 0) {
+          this.v[i + j * n] += gravity * dt;
+        }
       }
     }
   }
-
   // Add integrate method
   integrate(dt) {
     this.storeVelocities();
@@ -1045,36 +978,93 @@ class Grid {
   }
 
   checkBoundaries(particle) {
-    // Scale coordinates for circular collision check
+    // Container boundary check
     const dx = particle.x - this.containerCenter.x;
     const dy = (particle.y - this.containerCenter.y) * this.scaleY;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (dist > this.containerRadius) {
+    if (dist > this.containerRadius * 0.95) {
       const angle = Math.atan2(dy, dx);
       particle.x =
-        this.containerCenter.x + Math.cos(angle) * this.containerRadius;
+        this.containerCenter.x + Math.cos(angle) * this.containerRadius * 0.95;
       particle.y =
         this.containerCenter.y +
-        (Math.sin(angle) * this.containerRadius) / this.scaleY;
+        (Math.sin(angle) * this.containerRadius * 0.95) / this.scaleY;
+
+      // Add velocity dampening
+      const nx = dx / dist;
+      const ny = dy / dist;
+      const dot = particle.vx * nx + particle.vy * ny;
+      particle.vx = (particle.vx - 2 * dot * nx) * 0.8; // Increased damping
+      particle.vy = (particle.vy - 2 * dot * ny) * 0.8;
     }
 
-    // Check obstacle collision
+    // Obstacle collision with separation
     const odx = particle.x - this.circleCenter.x;
     const ody = particle.y - this.circleCenter.y;
     const odist = Math.sqrt(odx * odx + ody * ody);
 
-    if (odist < this.circleRadius) {
+    if (odist < this.circleRadius + 2.0) {
+      // Add small separation distance
       const angle = Math.atan2(ody, odx);
-      particle.x = this.circleCenter.x + Math.cos(angle) * this.circleRadius;
-      particle.y = this.circleCenter.y + Math.sin(angle) * this.circleRadius;
+      particle.x =
+        this.circleCenter.x + Math.cos(angle) * (this.circleRadius + 2.0);
+      particle.y =
+        this.circleCenter.y + Math.sin(angle) * (this.circleRadius + 2.0);
 
-      // Reflect velocity
+      // Reflect velocity with dampening
       const nx = odx / odist;
       const ny = ody / odist;
       const dot = particle.vx * nx + particle.vy * ny;
-      particle.vx -= 2 * dot * nx;
-      particle.vy -= 2 * dot * ny;
+      particle.vx = (particle.vx - 2 * dot * nx) * 0.8;
+      particle.vy = (particle.vy - 2 * dot * ny) * 0.8;
+    }
+  }
+
+  updateVelocities() {
+    const n = this.numX;
+    for (let i = 1; i < this.numX - 1; i++) {
+      for (let j = 1; j < this.numY - 1; j++) {
+        if (this.s[i + j * n] != 0.0) {
+          this.u[i + j * n] -= this.p[i + j * n] - this.p[i - 1 + j * n];
+          this.v[i + j * n] -= this.p[i + j * n] - this.p[i + (j - 1) * n];
+        }
+      }
+    }
+  }
+
+  applyForce(x, y, fx, fy) {
+    const n = this.numX;
+    const h = this.h;
+
+    // Convert to grid coordinates
+    const gx = Math.floor(x / h);
+    const gy = Math.floor(y / h);
+
+    // Radius of influence
+    const radius = 3;
+
+    // Apply force to grid velocities
+    for (
+      let i = Math.max(1, gx - radius);
+      i <= Math.min(this.numX - 2, gx + radius);
+      i++
+    ) {
+      for (
+        let j = Math.max(1, gy - radius);
+        j <= Math.min(this.numY - 2, gy + radius);
+        j++
+      ) {
+        if (this.s[i + j * n] !== 0) {
+          const dx = (i - gx) * h;
+          const dy = (j - gy) * h;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          const weight = Math.max(0, 1 - d / (radius * h));
+
+          this.u[i + j * n] += fx * weight;
+          this.v[i + j * n] += fy * weight;
+        }
+      }
     }
   }
 }

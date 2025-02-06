@@ -13,6 +13,19 @@ const particleCount = document.getElementById("particleCount");
 const fpsCounter = document.getElementById("fpsCounter");
 const activeParticles = document.getElementById("activeParticles");
 
+const gravitySlider = document.getElementById("gravitySlider");
+const flipRatioSlider = document.getElementById("flipRatioSlider");
+const pressureSlider = document.getElementById("pressureSlider");
+const relaxSlider = document.getElementById("relaxSlider");
+
+const gravityValue = document.getElementById("gravityValue");
+const flipRatioValue = document.getElementById("flipRatioValue");
+const pressureValue = document.getElementById("pressureValue");
+const relaxValue = document.getElementById("relaxValue");
+
+const dampingSlider = document.getElementById("dampingSlider");
+const dampingValue = document.getElementById("dampingValue");
+
 let isPaused = false;
 let animationId = null;
 
@@ -45,6 +58,44 @@ particleSlider.oninput = (e) => {
   // Update simulation directly
   sim.grid.setParticleCount(count);
 };
+
+gravitySlider.addEventListener("input", (e) => {
+  const value = parseFloat(e.target.value);
+  gravityValue.textContent = value.toFixed(2);
+  sim.grid.gravity = value;
+});
+
+flipRatioSlider.addEventListener("input", (e) => {
+  const value = parseFloat(e.target.value);
+  flipRatioValue.textContent = value.toFixed(2);
+  sim.grid.flipRatio = value;
+});
+
+pressureSlider.addEventListener("input", (e) => {
+  const value = parseInt(e.target.value);
+  pressureValue.textContent = value;
+  sim.grid.numPressureIters = value;
+});
+
+relaxSlider.addEventListener("input", (e) => {
+  const value = parseFloat(e.target.value);
+  relaxValue.textContent = value.toFixed(2);
+  sim.grid.overRelaxation = value;
+});
+
+dampingSlider.addEventListener("input", (e) => {
+  const value = parseFloat(e.target.value);
+  dampingValue.textContent = value.toFixed(3);
+  sim.grid.velocityDamping = value;
+});
+
+// Update display with initial values
+particleCount.textContent = sim.grid.particleCount;
+gravityValue.textContent = sim.grid.gravity.toFixed(2);
+flipRatioValue.textContent = sim.grid.flipRatio.toFixed(2);
+pressureValue.textContent = sim.grid.numPressureIters;
+relaxValue.textContent = sim.grid.overRelaxation.toFixed(2);
+dampingValue.textContent = sim.grid.velocityDamping.toFixed(3);
 
 canvas.addEventListener("mousedown", (e) => {
   const rect = canvas.getBoundingClientRect();
@@ -109,8 +160,6 @@ function animate() {
 // Start simulation
 animate();
 
-// ...existing code...
-
 // Window resize handler
 function handleResize() {
   const width = window.innerWidth;
@@ -119,14 +168,6 @@ function handleResize() {
 }
 
 window.addEventListener("resize", handleResize);
-
-// // Cleanup on page unload
-// window.addEventListener("unload", () => {
-//   if (animationId) {
-//     cancelAnimationFrame(animationId);
-//   }
-//   sim.dispose();
-// });
 
 // Replace unload with beforeunload
 window.addEventListener("beforeunload", () => {

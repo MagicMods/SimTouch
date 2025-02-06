@@ -35,14 +35,15 @@ canvas {
 /* Control panel */
 .controls {
     display: flex;
+    flex-direction: column;
     gap: 10px;
-    padding: 15px;
+    padding: 10px;
     background: rgba(0, 0, 0, 0.8);
     border-radius: 8px;
-    margin-top: 20px;
     position: absolute;
-    top: 20px;
-    left: 20px;
+    top: 10px;
+    left: 10px;
+    width: 100px;
     z-index: 100;
 }
 
@@ -106,11 +107,19 @@ canvas {
     border-radius: 8px;
 }
 
+/* Slider container refinements */
 .slider-container {
     display: flex;
     flex-direction: column;
     gap: 8px;
-    color: #fff; /* Added text color */
+    width: 100%;
+}
+
+.slider-container label {
+    display: flex;
+    justify-content: space-between;
+    color: #fff;
+    font-size: 14px;
 }
 
 .checkbox-group {
@@ -136,21 +145,28 @@ canvas {
     gap: 8px;
 }
 
-/* Slider refinements */
+/* Slider styling */
 input[type="range"] {
     width: 100%;
+    height: 6px;
     background: rgba(255,255,255,0.1);
     border-radius: 4px;
-    height: 6px;
+    outline: none;
+    -webkit-appearance: none;
 }
 
 input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    height: 16px;
     width: 16px;
-    border-radius: 50%;
+    height: 16px;
     background: #fff;
+    border-radius: 50%;
     cursor: pointer;
+    transition: background 0.2s;
+}
+
+input[type="range"]::-webkit-slider-thumb:hover {
+    background: #ddd;
 }
 
 /* Responsive adjustments */

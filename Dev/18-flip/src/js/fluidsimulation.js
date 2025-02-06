@@ -3,18 +3,26 @@ import { Renderer } from "./renderer.js";
 
 class FluidSimulation {
   constructor(canvas) {
+    this.grid = new Grid(
+      canvas.getContext("webgl"),
+      canvas.width,
+      canvas.height
+    );
     this.renderer = new Renderer(canvas);
-    this.grid = new Grid(this.renderer.gl, canvas.width, canvas.height);
-    this.lastTime = performance.now();
+    this.canvas = canvas; // Store canvas reference
+    this.lastTime = performance.now(); // Initialize lastTime
+    this.dt = 1 / 60; // Fixed timestep for stability
+
+    // Initialize particles immediately
+    this.grid.setupParticles();
   }
 
   update() {
     const currentTime = performance.now();
-    const dt = (currentTime - this.lastTime) / 1000;
-    this.lastTime = currentTime;
-
-    this.grid.simulate(dt);
+    // Use fixed dt instead of variable for stability
+    this.grid.simulate(this.dt);
     this.renderer.draw(this.grid);
+    this.lastTime = currentTime;
   }
 
   start() {
