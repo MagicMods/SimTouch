@@ -1,13 +1,25 @@
 import { Grid } from "./grid.js";
 import { Renderer } from "./renderer.js";
+import { createShaderProgram } from "./shaders.js"; // Add this import
 
 class FluidSimulation {
   constructor(canvas) {
-    this.grid = new Grid(
-      canvas.getContext("webgl"),
-      canvas.width,
-      canvas.height
-    );
+    this.canvas = canvas;
+    this.gl = canvas.getContext("webgl");
+
+    // Create program after gl context
+    const program = createShaderProgram(this.gl);
+    this.programInfo = {
+      program: program,
+      uniformLocations: {
+        color: this.gl.getUniformLocation(program, "uColor"),
+        resolution: this.gl.getUniformLocation(program, "uResolution"),
+      },
+    };
+
+    this.grid = new Grid(this.gl, canvas.width, canvas.height);
+    this.renderer = new Renderer(canvas);
+
     this.renderer = new Renderer(canvas);
     this.canvas = canvas; // Store canvas reference
     this.lastTime = performance.now(); // Initialize lastTime
@@ -15,13 +27,19 @@ class FluidSimulation {
 
     // Initialize particles immediately
     this.grid.setupParticles();
+
+    // Debug draw call
+    console.log("Starting render loop");
   }
 
   update() {
     const currentTime = performance.now();
-    // Use fixed dt instead of variable for stability
     this.grid.simulate(this.dt);
+
+    // Draw both renderer and grid
     this.renderer.draw(this.grid);
+    this.grid.draw(this.programInfo);
+
     this.lastTime = currentTime;
   }
 
@@ -121,6 +139,15 @@ class FluidSimulation {
       fps: 1000 / (performance.now() - this.lastTime),
       ...this.grid.getStats(),
     };
+  }
+
+  render() {
+    console.log("Render frame");
+    // Draw grid and particles
+    this.grid.draw(this.programInfo);
+
+    // Request next frame
+    requestAnimationFrame(() => this.render());
   }
 }
 

@@ -5,29 +5,40 @@ class Grid {
     this.width = width;
     this.height = height;
 
-    // Grid properties
-    this.numX = 30;
-    this.numY = 30;
-    this.h = Math.min(width, height) / this.numX;
+    // Grid layout - GridGen style
+    this.rowCounts = [13, 19, 23, 25, 27, 29, 29, 29, 29, 27, 25, 23, 19, 13];
+    this.baseXs = [64, 40, 24, 16, 8, 0, 0, 0, 0, 8, 16, 24, 40, 64];
+    this.numX = Math.max(...this.rowCounts);
+    this.numY = this.rowCounts.length;
 
-    // FLIP parameters - single definition
+    // Calculate total cells for irregular grid
+    const totalCells = this.rowCounts.reduce((a, b) => a + b, 0);
+
+    // Arrays initialization - adjust for irregular grid
+    this.u = new Float32Array(totalCells);
+    this.v = new Float32Array(totalCells);
+    this.p = new Float32Array(totalCells);
+    this.s = new Float32Array(totalCells).fill(1.0);
+    this.oldU = new Float32Array(totalCells);
+    this.oldV = new Float32Array(totalCells);
+    this.velocities = new Float32Array(totalCells); // Initialize once with correct size
+
+    // Cell dimensions - scale based on canvas size
+    const scale = Math.min(width, height) / 400; // Base scale on 400px reference
+    this.rectWidth = 6 * scale;
+    this.rectHeight = 15 * scale;
+    this.stepX = 8 * scale;
+    this.stepY = 17 * scale;
+
+    // FLIP parameters
     this.gravity = -9.81;
-    this.gravityScale = 1000; // Reduced scale
-    this.velocityDamping = 1; // Adjusted damping
+    this.gravityScale = 1000;
+    this.velocityDamping = 1;
     this.flipRatio = 0.95;
     this.overRelaxation = 1.9;
     this.numPressureIters = 40;
     this.dt = 1 / 60;
-    this.maxVelocity = 30.0; // Added velocity limit
-
-    // Arrays initialization
-    const numCells = this.numX * this.numY;
-    this.u = new Float32Array(numCells);
-    this.v = new Float32Array(numCells);
-    this.p = new Float32Array(numCells);
-    this.s = new Float32Array(numCells).fill(1.0);
-    this.oldU = new Float32Array(numCells);
-    this.oldV = new Float32Array(numCells);
+    this.maxVelocity = 30.0;
 
     // Circle obstacle
     this.circleCenter = { x: width * 0.25, y: height * 0.5 };
@@ -44,10 +55,12 @@ class Grid {
     // Scale Y coordinates to maintain circular shape
     this.scaleY = this.aspectRatio;
 
-    // Initialize
+    // Cell size must be defined before setupParticles
+    this.h = Math.min(width, height) / this.numX;
+
+    // Initialize in correct order
     this.initBuffers();
-    this.setupParticles();
-    this.reset();
+    this.reset(); // This calls setupParticles
 
     // Initialize timing metrics
     this._pressureSolveTime = 0;
@@ -77,21 +90,23 @@ class Grid {
     for (let i = 0; i < this.particleCount; i++) {
       let x, y, dist;
       do {
-        x =
-          this.containerCenter.x +
-          (Math.random() * 2 - 1) * this.containerRadius * 0.5; // Reduce initial spread
-        y =
-          this.containerCenter.y +
-          (Math.random() * 2 - 1) * this.containerRadius * 0.5;
+        // Use angle-based spawning for circular distribution
+        const angle = Math.random() * 2 * Math.PI;
+        const radius = Math.random() * this.containerRadius * 0.4; // Reduced to 40% for better distribution
+
+        x = this.containerCenter.x + radius * Math.cos(angle);
+        y = this.containerCenter.y + radius * Math.sin(angle);
+
+        // Check actual distance without aspect ratio scaling
         const dx = x - this.containerCenter.x;
-        const dy = (y - this.containerCenter.y) * this.scaleY;
+        const dy = y - this.containerCenter.y;
         dist = Math.sqrt(dx * dx + dy * dy);
-      } while (dist > this.containerRadius * 0.5); // Keep particles more central
+      } while (dist > this.containerRadius * 0.4);
 
       this.particles.push({
         x: x,
         y: y,
-        vx: 0, // Start with zero velocity
+        vx: 0,
         vy: 0,
       });
     }
@@ -104,32 +119,63 @@ class Grid {
     this.oldU.fill(0);
     this.oldV.fill(0);
     this.p.fill(0);
+    this.velocities.fill(0);
 
-    // Reset particles
+    // Reset particles with proper initialization
     this.setupParticles();
 
-    // Reset timings
+    // Reset metrics
     this._pressureSolveTime = 0;
     this._particleAdvectTime = 0;
     this._totalSimTime = 0;
+    this._lastUpdateTime = performance.now();
   }
 
   // Drawing methods
   draw(programInfo) {
+    // Add frame counter
+    // if (!this._frameCount) this._frameCount = 0;
+    // this._frameCount++;
+
+    // // Only log every 60 frames
+    // if (this._frameCount % 60 === 0) {
+    //   console.clear(); // Clear previous logs
+    //   console.log("%c=== Grid State ===", "font-weight: bold");
+    //   console.table({
+    //     dimensions: {
+    //       width: this.width,
+    //       height: this.height,
+    //       gridWidth: this.numX,
+    //       gridHeight: this.numY,
+    //     },
+    //     cells: {
+    //       totalCells: this.rowCounts.reduce((a, b) => a + b, 0),
+    //       firstRowCount: this.rowCounts[0],
+    //       lastRowCount: this.rowCounts[this.numY - 1],
+    //     },
+    //     spacing: {
+    //       rectWidth: this.rectWidth,
+    //       rectHeight: this.rectHeight,
+    //       stepX: this.stepX,
+    //       stepY: this.stepY,
+    //     },
+    //   });
+    // }
+
+    // Rest of draw method
     this.gl.clearColor(1.0, 1.0, 1.0, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
-    this.gl.useProgram(programInfo.program);
-    this.gl.uniform2f(
-      programInfo.uniformLocations.resolution,
-      this.width,
-      this.height
-    );
-
-    // Draw fluid grid rectangles
     const rectangles = this.generateRectangles();
     rectangles.forEach((rect) => {
-      this.drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color);
+      this.drawRectangle(
+        rect.x,
+        rect.y,
+        rect.width,
+        rect.height,
+        rect.color,
+        programInfo
+      ); // Add programInfo
     });
 
     // Draw circle overlay
@@ -139,48 +185,91 @@ class Grid {
       this.circleRadius,
       [0, 0, 0, 1]
     );
-    this.drawCircleImplementation(circleVertices, [0, 0, 0, 1]);
+    this.drawCircleImplementation(circleVertices, [0, 0, 0, 1], programInfo); // Add programInfo
 
     // Draw particles
-    this.drawParticles(programInfo);
+    for (const p of this.particles) {
+      const vertices = this.drawCircle(p.x, p.y, 2, [0.2, 0.6, 1.0, 1.0]);
+      this.drawCircleImplementation(
+        vertices,
+        [0.2, 0.6, 1.0, 1.0],
+        programInfo
+      );
+    }
   }
+
   generateRectangles() {
     const rectangles = [];
-    const numX = this.numX;
-    const numY = this.numY;
-    const rectWidth = this.width / numX;
-    const rectHeight = this.height / numY;
+    const verticalOffset = (this.height - this.numY * this.stepY) / 2;
+    const horizontalScale = this.width / 400;
 
-    for (let i = 0; i < numX; i++) {
-      for (let j = 0; j < numY; j++) {
-        const idx = i + j * numX;
+    // // Debug
+    // console.log("Drawing grid:", {
+    //   width: this.width,
+    //   height: this.height,
+    //   scale: horizontalScale,
+    //   rectWidth: this.rectWidth,
+    //   rectHeight: this.rectHeight,
+    //   stepX: this.stepX,
+    //   stepY: this.stepY,
+    // });
+
+    for (let row = 0; row < this.numY; row++) {
+      const rowCount = this.rowCounts[row];
+      const baseX = (this.width - rowCount * this.stepX) / 2; // Center horizontally
+      const y = verticalOffset + row * this.stepY;
+
+      for (let col = 0; col < rowCount; col++) {
+        const x = baseX + col * this.stepX;
+        const idx = this.getCellIndex(col, row);
         const vel = Math.sqrt(
           this.u[idx] * this.u[idx] + this.v[idx] * this.v[idx]
         );
+
         rectangles.push({
-          x: i * rectWidth,
-          y: j * rectHeight,
-          width: rectWidth,
-          height: rectHeight,
-          color: this.getVelocityColor(vel),
+          x: x,
+          y: y,
+          width: this.rectWidth,
+          height: this.rectHeight,
+          color: [0.8, 0.8, 0.8, 1.0], // Light gray for visibility testing
         });
       }
     }
+
     return rectangles;
   }
-  drawRectangle(x, y, width, height, color) {
+
+  getCellIndex(x, row) {
+    let index = 0;
+    // Sum up cells in previous rows
+    for (let i = 0; i < row; i++) {
+      index += this.rowCounts[i];
+    }
+    return index + x;
+  }
+
+  drawRectangle(x, y, width, height, color, programInfo) {
+    // Use program before setting uniforms
+    this.gl.useProgram(programInfo.program);
+
+    // Convert screen coordinates to clip space (-1 to 1)
+    const normalizedX = (x / this.width) * 2 - 1;
+    const normalizedY = -((y / this.height) * 2 - 1); // Flip Y coordinate
+    const normalizedWidth = (width / this.width) * 2;
+    const normalizedHeight = (height / this.height) * 2;
+
     const positions = [
-      x,
-      y,
-      x + width,
-      y,
-      x,
-      y + height,
-      x + width,
-      y + height,
+      normalizedX,
+      normalizedY,
+      normalizedX + normalizedWidth,
+      normalizedY,
+      normalizedX,
+      normalizedY - normalizedHeight,
+      normalizedX + normalizedWidth,
+      normalizedY - normalizedHeight,
     ];
 
-    // Bind and upload vertex data
+    this.gl.useProgram(programInfo.program);
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
     this.gl.bufferData(
       this.gl.ARRAY_BUFFER,
@@ -188,7 +277,7 @@ class Grid {
       this.gl.STATIC_DRAW
     );
 
-    // Set uniforms
+    // Set uniforms after using program
     this.gl.uniform4fv(programInfo.uniformLocations.color, color);
     this.gl.uniform2f(
       programInfo.uniformLocations.resolution,
@@ -196,7 +285,6 @@ class Grid {
       this.height
     );
 
-    // Set vertex attributes
     const positionLocation = this.gl.getAttribLocation(
       programInfo.program,
       "aPosition"
@@ -211,30 +299,35 @@ class Grid {
       0
     );
 
-    // Draw
     this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
-
-    // Check for errors
-    const error = this.gl.getError();
-    if (error !== this.gl.NO_ERROR) {
-      console.error("WebGL error:", error);
-    }
   }
+
   drawCircle(cx, cy, radius, color) {
+    // Convert to clip space coordinates (-1 to 1)
+    const normalizedCX = (cx / this.width) * 2 - 1;
+    const normalizedCY = -((cy / this.height) * 2 - 1); // Flip Y
+    const normalizedRadius = (radius / Math.min(this.width, this.height)) * 2;
+
     const numSegments = 100;
     const vertices = [];
+
+    // Add center vertex in clip space
+    vertices.push(normalizedCX, normalizedCY);
+
+    // Add circumference vertices in clip space
     for (let i = 0; i <= numSegments; i++) {
       const angle = (i / numSegments) * 2 * Math.PI;
       vertices.push(
-        cx + radius * Math.cos(angle),
-        cy + radius * Math.sin(angle)
+        normalizedCX + normalizedRadius * Math.cos(angle),
+        normalizedCY + normalizedRadius * Math.sin(angle)
       );
     }
+
     return vertices;
   }
-  drawCircleImplementation(vertices, color) {
-    this.startTiming("drawCircle");
 
+  drawCircleImplementation(vertices, color, programInfo) {
+    this.gl.useProgram(programInfo.program);
     // Bind and upload vertex data
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
     this.gl.bufferData(
@@ -266,16 +359,10 @@ class Grid {
       0
     );
 
-    // Draw
+    // Draw circle using TRIANGLE_FAN
     this.gl.drawArrays(this.gl.TRIANGLE_FAN, 0, vertices.length / 2);
-
-    // Check for errors
-    if (!this.checkWebGLError()) {
-      console.error("Error during circle rendering");
-    }
-
-    this.endTiming("drawCircle");
   }
+
   drawParticles(programInfo) {
     for (const p of this.particles) {
       this.drawCircle(p.x, p.y, 2, [0.2, 0.6, 1.0, 1.0]);
@@ -799,7 +886,7 @@ class Grid {
         width: this.numX,
         height: this.numY,
       },
-      cellSize: this.h,
+      cellSize: this.h || this.width / this.numX, // Ensure h is defined
       circleObstacle: {
         x: this.circleCenter.x,
         y: this.circleCenter.y,
@@ -807,9 +894,11 @@ class Grid {
       },
       simulation: {
         gravity: this.gravity,
+        gravityScale: this.gravityScale, // Add missing parameter
         flipRatio: this.flipRatio,
         overRelaxation: this.overRelaxation,
         pressureIterations: this.numPressureIters,
+        velocityDamping: this.velocityDamping, // Add missing parameter
       },
     };
   }
@@ -822,8 +911,10 @@ class Grid {
       typeof config.cellSize === "number" &&
       config.simulation &&
       typeof config.simulation.gravity === "number" &&
+      typeof config.simulation.gravityScale === "number" && // Add validation
       typeof config.simulation.flipRatio === "number" &&
-      typeof config.simulation.overRelaxation === "number"
+      typeof config.simulation.overRelaxation === "number" &&
+      typeof config.simulation.velocityDamping === "number" // Add validation
     );
   }
 

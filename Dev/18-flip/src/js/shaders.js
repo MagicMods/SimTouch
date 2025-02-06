@@ -60,3 +60,16 @@ export function initShaderProgram(gl) {
     },
   };
 }
+
+// Add export for createShaderProgram
+export function createShaderProgram(gl) {
+  const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
+  const fragmentShader = createShader(
+    gl,
+    gl.FRAGMENT_SHADER,
+    fragmentShaderSource
+  );
+  const program = createProgram(gl, vertexShader, fragmentShader);
+
+  return program;
+}
