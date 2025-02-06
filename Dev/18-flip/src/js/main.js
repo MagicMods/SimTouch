@@ -120,22 +120,19 @@ dampingValue.textContent = sim.grid.velocityDamping.toFixed(3);
 sim.grid.setParticleCount(338);
 
 canvas.addEventListener("mousedown", (e) => {
-  const rect = canvas.getBoundingClientRect();
-  // Scale coordinates based on canvas size vs element size
-  const scaleX = canvas.width / rect.width;
-  const scaleY = canvas.height / rect.height;
+  if (e.button === 0) {
+    // Left button
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
 
-  const x = (e.clientX - rect.left) * scaleX;
-  const y = (e.clientY - rect.top) * scaleY;
+    const x = (e.clientX - rect.left) * scaleX;
+    const y = (e.clientY - rect.top) * scaleY;
 
-  const dx = x - sim.grid.circleCenter.x;
-  const dy = y - sim.grid.circleCenter.y;
-  const dist = Math.sqrt(dx * dx + dy * dy);
-
-  if (dist < sim.grid.circleRadius) {
+    sim.grid.isObstacleActive = true;
+    sim.grid.circleCenter.x = x;
+    sim.grid.circleCenter.y = y;
     isDragging = true;
-    dragOffset.x = dx;
-    dragOffset.y = dy;
   }
 });
 
@@ -160,12 +157,17 @@ canvas.addEventListener("mousemove", (e) => {
   );
 });
 
-canvas.addEventListener("mouseup", () => {
-  isDragging = false;
+canvas.addEventListener("mouseup", (e) => {
+  if (e.button === 0) {
+    // Left button
+    isDragging = false;
+    sim.grid.isObstacleActive = false;
+  }
 });
 
 canvas.addEventListener("mouseleave", () => {
   isDragging = false;
+  sim.grid.isObstacleActive = false;
 });
 
 // Animation loop

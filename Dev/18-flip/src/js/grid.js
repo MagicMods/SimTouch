@@ -36,11 +36,11 @@ class Grid {
     this.particleRadius = 4.0;
     this.collisionDamping = 0.5;
     this.repulsionStrength = 0.3;
-    this.collisionIterations = 2;
+    this.collisionIterations = 3;
 
     // Add density field for grid coloring
     this.density = new Float32Array(totalCells).fill(0);
-    this.maxDensity = 3.0; // Adjust sensitivity
+    this.maxDensity = 5.0; // Adjust sensitivity
 
     // Calculate dimensions
     const scale = Math.min(width, height) / 400;
@@ -62,7 +62,7 @@ class Grid {
 
     // Add particle rendering parameters
     this.particleLineWidth = 2.0;
-    this.particleColor = [0.2, 0.6, 1.0, 1.0];
+    this.particleColor = [0.2, 0.6, 1.0, 0.1];
     this.obstacleColor = [0, 0, 0, 1.0];
 
     // Add gradient lookup table
@@ -72,6 +72,8 @@ class Grid {
     this.initBuffers();
     // Finally reset simulation
     this.reset();
+
+    this.isObstacleActive = false; // Add this flag
   }
 
   // Initialization methods
@@ -153,18 +155,20 @@ class Grid {
       );
     });
 
-    // Draw obstacle circle
-    const obstacleVertices = this.drawCircle(
-      this.circleCenter.x,
-      this.circleCenter.y,
-      this.circleRadius,
-      this.obstacleColor
-    );
-    this.drawCircleImplementation(
-      obstacleVertices,
-      this.obstacleColor,
-      programInfo
-    );
+    // Only draw obstacle when active
+    if (this.isObstacleActive) {
+      const obstacleVertices = this.drawCircle(
+        this.circleCenter.x,
+        this.circleCenter.y,
+        this.circleRadius,
+        this.obstacleColor
+      );
+      this.drawCircleImplementation(
+        obstacleVertices,
+        this.obstacleColor,
+        programInfo
+      );
+    }
 
     // Draw particles last
     for (const p of this.particles) {
@@ -212,54 +216,64 @@ class Grid {
     return rectangles;
   }
 
-  getCellIndex(x, row) {
+  getCellIndex(col, row) {
+    // Validate row and column bounds
+    if (
+      row < 0 ||
+      row >= this.rowCounts.length ||
+      col < 0 ||
+      col >= this.rowCounts[row]
+    ) {
+      return -1;
+    }
+
+    // Calculate offset for this row
     let index = 0;
-    // Sum up cells in previous rows
     for (let i = 0; i < row; i++) {
       index += this.rowCounts[i];
     }
-    return index + x;
+    return index + col;
   }
 
   updateGridDensity() {
     this.density.fill(0);
 
     for (const p of this.particles) {
-      const col = Math.floor(
-        (p.x - (this.width - this.numX * this.stepX) / 2) / this.stepX
-      );
-      const row = Math.floor((p.y - this.verticalOffset) / this.stepY);
+      // Calculate relative position to grid origin
+      const relY = p.y - this.verticalOffset;
+      const row = Math.floor(relY / this.stepY);
 
-      // Influence radius (in cells)
-      const radius = 2;
+      // Check if we're near any row (including edge rows)
+      for (
+        let j = Math.max(0, row - 2);
+        j < Math.min(this.numY, row + 3);
+        j++
+      ) {
+        const rowWidth = this.rowCounts[j] * this.stepX;
+        const rowBaseX = (this.width - rowWidth) / 2;
+        const relX = p.x - rowBaseX;
+        const col = Math.floor(relX / this.stepX);
 
-      // Add influence to nearby cells
-      for (let i = -radius; i <= radius; i++) {
-        for (let j = -radius; j <= radius; j++) {
-          const targetRow = row + j;
-          const targetCol = col + i;
+        // Check cells in this row
+        for (
+          let i = Math.max(0, col - 2);
+          i < Math.min(this.rowCounts[j], col + 3);
+          i++
+        ) {
+          const idx = this.getCellIndex(i, j);
+          if (idx === -1) continue;
 
-          if (
-            targetRow >= 0 &&
-            targetRow < this.numY &&
-            targetCol >= 0 &&
-            targetCol < this.rowCounts[targetRow]
-          ) {
-            const cellCenterX =
-              (this.width - this.rowCounts[targetRow] * this.stepX) / 2 +
-              targetCol * this.stepX +
-              this.stepX / 2;
-            const cellCenterY =
-              this.verticalOffset + targetRow * this.stepY + this.stepY / 2;
+          // Calculate cell center
+          const cellCenterX = rowBaseX + (i + 0.5) * this.stepX;
+          const cellCenterY = this.verticalOffset + (j + 0.5) * this.stepY;
 
-            const dx = p.x - cellCenterX;
-            const dy = p.y - cellCenterY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            const influence = Math.max(0, 1 - dist / (this.stepX * 2));
+          // Calculate influence
+          const dx = p.x - cellCenterX;
+          const dy = p.y - cellCenterY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const influence = Math.max(0, 1 - dist / (this.stepX * 1.5));
 
-            const idx = this.getCellIndex(targetCol, targetRow);
-            this.density[idx] += influence;
-          }
+          this.density[idx] += influence;
         }
       }
     }
@@ -461,27 +475,25 @@ class Grid {
         p.vy = (p.vy - 2 * dot * ny) * this.velocityDamping;
       }
 
-      // Obstacle collision
-      const odx = p.x - this.circleCenter.x;
-      const ody = p.y - this.circleCenter.y;
-      const odist = Math.sqrt(odx * odx + ody * ody);
-      const obstacleLimit = this.circleRadius + this.particleRadius;
+      // Only check obstacle collision when active
+      if (this.isObstacleActive) {
+        const odx = p.x - this.circleCenter.x;
+        const ody = p.y - this.circleCenter.y;
+        const odist = Math.sqrt(odx * odx + ody * ody);
+        const obstacleLimit = this.circleRadius + this.particleRadius;
 
-      if (odist < obstacleLimit) {
-        // Push particle outside obstacle
-        const angle = Math.atan2(ody, odx);
-        p.x = this.circleCenter.x + Math.cos(angle) * obstacleLimit;
-        p.y = this.circleCenter.y + Math.sin(angle) * obstacleLimit;
+        if (odist < obstacleLimit) {
+          const angle = Math.atan2(ody, odx);
+          p.x = this.circleCenter.x + Math.cos(angle) * obstacleLimit;
+          p.y = this.circleCenter.y + Math.sin(angle) * obstacleLimit;
 
-        // Reflect velocity with proper normal
-        const nx = odx / odist;
-        const ny = ody / odist;
-        const dot = p.vx * nx + p.vy * ny;
-
-        // Only reflect if moving toward obstacle
-        if (dot < 0) {
-          p.vx = (p.vx - 2 * dot * nx) * this.velocityDamping;
-          p.vy = (p.vy - 2 * dot * ny) * this.velocityDamping;
+          const nx = odx / odist;
+          const ny = ody / odist;
+          const dot = p.vx * nx + p.vy * ny;
+          if (dot < 0) {
+            p.vx = (p.vx - 2 * dot * nx) * this.velocityDamping;
+            p.vy = (p.vy - 2 * dot * ny) * this.velocityDamping;
+          }
         }
       }
     }
@@ -1121,7 +1133,7 @@ class Grid {
 
     if (odist < this.circleRadius + 2.0) {
       // Add small separation distance
-      const angle = Math.atan2(ody, odx);
+      const angle = Math.atan2(odx, ody);
       particle.x =
         this.circleCenter.x + Math.cos(angle) * (this.circleRadius + 2.0);
       particle.y =
