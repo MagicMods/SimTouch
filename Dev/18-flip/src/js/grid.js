@@ -38,6 +38,10 @@ class Grid {
     this.repulsionStrength = 0.3;
     this.collisionIterations = 2;
 
+    // Add density field for grid coloring
+    this.density = new Float32Array(totalCells).fill(0);
+    this.maxDensity = 3.0; // Adjust sensitivity
+
     // Calculate dimensions
     const scale = Math.min(width, height) / 400;
     this.rectWidth = 6 * scale;
@@ -60,6 +64,9 @@ class Grid {
     this.particleLineWidth = 2.0;
     this.particleColor = [0.2, 0.6, 1.0, 1.0];
     this.obstacleColor = [0, 0, 0, 1.0];
+
+    // Add gradient lookup table
+    this.gradient = this.createGradient();
 
     // Initialize arrays and WebGL
     this.initBuffers();
@@ -172,39 +179,32 @@ class Grid {
   }
 
   generateRectangles() {
-    const rectangles = [];
-    const verticalOffset = (this.height - this.numY * this.stepY) / 2;
-    const horizontalScale = this.width / 400;
+    // Update density field before generating rectangles
+    this.updateGridDensity();
 
-    // // Debug
-    // console.log("Drawing grid:", {
-    //   width: this.width,
-    //   height: this.height,
-    //   scale: horizontalScale,
-    //   rectWidth: this.rectWidth,
-    //   rectHeight: this.rectHeight,
-    //   stepX: this.stepX,
-    //   stepY: this.stepY,
-    // });
+    const rectangles = [];
+    const verticalOffset = this.verticalOffset;
 
     for (let row = 0; row < this.numY; row++) {
       const rowCount = this.rowCounts[row];
-      const baseX = (this.width - rowCount * this.stepX) / 2; // Center horizontally
+      const baseX = (this.width - rowCount * this.stepX) / 2;
       const y = verticalOffset + row * this.stepY;
 
       for (let col = 0; col < rowCount; col++) {
         const x = baseX + col * this.stepX;
         const idx = this.getCellIndex(col, row);
-        const vel = Math.sqrt(
-          this.u[idx] * this.u[idx] + this.v[idx] * this.v[idx]
-        );
+
+        // Normalize density and create color
+        const density = Math.min(this.density[idx] / this.maxDensity, 1);
+        const gradientIdx = Math.floor(density * 255);
+        const color = this.gradient[gradientIdx];
 
         rectangles.push({
           x: x,
           y: y,
           width: this.rectWidth,
           height: this.rectHeight,
-          color: [0.8, 0.8, 0.8, 1.0], // Light gray for visibility testing
+          color: [color.r, color.g, color.b, 1.0],
         });
       }
     }
@@ -219,6 +219,50 @@ class Grid {
       index += this.rowCounts[i];
     }
     return index + x;
+  }
+
+  updateGridDensity() {
+    this.density.fill(0);
+
+    for (const p of this.particles) {
+      const col = Math.floor(
+        (p.x - (this.width - this.numX * this.stepX) / 2) / this.stepX
+      );
+      const row = Math.floor((p.y - this.verticalOffset) / this.stepY);
+
+      // Influence radius (in cells)
+      const radius = 2;
+
+      // Add influence to nearby cells
+      for (let i = -radius; i <= radius; i++) {
+        for (let j = -radius; j <= radius; j++) {
+          const targetRow = row + j;
+          const targetCol = col + i;
+
+          if (
+            targetRow >= 0 &&
+            targetRow < this.numY &&
+            targetCol >= 0 &&
+            targetCol < this.rowCounts[targetRow]
+          ) {
+            const cellCenterX =
+              (this.width - this.rowCounts[targetRow] * this.stepX) / 2 +
+              targetCol * this.stepX +
+              this.stepX / 2;
+            const cellCenterY =
+              this.verticalOffset + targetRow * this.stepY + this.stepY / 2;
+
+            const dx = p.x - cellCenterX;
+            const dy = p.y - cellCenterY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            const influence = Math.max(0, 1 - dist / (this.stepX * 2));
+
+            const idx = this.getCellIndex(targetCol, targetRow);
+            this.density[idx] += influence;
+          }
+        }
+      }
+    }
   }
 
   drawRectangle(x, y, width, height, color, programInfo) {
@@ -1218,6 +1262,50 @@ class Grid {
         }
       }
     }
+  }
+
+  createGradient() {
+    const gradient = new Array(256).fill(0).map(() => ({ r: 0, g: 0, b: 0 }));
+
+    // Convert C++ gradient to JavaScript (normalized to 0-1)
+    const rawGradient = [
+      { pos: 0, r: 0, g: 0, b: 0 },
+      { pos: 60, r: 144 / 255, g: 3 / 255, b: 0 },
+      { pos: 80, r: 1, g: 6 / 255, b: 0 },
+      { pos: 95, r: 1, g: 197 / 255, b: 0 },
+      { pos: 100, r: 1, g: 1, b: 1 },
+    ];
+
+    // Interpolate between control points
+    for (let i = 0; i < 256; i++) {
+      const t = i / 255;
+      let lower = rawGradient[0];
+      let upper = rawGradient[rawGradient.length - 1];
+
+      // Find surrounding control points
+      for (let j = 0; j < rawGradient.length - 1; j++) {
+        if (t * 100 >= rawGradient[j].pos && t * 100 < rawGradient[j + 1].pos) {
+          lower = rawGradient[j];
+          upper = rawGradient[j + 1];
+          break;
+        }
+      }
+
+      // Interpolate color
+      const range = upper.pos - lower.pos;
+      const localT = (t * 100 - lower.pos) / range;
+      gradient[i] = {
+        r: this.lerp(lower.r, upper.r, localT),
+        g: this.lerp(lower.g, upper.g, localT),
+        b: this.lerp(lower.b, upper.b, localT),
+      };
+    }
+
+    return gradient;
+  }
+
+  lerp(a, b, t) {
+    return a + (b - a) * t;
   }
 }
 
