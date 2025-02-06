@@ -1,77 +1,70 @@
 class Grid {
   constructor(gl, width, height) {
-    // WebGL context
+    // Core properties
     this.gl = gl;
     this.width = width;
     this.height = height;
 
-    // Grid layout - GridGen style
+    // Grid layout parameters first
     this.rowCounts = [13, 19, 23, 25, 27, 29, 29, 29, 29, 27, 25, 23, 19, 13];
     this.baseXs = [64, 40, 24, 16, 8, 0, 0, 0, 0, 8, 16, 24, 40, 64];
     this.numX = Math.max(...this.rowCounts);
     this.numY = this.rowCounts.length;
 
-    // Calculate total cells for irregular grid
+    // Then initialize arrays
     const totalCells = this.rowCounts.reduce((a, b) => a + b, 0);
-
-    // Arrays initialization - adjust for irregular grid
     this.u = new Float32Array(totalCells);
     this.v = new Float32Array(totalCells);
     this.p = new Float32Array(totalCells);
-    this.s = new Float32Array(totalCells).fill(1.0);
+    this.s = new Float32Array(totalCells);
     this.oldU = new Float32Array(totalCells);
     this.oldV = new Float32Array(totalCells);
-    this.velocities = new Float32Array(totalCells); // Initialize once with correct size
+    this.velocities = new Float32Array(totalCells);
 
-    // Cell dimensions - scale based on canvas size
-    const scale = Math.min(width, height) / 400; // Base scale on 400px reference
+    // Simulation parameters
+    this.h = width / this.numX; // Grid cell size
+    this.gravity = 9.81;
+    this.gravityScale = 1.0;
+    this.flipRatio = 0.95;
+    this.overRelaxation = 1.9;
+    this.numPressureIters = 40;
+    this.velocityDamping = 0.8;
+    this.maxVelocity = 100.0;
+
+    // Particle parameters
+    this.particleCount = 338;
+    this.particleRadius = 4.0;
+    this.collisionDamping = 0.5;
+    this.repulsionStrength = 0.3;
+    this.collisionIterations = 2;
+
+    // Calculate dimensions
+    const scale = Math.min(width, height) / 400;
     this.rectWidth = 6 * scale;
     this.rectHeight = 15 * scale;
     this.stepX = 8 * scale;
     this.stepY = 17 * scale;
+    this.verticalOffset = (this.height - this.numY * this.stepY) / 2;
 
-    // FLIP parameters
-    this.gravity = -9.81;
-    this.gravityScale = 1000;
-    this.velocityDamping = 1;
-    this.flipRatio = 0.95;
-    this.overRelaxation = 1.9;
-    this.numPressureIters = 40;
-    this.dt = 1 / 60;
-    this.maxVelocity = 30.0;
+    // Calculate bounds
+    const maxRowWidth = Math.max(...this.rowCounts) * this.stepX;
+    const gridHeight = this.rowCounts.length * this.stepY;
+    this.containerRadius = Math.min(maxRowWidth / 2, gridHeight / 2);
+    this.containerCenter = { x: width * 0.5, y: height * 0.5 };
 
-    // Circle obstacle
-    this.circleCenter = { x: width * 0.25, y: height * 0.5 };
-    this.circleRadius = Math.min(width, height) * 0.15;
+    // Add circle obstacle parameters
+    this.circleCenter = { x: width * 0.5, y: height * 0.5 };
+    this.circleRadius = this.containerRadius * 0.3; // 15% of container radius
 
-    // Define container circle
-    this.aspectRatio = width / height;
-    this.containerRadius = Math.min(width, height) * 0.45; // 90% of smallest dimension
-    this.containerCenter = {
-      x: width * 0.5,
-      y: height * 0.5,
-    };
+    // Add particle rendering parameters
+    this.particleLineWidth = 2.0;
+    this.particleColor = [0.2, 0.6, 1.0, 1.0];
+    this.obstacleColor = [0, 0, 0, 1.0];
 
-    // Scale Y coordinates to maintain circular shape
-    this.scaleY = this.aspectRatio;
-
-    // Cell size must be defined before setupParticles
-    this.h = Math.min(width, height) / this.numX;
-
-    // Initialize in correct order
+    // Initialize arrays and WebGL
     this.initBuffers();
-    this.reset(); // This calls setupParticles
-
-    // Initialize timing metrics
-    this._pressureSolveTime = 0;
-    this._particleAdvectTime = 0;
-    this._totalSimTime = 0;
-    this._lastUpdateTime = performance.now();
-
-    // Initialize velocities array
-    this.velocities = new Float32Array(this.numX * this.numY);
-
-    this.particleCount = 1000; // Default particle count
+    // Finally reset simulation
+    this.reset();
   }
 
   // Initialization methods
@@ -82,7 +75,7 @@ class Grid {
 
   setParticleCount(count) {
     this.particleCount = count;
-    this.setupParticles();
+    this.reset(); // Full reset instead of just setupParticles()
   }
 
   setupParticles() {
@@ -90,26 +83,28 @@ class Grid {
     for (let i = 0; i < this.particleCount; i++) {
       let x, y, dist;
       do {
-        // Use angle-based spawning for circular distribution
         const angle = Math.random() * 2 * Math.PI;
-        const radius = Math.random() * this.containerRadius * 0.4; // Reduced to 40% for better distribution
+        const radius = Math.random() * this.containerRadius * 0.8;
 
         x = this.containerCenter.x + radius * Math.cos(angle);
         y = this.containerCenter.y + radius * Math.sin(angle);
 
-        // Check actual distance without aspect ratio scaling
         const dx = x - this.containerCenter.x;
         const dy = y - this.containerCenter.y;
         dist = Math.sqrt(dx * dx + dy * dy);
-      } while (dist > this.containerRadius * 0.4);
+      } while (dist > this.containerRadius || !this.isInsideGrid(x, y));
 
-      this.particles.push({
-        x: x,
-        y: y,
-        vx: 0,
-        vy: 0,
-      });
+      this.particles.push({ x, y, vx: 0, vy: 0 });
     }
+  }
+
+  isInsideGrid(x, y) {
+    const row = Math.floor((y - this.verticalOffset) / this.stepY);
+    if (row < 0 || row >= this.rowCounts.length) return false;
+
+    const rowWidth = this.rowCounts[row] * this.stepX;
+    const baseX = (this.width - rowWidth) / 2;
+    return x >= baseX && x <= baseX + rowWidth;
   }
 
   reset() {
@@ -133,39 +128,12 @@ class Grid {
 
   // Drawing methods
   draw(programInfo) {
-    // Add frame counter
-    // if (!this._frameCount) this._frameCount = 0;
-    // this._frameCount++;
-
-    // // Only log every 60 frames
-    // if (this._frameCount % 60 === 0) {
-    //   console.clear(); // Clear previous logs
-    //   console.log("%c=== Grid State ===", "font-weight: bold");
-    //   console.table({
-    //     dimensions: {
-    //       width: this.width,
-    //       height: this.height,
-    //       gridWidth: this.numX,
-    //       gridHeight: this.numY,
-    //     },
-    //     cells: {
-    //       totalCells: this.rowCounts.reduce((a, b) => a + b, 0),
-    //       firstRowCount: this.rowCounts[0],
-    //       lastRowCount: this.rowCounts[this.numY - 1],
-    //     },
-    //     spacing: {
-    //       rectWidth: this.rectWidth,
-    //       rectHeight: this.rectHeight,
-    //       stepX: this.stepX,
-    //       stepY: this.stepY,
-    //     },
-    //   });
-    // }
-
-    // Rest of draw method
+    // Clear canvas once at start
     this.gl.clearColor(1.0, 1.0, 1.0, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+    this.gl.useProgram(programInfo.program);
 
+    // Draw grid rectangles first
     const rectangles = this.generateRectangles();
     rectangles.forEach((rect) => {
       this.drawRectangle(
@@ -175,26 +143,31 @@ class Grid {
         rect.height,
         rect.color,
         programInfo
-      ); // Add programInfo
+      );
     });
 
-    // Draw circle overlay
-    const circleVertices = this.drawCircle(
+    // Draw obstacle circle
+    const obstacleVertices = this.drawCircle(
       this.circleCenter.x,
       this.circleCenter.y,
       this.circleRadius,
-      [0, 0, 0, 1]
+      this.obstacleColor
     );
-    this.drawCircleImplementation(circleVertices, [0, 0, 0, 1], programInfo); // Add programInfo
+    this.drawCircleImplementation(
+      obstacleVertices,
+      this.obstacleColor,
+      programInfo
+    );
 
-    // Draw particles
+    // Draw particles last
     for (const p of this.particles) {
-      const vertices = this.drawCircle(p.x, p.y, 2, [0.2, 0.6, 1.0, 1.0]);
-      this.drawCircleImplementation(
-        vertices,
-        [0.2, 0.6, 1.0, 1.0],
-        programInfo
+      const vertices = this.drawCircle(
+        p.x,
+        p.y,
+        this.particleRadius,
+        this.particleColor
       );
+      this.drawCircleImplementation(vertices, this.particleColor, programInfo);
     }
   }
 
@@ -249,12 +222,9 @@ class Grid {
   }
 
   drawRectangle(x, y, width, height, color, programInfo) {
-    // Use program before setting uniforms
-    this.gl.useProgram(programInfo.program);
-
-    // Convert screen coordinates to clip space (-1 to 1)
+    // Convert to clip space
     const normalizedX = (x / this.width) * 2 - 1;
-    const normalizedY = -((y / this.height) * 2 - 1); // Flip Y coordinate
+    const normalizedY = -((y / this.height) * 2 - 1);
     const normalizedWidth = (width / this.width) * 2;
     const normalizedHeight = (height / this.height) * 2;
 
@@ -269,7 +239,6 @@ class Grid {
       normalizedY - normalizedHeight,
     ];
 
-    this.gl.useProgram(programInfo.program);
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
     this.gl.bufferData(
       this.gl.ARRAY_BUFFER,
@@ -277,13 +246,8 @@ class Grid {
       this.gl.STATIC_DRAW
     );
 
-    // Set uniforms after using program
+    // Set uniforms
     this.gl.uniform4fv(programInfo.uniformLocations.color, color);
-    this.gl.uniform2f(
-      programInfo.uniformLocations.resolution,
-      this.width,
-      this.height
-    );
 
     const positionLocation = this.gl.getAttribLocation(
       programInfo.program,
@@ -308,7 +272,7 @@ class Grid {
     const normalizedCY = -((cy / this.height) * 2 - 1); // Flip Y
     const normalizedRadius = (radius / Math.min(this.width, this.height)) * 2;
 
-    const numSegments = 100;
+    const numSegments = 32; // Reduced for performance
     const vertices = [];
 
     // Add center vertex in clip space
@@ -326,22 +290,13 @@ class Grid {
     return vertices;
   }
 
-  drawCircleImplementation(vertices, color, programInfo) {
-    this.gl.useProgram(programInfo.program);
-    // Bind and upload vertex data
+  drawCircleImplementation(vertices, colors, programInfo) {
+    // No need to use program again - already set in draw()
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
     this.gl.bufferData(
       this.gl.ARRAY_BUFFER,
       new Float32Array(vertices),
       this.gl.STATIC_DRAW
-    );
-
-    // Set uniforms
-    this.gl.uniform4fv(programInfo.uniformLocations.color, color);
-    this.gl.uniform2f(
-      programInfo.uniformLocations.resolution,
-      this.width,
-      this.height
     );
 
     // Set vertex attributes
@@ -359,13 +314,21 @@ class Grid {
       0
     );
 
-    // Draw circle using TRIANGLE_FAN
+    // Set uniforms
+    this.gl.uniform4fv(programInfo.uniformLocations.color, colors.slice(0, 4)); // Use first color
+    this.gl.uniform2f(
+      programInfo.uniformLocations.resolution,
+      this.width,
+      this.height
+    );
+
+    // Draw using TRIANGLE_FAN
     this.gl.drawArrays(this.gl.TRIANGLE_FAN, 0, vertices.length / 2);
   }
 
   drawParticles(programInfo) {
     for (const p of this.particles) {
-      this.drawCircle(p.x, p.y, 2, [0.2, 0.6, 1.0, 1.0]);
+      this.drawCircle(p.x, p.y, 2, [0.2, 0.6, 4, 1.0]);
     }
   }
 
@@ -397,6 +360,7 @@ class Grid {
     this.enforceBoundaries();
     this.solveIncompressibility(dt);
     this.transferFromGrid();
+    this.handleParticleCollisions(); // Add collision handling
     this.advectParticles(dt);
 
     this.endTiming("totalSim");
@@ -434,34 +398,51 @@ class Grid {
     }
   }
   enforceBoundaries() {
-    const n = this.numX;
+    for (const p of this.particles) {
+      // Container boundary check
+      const dx = p.x - this.containerCenter.x;
+      const dy = p.y - this.containerCenter.y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const containerLimit = this.containerRadius - this.particleRadius;
 
-    // Wall boundaries
-    for (let i = 0; i < this.numX; i++) {
-      this.u[i] = this.u[i + n] = 0;
-      this.u[i + (this.numY - 1) * n] = this.u[i + (this.numY - 2) * n] = 0;
-    }
+      if (dist > containerLimit) {
+        const angle = Math.atan2(dy, dx);
+        p.x = this.containerCenter.x + Math.cos(angle) * containerLimit;
+        p.y = this.containerCenter.y + Math.sin(angle) * containerLimit;
 
-    for (let j = 0; j < this.numY; j++) {
-      this.v[j * n] = this.v[1 + j * n] = 0;
-      this.v[this.numX - 1 + j * n] = this.v[this.numX - 2 + j * n] = 0;
-    }
+        const nx = dx / dist;
+        const ny = dy / dist;
+        const dot = p.vx * nx + p.vy * ny;
+        p.vx = (p.vx - 2 * dot * nx) * this.velocityDamping;
+        p.vy = (p.vy - 2 * dot * ny) * this.velocityDamping;
+      }
 
-    // Circle obstacle
-    const cx = Math.floor(this.circleCenter.x / this.h);
-    const cy = Math.floor(this.circleCenter.y / this.h);
-    const r = this.circleRadius / this.h;
+      // Obstacle collision
+      const odx = p.x - this.circleCenter.x;
+      const ody = p.y - this.circleCenter.y;
+      const odist = Math.sqrt(odx * odx + ody * ody);
+      const obstacleLimit = this.circleRadius + this.particleRadius;
 
-    for (let i = 0; i < this.numX; i++) {
-      for (let j = 0; j < this.numY; j++) {
-        const dx = i - cx;
-        const dy = j - cy;
-        if (dx * dx + dy * dy < r * r) {
-          this.s[i + j * n] = 0;
+      if (odist < obstacleLimit) {
+        // Push particle outside obstacle
+        const angle = Math.atan2(ody, odx);
+        p.x = this.circleCenter.x + Math.cos(angle) * obstacleLimit;
+        p.y = this.circleCenter.y + Math.sin(angle) * obstacleLimit;
+
+        // Reflect velocity with proper normal
+        const nx = odx / odist;
+        const ny = ody / odist;
+        const dot = p.vx * nx + p.vy * ny;
+
+        // Only reflect if moving toward obstacle
+        if (dot < 0) {
+          p.vx = (p.vx - 2 * dot * nx) * this.velocityDamping;
+          p.vy = (p.vy - 2 * dot * ny) * this.velocityDamping;
         }
       }
     }
   }
+
   transferToGrid() {
     this.u.fill(0);
     this.v.fill(0);
@@ -1069,24 +1050,23 @@ class Grid {
   }
 
   checkBoundaries(particle) {
-    // Container boundary check
+    // Container boundary check with adjusted radius
     const dx = particle.x - this.containerCenter.x;
-    const dy = (particle.y - this.containerCenter.y) * this.scaleY;
+    const dy = particle.y - this.containerCenter.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (dist > this.containerRadius * 0.95) {
+    if (dist > this.containerRadius) {
       const angle = Math.atan2(dy, dx);
       particle.x =
-        this.containerCenter.x + Math.cos(angle) * this.containerRadius * 0.95;
+        this.containerCenter.x + Math.cos(angle) * this.containerRadius;
       particle.y =
-        this.containerCenter.y +
-        (Math.sin(angle) * this.containerRadius * 0.95) / this.scaleY;
+        this.containerCenter.y + Math.sin(angle) * this.containerRadius;
 
-      // Add velocity dampening
+      // Reflect velocity with dampening
       const nx = dx / dist;
       const ny = dy / dist;
       const dot = particle.vx * nx + particle.vy * ny;
-      particle.vx = (particle.vx - 2 * dot * nx) * 0.8; // Increased damping
+      particle.vx = (particle.vx - 2 * dot * nx) * 0.8;
       particle.vy = (particle.vy - 2 * dot * ny) * 0.8;
     }
 
@@ -1154,6 +1134,87 @@ class Grid {
 
           this.u[i + j * n] += fx * weight;
           this.v[i + j * n] += fy * weight;
+        }
+      }
+    }
+  }
+
+  handleParticleCollisions() {
+    const cellSize = this.particleRadius * 4;
+    const spatialGrid = new Map();
+
+    // Insert particles into spatial grid
+    this.particles.forEach((p, i) => {
+      const col = Math.floor(p.x / cellSize);
+      const row = Math.floor(p.y / cellSize);
+      const key = `${row},${col}`;
+      if (!spatialGrid.has(key)) spatialGrid.set(key, []);
+      spatialGrid.get(key).push(i);
+    });
+
+    // Check collisions
+    for (let iter = 0; iter < this.collisionIterations; iter++) {
+      for (let i = 0; i < this.particles.length; i++) {
+        const p1 = this.particles[i];
+        const col = Math.floor(p1.x / cellSize);
+        const row = Math.floor(p1.y / cellSize);
+
+        // Check neighboring cells
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            const key = `${row + dy},${col + dx}`;
+            const cell = spatialGrid.get(key) || [];
+
+            for (const j of cell) {
+              if (i >= j) continue; // Avoid double processing
+
+              const p2 = this.particles[j];
+              const dx = p2.x - p1.x;
+              const dy = p2.y - p1.y;
+              const distSq = dx * dx + dy * dy;
+              const minDist = this.particleRadius * 2;
+
+              if (distSq < minDist * minDist) {
+                const dist = Math.sqrt(distSq);
+                const nx = dx / dist;
+                const ny = dy / dist;
+
+                // Position correction
+                const overlap = minDist - dist;
+                const correction = overlap * 0.5;
+                p1.x -= nx * correction;
+                p1.y -= ny * correction;
+                p2.x += nx * correction;
+                p2.y += ny * correction;
+
+                // Collision response
+                const relVelX = p2.vx - p1.vx;
+                const relVelY = p2.vy - p1.vy;
+                const relVelDotNormal = relVelX * nx + relVelY * ny;
+
+                if (relVelDotNormal < 0) {
+                  const restitution = 1.0 + this.collisionDamping;
+                  const j = -(relVelDotNormal * restitution) * 0.5;
+
+                  p1.vx -= j * nx;
+                  p1.vy -= j * ny;
+                  p2.vx += j * nx;
+                  p2.vy += j * ny;
+                }
+
+                // Apply repulsion force
+                const repulsionScale =
+                  this.repulsionStrength * (1.0 - dist / minDist);
+                const repulsionX = nx * repulsionScale;
+                const repulsionY = ny * repulsionScale;
+
+                p1.vx -= repulsionX;
+                p1.vy -= repulsionY;
+                p2.vx += repulsionX;
+                p2.vy += repulsionY;
+              }
+            }
+          }
         }
       }
     }

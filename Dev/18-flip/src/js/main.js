@@ -25,6 +25,9 @@ const relaxValue = document.getElementById("relaxValue");
 
 const dampingSlider = document.getElementById("dampingSlider");
 const dampingValue = document.getElementById("dampingValue");
+const repulsionSlider = document.getElementById("repulsionSlider");
+const repulsionValue = document.getElementById("repulsionValue");
+const obstacleSlider = document.getElementById("obstacleSlider");
 
 let isPaused = false;
 let animationId = null;
@@ -48,6 +51,10 @@ pauseBtn.onclick = () => {
     cancelAnimationFrame(animationId);
   }
 };
+
+// Update particle slider max and default value
+particleSlider.max = 1000;
+particleSlider.value = 338;
 
 particleSlider.oninput = (e) => {
   const count = parseInt(e.target.value);
@@ -84,9 +91,21 @@ relaxSlider.addEventListener("input", (e) => {
 });
 
 dampingSlider.addEventListener("input", (e) => {
+  const value = e.target.value;
+  dampingValue.textContent = value;
+  sim.grid.collisionDamping = parseFloat(value);
+});
+
+repulsionSlider.addEventListener("input", (e) => {
+  const value = e.target.value;
+  repulsionValue.textContent = value;
+  sim.grid.repulsionStrength = parseFloat(value);
+});
+
+obstacleSlider.addEventListener("input", (e) => {
   const value = parseFloat(e.target.value);
-  dampingValue.textContent = value.toFixed(3);
-  sim.grid.velocityDamping = value;
+  obstacleValue.textContent = value.toFixed(2);
+  sim.grid.circleRadius = sim.grid.containerRadius * value;
 });
 
 // Update display with initial values
@@ -96,6 +115,9 @@ flipRatioValue.textContent = sim.grid.flipRatio.toFixed(2);
 pressureValue.textContent = sim.grid.numPressureIters;
 relaxValue.textContent = sim.grid.overRelaxation.toFixed(2);
 dampingValue.textContent = sim.grid.velocityDamping.toFixed(3);
+
+// Update initial particle count
+sim.grid.setParticleCount(338);
 
 canvas.addEventListener("mousedown", (e) => {
   const rect = canvas.getBoundingClientRect();
