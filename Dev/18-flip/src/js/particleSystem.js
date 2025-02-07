@@ -24,7 +24,7 @@ class ParticleSystem {
     this.isObstacleActive = config.isObstacleActive || false;
 
     this.particleLineWidth = 2.0;
-    this.particleColor = [0.2, 0.6, 1.0, 0.1];
+    this.particleColor = [1, 1, 1, 0.3];
 
     this.particles = [];
     this.setupParticles();
