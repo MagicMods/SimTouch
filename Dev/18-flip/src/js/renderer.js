@@ -109,7 +109,7 @@ class Renderer {
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
 
     const vertices = [];
-    const particleRadius = 6; // Increased radius for better visibility
+    const particleRadius = grid.particleSystem.particleRadius;
     const particles = grid.particleSystem.getParticles();
     for (const p of particles) {
       // Convert to clip space while preserving aspect ratio

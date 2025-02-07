@@ -39,12 +39,22 @@ const collisionDampingSlider = document.getElementById(
 );
 const collisionDampingValue = document.getElementById("collisionDampingValue");
 
+const particleSizeSlider = document.getElementById("particleSizeSlider");
+const particleSizeValue = document.getElementById("particleSizeValue");
+
 opacitySlider.addEventListener("input", (e) => {
   const value = parseFloat(e.target.value);
   opacityValue.textContent = value.toFixed(2);
   const color = sim.grid.particleSystem.particleColor;
   sim.grid.particleSystem.particleColor = [color[0], color[1], color[2], value];
 });
+
+particleSizeSlider.addEventListener("input", (e) => {
+  const value = parseFloat(e.target.value);
+  particleSizeValue.textContent = value.toFixed(1);
+  sim.grid.particleSystem.particleRadius = value;
+});
+
 velocityDampingSlider.addEventListener("input", (e) => {
   const value = parseFloat(e.target.value);
   velocityDampingValue.textContent = value.toFixed(3);
