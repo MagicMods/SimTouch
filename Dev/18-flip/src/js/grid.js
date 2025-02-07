@@ -1,4 +1,5 @@
 import { ParticleSystem } from "./particleSystem.js";
+import { StateManager } from "./stateManager.js";
 class Grid {
   constructor(gl, width, height) {
     // Core properties
@@ -65,6 +66,8 @@ class Grid {
     this.initBuffers();
 
     this.isObstacleActive = false; // Add this flag
+
+    this.stateManager = new StateManager();
     // Create particle system with all necessary parameters
     this.particleSystem = new ParticleSystem({
       width: this.width,
@@ -114,10 +117,7 @@ class Grid {
     this.particleSystem.setupParticles();
 
     // Reset metrics
-    this._pressureSolveTime = 0;
-    this._particleAdvectTime = 0;
-    this._totalSimTime = 0;
-    this._lastUpdateTime = performance.now();
+    this.stateManager.resetMetrics();
   }
   // Drawing methods
   draw(programInfo) {
@@ -348,7 +348,7 @@ class Grid {
   // Simulation methods
 
   simulate(dt) {
-    this.startTiming("totalSim");
+    this.stateManager.startTiming("totalSim");
 
     this.storeVelocities();
     this.transferToGrid();
@@ -359,7 +359,7 @@ class Grid {
     this.particleSystem.handleParticleCollisions();
     this.particleSystem.advectParticles(dt);
 
-    this.endTiming("totalSim");
+    this.stateManager.endTiming("totalSim");
   }
   solveIncompressibility(dt) {
     const n = this.numX;
@@ -490,143 +490,20 @@ class Grid {
     );
   }
   debug() {
-    const n = this.numX;
+    const stats = this.stateManager.getDebugStats(this);
+    const timings = this.stateManager.getTimingMetrics();
+
     console.log(`Grid size: ${this.numX}x${this.numY}`);
     console.log(`Cell size: ${this.h}`);
-    console.log(`Particle count: ${this.particleSystem.getParticles().length}`);
-    console.log(
-      `Max velocity: ${Math.max(...Array.from(this.u), ...Array.from(this.v))}`
-    );
-    console.log(
-      `Memory usage: ${
-        ((this.u.length + this.v.length + this.p.length) * 4) / 1024
-      } KB`
-    );
-    console.log(`Performance metrics:`);
-    console.log(`- Pressure iterations: ${this.numPressureIters}`);
-    console.log(`- Grid cells: ${this.numX * this.numY}`);
-    console.log(
-      `- Active particles: ${this.particleSystem.getParticles().length}`
-    );
-
-    // Add timing metrics
-    console.log(`\nTiming metrics:`);
-    console.log(`- Pressure solve: ${this._pressureSolveTime.toFixed(2)}ms`);
-    console.log(
-      `- Particle advection: ${this._particleAdvectTime.toFixed(2)}ms`
-    );
-    console.log(`- Total simulation: ${this._totalSimTime.toFixed(2)}ms`);
-  }
-
-  getState() {
-    return {
-      velocityField: {
-        u: Array.from(this.u),
-        v: Array.from(this.v),
-      },
-      pressure: Array.from(this.p),
-      solid: Array.from(this.s),
-      settings: {
-        gravity: this.gravity,
-        flipRatio: this.flipRatio,
-        overRelaxation: this.overRelaxation,
-      },
-    };
-  }
-
-  setState(state) {
-    if (!this.validateState(state)) {
-      throw new Error("Invalid state object");
-    }
-    this.u.set(state.velocityField.u);
-    this.v.set(state.velocityField.v);
-    this.p.set(state.pressure);
-    this.s.set(state.solid);
-    Object.assign(this, state.settings);
-  }
-
-  validateState(state) {
-    return (
-      state.velocityField &&
-      state.velocityField.u &&
-      state.velocityField.v &&
-      state.pressure &&
-      state.solid &&
-      state.settings &&
-      typeof state.settings.gravity === "number" &&
-      typeof state.settings.flipRatio === "number" &&
-      typeof state.settings.overRelaxation === "number"
-    );
-  }
-
-  validateArrays(state) {
-    const expectedLength = this.numX * this.numY;
-    return (
-      state.velocityField.u.length === expectedLength &&
-      state.velocityField.v.length === expectedLength &&
-      state.pressure.length === expectedLength &&
-      state.solid.length === expectedLength
-    );
-  }
-
-  validateTypes(state) {
-    return true;
-  }
-
-  validateGridState() {
-    const n = this.numX * this.numY;
-    return (
-      this.u.length === n &&
-      this.v.length === n &&
-      this.p.length === n &&
-      this.s.length === n
-    );
-  }
-
-  // Add performance tracking
-  getPerformanceMetrics() {
-    return {
-      gridCells: this.numX * this.numY,
-      activeParticles: this.particleSystem.getParticles().length, // Changed
-      pressureIterations: this.numPressureIters,
-      timings: {
-        pressureSolve: this._pressureSolveTime,
-        particleAdvect: this._particleAdvectTime,
-        totalSim: this._totalSimTime,
-      },
-    };
-  }
-  // Add save/load state
-  saveState() {
-    const state = this.getState();
-    return JSON.stringify(state);
-  }
-
-  loadState(jsonState) {
-    const state = JSON.parse(jsonState);
-    if (!this.validateArrays(state)) {
-      throw new Error("Invalid array lengths in state object");
-    }
-    this.setState(state);
+    console.log(`Max velocity: ${stats.maxVelocity}`);
+    console.log(`Memory usage: ${stats.memoryUsage} KB`);
+    console.log(`Grid cells: ${stats.gridCells}`);
+    console.log(`Active particles: ${stats.activeParticles}`);
+    console.log(`Pressure solve: ${timings.pressureSolveTime.toFixed(2)}ms`);
+    console.log(`Total simulation: ${timings.totalSimTime.toFixed(2)}ms`);
   }
 
   // Add timing metrics
-  getTimingMetrics() {
-    return {
-      pressureSolveTime: this._pressureSolveTime,
-      particleAdvectTime: this._particleAdvectTime,
-      totalSimTime: this._totalSimTime,
-    };
-  }
-
-  startTiming(metric) {
-    this[`_${metric}Start`] = performance.now();
-  }
-
-  endTiming(metric) {
-    const end = performance.now();
-    this[`_${metric}Time`] = end - this[`_${metric}Start`];
-  }
 
   checkWebGLError() {
     const error = this.gl.getError();
@@ -680,15 +557,6 @@ class Grid {
     }
   }
 
-  getDebugStats() {
-    return {
-      ...this.getPerformanceMetrics(),
-      ...this.getTimingMetrics(),
-      memoryUsage: ((this.u.length + this.v.length + this.p.length) * 4) / 1024,
-      maxVelocity: Math.max(...Array.from(this.u), ...Array.from(this.v)),
-    };
-  }
-
   validateWebGLState() {
     const gl = this.gl;
     if (!gl) {
@@ -711,7 +579,7 @@ class Grid {
     return {
       frameTime: performance.now() - this._lastUpdateTime,
       memoryUsage: ((this.u.length + this.v.length + this.p.length) * 4) / 1024,
-      ...this.getPerformanceMetrics(),
+      ...this.stateManager.getPerformanceMetrics(this),
     };
   }
 
