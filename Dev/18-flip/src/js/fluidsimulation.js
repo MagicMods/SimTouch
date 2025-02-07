@@ -26,7 +26,7 @@ class FluidSimulation {
     this.dt = 1 / 60; // Fixed timestep for stability
 
     // Initialize particles immediately
-    this.grid.setupParticles();
+    this.grid.particleSystem.setupParticles();
 
     // Debug draw call
     console.log("Starting render loop");

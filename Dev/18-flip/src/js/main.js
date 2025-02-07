@@ -104,8 +104,8 @@ repulsionSlider.addEventListener("input", (e) => {
 
 obstacleSlider.addEventListener("input", (e) => {
   const value = parseFloat(e.target.value);
-  obstacleValue.textContent = value.toFixed(2);
-  sim.grid.circleRadius = sim.grid.containerRadius * value;
+  sim.grid.circleRadius = value;
+  sim.grid.particleSystem.circleRadius = value;
 });
 
 // Update display with initial values
@@ -121,7 +121,6 @@ sim.grid.setParticleCount(338);
 
 canvas.addEventListener("mousedown", (e) => {
   if (e.button === 0) {
-    // Left button
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
     const scaleY = canvas.height / rect.height;
@@ -132,7 +131,18 @@ canvas.addEventListener("mousedown", (e) => {
     sim.grid.isObstacleActive = true;
     sim.grid.circleCenter.x = x;
     sim.grid.circleCenter.y = y;
+    sim.grid.particleSystem.isObstacleActive = true; // Add this line
+    sim.grid.particleSystem.circleCenter.x = x; // Add this line
+    sim.grid.particleSystem.circleCenter.y = y; // Add this line
     isDragging = true;
+  }
+});
+
+canvas.addEventListener("mouseup", (e) => {
+  if (e.button === 0) {
+    isDragging = false;
+    sim.grid.isObstacleActive = false;
+    sim.grid.particleSystem.isObstacleActive = false;
   }
 });
 
@@ -155,19 +165,16 @@ canvas.addEventListener("mousemove", (e) => {
     sim.grid.circleRadius,
     Math.min(canvas.height - sim.grid.circleRadius, newY)
   );
-});
 
-canvas.addEventListener("mouseup", (e) => {
-  if (e.button === 0) {
-    // Left button
-    isDragging = false;
-    sim.grid.isObstacleActive = false;
-  }
+  // Update particle system obstacle position
+  sim.grid.particleSystem.circleCenter.x = sim.grid.circleCenter.x;
+  sim.grid.particleSystem.circleCenter.y = sim.grid.circleCenter.y;
 });
 
 canvas.addEventListener("mouseleave", () => {
   isDragging = false;
   sim.grid.isObstacleActive = false;
+  sim.grid.particleSystem.isObstacleActive = false;
 });
 
 // Animation loop

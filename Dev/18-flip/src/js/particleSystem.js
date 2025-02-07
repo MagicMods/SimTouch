@@ -23,6 +23,9 @@ class ParticleSystem {
     this.circleRadius = config.circleRadius;
     this.isObstacleActive = config.isObstacleActive || false;
 
+    this.particleLineWidth = 2.0;
+    this.particleColor = [0.2, 0.6, 1.0, 0.1];
+
     this.particles = [];
     this.setupParticles();
   }
@@ -206,22 +209,27 @@ class ParticleSystem {
       }
 
       if (this.isObstacleActive) {
-        const odx = p.x - this.circleCenter.x;
-        const ody = p.y - this.circleCenter.y;
-        const odist = Math.sqrt(odx * odx + ody * ody);
-        const obstacleLimit = this.circleRadius + this.particleRadius;
+        for (const p of this.particles) {
+          const odx = p.x - this.circleCenter.x;
+          const ody = p.y - this.circleCenter.y;
+          const odist = Math.sqrt(odx * odx + ody * ody);
 
-        if (odist < obstacleLimit) {
-          const angle = Math.atan2(ody, odx);
-          p.x = this.circleCenter.x + Math.cos(angle) * obstacleLimit;
-          p.y = this.circleCenter.y + Math.sin(angle) * obstacleLimit;
+          if (odist < this.circleRadius + this.particleRadius) {
+            const angle = Math.atan2(ody, odx);
+            p.x =
+              this.circleCenter.x +
+              Math.cos(angle) * (this.circleRadius + this.particleRadius);
+            p.y =
+              this.circleCenter.y +
+              Math.sin(angle) * (this.circleRadius + this.particleRadius);
 
-          const nx = odx / odist;
-          const ny = ody / odist;
-          const dot = p.vx * nx + p.vy * ny;
-          if (dot < 0) {
-            p.vx = (p.vx - 2 * dot * nx) * this.velocityDamping;
-            p.vy = (p.vy - 2 * dot * ny) * this.velocityDamping;
+            const nx = odx / odist;
+            const ny = ody / odist;
+            const dot = p.vx * nx + p.vy * ny;
+            if (dot < 0) {
+              p.vx = (p.vx - 2 * dot * nx) * this.velocityDamping;
+              p.vy = (p.vy - 2 * dot * ny) * this.velocityDamping;
+            }
           }
         }
       }

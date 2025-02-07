@@ -162,8 +162,8 @@ class Renderer {
 
     const vertices = [];
     const particleRadius = 6; // Increased radius for better visibility
-
-    for (const p of grid.particles) {
+    const particles = grid.particleSystem.getParticles();
+    for (const p of particles) {
       // Convert to clip space while preserving aspect ratio
       const px = (p.x / this.width) * 2.0 - 1.0;
       const py = -((p.y / this.height) * 2.0 - 1.0);
@@ -199,7 +199,8 @@ class Renderer {
     this.gl.vertexAttribPointer(positionLoc, 2, this.gl.FLOAT, false, 0, 0);
 
     const verticesPerParticle = 18; // Updated to match the increased number of segments
-    for (let i = 0; i < grid.particles.length; i++) {
+    for (let i = 0; i < particles.length; i++) {
+      // Changed from grid.particles to particles
       this.gl.drawArrays(
         this.gl.TRIANGLE_FAN,
         i * verticesPerParticle,

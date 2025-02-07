@@ -1,3 +1,4 @@
+import { ParticleSystem } from "./particleSystem.js";
 class Grid {
   constructor(gl, width, height) {
     // Core properties
@@ -31,13 +32,6 @@ class Grid {
     this.velocityDamping = 0.8;
     this.maxVelocity = 100.0;
 
-    // Particle parameters
-    this.particleCount = 338;
-    this.particleRadius = 4.0;
-    this.collisionDamping = 0.5;
-    this.repulsionStrength = 0.3;
-    this.collisionIterations = 3;
-
     // Add density field for grid coloring
     this.density = new Float32Array(totalCells).fill(0);
     this.maxDensity = 5.0; // Adjust sensitivity
@@ -61,8 +55,7 @@ class Grid {
     this.circleRadius = this.containerRadius * 0.3; // 15% of container radius
 
     // Add particle rendering parameters
-    this.particleLineWidth = 2.0;
-    this.particleColor = [0.2, 0.6, 1.0, 0.1];
+
     this.obstacleColor = [0, 0, 0, 1.0];
 
     // Add gradient lookup table
@@ -73,25 +66,25 @@ class Grid {
 
     this.isObstacleActive = false; // Add this flag
     // Create particle system with all necessary parameters
-    // this.particleSystem = new ParticleSystem({
-    //   width: this.width,
-    //   height: this.height,
-    //   rowCounts: this.rowCounts,
-    //   stepX: this.stepX,
-    //   stepY: this.stepY,
-    //   verticalOffset: this.verticalOffset,
-    //   velocityDamping: this.velocityDamping,
-    //   particleCount: 338,
-    //   particleRadius: 4.0,
-    //   collisionDamping: 0.5,
-    //   repulsionStrength: 0.3,
-    //   collisionIterations: 3,
-    //   containerRadius: this.containerRadius,
-    //   containerCenter: this.containerCenter,
-    //   circleCenter: this.circleCenter,
-    //   circleRadius: this.circleRadius,
-    //   isObstacleActive: this.isObstacleActive,
-    // });
+    this.particleSystem = new ParticleSystem({
+      width: this.width,
+      height: this.height,
+      rowCounts: this.rowCounts,
+      stepX: this.stepX,
+      stepY: this.stepY,
+      verticalOffset: this.verticalOffset,
+      velocityDamping: this.velocityDamping,
+      particleCount: 338,
+      particleRadius: 4.0,
+      collisionDamping: 0.5,
+      repulsionStrength: 0.3,
+      collisionIterations: 3,
+      containerRadius: this.containerRadius,
+      containerCenter: this.containerCenter,
+      circleCenter: this.circleCenter,
+      circleRadius: this.circleRadius,
+      isObstacleActive: this.isObstacleActive,
+    });
 
     // Finally reset simulation
     this.reset();
@@ -104,37 +97,8 @@ class Grid {
   }
 
   setParticleCount(count) {
-    this.particleCount = count;
-    this.reset(); // Full reset instead of just setupParticles()
-  }
-
-  setupParticles() {
-    this.particles = [];
-    for (let i = 0; i < this.particleCount; i++) {
-      let x, y, dist;
-      do {
-        const angle = Math.random() * 2 * Math.PI;
-        const radius = Math.random() * this.containerRadius * 0.8;
-
-        x = this.containerCenter.x + radius * Math.cos(angle);
-        y = this.containerCenter.y + radius * Math.sin(angle);
-
-        const dx = x - this.containerCenter.x;
-        const dy = y - this.containerCenter.y;
-        dist = Math.sqrt(dx * dx + dy * dy);
-      } while (dist > this.containerRadius || !this.isInsideGrid(x, y));
-
-      this.particles.push({ x, y, vx: 0, vy: 0 });
-    }
-  }
-
-  isInsideGrid(x, y) {
-    const row = Math.floor((y - this.verticalOffset) / this.stepY);
-    if (row < 0 || row >= this.rowCounts.length) return false;
-
-    const rowWidth = this.rowCounts[row] * this.stepX;
-    const baseX = (this.width - rowWidth) / 2;
-    return x >= baseX && x <= baseX + rowWidth;
+    this.particleSystem.particleCount = count;
+    this.reset();
   }
 
   reset() {
@@ -146,8 +110,8 @@ class Grid {
     this.p.fill(0);
     this.velocities.fill(0);
 
-    // Reset particles with proper initialization
-    this.setupParticles();
+    // Use particle system reset
+    this.particleSystem.setupParticles();
 
     // Reset metrics
     this._pressureSolveTime = 0;
@@ -155,7 +119,6 @@ class Grid {
     this._totalSimTime = 0;
     this._lastUpdateTime = performance.now();
   }
-
   // Drawing methods
   draw(programInfo) {
     // Clear canvas once at start
@@ -191,15 +154,20 @@ class Grid {
       );
     }
 
-    // Draw particles last
-    for (const p of this.particles) {
+    // Draw particles last - Updated to use particleSystem
+    const particles = this.particleSystem.getParticles();
+    for (const p of particles) {
       const vertices = this.drawCircle(
         p.x,
         p.y,
-        this.particleRadius,
-        this.particleColor
+        this.particleSystem.particleRadius,
+        this.particleSystem.particleColor // Use particleSystem's color here
       );
-      this.drawCircleImplementation(vertices, this.particleColor, programInfo);
+      this.drawCircleImplementation(
+        vertices,
+        this.particleSystem.particleColor, // And here
+        programInfo
+      );
     }
   }
 
@@ -258,8 +226,8 @@ class Grid {
 
   updateGridDensity() {
     this.density.fill(0);
-
-    for (const p of this.particles) {
+    const particles = this.particleSystem.getParticles();
+    for (const p of particles) {
       // Calculate relative position to grid origin
       const relY = p.y - this.verticalOffset;
       const row = Math.floor(relY / this.stepY);
@@ -405,42 +373,23 @@ class Grid {
     this.gl.drawArrays(this.gl.TRIANGLE_FAN, 0, vertices.length / 2);
   }
 
-  drawParticles(programInfo) {
-    for (const p of this.particles) {
-      this.drawCircle(p.x, p.y, 2, [0.2, 0.6, 4, 1.0]);
-    }
+  setObstacleActive(active) {
+    this.isObstacleActive = active;
+    this.particleSystem.isObstacleActive = active;
   }
-
   // Simulation methods
-  update(dt) {
-    this.startTiming("totalSim");
 
-    // Main simulation loop
-    this.transferToGrid();
-    this.applyExternalForces(dt);
-    this.enforceBoundaries();
-
-    this.startTiming("pressureSolve");
-    this.solveIncompressibility(dt);
-    this.endTiming("pressureSolve");
-
-    this.startTiming("particleAdvect");
-    this.advectParticles(dt);
-    this.endTiming("particleAdvect");
-
-    this.endTiming("totalSim");
-  }
   simulate(dt) {
     this.startTiming("totalSim");
 
     this.storeVelocities();
     this.transferToGrid();
     this.applyExternalForces(dt);
-    this.enforceBoundaries();
+    this.particleSystem.enforceBoundaries();
     this.solveIncompressibility(dt);
     this.transferFromGrid();
-    this.handleParticleCollisions(); // Add collision handling
-    this.advectParticles(dt);
+    this.particleSystem.handleParticleCollisions();
+    this.particleSystem.advectParticles(dt);
 
     this.endTiming("totalSim");
   }
@@ -476,56 +425,14 @@ class Grid {
       }
     }
   }
-  enforceBoundaries() {
-    for (const p of this.particles) {
-      // Container boundary check
-      const dx = p.x - this.containerCenter.x;
-      const dy = p.y - this.containerCenter.y;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      const containerLimit = this.containerRadius - this.particleRadius;
-
-      if (dist > containerLimit) {
-        const angle = Math.atan2(dy, dx);
-        p.x = this.containerCenter.x + Math.cos(angle) * containerLimit;
-        p.y = this.containerCenter.y + Math.sin(angle) * containerLimit;
-
-        const nx = dx / dist;
-        const ny = dy / dist;
-        const dot = p.vx * nx + p.vy * ny;
-        p.vx = (p.vx - 2 * dot * nx) * this.velocityDamping;
-        p.vy = (p.vy - 2 * dot * ny) * this.velocityDamping;
-      }
-
-      // Only check obstacle collision when active
-      if (this.isObstacleActive) {
-        const odx = p.x - this.circleCenter.x;
-        const ody = p.y - this.circleCenter.y;
-        const odist = Math.sqrt(odx * odx + ody * ody);
-        const obstacleLimit = this.circleRadius + this.particleRadius;
-
-        if (odist < obstacleLimit) {
-          const angle = Math.atan2(ody, odx);
-          p.x = this.circleCenter.x + Math.cos(angle) * obstacleLimit;
-          p.y = this.circleCenter.y + Math.sin(angle) * obstacleLimit;
-
-          const nx = odx / odist;
-          const ny = ody / odist;
-          const dot = p.vx * nx + p.vy * ny;
-          if (dot < 0) {
-            p.vx = (p.vx - 2 * dot * nx) * this.velocityDamping;
-            p.vy = (p.vy - 2 * dot * ny) * this.velocityDamping;
-          }
-        }
-      }
-    }
-  }
 
   transferToGrid() {
     this.u.fill(0);
     this.v.fill(0);
     const weights = new Float32Array(this.numX * this.numY).fill(0);
+    const particles = this.particleSystem.getParticles();
 
-    for (const p of this.particles) {
+    for (const p of particles) {
       const x = p.x / this.h;
       const y = p.y / this.h;
 
@@ -568,7 +475,8 @@ class Grid {
     }
   }
   transferFromGrid() {
-    for (const p of this.particles) {
+    const particles = this.particleSystem.getParticles();
+    for (const p of particles) {
       const x = p.x / this.h;
       const y = p.y / this.h;
 
@@ -589,14 +497,6 @@ class Grid {
       // Clamp velocities
       p.vx = Math.max(-this.maxVelocity, Math.min(this.maxVelocity, p.vx));
       p.vy = Math.max(-this.maxVelocity, Math.min(this.maxVelocity, p.vy));
-    }
-  }
-
-  advectParticles(dt) {
-    for (const p of this.particles) {
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      this.checkBoundaries(p);
     }
   }
 
@@ -625,7 +525,7 @@ class Grid {
     const n = this.numX;
     console.log(`Grid size: ${this.numX}x${this.numY}`);
     console.log(`Cell size: ${this.h}`);
-    console.log(`Particle count: ${this.particles.length}`);
+    console.log(`Particle count: ${this.particleSystem.getParticles().length}`);
     console.log(
       `Max velocity: ${Math.max(...Array.from(this.u), ...Array.from(this.v))}`
     );
@@ -637,7 +537,9 @@ class Grid {
     console.log(`Performance metrics:`);
     console.log(`- Pressure iterations: ${this.numPressureIters}`);
     console.log(`- Grid cells: ${this.numX * this.numY}`);
-    console.log(`- Active particles: ${this.particles.length}`);
+    console.log(
+      `- Active particles: ${this.particleSystem.getParticles().length}`
+    );
 
     // Add timing metrics
     console.log(`\nTiming metrics:`);
@@ -650,7 +552,6 @@ class Grid {
 
   getState() {
     return {
-      particles: this.particles,
       velocityField: {
         u: Array.from(this.u),
         v: Array.from(this.v),
@@ -673,7 +574,6 @@ class Grid {
     this.v.set(state.velocityField.v);
     this.p.set(state.pressure);
     this.s.set(state.solid);
-    this.particles = state.particles;
     Object.assign(this, state.settings);
   }
 
@@ -684,7 +584,6 @@ class Grid {
       state.velocityField.v &&
       state.pressure &&
       state.solid &&
-      state.particles &&
       state.settings &&
       typeof state.settings.gravity === "number" &&
       typeof state.settings.flipRatio === "number" &&
@@ -703,16 +602,7 @@ class Grid {
   }
 
   validateTypes(state) {
-    return (
-      Array.isArray(state.particles) &&
-      state.particles.every(
-        (p) =>
-          typeof p.x === "number" &&
-          typeof p.y === "number" &&
-          typeof p.vx === "number" &&
-          typeof p.vy === "number"
-      )
-    );
+    return true;
   }
 
   validateGridState() {
@@ -721,8 +611,7 @@ class Grid {
       this.u.length === n &&
       this.v.length === n &&
       this.p.length === n &&
-      this.s.length === n &&
-      Array.isArray(this.particles)
+      this.s.length === n
     );
   }
 
@@ -730,7 +619,7 @@ class Grid {
   getPerformanceMetrics() {
     return {
       gridCells: this.numX * this.numY,
-      activeParticles: this.particles.length,
+      activeParticles: this.particleSystem.getParticles().length, // Changed
       pressureIterations: this.numPressureIters,
       timings: {
         pressureSolve: this._pressureSolveTime,
@@ -739,7 +628,6 @@ class Grid {
       },
     };
   }
-
   // Add save/load state
   saveState() {
     const state = this.getState();
@@ -795,15 +683,6 @@ class Grid {
     }
   }
   // Add integrate method
-  integrate(dt) {
-    this.storeVelocities();
-    this.transferToGrid();
-    this.applyExternalForces(dt);
-    this.enforceBoundaries();
-    this.solveIncompressibility(dt);
-    this.transferFromGrid();
-    this.advectParticles(dt);
-  }
 
   // Add updateGrid method
   updateGrid() {
@@ -822,55 +701,6 @@ class Grid {
   storeVelocities() {
     this.oldU.set(this.u);
     this.oldV.set(this.v);
-  }
-
-  handleBoundaries() {
-    const n = this.numX;
-    for (const p of this.particles) {
-      // Keep particles in bounds
-      p.x = Math.max(this.h, Math.min(this.width - this.h, p.x));
-      p.y = Math.max(this.h, Math.min(this.height - this.h, p.y));
-
-      // Handle circle obstacle
-      const dx = p.x - this.circleCenter.x;
-      const dy = p.y - this.circleCenter.y;
-      const r = Math.sqrt(dx * dx + dy * dy);
-
-      if (r < this.circleRadius) {
-        const scale = this.circleRadius / r;
-        p.x = this.circleCenter.x + dx * scale;
-        p.y = this.circleCenter.y + dy * scale;
-
-        // Reflect velocity
-        const dot = (dx * p.vx + dy * p.vy) / (r * r);
-        p.vx -= 2 * dot * dx;
-        p.vy -= 2 * dot * dy;
-      }
-    }
-  }
-
-  updateSimulationState() {
-    this.startTiming("totalSim");
-
-    // Main simulation loop
-    this.storeVelocities();
-    this.transferToGrid();
-    this.applyExternalForces(this.dt);
-    this.enforceBoundaries();
-
-    this.startTiming("pressureSolve");
-    this.solveIncompressibility(this.dt);
-    this.endTiming("pressureSolve");
-
-    this.startTiming("particleAdvect");
-    this.transferFromGrid();
-    this.advectParticles(this.dt);
-    this.endTiming("particleAdvect");
-
-    this.handleBoundaries();
-    this.updateGrid();
-
-    this.endTiming("totalSim");
   }
 
   validateSimulationState() {
@@ -1040,7 +870,7 @@ class Grid {
 
   resetSimulation() {
     this.initializeArrays(this.numX * this.numY);
-    this.setupParticles();
+    this.particleSystem.setupParticles();
     this._lastUpdateTime = performance.now();
   }
 
@@ -1126,49 +956,6 @@ class Grid {
     return true;
   }
 
-  checkBoundaries(particle) {
-    // Container boundary check with adjusted radius
-    const dx = particle.x - this.containerCenter.x;
-    const dy = particle.y - this.containerCenter.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    if (dist > this.containerRadius) {
-      const angle = Math.atan2(dy, dx);
-      particle.x =
-        this.containerCenter.x + Math.cos(angle) * this.containerRadius;
-      particle.y =
-        this.containerCenter.y + Math.sin(angle) * this.containerRadius;
-
-      // Reflect velocity with dampening
-      const nx = dx / dist;
-      const ny = dy / dist;
-      const dot = particle.vx * nx + particle.vy * ny;
-      particle.vx = (particle.vx - 2 * dot * nx) * 0.8;
-      particle.vy = (particle.vy - 2 * dot * ny) * 0.8;
-    }
-
-    // Obstacle collision with separation
-    const odx = particle.x - this.circleCenter.x;
-    const ody = particle.y - this.circleCenter.y;
-    const odist = Math.sqrt(odx * odx + ody * ody);
-
-    if (odist < this.circleRadius + 2.0) {
-      // Add small separation distance
-      const angle = Math.atan2(odx, ody);
-      particle.x =
-        this.circleCenter.x + Math.cos(angle) * (this.circleRadius + 2.0);
-      particle.y =
-        this.circleCenter.y + Math.sin(angle) * (this.circleRadius + 2.0);
-
-      // Reflect velocity with dampening
-      const nx = odx / odist;
-      const ny = ody / odist;
-      const dot = particle.vx * nx + particle.vy * ny;
-      particle.vx = (particle.vx - 2 * dot * nx) * 0.8;
-      particle.vy = (particle.vy - 2 * dot * ny) * 0.8;
-    }
-  }
-
   updateVelocities() {
     const n = this.numX;
     for (let i = 1; i < this.numX - 1; i++) {
@@ -1211,87 +998,6 @@ class Grid {
 
           this.u[i + j * n] += fx * weight;
           this.v[i + j * n] += fy * weight;
-        }
-      }
-    }
-  }
-
-  handleParticleCollisions() {
-    const cellSize = this.particleRadius * 4;
-    const spatialGrid = new Map();
-
-    // Insert particles into spatial grid
-    this.particles.forEach((p, i) => {
-      const col = Math.floor(p.x / cellSize);
-      const row = Math.floor(p.y / cellSize);
-      const key = `${row},${col}`;
-      if (!spatialGrid.has(key)) spatialGrid.set(key, []);
-      spatialGrid.get(key).push(i);
-    });
-
-    // Check collisions
-    for (let iter = 0; iter < this.collisionIterations; iter++) {
-      for (let i = 0; i < this.particles.length; i++) {
-        const p1 = this.particles[i];
-        const col = Math.floor(p1.x / cellSize);
-        const row = Math.floor(p1.y / cellSize);
-
-        // Check neighboring cells
-        for (let dx = -1; dx <= 1; dx++) {
-          for (let dy = -1; dy <= 1; dy++) {
-            const key = `${row + dy},${col + dx}`;
-            const cell = spatialGrid.get(key) || [];
-
-            for (const j of cell) {
-              if (i >= j) continue; // Avoid double processing
-
-              const p2 = this.particles[j];
-              const dx = p2.x - p1.x;
-              const dy = p2.y - p1.y;
-              const distSq = dx * dx + dy * dy;
-              const minDist = this.particleRadius * 2;
-
-              if (distSq < minDist * minDist) {
-                const dist = Math.sqrt(distSq);
-                const nx = dx / dist;
-                const ny = dy / dist;
-
-                // Position correction
-                const overlap = minDist - dist;
-                const correction = overlap * 0.5;
-                p1.x -= nx * correction;
-                p1.y -= ny * correction;
-                p2.x += nx * correction;
-                p2.y += ny * correction;
-
-                // Collision response
-                const relVelX = p2.vx - p1.vx;
-                const relVelY = p2.vy - p1.vy;
-                const relVelDotNormal = relVelX * nx + relVelY * ny;
-
-                if (relVelDotNormal < 0) {
-                  const restitution = 1.0 + this.collisionDamping;
-                  const j = -(relVelDotNormal * restitution) * 0.5;
-
-                  p1.vx -= j * nx;
-                  p1.vy -= j * ny;
-                  p2.vx += j * nx;
-                  p2.vy += j * ny;
-                }
-
-                // Apply repulsion force
-                const repulsionScale =
-                  this.repulsionStrength * (1.0 - dist / minDist);
-                const repulsionX = nx * repulsionScale;
-                const repulsionY = ny * repulsionScale;
-
-                p1.vx -= repulsionX;
-                p1.vy -= repulsionY;
-                p2.vx += repulsionX;
-                p2.vy += repulsionY;
-              }
-            }
-          }
         }
       }
     }
