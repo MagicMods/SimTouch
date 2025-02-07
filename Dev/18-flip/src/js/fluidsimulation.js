@@ -76,7 +76,7 @@ class FluidSimulation {
     const dx = x - this.lastMouseX;
     const dy = y - this.lastMouseY;
 
-    this.grid.applyForce(x, y, dx, dy);
+    this.applyForce(x, y, dx, dy);
 
     this.lastMouseX = x;
     this.lastMouseY = y;
@@ -93,22 +93,36 @@ class FluidSimulation {
     this.grid.resize(width, height);
   }
 
-  applyForce(x, y, fx, fy, radius = 10) {
-    const strength = Math.sqrt(fx * fx + fy * fy);
-    const maxForce = 1000;
-    const scale = Math.min(strength, maxForce) / maxForce;
+  applyForce(x, y, fx, fy) {
+    const solver = this.grid.fluidSolver;
+    const n = solver.numX;
+    const h = solver.h;
 
-    this.grid.particles.forEach((p) => {
-      const dx = x - p.x;
-      const dy = y - p.y;
-      const r2 = dx * dx + dy * dy;
+    const gx = Math.floor(x / h);
+    const gy = Math.floor(y / h);
+    const radius = 3;
 
-      if (r2 < radius * radius) {
-        const weight = 1 - Math.sqrt(r2) / radius;
-        p.vx += fx * weight * scale;
-        p.vy += fy * weight * scale;
+    for (
+      let i = Math.max(1, gx - radius);
+      i <= Math.min(solver.numX - 2, gx + radius);
+      i++
+    ) {
+      for (
+        let j = Math.max(1, gy - radius);
+        j <= Math.min(solver.numY - 2, gy + radius);
+        j++
+      ) {
+        if (solver.s[i + j * n] !== 0) {
+          const dx = (i - gx) * h;
+          const dy = (j - gy) * h;
+          const d = Math.sqrt(dx * dx + dy * dy);
+          const weight = Math.max(0, 1 - d / (radius * h));
+
+          solver.u[i + j * n] += fx * weight;
+          solver.v[i + j * n] += fy * weight;
+        }
       }
-    });
+    }
   }
 
   setConfig(config) {

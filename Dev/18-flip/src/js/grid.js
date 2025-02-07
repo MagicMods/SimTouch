@@ -349,7 +349,6 @@ class Grid {
   // Simulation methods
 
   simulate(dt) {
-    // Only validate on first run or after reset
     if (this._needsValidation) {
       const state = this.verificationSystem.validateSimulationState(this);
       if (!state.valid) {
@@ -359,20 +358,11 @@ class Grid {
     }
 
     this.stateManager.startTiming("totalSim");
-
-    // Transfer to grid
     this.transferToGrid();
-
-    // Use fluid solver
     this.fluidSolver.simulate(dt);
-
-    // Transfer back to particles
     this.transferFromGrid();
-
-    // Update particles
     this.particleSystem.handleParticleCollisions();
     this.particleSystem.advectParticles(dt);
-
     this.stateManager.endTiming("totalSim");
   }
 
@@ -628,38 +618,6 @@ class Grid {
    * @returns {boolean} True if parameters are valid
    * @throws {Error} If parameters are invalid
    */
-
-  applyForce(x, y, fx, fy) {
-    const solver = this.fluidSolver;
-    const n = solver.numX;
-    const h = solver.h;
-
-    const gx = Math.floor(x / h);
-    const gy = Math.floor(y / h);
-    const radius = 3;
-
-    for (
-      let i = Math.max(1, gx - radius);
-      i <= Math.min(solver.numX - 2, gx + radius);
-      i++
-    ) {
-      for (
-        let j = Math.max(1, gy - radius);
-        j <= Math.min(solver.numY - 2, gy + radius);
-        j++
-      ) {
-        if (solver.s[i + j * n] !== 0) {
-          const dx = (i - gx) * h;
-          const dy = (j - gy) * h;
-          const d = Math.sqrt(dx * dx + dy * dy);
-          const weight = Math.max(0, 1 - d / (radius * h));
-
-          solver.u[i + j * n] += fx * weight;
-          solver.v[i + j * n] += fy * weight;
-        }
-      }
-    }
-  }
 
   createGradient() {
     const gradient = new Array(256).fill(0).map(() => ({ r: 0, g: 0, b: 0 }));
