@@ -1,12 +1,11 @@
 class FluidSolver {
   constructor(config) {
-    // Grid properties
-    this.numX = config.numX;
-    this.numY = config.numY;
-    this.h = config.h;
+    if (!config) {
+      throw new Error("FluidSolver config is required");
+    }
 
-    // Simulation arrays
-    const totalCells = config.totalCells;
+    // Initialize arrays BEFORE using them in reset()
+    const totalCells = config.numX * config.numY;
     this.u = new Float32Array(totalCells);
     this.v = new Float32Array(totalCells);
     this.p = new Float32Array(totalCells);
@@ -15,7 +14,12 @@ class FluidSolver {
     this.oldV = new Float32Array(totalCells);
     this.velocities = new Float32Array(totalCells);
 
-    // Simulation parameters
+    // Grid properties
+    this.numX = config.numX;
+    this.numY = config.numY;
+    this.h = config.h;
+
+    // Simulation parameters with defaults
     this.gravity = config.gravity || 9.81;
     this.gravityScale = config.gravityScale || 1.0;
     this.flipRatio = config.flipRatio || 0.95;
@@ -23,6 +27,9 @@ class FluidSolver {
     this.numPressureIters = config.numPressureIters || 40;
     this.velocityDamping = config.velocityDamping || 0.8;
     this.maxVelocity = config.maxVelocity || 100.0;
+
+    // Initialize arrays to starting values
+    this.reset();
   }
 
   simulate(dt) {

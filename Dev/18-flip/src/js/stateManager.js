@@ -1,10 +1,12 @@
 class StateManager {
   constructor() {
     this.metrics = {
+      _lastUpdateTime: performance.now(),
+      _frameTime: 0,
+      _totalSimTime: 0,
       _pressureSolveTime: 0,
       _particleAdvectTime: 0,
-      _totalSimTime: 0,
-      _lastUpdateTime: performance.now(),
+      _particleCount: 0,
     };
   }
 
@@ -15,7 +17,11 @@ class StateManager {
 
   endTiming(metric) {
     const end = performance.now();
-    this.metrics[`_${metric}Time`] = end - this.metrics[`_${metric}Start`];
+    const start = this.metrics[`_${metric}Start`];
+    if (start) {
+      this.metrics[`_${metric}Time`] = end - start;
+    }
+    this.metrics._lastUpdateTime = end;
   }
 
   getTimingMetrics() {
@@ -82,13 +88,18 @@ class StateManager {
 
   // Performance metrics
   getPerformanceMetrics(grid) {
+    const now = performance.now();
     return {
+      fps: 1000 / (now - this.metrics._lastUpdateTime),
+      frameTime: this.metrics._frameTime,
+      totalSimTime: this.metrics._totalSimTime,
+      pressureSolveTime: this.metrics._pressureSolveTime,
+      particleAdvectTime: this.metrics._particleAdvectTime,
       gridCells: grid.numX * grid.numY,
       activeParticles: grid.particleSystem.getParticles().length,
       pressureIterations: grid.numPressureIters,
-      timings: this.getTimingMetrics(),
-      frameTime: performance.now() - this.metrics._lastUpdateTime,
       memoryUsage: ((grid.u.length + grid.v.length + grid.p.length) * 4) / 1024,
+      particleCount: this.metrics._particleCount,
     };
   }
 

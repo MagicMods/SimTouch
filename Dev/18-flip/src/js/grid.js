@@ -1,9 +1,17 @@
 import { ParticleSystem } from "./particleSystem.js";
 import { StateManager } from "./stateManager.js";
 import { FluidSolver } from "./fluidSolver.js";
+import { VerificationSystem } from "./verificationSystem.js";
 
 class Grid {
   constructor(gl, width, height) {
+    this.verificationSystem = new VerificationSystem(false);
+
+    // Basic validation before full initialization
+    if (!gl || width <= 0 || height <= 0) {
+      throw new Error("Invalid Grid parameters");
+    }
+
     // Core properties
     this.gl = gl;
     this.width = width;
@@ -80,6 +88,14 @@ class Grid {
     });
 
     this.reset();
+
+    // Verify initial state
+    const verification = this.verificationSystem.validateGrid(this);
+    if (!verification?.valid) {
+      const error = verification?.error || "Grid validation failed";
+      console.error("Validation details:", verification);
+      throw new Error(error);
+    }
   }
   // Initialization methods
   initBuffers() {
@@ -93,19 +109,16 @@ class Grid {
   }
 
   reset() {
-    // Reset arrays
-    this.u.fill(0);
-    this.v.fill(0);
-    this.oldU.fill(0);
-    this.oldV.fill(0);
-    this.p.fill(0);
-    this.velocities.fill(0);
-
-    // Use particle system reset
-    this.particleSystem.setupParticles();
-
-    // Reset metrics
-    this.stateManager.resetMetrics();
+    try {
+      this.fluidSolver?.reset();
+      this.density?.fill(0);
+      this.particleSystem?.setupParticles();
+      this.stateManager?.resetMetrics();
+      this._needsValidation = true;
+    } catch (error) {
+      console.error("Reset failed:", error);
+      throw new Error(`Grid reset failed: ${error.message}`);
+    }
   }
   // Drawing methods
   draw(programInfo) {
@@ -336,6 +349,15 @@ class Grid {
   // Simulation methods
 
   simulate(dt) {
+    // Only validate on first run or after reset
+    if (this._needsValidation) {
+      const state = this.verificationSystem.validateSimulationState(this);
+      if (!state.valid) {
+        throw new Error(`Invalid simulation state: ${state.errors.join(", ")}`);
+      }
+      this._needsValidation = false;
+    }
+
     this.stateManager.startTiming("totalSim");
 
     // Transfer to grid
@@ -355,16 +377,15 @@ class Grid {
   }
 
   transferToGrid() {
-    this.u.fill(0);
-    this.v.fill(0);
-    const weights = new Float32Array(
-      this.fluidSolver.numX * this.fluidSolver.numY
-    ).fill(0);
+    const solver = this.fluidSolver;
+    solver.u.fill(0);
+    solver.v.fill(0);
+    const weights = new Float32Array(solver.numX * solver.numY).fill(0);
     const particles = this.particleSystem.getParticles();
 
     for (const p of particles) {
-      const x = p.x / this.fluidSolver.h;
-      const y = p.y / this.fluidSolver.h;
+      const x = p.x / solver.h;
+      const y = p.y / solver.h;
 
       const i = Math.floor(x);
       const j = Math.floor(y);
@@ -377,18 +398,18 @@ class Grid {
       const w01 = (1 - fx) * fy;
       const w11 = fx * fy;
 
-      const n = this.numX;
+      const n = solver.numX;
       const idx = i + j * n;
 
-      this.u[idx] += w00 * p.vx;
-      this.u[idx + 1] += w10 * p.vx;
-      this.u[idx + n] += w01 * p.vx;
-      this.u[idx + n + 1] += w11 * p.vx;
+      solver.u[idx] += w00 * p.vx;
+      solver.u[idx + 1] += w10 * p.vx;
+      solver.u[idx + n] += w01 * p.vx;
+      solver.u[idx + n + 1] += w11 * p.vx;
 
-      this.v[idx] += w00 * p.vy;
-      this.v[idx + 1] += w10 * p.vy;
-      this.v[idx + n] += w01 * p.vy;
-      this.v[idx + n + 1] += w11 * p.vy;
+      solver.v[idx] += w00 * p.vy;
+      solver.v[idx + 1] += w10 * p.vy;
+      solver.v[idx + n] += w01 * p.vy;
+      solver.v[idx + n + 1] += w11 * p.vy;
 
       weights[idx] += w00;
       weights[idx + 1] += w10;
@@ -397,13 +418,14 @@ class Grid {
     }
 
     // Normalize velocities
-    for (let i = 0; i < this.numX * this.numY; i++) {
+    for (let i = 0; i < solver.numX * solver.numY; i++) {
       if (weights[i] > 0) {
-        this.u[i] /= weights[i];
-        this.v[i] /= weights[i];
+        solver.u[i] /= weights[i];
+        solver.v[i] /= weights[i];
       }
     }
   }
+
   transferFromGrid() {
     const particles = this.particleSystem.getParticles();
     for (const p of particles) {
@@ -449,21 +471,7 @@ class Grid {
     const t = Math.min(vel / maxVel, 1.0);
     return [t, 0.2 + 0.8 * (1.0 - t), 1.0 - 0.8 * t, 1.0];
   }
-  interpolate(x, y, field) {
-    const n = this.numX;
-    const h = this.h;
-    const i = Math.floor(x / h);
-    const j = Math.floor(y / h);
-    const fx = x / h - i;
-    const fy = y / h - j;
 
-    return (
-      (1 - fx) * (1 - fy) * field[i + j * n] +
-      fx * (1 - fy) * field[i + 1 + j * n] +
-      (1 - fx) * fy * field[i + (j + 1) * n] +
-      fx * fy * field[i + 1 + (j + 1) * n]
-    );
-  }
   debug() {
     const stats = this.stateManager.getDebugStats(this);
     const timings = this.stateManager.getTimingMetrics();
@@ -489,75 +497,26 @@ class Grid {
     return true;
   }
 
-  // Add updateGrid method
-  updateGrid() {
-    const n = this.numX;
-    for (let i = 0; i < this.numX; i++) {
-      for (let j = 0; j < this.numY; j++) {
-        const idx = i + j * n;
-        const vel = Math.sqrt(
-          this.u[idx] * this.u[idx] + this.v[idx] * this.v[idx]
-        );
-        this.velocities[idx] = vel;
-      }
-    }
-  }
-
-  validateSimulationState() {
-    if (!this.validateGridState()) {
-      throw new Error("Invalid grid state");
-    }
-    if (!this.checkWebGLError()) {
-      throw new Error("WebGL error detected");
-    }
-  }
-
-  validateWebGLState() {
-    const gl = this.gl;
-    if (!gl) {
-      throw new Error("WebGL context is null");
-    }
-    if (!this.vertexBuffer) {
-      throw new Error("Vertex buffer not initialized");
-    }
-    return this.checkWebGLError();
-  }
-
-  initWebGLState() {
-    this.gl.clearColor(1.0, 1.0, 1.0, 1.0);
-    this.gl.viewport(0, 0, this.width, this.height);
-    this.initBuffers();
-    return this.validateWebGLState();
-  }
-
   getStats() {
+    const currentTime = performance.now();
+    const frameTime = currentTime - this.stateManager.metrics._lastUpdateTime;
+
     return {
-      frameTime: performance.now() - this._lastUpdateTime,
-      memoryUsage: ((this.u.length + this.v.length + this.p.length) * 4) / 1024,
-      ...this.stateManager.getPerformanceMetrics(this),
+      frameTime: frameTime,
+      fps: Math.round(1000 / frameTime),
+      activeParticles: this.particleSystem.getParticles().length,
+      memoryUsage:
+        ((this.fluidSolver.u.length +
+          this.fluidSolver.v.length +
+          this.fluidSolver.p.length) *
+          4) /
+        1024,
+      pressureSolveTime: this.stateManager.metrics._pressureSolveTime || 0,
+      totalSimTime: this.stateManager.metrics._totalSimTime || 0,
     };
   }
 
-  sampleField(x, y, field) {
-    const n = this.numX;
-    const h = this.h;
-    const i = Math.min(Math.max(Math.floor(x / h), 0), this.numX - 2);
-    const j = Math.min(Math.max(Math.floor(y / h), 0), this.numY - 2);
-    const fx = x / h - i;
-    const fy = y / h - j;
-
-    return (
-      (1 - fx) * (1 - fy) * field[i + j * n] +
-      fx * (1 - fy) * field[i + 1 + j * n] +
-      (1 - fx) * fy * field[i + (j + 1) * n] +
-      fx * fy * field[i + 1 + (j + 1) * n]
-    );
-  }
-
   // Finalize class
-  validateBounds(x, y) {
-    return x >= 0 && x < this.width && y >= 0 && y < this.height;
-  }
 
   getConfig() {
     return {
@@ -582,24 +541,12 @@ class Grid {
     };
   }
 
-  validateConfig(config) {
-    return (
-      config.gridSize &&
-      typeof config.gridSize.width === "number" &&
-      typeof config.gridSize.height === "number" &&
-      typeof config.cellSize === "number" &&
-      config.simulation &&
-      typeof config.simulation.gravity === "number" &&
-      typeof config.simulation.gravityScale === "number" && // Add validation
-      typeof config.simulation.flipRatio === "number" &&
-      typeof config.simulation.overRelaxation === "number" &&
-      typeof config.simulation.velocityDamping === "number" // Add validation
-    );
-  }
-
   setConfig(config) {
-    if (!this.validateConfig(config)) {
-      throw new Error("Invalid configuration object");
+    const validConfig = this.verificationSystem.validateConfig(config);
+    if (!validConfig.valid) {
+      throw new Error(
+        `Invalid configuration: ${validConfig.errors.join(", ")}`
+      );
     }
 
     // Update grid properties
@@ -626,83 +573,33 @@ class Grid {
     }
   }
 
-  initializeArrays(numCells) {
-    this.u = new Float32Array(numCells);
-    this.v = new Float32Array(numCells);
-    this.p = new Float32Array(numCells);
-    this.s = new Float32Array(numCells).fill(1.0);
-    this.oldU = new Float32Array(numCells);
-    this.oldV = new Float32Array(numCells);
-  }
-
-  sampleField(x, y, field) {
-    const n = this.numX;
-    const h = this.h;
-
-    // Clamp coordinates to grid bounds
-    const i = Math.min(Math.max(Math.floor(x / h), 0), this.numX - 2);
-    const j = Math.min(Math.max(Math.floor(y / h), 0), this.numY - 2);
-
-    const fx = x / h - i;
-    const fy = y / h - j;
-
-    // Bilinear interpolation
-    return (
-      (1 - fx) * (1 - fy) * field[i + j * n] +
-      fx * (1 - fy) * field[i + 1 + j * n] +
-      (1 - fx) * fy * field[i + (j + 1) * n] +
-      fx * fy * field[i + 1 + (j + 1) * n]
-    );
-  }
-
-  validateBounds(x, y) {
-    return x >= 0 && x < this.width && y >= 0 && y < this.height;
-  }
-
   resetSimulation() {
-    this.initializeArrays(this.numX * this.numY);
-    this.particleSystem.setupParticles();
-    this._lastUpdateTime = performance.now();
+    // Validate before reset
+    const validation = this.verificationSystem.validateDimensions(this);
+    if (!validation?.valid) {
+      throw new Error("Invalid grid dimensions for reset");
+    }
+
+    // Reset components
+    this.fluidSolver?.reset();
+    this.density?.fill(0);
+    this.particleSystem?.setupParticles();
+    this.stateManager?.resetMetrics();
+
+    // Mark for revalidation
+    this._needsValidation = true;
   }
 
   dispose() {
-    // Clean up WebGL resources
     if (this.vertexBuffer) {
       this.gl.deleteBuffer(this.vertexBuffer);
     }
-
-    // Clear arrays
-    this.u = null;
-    this.v = null;
-    this.p = null;
-    this.s = null;
-    this.oldU = null;
-    this.oldV = null;
-    this.particles = null;
-  }
-
-  validateAllState() {
-    return (
-      this.validateGridState() &&
-      this.validateWebGLState() &&
-      this.validateBounds(this.circleCenter.x, this.circleCenter.y)
-    );
-  }
-
-  validateSimulation() {
-    const valid = this.validateAllState();
-    if (!valid) {
-      throw new Error("Invalid simulation state detected");
-    }
-    return true;
+    this.density = null;
   }
 
   cleanup() {
     this.dispose();
-    this._lastUpdateTime = null;
-    this._pressureSolveTime = null;
-    this._particleAdvectTime = null;
-    this._totalSimTime = null;
+    this.stateManager.resetMetrics();
   }
 
   /**
@@ -712,7 +609,12 @@ class Grid {
    */
   finalizeSimulation() {
     try {
-      this.validateSimulation();
+      const state = this.verificationSystem.validateSimulationState(this);
+      if (!state.valid) {
+        throw new Error(
+          `Simulation validation failed: ${state.errors.join(", ")}`
+        );
+      }
       this.cleanup();
       return true;
     } catch (error) {
@@ -726,57 +628,34 @@ class Grid {
    * @returns {boolean} True if parameters are valid
    * @throws {Error} If parameters are invalid
    */
-  validateParameters() {
-    // Check physical parameters
-    if (this.h <= 0) throw new Error("Grid cell size must be positive");
-    if (this.flipRatio < 0 || this.flipRatio > 1)
-      throw new Error("FLIP ratio must be between 0 and 1");
-    if (this.overRelaxation <= 0 || this.overRelaxation > 2)
-      throw new Error("Over-relaxation must be between 0 and 2");
-    if (this.numPressureIters < 1)
-      throw new Error("Pressure iterations must be positive");
-
-    // Check grid dimensions
-    if (this.numX < 2 || this.numY < 2)
-      throw new Error("Grid dimensions must be at least 2x2");
-
-    // Check obstacle parameters
-    if (this.circleRadius <= 0)
-      throw new Error("Circle radius must be positive");
-
-    return true;
-  }
 
   applyForce(x, y, fx, fy) {
-    const n = this.numX;
-    const h = this.h;
+    const solver = this.fluidSolver;
+    const n = solver.numX;
+    const h = solver.h;
 
-    // Convert to grid coordinates
     const gx = Math.floor(x / h);
     const gy = Math.floor(y / h);
-
-    // Radius of influence
     const radius = 3;
 
-    // Apply force to grid velocities
     for (
       let i = Math.max(1, gx - radius);
-      i <= Math.min(this.numX - 2, gx + radius);
+      i <= Math.min(solver.numX - 2, gx + radius);
       i++
     ) {
       for (
         let j = Math.max(1, gy - radius);
-        j <= Math.min(this.numY - 2, gy + radius);
+        j <= Math.min(solver.numY - 2, gy + radius);
         j++
       ) {
-        if (this.s[i + j * n] !== 0) {
+        if (solver.s[i + j * n] !== 0) {
           const dx = (i - gx) * h;
           const dy = (j - gy) * h;
           const d = Math.sqrt(dx * dx + dy * dy);
           const weight = Math.max(0, 1 - d / (radius * h));
 
-          this.u[i + j * n] += fx * weight;
-          this.v[i + j * n] += fy * weight;
+          solver.u[i + j * n] += fx * weight;
+          solver.v[i + j * n] += fy * weight;
         }
       }
     }

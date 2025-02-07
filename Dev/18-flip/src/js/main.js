@@ -57,14 +57,63 @@ particleSizeSlider.addEventListener("input", (e) => {
 
 velocityDampingSlider.addEventListener("input", (e) => {
   const value = parseFloat(e.target.value);
-  velocityDampingValue.textContent = value.toFixed(3);
-  sim.grid.velocityDamping = value;
+  if (!Number.isFinite(value)) return;
+
+  const solver = sim.grid.fluidSolver;
+  if (solver && typeof solver.velocityDamping !== "undefined") {
+    velocityDampingValue.textContent = value.toFixed(3);
+    solver.velocityDamping = value;
+  }
 });
 
 collisionDampingSlider.addEventListener("input", (e) => {
   const value = parseFloat(e.target.value);
   collisionDampingValue.textContent = value.toFixed(3);
   sim.grid.particleSystem.collisionDamping = value;
+});
+
+gravitySlider.addEventListener("input", (e) => {
+  const value = parseFloat(e.target.value);
+  if (!Number.isFinite(value)) return;
+
+  const solver = sim.grid.fluidSolver;
+  if (solver && typeof solver.gravity !== "undefined") {
+    gravityValue.textContent = value.toFixed(2);
+    solver.gravity = value;
+  }
+});
+
+flipRatioSlider.addEventListener("input", (e) => {
+  const value = parseFloat(e.target.value);
+  if (!Number.isFinite(value)) return;
+
+  const solver = sim.grid.fluidSolver;
+  if (solver && typeof solver.flipRatio !== "undefined") {
+    flipRatioValue.textContent = value.toFixed(2);
+    solver.flipRatio = value;
+  }
+});
+
+pressureSlider.addEventListener("input", (e) => {
+  const value = parseInt(e.target.value);
+  if (!Number.isFinite(value)) return;
+
+  const solver = sim.grid.fluidSolver;
+  if (solver && typeof solver.numPressureIters !== "undefined") {
+    pressureValue.textContent = value;
+    solver.numPressureIters = value;
+  }
+});
+
+relaxSlider.addEventListener("input", (e) => {
+  const value = parseFloat(e.target.value);
+  if (!Number.isFinite(value)) return;
+
+  const solver = sim.grid.fluidSolver;
+  if (solver && typeof solver.overRelaxation !== "undefined") {
+    relaxValue.textContent = value.toFixed(2);
+    solver.overRelaxation = value;
+  }
 });
 
 let isPaused = false;
@@ -94,39 +143,17 @@ pauseBtn.onclick = () => {
 particleSlider.max = 1000;
 particleSlider.value = 338;
 
-particleSlider.oninput = (e) => {
-  const count = parseInt(e.target.value);
-  //   console.log("Slider value:", count);
+particleSlider.oninput =
+  ("input",
+  (e) => {
+    const count = parseInt(e.target.value);
+    //   console.log("Slider value:", count);
 
-  particleCount.textContent = count;
+    particleCount.textContent = sim.grid.particleSystem.particleCount;
 
-  // Update simulation directly
-  sim.grid.setParticleCount(count);
-};
-
-gravitySlider.addEventListener("input", (e) => {
-  const value = parseFloat(e.target.value);
-  gravityValue.textContent = value.toFixed(2);
-  sim.grid.gravity = value;
-});
-
-flipRatioSlider.addEventListener("input", (e) => {
-  const value = parseFloat(e.target.value);
-  flipRatioValue.textContent = value.toFixed(2);
-  sim.grid.flipRatio = value;
-});
-
-pressureSlider.addEventListener("input", (e) => {
-  const value = parseInt(e.target.value);
-  pressureValue.textContent = value;
-  sim.grid.numPressureIters = value;
-});
-
-relaxSlider.addEventListener("input", (e) => {
-  const value = parseFloat(e.target.value);
-  relaxValue.textContent = value.toFixed(2);
-  sim.grid.overRelaxation = value;
-});
+    // Update simulation directly
+    sim.grid.setParticleCount(count);
+  });
 
 repulsionSlider.addEventListener("input", (e) => {
   const value = e.target.value;
@@ -142,11 +169,14 @@ obstacleSlider.addEventListener("input", (e) => {
 });
 
 // Update display with initial values
-particleCount.textContent = sim.grid.particleSystem.particleCount; // Changed
-gravityValue.textContent = sim.grid.gravity.toFixed(2);
-flipRatioValue.textContent = sim.grid.flipRatio.toFixed(2);
-pressureValue.textContent = sim.grid.numPressureIters;
-relaxValue.textContent = sim.grid.overRelaxation.toFixed(2);
+particleCount.textContent = sim.grid.particleSystem.particleCount;
+
+// Access through fluidSolver instead of grid directly
+const solver = sim.grid.fluidSolver;
+gravityValue.textContent = solver.gravity.toFixed(2);
+flipRatioValue.textContent = solver.flipRatio.toFixed(2);
+pressureValue.textContent = solver.numPressureIters;
+relaxValue.textContent = solver.overRelaxation.toFixed(2);
 
 // Update initial particle count
 sim.grid.setParticleCount(338);
