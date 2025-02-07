@@ -1,5 +1,7 @@
 import { ParticleSystem } from "./particleSystem.js";
 import { StateManager } from "./stateManager.js";
+import { FluidSolver } from "./fluidSolver.js";
+
 class Grid {
   constructor(gl, width, height) {
     // Core properties
@@ -7,37 +9,29 @@ class Grid {
     this.width = width;
     this.height = height;
 
-    // Grid layout parameters first
+    // Grid layout parameters
     this.rowCounts = [13, 19, 23, 25, 27, 29, 29, 29, 29, 27, 25, 23, 19, 13];
     this.baseXs = [64, 40, 24, 16, 8, 0, 0, 0, 0, 8, 16, 24, 40, 64];
     this.numX = Math.max(...this.rowCounts);
     this.numY = this.rowCounts.length;
 
-    // Then initialize arrays
+    // Calculate total cells and cell size
     const totalCells = this.rowCounts.reduce((a, b) => a + b, 0);
-    this.u = new Float32Array(totalCells);
-    this.v = new Float32Array(totalCells);
-    this.p = new Float32Array(totalCells);
-    this.s = new Float32Array(totalCells);
-    this.oldU = new Float32Array(totalCells);
-    this.oldV = new Float32Array(totalCells);
-    this.velocities = new Float32Array(totalCells);
+    const h = width / this.numX;
 
-    // Simulation parameters
-    this.h = width / this.numX; // Grid cell size
-    this.gravity = 9.81;
-    this.gravityScale = 1.0;
-    this.flipRatio = 0.95;
-    this.overRelaxation = 1.9;
-    this.numPressureIters = 40;
-    this.velocityDamping = 0.8;
-    this.maxVelocity = 100.0;
+    // Initialize FluidSolver
+    this.fluidSolver = new FluidSolver({
+      numX: this.numX,
+      numY: this.numY,
+      h: h,
+      totalCells: totalCells,
+    });
 
-    // Add density field for grid coloring
+    // Grid visualization
     this.density = new Float32Array(totalCells).fill(0);
-    this.maxDensity = 5.0; // Adjust sensitivity
+    this.maxDensity = 5.0;
 
-    // Calculate dimensions
+    // Grid dimensions
     const scale = Math.min(width, height) / 400;
     this.rectWidth = 6 * scale;
     this.rectHeight = 15 * scale;
@@ -45,30 +39,26 @@ class Grid {
     this.stepY = 17 * scale;
     this.verticalOffset = (this.height - this.numY * this.stepY) / 2;
 
-    // Calculate bounds
+    // Container bounds
     const maxRowWidth = Math.max(...this.rowCounts) * this.stepX;
     const gridHeight = this.rowCounts.length * this.stepY;
     this.containerRadius = Math.min(maxRowWidth / 2, gridHeight / 2);
     this.containerCenter = { x: width * 0.5, y: height * 0.5 };
 
-    // Add circle obstacle parameters
+    // Obstacle parameters
     this.circleCenter = { x: width * 0.5, y: height * 0.5 };
-    this.circleRadius = this.containerRadius * 0.3; // 15% of container radius
-
-    // Add particle rendering parameters
-
+    this.circleRadius = this.containerRadius * 0.3;
+    this.isObstacleActive = false;
     this.obstacleColor = [0, 0, 0, 1.0];
 
-    // Add gradient lookup table
+    // Visual elements
     this.gradient = this.createGradient();
-
-    // Initialize arrays and WebGL
     this.initBuffers();
 
-    this.isObstacleActive = false; // Add this flag
-
+    // State management
     this.stateManager = new StateManager();
-    // Create particle system with all necessary parameters
+
+    // Initialize particle system
     this.particleSystem = new ParticleSystem({
       width: this.width,
       height: this.height,
@@ -76,7 +66,7 @@ class Grid {
       stepX: this.stepX,
       stepY: this.stepY,
       verticalOffset: this.verticalOffset,
-      velocityDamping: this.velocityDamping,
+      velocityDamping: this.fluidSolver.velocityDamping,
       particleCount: 338,
       particleRadius: 4.0,
       collisionDamping: 0.5,
@@ -89,10 +79,8 @@ class Grid {
       isObstacleActive: this.isObstacleActive,
     });
 
-    // Finally reset simulation
     this.reset();
   }
-
   // Initialization methods
   initBuffers() {
     this.vertexBuffer = this.gl.createBuffer();
@@ -350,59 +338,33 @@ class Grid {
   simulate(dt) {
     this.stateManager.startTiming("totalSim");
 
-    this.storeVelocities();
+    // Transfer to grid
     this.transferToGrid();
-    this.applyExternalForces(dt);
-    this.particleSystem.enforceBoundaries();
-    this.solveIncompressibility(dt);
+
+    // Use fluid solver
+    this.fluidSolver.simulate(dt);
+
+    // Transfer back to particles
     this.transferFromGrid();
+
+    // Update particles
     this.particleSystem.handleParticleCollisions();
     this.particleSystem.advectParticles(dt);
 
     this.stateManager.endTiming("totalSim");
   }
-  solveIncompressibility(dt) {
-    const n = this.numX;
-    const cp = this.overRelaxation / (this.h * this.h);
-
-    for (let iter = 0; iter < this.numPressureIters; iter++) {
-      for (let i = 1; i < this.numX - 1; i++) {
-        for (let j = 1; j < this.numY - 1; j++) {
-          if (this.s[i + j * n] === 0) continue;
-          const s0 = this.s[i - 1 + j * n];
-          const s1 = this.s[i + 1 + j * n];
-          const s2 = this.s[i + (j - 1) * n];
-          const s3 = this.s[i + (j + 1) * n];
-
-          const sx = s0 + s1;
-          const sy = s2 + s3;
-
-          const div =
-            this.u[i + 1 + j * n] -
-            this.u[i + j * n] +
-            this.v[i + (j + 1) * n] -
-            this.v[i + j * n];
-
-          this.p[i + j * n] =
-            ((div / dt -
-              (this.u[i + 1 + j * n] - this.u[i + j * n]) / this.h -
-              (this.v[i + (j + 1) * n] - this.v[i + j * n]) / this.h) /
-              (sx + sy)) *
-            cp;
-        }
-      }
-    }
-  }
 
   transferToGrid() {
     this.u.fill(0);
     this.v.fill(0);
-    const weights = new Float32Array(this.numX * this.numY).fill(0);
+    const weights = new Float32Array(
+      this.fluidSolver.numX * this.fluidSolver.numY
+    ).fill(0);
     const particles = this.particleSystem.getParticles();
 
     for (const p of particles) {
-      const x = p.x / this.h;
-      const y = p.y / this.h;
+      const x = p.x / this.fluidSolver.h;
+      const y = p.y / this.fluidSolver.h;
 
       const i = Math.floor(x);
       const j = Math.floor(y);
@@ -445,26 +407,39 @@ class Grid {
   transferFromGrid() {
     const particles = this.particleSystem.getParticles();
     for (const p of particles) {
-      const x = p.x / this.h;
-      const y = p.y / this.h;
+      // Sample velocities from fluid solver
+      const vx = this.fluidSolver.sampleField(p.x, p.y, this.fluidSolver.u);
+      const vy = this.fluidSolver.sampleField(p.x, p.y, this.fluidSolver.v);
+      const oldVx = this.fluidSolver.sampleField(
+        p.x,
+        p.y,
+        this.fluidSolver.oldU
+      );
+      const oldVy = this.fluidSolver.sampleField(
+        p.x,
+        p.y,
+        this.fluidSolver.oldV
+      );
 
-      // Sample velocities
-      const vx = this.sampleField(p.x, p.y, this.u);
-      const vy = this.sampleField(p.x, p.y, this.v);
-      const oldVx = this.sampleField(p.x, p.y, this.oldU);
-      const oldVy = this.sampleField(p.x, p.y, this.oldV);
-
-      // FLIP update
+      // FLIP update using fluid solver parameters
       p.vx =
-        (this.flipRatio * (p.vx + vx - oldVx) + (1.0 - this.flipRatio) * vx) *
-        this.velocityDamping;
+        (this.fluidSolver.flipRatio * (p.vx + vx - oldVx) +
+          (1.0 - this.fluidSolver.flipRatio) * vx) *
+        this.fluidSolver.velocityDamping;
       p.vy =
-        (this.flipRatio * (p.vy + vy - oldVy) + (1.0 - this.flipRatio) * vy) *
-        this.velocityDamping;
+        (this.fluidSolver.flipRatio * (p.vy + vy - oldVy) +
+          (1.0 - this.fluidSolver.flipRatio) * vy) *
+        this.fluidSolver.velocityDamping;
 
       // Clamp velocities
-      p.vx = Math.max(-this.maxVelocity, Math.min(this.maxVelocity, p.vx));
-      p.vy = Math.max(-this.maxVelocity, Math.min(this.maxVelocity, p.vy));
+      p.vx = Math.max(
+        -this.fluidSolver.maxVelocity,
+        Math.min(this.fluidSolver.maxVelocity, p.vx)
+      );
+      p.vy = Math.max(
+        -this.fluidSolver.maxVelocity,
+        Math.min(this.fluidSolver.maxVelocity, p.vy)
+      );
     }
   }
 
@@ -514,21 +489,6 @@ class Grid {
     return true;
   }
 
-  // Add applyExternalForces method
-  applyExternalForces(dt) {
-    const gravity = this.gravity * this.gravityScale;
-    const n = this.numX;
-
-    for (let i = 0; i < this.numX; i++) {
-      for (let j = 0; j < this.numY; j++) {
-        if (this.s[i + j * n] !== 0) {
-          this.v[i + j * n] += gravity * dt;
-        }
-      }
-    }
-  }
-  // Add integrate method
-
   // Add updateGrid method
   updateGrid() {
     const n = this.numX;
@@ -541,11 +501,6 @@ class Grid {
         this.velocities[idx] = vel;
       }
     }
-  }
-
-  storeVelocities() {
-    this.oldU.set(this.u);
-    this.oldV.set(this.v);
   }
 
   validateSimulationState() {
@@ -610,19 +565,19 @@ class Grid {
         width: this.numX,
         height: this.numY,
       },
-      cellSize: this.h || this.width / this.numX, // Ensure h is defined
+      cellSize: this.fluidSolver.h,
       circleObstacle: {
         x: this.circleCenter.x,
         y: this.circleCenter.y,
         radius: this.circleRadius,
       },
       simulation: {
-        gravity: this.gravity,
-        gravityScale: this.gravityScale, // Add missing parameter
-        flipRatio: this.flipRatio,
-        overRelaxation: this.overRelaxation,
-        pressureIterations: this.numPressureIters,
-        velocityDamping: this.velocityDamping, // Add missing parameter
+        gravity: this.fluidSolver.gravity,
+        gravityScale: this.fluidSolver.gravityScale,
+        flipRatio: this.fluidSolver.flipRatio,
+        overRelaxation: this.fluidSolver.overRelaxation,
+        pressureIterations: this.fluidSolver.numPressureIters,
+        velocityDamping: this.fluidSolver.velocityDamping,
       },
     };
   }
@@ -790,18 +745,6 @@ class Grid {
       throw new Error("Circle radius must be positive");
 
     return true;
-  }
-
-  updateVelocities() {
-    const n = this.numX;
-    for (let i = 1; i < this.numX - 1; i++) {
-      for (let j = 1; j < this.numY - 1; j++) {
-        if (this.s[i + j * n] != 0.0) {
-          this.u[i + j * n] -= this.p[i + j * n] - this.p[i - 1 + j * n];
-          this.v[i + j * n] -= this.p[i + j * n] - this.p[i + (j - 1) * n];
-        }
-      }
-    }
   }
 
   applyForce(x, y, fx, fy) {
