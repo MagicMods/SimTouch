@@ -23,12 +23,39 @@ const flipRatioValue = document.getElementById("flipRatioValue");
 const pressureValue = document.getElementById("pressureValue");
 const relaxValue = document.getElementById("relaxValue");
 
-const dampingSlider = document.getElementById("dampingSlider");
-const dampingValue = document.getElementById("dampingValue");
 const repulsionSlider = document.getElementById("repulsionSlider");
 const repulsionValue = document.getElementById("repulsionValue");
 const obstacleSlider = document.getElementById("obstacleSlider");
 const obstacleValue = document.getElementById("obstacleValue");
+
+// Add opacity slider handler
+const opacitySlider = document.getElementById("opacitySlider");
+const opacityValue = document.getElementById("opacityValue");
+
+const velocityDampingSlider = document.getElementById("velocityDampingSlider");
+const velocityDampingValue = document.getElementById("velocityDampingValue");
+const collisionDampingSlider = document.getElementById(
+  "collisionDampingSlider"
+);
+const collisionDampingValue = document.getElementById("collisionDampingValue");
+
+opacitySlider.addEventListener("input", (e) => {
+  const value = parseFloat(e.target.value);
+  opacityValue.textContent = value.toFixed(2);
+  const color = sim.grid.particleSystem.particleColor;
+  sim.grid.particleSystem.particleColor = [color[0], color[1], color[2], value];
+});
+velocityDampingSlider.addEventListener("input", (e) => {
+  const value = parseFloat(e.target.value);
+  velocityDampingValue.textContent = value.toFixed(3);
+  sim.grid.velocityDamping = value;
+});
+
+collisionDampingSlider.addEventListener("input", (e) => {
+  const value = parseFloat(e.target.value);
+  collisionDampingValue.textContent = value.toFixed(3);
+  sim.grid.particleSystem.collisionDamping = value;
+});
 
 let isPaused = false;
 let animationId = null;
@@ -91,12 +118,6 @@ relaxSlider.addEventListener("input", (e) => {
   sim.grid.overRelaxation = value;
 });
 
-dampingSlider.addEventListener("input", (e) => {
-  const value = e.target.value;
-  dampingValue.textContent = value;
-  sim.grid.particleSystem.collisionDamping = parseFloat(value); // Changed
-});
-
 repulsionSlider.addEventListener("input", (e) => {
   const value = e.target.value;
   repulsionValue.textContent = value;
@@ -116,7 +137,6 @@ gravityValue.textContent = sim.grid.gravity.toFixed(2);
 flipRatioValue.textContent = sim.grid.flipRatio.toFixed(2);
 pressureValue.textContent = sim.grid.numPressureIters;
 relaxValue.textContent = sim.grid.overRelaxation.toFixed(2);
-dampingValue.textContent = sim.grid.particleSystem.collisionDamping.toFixed(3); // Changed
 
 // Update initial particle count
 sim.grid.setParticleCount(338);

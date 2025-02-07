@@ -121,23 +121,7 @@ class Grid {
   }
   // Drawing methods
   draw(programInfo) {
-    // Clear canvas once at start
-    this.gl.clearColor(1.0, 1.0, 1.0, 1.0);
-    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     this.gl.useProgram(programInfo.program);
-
-    // Draw grid rectangles first
-    const rectangles = this.generateRectangles();
-    rectangles.forEach((rect) => {
-      this.drawRectangle(
-        rect.x,
-        rect.y,
-        rect.width,
-        rect.height,
-        rect.color,
-        programInfo
-      );
-    });
 
     // Only draw obstacle when active
     if (this.isObstacleActive) {
@@ -150,22 +134,6 @@ class Grid {
       this.drawCircleImplementation(
         obstacleVertices,
         this.obstacleColor,
-        programInfo
-      );
-    }
-
-    // Draw particles last - Updated to use particleSystem
-    const particles = this.particleSystem.getParticles();
-    for (const p of particles) {
-      const vertices = this.drawCircle(
-        p.x,
-        p.y,
-        this.particleSystem.particleRadius,
-        this.particleSystem.particleColor // Use particleSystem's color here
-      );
-      this.drawCircleImplementation(
-        vertices,
-        this.particleSystem.particleColor, // And here
         programInfo
       );
     }

@@ -25,11 +25,6 @@ class Renderer {
     this.gl.viewport(0, 0, width, height);
   }
 
-  clear() {
-    this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
-    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-  }
-
   createBuffer() {
     const buffer = this.gl.createBuffer();
     if (!buffer) {
@@ -39,85 +34,34 @@ class Renderer {
   }
 
   draw(grid) {
-    // console.log("Drawing frame");
-
-    // Clear with white background to verify clearing works
-    this.gl.clearColor(1.0, 1.0, 1.0, 1.0);
-    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-
-    // Debug shader program binding
-    this.gl.useProgram(this.programInfo.program);
-    // console.log("Program info:", this.programInfo);
-
-    // Debug uniform locations
-    // console.log("Uniforms:", {
-    //   resolution: this.programInfo.uniformLocations.resolution,
-    //   color: this.programInfo.uniformLocations.color,
-    //   center: this.programInfo.uniformLocations.center,
-    //   radius: this.programInfo.uniformLocations.radius,
-    // });
-
-    // Debug vertex attribute locations
-    // const positionLocation = this.gl.getAttribLocation(
-    //   this.programInfo.program,
-    //   "aPosition"
-    // );
-    // console.log("Position attribute location:", positionLocation);
-
-    // Set viewport explicitly
+    // Reset WebGL state
+    // this.gl.clearColor(0.0, 0.0, 0.0, 1.0); // Black background
+    // this.gl.clear(this.gl.COLOR_BUFFER_BIT);
     this.gl.viewport(0, 0, this.width, this.height);
-
-    // Continue with normal drawing
-    this.drawGrid(grid);
-    this.drawObstacles(grid);
-    this.drawParticles(grid);
-  }
-
-  drawGrid(grid) {
-    this.gl.enable(this.gl.BLEND);
-    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-
     this.gl.useProgram(this.programInfo.program);
 
-    // Draw grid lines
-    const lineVertices = [];
+    // Draw in correct order:
+    // 1. Draw rectangles (background)
+    const rectangles = grid.generateRectangles();
+    rectangles.forEach((rect) => {
+      grid.drawRectangle(
+        rect.x,
+        rect.y,
+        rect.width,
+        rect.height,
+        rect.color,
+        this.programInfo
+      );
+    });
 
-    // Vertical lines
-    for (let i = 0; i <= grid.numX; i++) {
-      const x = -1.0 + (i * 2.0) / grid.numX;
-      lineVertices.push(x, -1.0, x, 1.0);
+    // 2. Draw particles (on top of rectangles)
+    this.drawParticles(grid);
+
+    // 3. Draw obstacle (topmost)
+    if (grid.isObstacleActive) {
+      this.drawObstacles(grid);
     }
-
-    // Horizontal lines
-    for (let j = 0; j <= grid.numY; j++) {
-      const y = -1.0 + (j * 2.0) / grid.numY;
-      lineVertices.push(-1.0, y, 1.0, y);
-    }
-
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      new Float32Array(lineVertices),
-      this.gl.STATIC_DRAW
-    );
-
-    // Draw lines in white
-    this.gl.uniform4f(
-      this.programInfo.uniformLocations.color,
-      1.0,
-      1.0,
-      1.0,
-      0.2
-    );
-
-    const positionLoc = this.programInfo.attribLocations.position;
-    this.gl.enableVertexAttribArray(positionLoc);
-    this.gl.vertexAttribPointer(positionLoc, 2, this.gl.FLOAT, false, 0, 0);
-
-    this.gl.lineWidth(1.0);
-    this.gl.drawArrays(this.gl.LINES, 0, lineVertices.length / 2);
   }
-
   drawObstacles(grid) {
     const vertexBuffer = this.createBuffer();
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
@@ -157,6 +101,10 @@ class Renderer {
   }
 
   drawParticles(grid) {
+    // Enable blending for transparency
+    this.gl.enable(this.gl.BLEND);
+    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+
     const vertexBuffer = this.createBuffer();
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
 
@@ -186,12 +134,14 @@ class Renderer {
       this.gl.STATIC_DRAW
     );
 
+    // Use particleSystem's color including alpha
+    const color = grid.particleSystem.particleColor;
     this.gl.uniform4f(
       this.programInfo.uniformLocations.color,
-      0.2,
-      0.6,
-      1.0,
-      1.0
+      color[0],
+      color[1],
+      color[2],
+      color[3] // Use alpha from particleSystem
     );
 
     const positionLoc = this.programInfo.attribLocations.position;

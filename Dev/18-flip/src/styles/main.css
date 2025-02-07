@@ -24,7 +24,7 @@ html, body {
 canvas {
     border: 2px solid #333;
     border-radius: 4px;
-    background: #000;
+    background: #111111;
     margin: 20px auto;
     box-shadow: 0 0 20px rgba(0,0,0,0.3);
     width: 400px;
@@ -48,7 +48,7 @@ canvas {
 }
 
 .button {
-    padding: 8px 16px;
+    /* padding: 8px 16px; */
     border: 1px solid rgba(255,255,255,0.2);
     border-radius: 4px;
     background: rgba(255,255,255,0.1);
@@ -56,7 +56,7 @@ canvas {
     cursor: pointer;
     transition: all 0.2s ease;
     min-width: 100px;
-    font-weight: 500;
+    font-weight: 100;
     text-transform: uppercase;
     letter-spacing: 0.5px;
 }
@@ -119,7 +119,7 @@ canvas {
     display: flex;
     justify-content: space-between;
     color: #fff;
-    font-size: 14px;
+    font-size: 10px;
 }
 
 .checkbox-group {
@@ -152,6 +152,7 @@ input[type="range"] {
     background: rgba(255,255,255,0.1);
     border-radius: 4px;
     outline: none;
+    appearance: none;
     -webkit-appearance: none;
 }
 
