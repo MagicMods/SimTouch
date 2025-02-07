@@ -70,10 +70,31 @@ class Grid {
 
     // Initialize arrays and WebGL
     this.initBuffers();
-    // Finally reset simulation
-    this.reset();
 
     this.isObstacleActive = false; // Add this flag
+    // Create particle system with all necessary parameters
+    // this.particleSystem = new ParticleSystem({
+    //   width: this.width,
+    //   height: this.height,
+    //   rowCounts: this.rowCounts,
+    //   stepX: this.stepX,
+    //   stepY: this.stepY,
+    //   verticalOffset: this.verticalOffset,
+    //   velocityDamping: this.velocityDamping,
+    //   particleCount: 338,
+    //   particleRadius: 4.0,
+    //   collisionDamping: 0.5,
+    //   repulsionStrength: 0.3,
+    //   collisionIterations: 3,
+    //   containerRadius: this.containerRadius,
+    //   containerCenter: this.containerCenter,
+    //   circleCenter: this.circleCenter,
+    //   circleRadius: this.circleRadius,
+    //   isObstacleActive: this.isObstacleActive,
+    // });
+
+    // Finally reset simulation
+    this.reset();
   }
 
   // Initialization methods
