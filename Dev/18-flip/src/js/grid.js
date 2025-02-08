@@ -379,18 +379,9 @@ class Grid {
     return [t, 0.2 + 0.8 * (1.0 - t), 1.0 - 0.8 * t, 1.0];
   }
 
-  debug() {
+  logDebugInfo() {
     const stats = this.stateManager.getDebugStats(this);
-    const timings = this.stateManager.getTimingMetrics();
-
-    console.log(`Grid size: ${this.numX}x${this.numY}`);
-    console.log(`Cell size: ${this.h}`);
-    console.log(`Max velocity: ${stats.maxVelocity}`);
-    console.log(`Memory usage: ${stats.memoryUsage} KB`);
-    console.log(`Grid cells: ${stats.gridCells}`);
-    console.log(`Active particles: ${stats.activeParticles}`);
-    console.log(`Pressure solve: ${timings.pressureSolveTime.toFixed(2)}ms`);
-    console.log(`Total simulation: ${timings.totalSimTime.toFixed(2)}ms`);
+    console.log(`Debug Info:`, stats);
   }
 
   // Add timing metrics
@@ -404,23 +395,8 @@ class Grid {
     return true;
   }
 
-  getStats() {
-    const currentTime = performance.now();
-    const frameTime = currentTime - this.stateManager.metrics._lastUpdateTime;
-
-    return {
-      frameTime: frameTime,
-      fps: Math.round(1000 / frameTime),
-      activeParticles: this.particleSystem.getParticles().length,
-      memoryUsage:
-        ((this.fluidSolver.u.length +
-          this.fluidSolver.v.length +
-          this.fluidSolver.p.length) *
-          4) /
-        1024,
-      pressureSolveTime: this.stateManager.metrics._pressureSolveTime || 0,
-      totalSimTime: this.stateManager.metrics._totalSimTime || 0,
-    };
+  getMetrics() {
+    return this.stateManager.getPerformanceMetrics(this);
   }
 
   // Finalize class

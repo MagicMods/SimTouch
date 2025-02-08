@@ -149,12 +149,8 @@ class FluidSimulation {
   }
 
   getStats() {
-    return {
-      fps: 1000 / (performance.now() - this.lastTime),
-      ...this.grid.getStats(),
-    };
+    return this.grid.getMetrics();
   }
-
   render() {
     console.log("Render frame");
     // Draw grid and particles

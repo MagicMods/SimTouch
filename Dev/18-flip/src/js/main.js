@@ -1,4 +1,4 @@
-import { FluidSimulation } from "./fluidsimulation.js";
+import { FluidSimulation } from "./fluidSimulation.js";
 
 // Initialize simulation
 const canvas = document.getElementById("glCanvas");

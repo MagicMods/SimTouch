@@ -88,6 +88,11 @@ class StateManager {
 
   // Performance metrics
   getPerformanceMetrics(grid) {
+    if (!grid?.particleSystem) {
+      console.warn("Grid or particle system not initialized");
+      return {};
+    }
+
     const now = performance.now();
     return {
       fps: 1000 / (now - this.metrics._lastUpdateTime),
@@ -96,9 +101,14 @@ class StateManager {
       pressureSolveTime: this.metrics._pressureSolveTime,
       particleAdvectTime: this.metrics._particleAdvectTime,
       gridCells: grid.numX * grid.numY,
-      activeParticles: grid.particleSystem.getParticles().length,
+      activeParticles: grid.particleSystem?.getParticles()?.length || 0,
       pressureIterations: grid.numPressureIters,
-      memoryUsage: ((grid.u.length + grid.v.length + grid.p.length) * 4) / 1024,
+      memoryUsage:
+        (((grid.u?.length || 0) +
+          (grid.v?.length || 0) +
+          (grid.p?.length || 0)) *
+          4) /
+        1024,
       particleCount: this.metrics._particleCount,
     };
   }
