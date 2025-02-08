@@ -136,6 +136,73 @@ class FluidSolver {
     this.oldV = null;
     this.velocities = null;
   }
+
+  transferFromParticles(particles, h) {
+    this.u.fill(0);
+    this.v.fill(0);
+    const weights = new Float32Array(this.numX * this.numY).fill(0);
+
+    for (const p of particles) {
+      const x = p.x / h;
+      const y = p.y / h;
+
+      const i = Math.floor(x);
+      const j = Math.floor(y);
+
+      const fx = x - i;
+      const fy = y - j;
+
+      const w00 = (1 - fx) * (1 - fy);
+      const w10 = fx * (1 - fy);
+      const w01 = (1 - fx) * fy;
+      const w11 = fx * fy;
+
+      const n = this.numX;
+      const idx = i + j * n;
+
+      this.u[idx] += w00 * p.vx;
+      this.u[idx + 1] += w10 * p.vx;
+      this.u[idx + n] += w01 * p.vx;
+      this.u[idx + n + 1] += w11 * p.vx;
+
+      this.v[idx] += w00 * p.vy;
+      this.v[idx + 1] += w10 * p.vy;
+      this.v[idx + n] += w01 * p.vy;
+      this.v[idx + n + 1] += w11 * p.vy;
+
+      weights[idx] += w00;
+      weights[idx + 1] += w10;
+      weights[idx + n] += w01;
+      weights[idx + n + 1] += w11;
+    }
+
+    // Normalize velocities
+    for (let i = 0; i < this.numX * this.numY; i++) {
+      if (weights[i] > 0) {
+        this.u[i] /= weights[i];
+        this.v[i] /= weights[i];
+      }
+    }
+  }
+
+  transferToParticles(particles) {
+    for (const p of particles) {
+      const vx = this.sampleField(p.x, p.y, this.u);
+      const vy = this.sampleField(p.x, p.y, this.v);
+      const oldVx = this.sampleField(p.x, p.y, this.oldU);
+      const oldVy = this.sampleField(p.x, p.y, this.oldV);
+
+      p.vx =
+        (this.flipRatio * (p.vx + vx - oldVx) + (1.0 - this.flipRatio) * vx) *
+        this.velocityDamping;
+      p.vy =
+        (this.flipRatio * (p.vy + vy - oldVy) + (1.0 - this.flipRatio) * vy) *
+        this.velocityDamping;
+
+      p.vx = Math.max(-this.maxVelocity, Math.min(this.maxVelocity, p.vx));
+      p.vy = Math.max(-this.maxVelocity, Math.min(this.maxVelocity, p.vy));
+    }
+  }
 }
 
 export { FluidSolver };

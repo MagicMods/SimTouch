@@ -358,101 +358,18 @@ class Grid {
     }
 
     this.stateManager.startTiming("totalSim");
-    this.transferToGrid();
+
+    // Use FluidSolver methods directly
+    this.fluidSolver.transferFromParticles(
+      this.particleSystem.getParticles(),
+      this.fluidSolver.h
+    );
     this.fluidSolver.simulate(dt);
-    this.transferFromGrid();
+    this.fluidSolver.transferToParticles(this.particleSystem.getParticles());
+
     this.particleSystem.handleParticleCollisions();
     this.particleSystem.advectParticles(dt);
     this.stateManager.endTiming("totalSim");
-  }
-
-  transferToGrid() {
-    const solver = this.fluidSolver;
-    solver.u.fill(0);
-    solver.v.fill(0);
-    const weights = new Float32Array(solver.numX * solver.numY).fill(0);
-    const particles = this.particleSystem.getParticles();
-
-    for (const p of particles) {
-      const x = p.x / solver.h;
-      const y = p.y / solver.h;
-
-      const i = Math.floor(x);
-      const j = Math.floor(y);
-
-      const fx = x - i;
-      const fy = y - j;
-
-      const w00 = (1 - fx) * (1 - fy);
-      const w10 = fx * (1 - fy);
-      const w01 = (1 - fx) * fy;
-      const w11 = fx * fy;
-
-      const n = solver.numX;
-      const idx = i + j * n;
-
-      solver.u[idx] += w00 * p.vx;
-      solver.u[idx + 1] += w10 * p.vx;
-      solver.u[idx + n] += w01 * p.vx;
-      solver.u[idx + n + 1] += w11 * p.vx;
-
-      solver.v[idx] += w00 * p.vy;
-      solver.v[idx + 1] += w10 * p.vy;
-      solver.v[idx + n] += w01 * p.vy;
-      solver.v[idx + n + 1] += w11 * p.vy;
-
-      weights[idx] += w00;
-      weights[idx + 1] += w10;
-      weights[idx + n] += w01;
-      weights[idx + n + 1] += w11;
-    }
-
-    // Normalize velocities
-    for (let i = 0; i < solver.numX * solver.numY; i++) {
-      if (weights[i] > 0) {
-        solver.u[i] /= weights[i];
-        solver.v[i] /= weights[i];
-      }
-    }
-  }
-
-  transferFromGrid() {
-    const particles = this.particleSystem.getParticles();
-    for (const p of particles) {
-      // Sample velocities from fluid solver
-      const vx = this.fluidSolver.sampleField(p.x, p.y, this.fluidSolver.u);
-      const vy = this.fluidSolver.sampleField(p.x, p.y, this.fluidSolver.v);
-      const oldVx = this.fluidSolver.sampleField(
-        p.x,
-        p.y,
-        this.fluidSolver.oldU
-      );
-      const oldVy = this.fluidSolver.sampleField(
-        p.x,
-        p.y,
-        this.fluidSolver.oldV
-      );
-
-      // FLIP update using fluid solver parameters
-      p.vx =
-        (this.fluidSolver.flipRatio * (p.vx + vx - oldVx) +
-          (1.0 - this.fluidSolver.flipRatio) * vx) *
-        this.fluidSolver.velocityDamping;
-      p.vy =
-        (this.fluidSolver.flipRatio * (p.vy + vy - oldVy) +
-          (1.0 - this.fluidSolver.flipRatio) * vy) *
-        this.fluidSolver.velocityDamping;
-
-      // Clamp velocities
-      p.vx = Math.max(
-        -this.fluidSolver.maxVelocity,
-        Math.min(this.fluidSolver.maxVelocity, p.vx)
-      );
-      p.vy = Math.max(
-        -this.fluidSolver.maxVelocity,
-        Math.min(this.fluidSolver.maxVelocity, p.vy)
-      );
-    }
   }
 
   // Utility methods
