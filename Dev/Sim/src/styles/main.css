@@ -1,4 +1,4 @@
-/* Reset and base styles */
+/* Only keep essential styles */
 html, body {
     margin: 0;
     padding: 0;
@@ -6,21 +6,16 @@ html, body {
     height: 100vh;
     overflow: hidden;
     background: #1a1a1a;
-    font-family: Arial, sans-serif;
 }
 
-/* Main container */
 .simulation-container {
     display: flex;
-    flex-direction: column;
-    align-items: center;
     justify-content: center;
+    align-items: center;
     min-height: 100vh;
     padding: 20px;
-    background: #1a1a1a;
 }
 
-/* Canvas styling */
 canvas {
     border: 2px solid #333;
     border-radius: 4px;

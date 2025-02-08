@@ -1,8 +1,108 @@
 import { FluidSimulation } from "./fluidSimulation.js";
+import GUI from "lil-gui";
 
 // Initialize simulation
 const canvas = document.getElementById("glCanvas");
 const sim = new FluidSimulation(canvas);
+
+function initGUI() {
+  const gui = new GUI();
+  window.gui = gui;
+
+  // Stats folder
+  const stats = {
+    fps: 0,
+    particles: 0,
+    lastTime: performance.now(),
+  };
+
+  const statsFolder = gui.addFolder("Stats");
+  statsFolder.add(stats, "fps").listen().disable();
+  statsFolder.add(stats, "particles").listen().disable();
+
+  // Update stats
+  function updateStats() {
+    const now = performance.now();
+    const delta = (now - stats.lastTime) / 1000;
+    stats.lastTime = now;
+    stats.fps = Math.round(1 / delta);
+    stats.particles = sim.grid.particleSystem.particleCount;
+    requestAnimationFrame(updateStats);
+  }
+  updateStats();
+
+  // Simulation Controls
+  const simFolder = gui.addFolder("Simulation");
+  simFolder.add(sim.grid.fluidSolver, "gravity", -50, 50).name("Gravity");
+  simFolder
+    .add(sim.grid.fluidSolver, "velocityDamping", 0, 1)
+    .name("Velocity Damping");
+  simFolder.add(sim.grid.fluidSolver, "flipRatio", 0, 1).name("FLIP Ratio");
+  simFolder
+    .add(sim.grid.fluidSolver, "numPressureIters", 1, 100, 1)
+    .name("Pressure Iterations");
+  simFolder
+    .add(sim.grid.fluidSolver, "overRelaxation", 1, 2)
+    .name("Relaxation");
+
+  // Particle Controls
+  const particleFolder = gui.addFolder("Particles");
+  particleFolder
+    .add(sim.grid.particleSystem, "particleCount", 100, 1000, 1)
+    .name("Count")
+    .onChange(() => sim.grid.particleSystem.setupParticles());
+  particleFolder
+    .add(sim.grid.particleSystem, "particleRadius", 1, 10)
+    .name("Size");
+  particleFolder
+    .add(sim.grid.particleSystem, "collisionDamping", 0, 1)
+    .name("Collision Damping");
+  particleFolder
+    .add(sim.grid.particleSystem, "repulsionStrength", 0, 1)
+    .name("Repulsion");
+  particleFolder
+    .addColor(sim.grid.particleSystem, "particleColor")
+    .name("Color");
+
+  // Add opacity control
+  particleFolder
+    .add(sim.grid.particleSystem.particleColor, "3", 0, 1)
+    .name("Opacity")
+    .step(0.1);
+
+  // Obstacle Controls
+  const obstacleFolder = gui.addFolder("Obstacle");
+  obstacleFolder
+    .add(sim.grid.particleSystem, "circleRadius", 60, 200)
+    .name("Size")
+    .step(1);
+
+  // Actions with dynamic pause button
+  const actions = {
+    reset: () => sim.reset(),
+    flipGravity: () => {
+      sim.grid.fluidSolver.gravity *= -1;
+      Object.values(gui.folders).forEach((folder) =>
+        folder.controllers.forEach((c) => c.updateDisplay())
+      );
+    },
+    pause: () => {
+      isPaused = !isPaused;
+      if (!isPaused) animate();
+      // Update button text
+      pauseController.name(isPaused ? "Resume" : "Pause");
+    },
+  };
+
+  const actionsFolder = gui.addFolder("Actions");
+  actionsFolder.add(actions, "reset").name("Reset");
+  actionsFolder.add(actions, "flipGravity").name("Flip Gravity");
+  const pauseController = actionsFolder.add(actions, "pause").name("Pause");
+
+  return gui;
+}
+
+const gui = initGUI();
 
 // Control handlers
 const resetBtn = document.getElementById("resetBtn");
