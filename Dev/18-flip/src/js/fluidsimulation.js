@@ -90,10 +90,28 @@ class FluidSimulation {
   }
 
   resize(width, height) {
+    // Update canvas dimensions
     this.canvas.width = width;
     this.canvas.height = height;
-    this.renderer.resize(width, height);
-    this.grid.resize(width, height);
+
+    // Update renderer dimensions
+    if (this.renderer) {
+      this.renderer.resize(width, height);
+    }
+
+    // Recalculate grid dimensions
+    const cellSize = Math.min(width, height) / 30; // or whatever ratio you want
+    const gridWidth = Math.floor(width / cellSize);
+    const gridHeight = Math.floor(height / cellSize);
+
+    // Create new grid with new dimensions
+    this.gridSize = { width: gridWidth, height: gridHeight };
+    this.cellSize = cellSize;
+
+    // Update particle system if it exists
+    if (this.particleSystem) {
+      this.particleSystem.resize(width, height);
+    }
   }
 
   applyForce(x, y, fx, fy) {

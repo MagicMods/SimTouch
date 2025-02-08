@@ -258,12 +258,25 @@ animate();
 
 // Window resize handler
 function handleResize() {
-  const width = window.innerWidth;
-  const height = window.innerHeight;
-  sim.resize(width, height);
+  const container = document.querySelector(".simulation-container");
+  if (!container || !sim) return;
+
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+
+  try {
+    sim.resize(width, height);
+  } catch (error) {
+    console.error("Error resizing simulation:", error);
+  }
 }
 
-window.addEventListener("resize", handleResize);
+// Debounce resize events
+let resizeTimeout;
+window.addEventListener("resize", () => {
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(handleResize, 250);
+});
 
 // Replace unload with beforeunload
 window.addEventListener("beforeunload", () => {
