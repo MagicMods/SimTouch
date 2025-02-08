@@ -9,7 +9,7 @@ class FluidSolver {
     this.u = new Float32Array(totalCells);
     this.v = new Float32Array(totalCells);
     this.p = new Float32Array(totalCells);
-    this.s = new Float32Array(totalCells);
+    this.s = new Float32Array(totalCells).fill(1);
     this.oldU = new Float32Array(totalCells);
     this.oldV = new Float32Array(totalCells);
     this.velocities = new Float32Array(totalCells);
@@ -20,8 +20,8 @@ class FluidSolver {
     this.h = config.h;
 
     // Simulation parameters with defaults
-    this.gravity = config.gravity || 9.81;
-    this.gravityScale = config.gravityScale || 1.0;
+    this.gravity = config.gravity || 0;
+    this.gravityScale = config.gravityScale || 10.0;
     this.flipRatio = config.flipRatio || 0.95;
     this.overRelaxation = config.overRelaxation || 1.9;
     this.numPressureIters = config.numPressureIters || 40;

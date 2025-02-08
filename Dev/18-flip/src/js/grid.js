@@ -447,24 +447,21 @@ class Grid {
     // Update grid properties
     this.numX = config.gridSize.width;
     this.numY = config.gridSize.height;
-    this.h = config.cellSize;
 
-    // Update circle obstacle
-    if (config.circleObstacle) {
-      this.circleCenter = {
-        x: config.circleObstacle.x,
-        y: config.circleObstacle.y,
-      };
-      this.circleRadius = config.circleObstacle.radius;
+    // Update simulation parameters - This is where the error occurs
+    if (config.simulation) {
+      // Update FluidSolver properties instead of Grid
+      this.fluidSolver.gravity = config.simulation.gravity;
+      this.fluidSolver.gravityScale = config.simulation.gravityScale;
+      this.fluidSolver.flipRatio = config.simulation.flipRatio;
+      this.fluidSolver.overRelaxation = config.simulation.overRelaxation;
+      this.fluidSolver.numPressureIters = config.simulation.pressureIterations;
+      this.fluidSolver.velocityDamping = config.simulation.velocityDamping;
     }
 
-    // Update simulation parameters
-    Object.assign(this, config.simulation);
-
-    // Reinitialize arrays if grid size changed
-    const numCells = this.numX * this.numY;
-    if (this.u.length !== numCells) {
-      this.initializeArrays(numCells);
+    // Update particle system parameters
+    if (config.particles) {
+      Object.assign(this.particleSystem, config.particles);
     }
   }
 
