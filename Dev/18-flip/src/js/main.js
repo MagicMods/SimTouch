@@ -124,6 +124,9 @@ let dragOffset = { x: 0, y: 0 };
 
 // Button handlers
 resetBtn.onclick = () => sim.reset();
+resetBtn.addEventListener("click", () => {
+  sim.reset();
+});
 flipBtn.onclick = () => {
   const config = sim.getConfig();
   config.simulation.gravity *= -1;
@@ -278,4 +281,39 @@ window.addEventListener("error", (error) => {
   }
   isPaused = true;
   pauseBtn.textContent = "Resume";
+});
+
+// Remove global functions and add to module scope
+function updatePresetList() {
+  const select = document.getElementById("presetList");
+  const presets = sim.getAvailablePresets();
+
+  select.innerHTML = '<option value="">Select preset...</option>';
+  presets.forEach(({ name, timestamp }) => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = `${name} (${new Date(
+      timestamp
+    ).toLocaleDateString()})`;
+    select.appendChild(option);
+  });
+}
+
+// Add event listeners instead of inline onclick
+document
+  .getElementById("presetName")
+  .nextElementSibling.addEventListener("click", () => {
+    const name = document.getElementById("presetName").value;
+    if (name) {
+      sim.savePreset(name);
+      updatePresetList();
+    }
+  });
+
+document.getElementById("presetList").addEventListener("change", (e) => {
+  const name = e.target.value;
+  if (name) {
+    sim.loadPreset(name);
+    updateControls();
+  }
 });

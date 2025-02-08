@@ -108,18 +108,24 @@ class Grid {
     this.reset();
   }
 
-  reset() {
+  reset(finalize = false) {
     try {
+      // Reset simulation components
       this.fluidSolver?.reset();
       this.density?.fill(0);
       this.particleSystem?.setupParticles();
       this.stateManager?.resetMetrics();
+
+      // Mark for validation on next simulate
       this._needsValidation = true;
+
+      return true;
     } catch (error) {
       console.error("Reset failed:", error);
       throw new Error(`Grid reset failed: ${error.message}`);
     }
   }
+
   // Drawing methods
   draw(programInfo) {
     this.gl.useProgram(programInfo.program);
@@ -421,9 +427,15 @@ class Grid {
         pressureIterations: this.fluidSolver.numPressureIters,
         velocityDamping: this.fluidSolver.velocityDamping,
       },
+      particles: {
+        count: this.particleSystem.particleCount,
+        radius: this.particleSystem.particleRadius,
+        collisionDamping: this.particleSystem.collisionDamping,
+        repulsionStrength: this.particleSystem.repulsionStrength,
+        collisionIterations: this.particleSystem.collisionIterations,
+      },
     };
   }
-
   setConfig(config) {
     const validConfig = this.verificationSystem.validateConfig(config);
     if (!validConfig.valid) {
@@ -456,54 +468,11 @@ class Grid {
     }
   }
 
-  resetSimulation() {
-    // Validate before reset
-    const validation = this.verificationSystem.validateDimensions(this);
-    if (!validation?.valid) {
-      throw new Error("Invalid grid dimensions for reset");
-    }
-
-    // Reset components
-    this.fluidSolver?.reset();
-    this.density?.fill(0);
-    this.particleSystem?.setupParticles();
-    this.stateManager?.resetMetrics();
-
-    // Mark for revalidation
-    this._needsValidation = true;
-  }
-
   dispose() {
     if (this.vertexBuffer) {
       this.gl.deleteBuffer(this.vertexBuffer);
     }
     this.density = null;
-  }
-
-  cleanup() {
-    this.dispose();
-    this.stateManager.resetMetrics();
-  }
-
-  /**
-   * Validates and cleans up simulation resources
-   * @throws {Error} If simulation state is invalid
-   * @returns {boolean} True if cleanup successful
-   */
-  finalizeSimulation() {
-    try {
-      const state = this.verificationSystem.validateSimulationState(this);
-      if (!state.valid) {
-        throw new Error(
-          `Simulation validation failed: ${state.errors.join(", ")}`
-        );
-      }
-      this.cleanup();
-      return true;
-    } catch (error) {
-      console.error("Simulation cleanup failed:", error);
-      return false;
-    }
   }
 
   /**

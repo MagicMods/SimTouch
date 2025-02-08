@@ -1,6 +1,7 @@
 import { Grid } from "./grid.js";
 import { Renderer } from "./renderer.js";
 import { createShaderProgram } from "./shaders.js"; // Add this import
+import { PresetManager } from "./presetManager.js";
 
 class FluidSimulation {
   constructor(canvas) {
@@ -30,6 +31,8 @@ class FluidSimulation {
 
     // Debug draw call
     console.log("Starting render loop");
+
+    this.presetManager = new PresetManager();
   }
 
   update() {
@@ -134,7 +137,9 @@ class FluidSimulation {
   }
 
   reset() {
-    this.grid.resetSimulation();
+    // Change from resetSimulation() to reset()
+    this.grid.reset();
+    this.renderer?.gl.clear(this.renderer.gl.COLOR_BUFFER_BIT);
     this.lastTime = performance.now();
   }
 
@@ -158,6 +163,22 @@ class FluidSimulation {
 
     // Request next frame
     requestAnimationFrame(() => this.render());
+  }
+
+  savePreset(name) {
+    const config = this.grid.getConfig();
+    this.presetManager.savePreset(name, config);
+  }
+
+  loadPreset(name) {
+    const preset = this.presetManager.loadPreset(name);
+    if (preset) {
+      this.grid.setConfig(preset);
+    }
+  }
+
+  getAvailablePresets() {
+    return this.presetManager.getAllPresets();
   }
 }
 
