@@ -166,8 +166,7 @@ class FluidSimulation {
   }
 
   savePreset(name) {
-    const config = this.grid.getConfig();
-    this.presetManager.savePreset(name, config);
+    return this.presetManager.savePreset(name, this.grid.getConfig());
   }
 
   loadPreset(name) {
@@ -175,6 +174,7 @@ class FluidSimulation {
     if (preset) {
       this.grid.setConfig(preset);
     }
+    return preset;
   }
 
   getAvailablePresets() {

@@ -300,20 +300,104 @@ function updatePresetList() {
 }
 
 // Add event listeners instead of inline onclick
-document
-  .getElementById("presetName")
-  .nextElementSibling.addEventListener("click", () => {
-    const name = document.getElementById("presetName").value;
-    if (name) {
-      sim.savePreset(name);
-      updatePresetList();
+function updateControls(config) {
+  const controlMap = {
+    gravitySlider: ["simulation", "gravity"],
+    velocityDampingSlider: ["simulation", "velocityDamping"],
+    flipRatioSlider: ["simulation", "flipRatio"],
+    relaxSlider: ["simulation", "overRelaxation"],
+    pressureSlider: ["simulation", "pressureIterations"],
+    particleSizeSlider: ["particles", "radius"],
+    collisionDampingSlider: ["particles", "collisionDamping"],
+    repulsionSlider: ["particles", "repulsionStrength"],
+  };
+
+  // ...rest of updateControls implementation...
+}
+
+async function initPresetControls() {
+  const presetList = document.getElementById("presetList");
+  const exportBtn = document.getElementById("exportPresetBtn");
+
+  if (!presetList || !exportBtn) {
+    console.error("Required preset elements not found");
+    return;
+  }
+
+  // Clear existing options
+  presetList.innerHTML = '<option value="">Select preset...</option>';
+
+  try {
+    // Load presets and populate dropdown
+    const presetNames = await sim.presetManager.loadPresets();
+
+    presetNames.forEach((name) => {
+      const option = document.createElement("option");
+      option.value = name;
+      option.textContent = name;
+      presetList.appendChild(option);
+    });
+
+    // Handle preset selection
+    presetList.addEventListener("change", (e) => {
+      const selectedValue = e.target.value;
+      if (selectedValue) {
+        console.log(`Applying preset: ${selectedValue}`);
+        sim.presetManager.applyPreset(selectedValue);
+      }
+    });
+
+    // Handle export button
+    exportBtn.addEventListener("click", () => {
+      sim.presetManager.exportCurrentState();
+    });
+  } catch (error) {
+    console.error("Failed to initialize preset controls:", error);
+  }
+}
+
+// Call initialization after sim is ready
+window.addEventListener("load", () => {
+  initPresetControls().catch(console.error);
+});
+
+function init() {
+  // ...existing code...
+  initPresetControls();
+  // ...existing code...
+}
+
+function exportCurrentState() {
+  const sliders = [
+    "particleSlider",
+    "opacitySlider",
+    "particleSizeSlider",
+    "gravitySlider",
+    "velocityDampingSlider",
+    "flipRatioSlider",
+    "pressureSlider",
+    "relaxSlider",
+    "collisionDampingSlider",
+    "repulsionSlider",
+    "obstacleSlider",
+  ];
+
+  const state = {
+    sliders: {},
+  };
+
+  sliders.forEach((id) => {
+    const slider = document.getElementById(id);
+    if (slider) {
+      state.sliders[id] = parseFloat(slider.value);
     }
   });
 
-document.getElementById("presetList").addEventListener("change", (e) => {
-  const name = e.target.value;
-  if (name) {
-    sim.loadPreset(name);
-    updateControls();
-  }
-});
+  console.log("Preset Configuration:");
+  console.log(JSON.stringify(state, null, 2));
+}
+
+// Add debug button to UI
+document
+  .getElementById("exportPresetBtn")
+  .addEventListener("click", exportCurrentState);

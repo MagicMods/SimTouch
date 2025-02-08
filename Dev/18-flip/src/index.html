@@ -150,12 +150,15 @@
         </div>
       </div>
 
-      <div class="preset-controls">
-        <input type="text" id="presetName" placeholder="Preset name" />
-        <button>Save Preset</button>
-        <select id="presetList">
-          <option value="">Select preset...</option>
-        </select>
+      <div class="controls-section">
+        <div class="preset-controls">
+          <div class="preset-load">
+            <select id="presetList">
+              <option value="">Select preset...</option>
+            </select>
+            <button id="exportPresetBtn">Export to Console</button>
+          </div>
+        </div>
       </div>
 
       <div class="stats">
@@ -163,6 +166,9 @@
         <div>Particles: <span id="activeParticles">0</span></div>
       </div>
     </div>
+    lass="preset-file">
     <script type="module" src="js/main.js"></script>
   </body>
+  ="file"
 </html>
+reset"
