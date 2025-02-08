@@ -32,7 +32,8 @@ class FluidSimulation {
     // Debug draw call
     console.log("Starting render loop");
 
-    this.presetManager = new PresetManager();
+    // Initialize PresetManager with this instance
+    this.presetManager = new PresetManager(this);
   }
 
   update() {

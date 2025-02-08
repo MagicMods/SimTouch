@@ -1,5 +1,6 @@
 class PresetManager {
-  constructor() {
+  constructor(simulation) {
+    this.simulation = simulation; // Store simulation reference
     this.presets = {};
     this.sliderIds = [
       "gravitySlider",
@@ -50,14 +51,45 @@ class PresetManager {
       return false;
     }
 
-    Object.entries(preset.sliders).forEach(([id, value]) => {
-      const slider = document.getElementById(id);
-      if (slider) {
-        slider.value = value;
-        slider.dispatchEvent(new Event("input"));
-      }
-    });
-    return true;
+    try {
+      // Apply preset values
+      Object.entries(preset.sliders).forEach(([id, value]) => {
+        switch (id) {
+          case "gravitySlider":
+            this.simulation.grid.fluidSolver.gravity = Number(value);
+            break;
+          case "velocityDampingSlider":
+            this.simulation.grid.fluidSolver.velocityDamping = Number(value);
+            break;
+          case "flipRatioSlider":
+            this.simulation.grid.fluidSolver.flipRatio = Number(value);
+            break;
+          case "pressureSlider":
+            this.simulation.grid.fluidSolver.numPressureIters = Number(value);
+            break;
+          case "relaxSlider":
+            this.simulation.grid.fluidSolver.overRelaxation = Number(value);
+            break;
+          case "particleSizeSlider":
+            this.simulation.grid.particleSystem.particleRadius = Number(value);
+            break;
+          case "collisionDampingSlider":
+            this.simulation.grid.particleSystem.collisionDamping =
+              Number(value);
+            break;
+          case "repulsionSlider":
+            this.simulation.grid.particleSystem.repulsionStrength =
+              Number(value);
+            break;
+        }
+      });
+
+      console.log(`Successfully applied preset: ${name}`);
+      return true;
+    } catch (error) {
+      console.error(`Error applying preset ${name}:`, error);
+      return false;
+    }
   }
 
   exportCurrentState() {
