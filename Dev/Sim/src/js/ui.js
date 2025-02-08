@@ -1,34 +1,44 @@
 import { FluidSimulation } from "./fluidSimulation.js";
 import GUI from "lil-gui";
 
-// Initialize simulation
+// Initialize simulation and state
 const canvas = document.getElementById("glCanvas");
 const sim = new FluidSimulation(canvas);
+let isPaused = false;
+
+// Stats tracking
+const stats = {
+  fps: 0,
+  particles: 0,
+  lastTime: performance.now(),
+};
+
+function updateStats() {
+  const now = performance.now();
+  const delta = (now - stats.lastTime) / 1000;
+  stats.lastTime = now;
+  stats.fps = Math.round(1 / delta);
+  stats.particles = sim.grid.particleSystem.particleCount;
+  requestAnimationFrame(updateStats);
+}
+
+function animate() {
+  if (!isPaused) {
+    sim.update();
+    requestAnimationFrame(animate);
+  }
+}
 
 function initGUI() {
   const gui = new GUI();
   window.gui = gui;
 
   // Stats folder
-  const stats = {
-    fps: 0,
-    particles: 0,
-    lastTime: performance.now(),
-  };
-
   const statsFolder = gui.addFolder("Stats");
   statsFolder.add(stats, "fps").listen().disable();
   statsFolder.add(stats, "particles").listen().disable();
 
-  // Update stats
-  function updateStats() {
-    const now = performance.now();
-    const delta = (now - stats.lastTime) / 1000;
-    stats.lastTime = now;
-    stats.fps = Math.round(1 / delta);
-    stats.particles = sim.grid.particleSystem.particleCount;
-    requestAnimationFrame(updateStats);
-  }
+  // Start stats tracking
   updateStats();
 
   // Simulation Controls
@@ -99,10 +109,47 @@ function initGUI() {
   actionsFolder.add(actions, "flipGravity").name("Flip Gravity");
   const pauseController = actionsFolder.add(actions, "pause").name("Pause");
 
+  // Presets folder
+  const presetFolder = gui.addFolder("Presets");
+
+  // Initialize presets immediately
+  sim.presetManager
+    .loadPresets()
+    .then(() => {
+      const presetNames = sim.presetManager.getPresetNames();
+      console.log("Available presets:", presetNames);
+
+      if (presetNames.length > 0) {
+        const presetControl = {
+          current: presetNames[0],
+          export: () => sim.presetManager.exportCurrentState(),
+        };
+
+        presetFolder
+          .add(presetControl, "current", presetNames)
+          .name("Load Preset")
+          .onChange((value) => {
+            console.log("Loading preset:", value);
+            sim.presetManager.applyPreset(value);
+            // Update GUI after preset is applied
+            Object.values(gui.folders).forEach((folder) =>
+              folder.controllers.forEach((c) => c.updateDisplay())
+            );
+          });
+
+        presetFolder.add(presetControl, "export").name("Export to Console");
+      }
+    })
+    .catch((error) => {
+      console.error("Failed to load presets:", error);
+    });
+
   return gui;
 }
 
+// Initialize GUI and start animation
 const gui = initGUI();
+animate();
 
 // Control handlers
 const resetBtn = document.getElementById("resetBtn");
@@ -216,7 +263,6 @@ relaxSlider.addEventListener("input", (e) => {
   }
 });
 
-let isPaused = false;
 let animationId = null;
 
 let isDragging = false;
@@ -342,20 +388,6 @@ canvas.addEventListener("mouseleave", () => {
   sim.grid.particleSystem.isObstacleActive = false;
 });
 
-// Animation loop
-function animate() {
-  if (!isPaused) {
-    sim.update();
-    const stats = sim.getStats();
-    fpsCounter.textContent = Math.round(stats.fps);
-    activeParticles.textContent = stats.activeParticles;
-    animationId = requestAnimationFrame(animate);
-  }
-}
-
-// Start simulation
-animate();
-
 // Window resize handler
 function handleResize() {
   const container = document.querySelector(".simulation-container");
@@ -397,21 +429,6 @@ window.addEventListener("error", (error) => {
 });
 
 // Remove global functions and add to module scope
-function updatePresetList() {
-  const select = document.getElementById("presetList");
-  const presets = sim.getAvailablePresets();
-
-  select.innerHTML = '<option value="">Select preset...</option>';
-  presets.forEach(({ name, timestamp }) => {
-    const option = document.createElement("option");
-    option.value = name;
-    option.textContent = `${name} (${new Date(
-      timestamp
-    ).toLocaleDateString()})`;
-    select.appendChild(option);
-  });
-}
-
 // Add event listeners instead of inline onclick
 function updateControls(config) {
   const controlMap = {
@@ -427,90 +444,3 @@ function updateControls(config) {
 
   // ...rest of updateControls implementation...
 }
-
-async function initPresetControls() {
-  const presetList = document.getElementById("presetList");
-  const exportBtn = document.getElementById("exportPresetBtn");
-
-  if (!presetList || !exportBtn) {
-    console.error("Required preset elements not found");
-    return;
-  }
-
-  // Clear existing options
-  presetList.innerHTML = '<option value="">Select preset...</option>';
-
-  try {
-    // Load presets and populate dropdown
-    const presetNames = await sim.presetManager.loadPresets();
-
-    presetNames.forEach((name) => {
-      const option = document.createElement("option");
-      option.value = name;
-      option.textContent = name;
-      presetList.appendChild(option);
-    });
-
-    // Handle preset selection
-    presetList.addEventListener("change", (e) => {
-      const selectedValue = e.target.value;
-      if (selectedValue) {
-        console.log(`Applying preset: ${selectedValue}`);
-        sim.presetManager.applyPreset(selectedValue);
-      }
-    });
-
-    // Handle export button
-    exportBtn.addEventListener("click", () => {
-      sim.presetManager.exportCurrentState();
-    });
-  } catch (error) {
-    console.error("Failed to initialize preset controls:", error);
-  }
-}
-
-// Call initialization after sim is ready
-window.addEventListener("load", () => {
-  initPresetControls().catch(console.error);
-});
-
-function init() {
-  // ...existing code...
-  initPresetControls();
-  // ...existing code...
-}
-
-function exportCurrentState() {
-  const sliders = [
-    "particleSlider",
-    "opacitySlider",
-    "particleSizeSlider",
-    "gravitySlider",
-    "velocityDampingSlider",
-    "flipRatioSlider",
-    "pressureSlider",
-    "relaxSlider",
-    "collisionDampingSlider",
-    "repulsionSlider",
-    "obstacleSlider",
-  ];
-
-  const state = {
-    sliders: {},
-  };
-
-  sliders.forEach((id) => {
-    const slider = document.getElementById(id);
-    if (slider) {
-      state.sliders[id] = parseFloat(slider.value);
-    }
-  });
-
-  console.log("Preset Configuration:");
-  console.log(JSON.stringify(state, null, 2));
-}
-
-// Add debug button to UI
-document
-  .getElementById("exportPresetBtn")
-  .addEventListener("click", exportCurrentState);
