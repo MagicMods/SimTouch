@@ -1,56 +1,50 @@
+import { BaseRenderer } from "../renderer/baseRenderer.js";
 import { Grid } from "./grid.js";
-import { FluidSolver } from "./fluidSolver.js";
-import { ParticleSystem } from "./particleSystem.js";
-import { Renderer } from "./renderer.js";
-import { PresetManager } from "./presetManager.js";
-import { createShaderProgram, initShaderProgram } from "./shaders.js";
+import { ShaderManager } from "../shaders/shaderManager.js";
 import { ReactiveGrid } from "./reactiveGrid.js";
+import { PresetManager } from "./presetManager.js"; // Add this import
 
 class SimulationManager {
   constructor(canvas) {
     // Initialize WebGL context first
     this.canvas = document.getElementById("glCanvas");
-    this.ctx = this.canvas.getContext("2d");
-    this.renderer = new Renderer(this.canvas);
+    this.renderer = new BaseRenderer(this.canvas);
     console.log("Renderer initialized");
 
-    // Create shader program before grid initialization
-    const program = createShaderProgram(this.renderer.gl);
-    this.programInfo = initShaderProgram(this.renderer.gl);
-    console.log("Shader program created");
+    // Initialize preset manager
+    this.presetManager = new PresetManager(this);
 
-    // Create both grids with gl context
-    this.grid = new Grid(this.renderer.gl, canvas.width, canvas.height);
-    this.reactiveGrid = new ReactiveGrid(this.renderer);
+    // Create shader program using new ShaderManager
+    this.shaderManager = new ShaderManager(this.renderer.gl);
+    this.shaderManager.init().then(() => {
+      this.programInfo = this.shaderManager.getProgram("basic");
+      console.log("Shader program created");
+      this.initializeSimulation();
+    });
+  }
+
+  async initializeSimulation() {
+    // Wait for shader initialization
+    await this.renderer.initShaders();
+
+    this.grid = new Grid(
+      this.renderer.gl,
+      this.canvas.width,
+      this.canvas.height
+    );
     console.log("Grids initialized");
 
-    // PresetManager and other initializations
+    // Initialize preset manager after grid setup
     this.presetManager = new PresetManager(this);
+    await this.presetManager.loadPresets();
     console.log("PresetManager initialized");
 
-    // Simulation state
-    this.isPaused = false;
-    this.lastTime = performance.now();
-
-    this.initializeEventHandlers();
+    // Set up event handlers
+    this.setupEventHandlers();
     console.log("Event handlers initialized");
 
-    // After initializing renderer
+    // Test draw after everything is initialized
     this.renderer.drawTestRectangle();
-
-    // Set canvas size
-    this.canvas.width = 800;
-    this.canvas.height = 600;
-
-    // Initialize grid
-    this.grid = new ReactiveGrid(this.renderer);
-    this.grid.setContext(this.ctx);
-
-    // Bind event handlers
-    this.canvas.addEventListener("mousedown", this.handleMouseDown.bind(this));
-
-    // Start animation loop
-    this.animate();
   }
 
   update() {
@@ -176,6 +170,36 @@ class SimulationManager {
 
     // Request next frame
     requestAnimationFrame(this.animate.bind(this));
+  }
+
+  setupEventHandlers() {
+    // Mouse event handlers
+    this.canvas.addEventListener("mousedown", this.handleMouseDown.bind(this));
+    this.canvas.addEventListener("mousemove", this.handleMouseMove.bind(this));
+    this.canvas.addEventListener("mouseup", this.handleMouseUp.bind(this));
+
+    // Window resize handler
+    window.addEventListener("resize", () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      this.renderer.resize(width, height);
+    });
+
+    // Prevent context menu on canvas
+    this.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+  }
+
+  handleMouseMove(event) {
+    if (this.grid?.isMouseDown) {
+      const rect = this.canvas.getBoundingClientRect();
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      this.grid?.handleMouseMove(x, y);
+    }
+  }
+
+  handleMouseUp() {
+    this.grid?.handleMouseUp();
   }
 }
 

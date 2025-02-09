@@ -7,10 +7,30 @@ class ShaderManager {
   }
 
   async init() {
-    const vertexSource = await ShaderLoader.loadShader("shaders/basic.vert");
-    const fragmentSource = await ShaderLoader.loadShader("shaders/basic.frag");
+    try {
+      console.log("Loading vertex shader");
+      const vertexSource = await ShaderLoader.loadShader("shaders/basic.vert");
+      console.log("Vertex shader loaded:", vertexSource);
 
-    this.createProgram("basic", vertexSource, fragmentSource);
+      console.log("Loading fragment shader");
+      const fragmentSource = await ShaderLoader.loadShader(
+        "shaders/basic.frag"
+      );
+      console.log("Fragment shader loaded:", fragmentSource);
+
+      console.log("Creating program");
+      const programInfo = this.createProgram(
+        "basic",
+        vertexSource,
+        fragmentSource
+      );
+      console.log("Program created:", programInfo);
+
+      return programInfo;
+    } catch (error) {
+      console.error("ShaderManager init failed:", error);
+      throw error;
+    }
   }
 
   createProgram(name, vertexSource, fragmentSource) {
