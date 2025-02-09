@@ -2,7 +2,7 @@
   "name": "roundtouchsim",
   "version": "1.0.0",
   "description": "FLIP Fluid Simulation",
-  "main": "src/js/main.js",
+  "main": "src/main.js",
   "scripts": {
     "start": "live-server src",
     "build": "webpack --mode production"

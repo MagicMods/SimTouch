@@ -58,11 +58,16 @@ class ShaderManager {
       throw new Error(`Program linking failed: ${error}`);
     }
 
-    // Store program info
+    // Store program info with debug logging
+    const attributes = this.getAttributes(program);
+    const uniforms = this.getUniforms(program);
+    console.log("Program attributes:", attributes);
+    console.log("Program uniforms:", uniforms);
+
     const programInfo = {
       program: program,
-      attributes: this.getAttributes(program),
-      uniforms: this.getUniforms(program),
+      attributes: attributes,
+      uniforms: uniforms,
     };
 
     this.programs.set(name, programInfo);
