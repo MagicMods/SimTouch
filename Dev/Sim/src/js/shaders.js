@@ -1,18 +1,18 @@
 const vertexShaderSource = `
-    attribute vec2 aPosition;
-    
-    void main() {
-        gl_Position = vec4(aPosition, 0.0, 1.0);
-    }
+  attribute vec2 aPosition;
+
+  void main() {
+    gl_Position = vec4(aPosition, 0.0, 1.0);
+  }
 `;
 
 const fragmentShaderSource = `
-    precision mediump float;
-    uniform vec4 uColor;
-    
-    void main() {
-        gl_FragColor = uColor;
-    }
+  precision mediump float;
+  uniform vec4 uColor;
+
+  void main() {
+    gl_FragColor = uColor;
+  }
 `;
 
 function createShader(gl, type, source) {
@@ -50,6 +50,8 @@ export function initShaderProgram(gl) {
   );
   const program = createProgram(gl, vertexShader, fragmentShader);
 
+  if (!program) throw new Error("Shader program failed to initialize");
+
   return {
     program: program,
     attribLocations: {
@@ -61,7 +63,7 @@ export function initShaderProgram(gl) {
   };
 }
 
-// Add export for createShaderProgram
+// Optionally, also export createShaderProgram if needed
 export function createShaderProgram(gl) {
   const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
   const fragmentShader = createShader(
@@ -69,7 +71,5 @@ export function createShaderProgram(gl) {
     gl.FRAGMENT_SHADER,
     fragmentShaderSource
   );
-  const program = createProgram(gl, vertexShader, fragmentShader);
-
-  return program;
+  return createProgram(gl, vertexShader, fragmentShader);
 }

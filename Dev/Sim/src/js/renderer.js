@@ -6,8 +6,18 @@ class Renderer {
     this.width = canvas.width;
     this.height = canvas.height;
 
-    this.gl = canvas.getContext("webgl");
-    if (!this.gl) throw new Error("WebGL not supported");
+    // Try to get WebGL2 context first, then fallback to WebGL
+    this.gl = canvas.getContext("webgl2");
+    if (!this.gl) {
+      this.gl = canvas.getContext("webgl");
+    }
+    if (!this.gl) {
+      throw new Error("WebGL not supported");
+    }
+
+    // Initialize WebGL context
+    this.gl.clearColor(1.0, 1.0, 1.0, 1.0);
+    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
     this.programInfo = initShaderProgram(this.gl);
     this.vertexBuffer = this.gl.createBuffer();
@@ -159,6 +169,29 @@ class Renderer {
     }
 
     this.gl.deleteBuffer(vertexBuffer);
+  }
+
+  drawTestRectangle() {
+    // Ensure the correct program is active
+    this.gl.useProgram(this.programInfo.program);
+
+    const vertices = new Float32Array([
+      -0.5, 0.5, 0.5, 0.5, -0.5, -0.5, 0.5, -0.5,
+    ]);
+
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
+
+    // Use the attribute location from programInfo
+    const positionLoc = this.programInfo.attribLocations.position;
+    this.gl.enableVertexAttribArray(positionLoc);
+    this.gl.vertexAttribPointer(positionLoc, 2, this.gl.FLOAT, false, 0, 0);
+
+    this.gl.uniform4fv(
+      this.programInfo.uniformLocations.color,
+      [1.0, 0.0, 0.0, 1.0]
+    );
+    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
   }
 }
 
