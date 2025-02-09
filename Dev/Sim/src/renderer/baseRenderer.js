@@ -3,8 +3,11 @@ import { ShaderManager } from "../shaders/shaderManager.js";
 class BaseRenderer {
   constructor(canvas) {
     this.canvas = canvas;
-    this.width = canvas.width;
-    this.height = this.canvas.height;
+
+    // Single source of truth for dimensions
+    const CANVAS_SIZE = 1000; // Match working template
+    this.canvas.width = CANVAS_SIZE;
+    this.canvas.height = CANVAS_SIZE;
 
     // Initialize WebGL context
     this.gl = this.canvas.getContext("webgl2");
@@ -18,7 +21,8 @@ class BaseRenderer {
     // Create vertex buffer
     this.vertexBuffer = this.gl.createBuffer();
     if (!this.vertexBuffer) {
-      throw new Error("Failed to create vertex buffer");
+      console.error("Failed to create vertex buffer");
+      return;
     }
 
     // Initialize WebGL state
@@ -26,68 +30,61 @@ class BaseRenderer {
     this.gl.viewport(0, 0, this.width, this.height);
 
     this.programInfo = null;
-    console.log("Initialized with dimensions:", this.width, this.height);
+    console.log(
+      "Initialized with dimensions:",
+      this.canvas.width,
+      this.canvas.height
+    );
+
+    this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    this.gl.enable(this.gl.BLEND);
+    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
   }
 
   async initShaders() {
     try {
-      if (this.programInfo) {
-        console.log("Using existing shader program");
-        return this.programInfo;
-      }
-
-      console.log("Creating new ShaderManager");
       this.shaderManager = new ShaderManager(this.gl);
-
-      console.log("Initializing ShaderManager");
       this.programInfo = await this.shaderManager.init();
 
-      console.log("ProgramInfo received:", this.programInfo);
-
-      if (!this.programInfo) {
-        throw new Error("ProgramInfo is null");
+      if (!this.programInfo || !this.programInfo.program) {
+        throw new Error("Shader program creation failed");
       }
 
-      if (!this.programInfo.program) {
-        throw new Error("WebGL program is null");
-      }
+      // Use the program immediately after creation
+      this.gl.useProgram(this.programInfo.program);
 
-      console.log("Shader program initialized successfully");
       return this.programInfo;
     } catch (error) {
       console.error("Shader initialization failed:", error);
-      console.error("Stack:", error.stack);
-      throw new Error("Failed to initialize shader program");
+      throw error;
     }
   }
 
   beginRender() {
+    // Set clear color to dark gray for visibility
+    this.gl.clearColor(0.2, 0.2, 0.2, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-    this.gl.viewport(0, 0, this.width, this.height);
   }
 
-  drawShape(vertices, color) {
-    this.gl.useProgram(this.currentProgram.program);
+  drawShape(vertices, color, programInfo) {
+    // Use provided program info
+    const program = programInfo.program;
+    this.gl.useProgram(program);
 
-    // Update vertex buffer
+    // Set vertices
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      new Float32Array(vertices),
-      this.gl.STATIC_DRAW
-    );
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
 
-    // Set attributes
-    const positionLoc = this.currentProgram.attributes.position;
+    // Set attributes and uniforms using programInfo
+    const positionLoc = programInfo.attributes.position;
     this.gl.enableVertexAttribArray(positionLoc);
     this.gl.vertexAttribPointer(positionLoc, 2, this.gl.FLOAT, false, 0, 0);
 
-    // Set uniforms
-    const colorLoc = this.currentProgram.uniforms.color;
+    const colorLoc = programInfo.uniforms.color;
     this.gl.uniform4fv(colorLoc, color);
 
     // Draw
-    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, vertices.length / 2);
+    this.gl.drawArrays(this.gl.TRIANGLES, 0, vertices.length / 2);
   }
 
   drawTestRectangle() {
@@ -127,6 +124,24 @@ class BaseRenderer {
 
     // Draw
     this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  resize(width, height) {
+    // Update canvas size
+    this.canvas.width = width;
+    this.canvas.height = height;
+    this.width = width;
+    this.height = height;
+
+    // Update WebGL viewport
+    this.gl.viewport(0, 0, width, height);
+
+    // Preserve the shader program state
+    if (this.programInfo && this.programInfo.program) {
+      this.gl.useProgram(this.programInfo.program);
+    }
+
+    console.log(`Renderer resized to ${width}x${height}`);
   }
 
   endRender() {
