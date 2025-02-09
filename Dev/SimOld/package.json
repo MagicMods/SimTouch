@@ -1,8 +1,8 @@
 {
-  "name": "roundtouchsim",
+  "name": "18-flip",
   "version": "1.0.0",
-  "description": "FLIP Fluid Simulation",
-  "main": "src/js/main.js",
+  "description": "A project that integrates rectangle generation logic into an interactive application.",
+  "main": "src/js/app.js",
   "scripts": {
     "start": "live-server src",
     "build": "webpack --mode production"
@@ -15,6 +15,6 @@
     "webpack-cli": "^4.0.0",
     "live-server": "^1.2.1"
   },
-  "author": "MagicMods",
+  "author": "Your Name",
   "license": "MIT"
 }

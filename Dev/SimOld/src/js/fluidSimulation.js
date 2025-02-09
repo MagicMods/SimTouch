@@ -1,6 +1,6 @@
 import { Grid } from "./grid.js";
-import { Renderer } from "./renderer_.js";
-import { createShaderProgram } from "./shaders_.js"; // Add this import
+import { Renderer } from "./renderer.js";
+import { createShaderProgram } from "./shaders.js"; // Add this import
 import { PresetManager } from "./presetManager.js";
 
 class FluidSimulation {

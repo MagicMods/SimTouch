@@ -1,4 +1,4 @@
-import { initShaderProgram } from "./shaders_.js";
+import { initShaderProgram } from "./shaders.js";
 
 class Renderer {
   constructor(canvas) {
