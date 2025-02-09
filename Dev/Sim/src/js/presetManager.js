@@ -13,6 +13,7 @@ class PresetManager {
       "repulsionSlider",
       "obstacleSlider",
     ];
+    this.defaultPreset = null; // Store default preset name
   }
 
   async loadPresets() {
@@ -34,8 +35,13 @@ class PresetManager {
         }
       }
 
-      // Log available presets
+      // Load first preset as default
       const presetNames = this.getPresetNames();
+      if (presetNames.length > 0) {
+        this.defaultPreset = presetNames[0];
+        this.applyPreset(this.defaultPreset);
+      }
+
       console.log(`Loaded ${presetNames.length} presets:`, presetNames);
       return presetNames;
     } catch (error) {
@@ -52,39 +58,43 @@ class PresetManager {
     }
 
     try {
-      // Apply preset values
-      Object.entries(preset.sliders).forEach(([id, value]) => {
-        switch (id) {
-          case "gravitySlider":
-            this.simulation.grid.fluidSolver.gravity = Number(value);
-            break;
-          case "velocityDampingSlider":
-            this.simulation.grid.fluidSolver.velocityDamping = Number(value);
-            break;
-          case "flipRatioSlider":
-            this.simulation.grid.fluidSolver.flipRatio = Number(value);
-            break;
-          case "pressureSlider":
-            this.simulation.grid.fluidSolver.numPressureIters = Number(value);
-            break;
-          case "relaxSlider":
-            this.simulation.grid.fluidSolver.overRelaxation = Number(value);
-            break;
-          case "particleSizeSlider":
-            this.simulation.grid.particleSystem.particleRadius = Number(value);
-            break;
-          case "collisionDampingSlider":
-            this.simulation.grid.particleSystem.collisionDamping =
-              Number(value);
-            break;
-          case "repulsionSlider":
-            this.simulation.grid.particleSystem.repulsionStrength =
-              Number(value);
-            break;
-        }
-      });
+      const { sliders } = preset;
+      const { grid } = this.simulation;
+
+      // Simulation settings
+      if ("gravitySlider" in sliders)
+        grid.fluidSolver.gravity = Number(sliders.gravitySlider);
+      if ("velocityDampingSlider" in sliders)
+        grid.fluidSolver.velocityDamping = Number(
+          sliders.velocityDampingSlider
+        );
+      if ("flipRatioSlider" in sliders)
+        grid.fluidSolver.flipRatio = Number(sliders.flipRatioSlider);
+      if ("pressureSlider" in sliders)
+        grid.fluidSolver.numPressureIters = Number(sliders.pressureSlider);
+      if ("relaxSlider" in sliders)
+        grid.fluidSolver.overRelaxation = Number(sliders.relaxSlider);
+
+      // Particle settings
+      if ("particleCountSlider" in sliders)
+        grid.particleSystem.particleCount = Number(sliders.particleCountSlider);
+      if ("particleSizeSlider" in sliders)
+        grid.particleSystem.particleRadius = Number(sliders.particleSizeSlider);
+      if ("collisionDampingSlider" in sliders)
+        grid.particleSystem.collisionDamping = Number(
+          sliders.collisionDampingSlider
+        );
+      if ("repulsionSlider" in sliders)
+        grid.particleSystem.repulsionStrength = Number(sliders.repulsionSlider);
+      if ("opacitySlider" in sliders)
+        grid.particleSystem.particleColor[3] = Number(sliders.opacitySlider);
+
+      // Obstacle settings
+      if ("obstacleSizeSlider" in sliders)
+        grid.particleSystem.circleRadius = Number(sliders.obstacleSizeSlider);
 
       console.log(`Successfully applied preset: ${name}`);
+      console.log("Applied values:", sliders);
       return true;
     } catch (error) {
       console.error(`Error applying preset ${name}:`, error);

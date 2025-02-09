@@ -6,6 +6,10 @@ let isPaused = false;
 let isDragging = false;
 let sim = null;
 let gui = null;
+let frameCount = 0;
+let lastFpsUpdate = performance.now();
+const fpsUpdateInterval = 500; // Update every 500ms
+const fpsHistory = new Array(10).fill(60); // Store last 10 FPS values
 
 // Stats tracking
 const stats = {
@@ -16,12 +20,29 @@ const stats = {
 
 function updateStats() {
   const now = performance.now();
-  const delta = (now - stats.lastTime) / 1000;
-  stats.lastTime = now;
-  stats.fps = Math.round(1 / delta);
-  if (sim && sim.grid) {
-    stats.particles = sim.grid.particleSystem.particleCount;
+  frameCount++;
+
+  // Update FPS every 500ms
+  if (now - lastFpsUpdate >= fpsUpdateInterval) {
+    const deltaTime = (now - lastFpsUpdate) / 1000;
+    const currentFps = Math.round(frameCount / deltaTime);
+
+    // Update moving average
+    fpsHistory.shift();
+    fpsHistory.push(currentFps);
+    const averageFps = Math.round(
+      fpsHistory.reduce((a, b) => a + b) / fpsHistory.length
+    );
+
+    // Update stats display
+    stats.fps = averageFps;
+    stats.particles = sim?.grid?.particleSystem?.particleCount || 0;
+
+    // Reset counters
+    frameCount = 0;
+    lastFpsUpdate = now;
   }
+
   requestAnimationFrame(updateStats);
 }
 
@@ -32,27 +53,64 @@ function animate() {
   }
 }
 
+function updateSliderBackground(controller) {
+  const percent =
+    ((controller.getValue() - controller.min) /
+      (controller.max - controller.min)) *
+    100;
+  controller.domElement
+    .querySelector(".slider")
+    .style.setProperty("--slider-percent", `${percent}%`);
+}
+
 function initGUI(simulation) {
   const gui = new GUI();
   window.gui = gui;
 
+  // Add update callback to all sliders
+  const addSliderUpdate = (controller) => {
+    if (controller.type === "number" && controller.min !== undefined) {
+      updateSliderBackground(controller);
+      controller.onChange(() => updateSliderBackground(controller));
+    }
+  };
+
   // Stats folder
   const statsFolder = gui.addFolder("Stats");
-  statsFolder.add(stats, "fps").listen().disable();
-  statsFolder.add(stats, "particles").listen().disable();
+  statsFolder.add(stats, "fps").listen().name("FPS").domElement.style.opacity =
+    "1";
+  statsFolder
+    .add(stats, "particles")
+    .listen()
+    .name("Particles").domElement.style.opacity = "1";
   updateStats();
 
   // Simulation Controls
   const simFolder = gui.addFolder("Simulation");
+
+  // Gravity controls grouped together
+  simFolder.add(simulation.grid.fluidSolver, "gravity", 0, 100).name("Gravity");
   simFolder
-    .add(simulation.grid.fluidSolver, "gravity", -50, 50)
-    .name("Gravity");
-  simFolder
-    .add(simulation.grid.fluidSolver, "velocityDamping", 0, 1)
-    .name("Velocity Damping");
+    .add(
+      {
+        flipGravity: () => {
+          simulation.grid.fluidSolver.gravity *= -1;
+          Object.values(gui.folders).forEach((folder) =>
+            folder.controllers.forEach((c) => c.updateDisplay())
+          );
+        },
+      },
+      "flipGravity"
+    )
+    .name("Flip Gravity");
+
+  // Rest of simulation controls
   simFolder
     .add(simulation.grid.fluidSolver, "flipRatio", 0, 1)
     .name("FLIP Ratio");
+  simFolder
+    .add(simulation.grid.fluidSolver, "velocityDamping", 0.5, 1)
+    .name("Velocity Damping");
   simFolder
     .add(simulation.grid.fluidSolver, "numPressureIters", 1, 100, 1)
     .name("Pressure Iterations");
@@ -73,22 +131,17 @@ function initGUI(simulation) {
     .add(simulation.grid.particleSystem, "collisionDamping", 0, 1)
     .name("Collision Damping");
   particleFolder
-    .add(simulation.grid.particleSystem, "repulsionStrength", 0, 1)
+    .add(simulation.grid.particleSystem, "repulsionStrength", 0, 5000)
     .name("Repulsion");
 
   // Add particle color opacity control
   const particleColor = simulation.grid.particleSystem.particleColor;
+  // particleColor[3] = 0;
   particleFolder.add(particleColor, "3", 0, 1).name("Opacity").step(0.1);
 
-  // Actions
+  // Actions (remove flipGravity from here)
   const actions = {
     reset: () => simulation.reset(),
-    flipGravity: () => {
-      simulation.grid.fluidSolver.gravity *= -1;
-      Object.values(gui.folders).forEach((folder) =>
-        folder.controllers.forEach((c) => c.updateDisplay())
-      );
-    },
     pause: () => {
       isPaused = !isPaused;
       if (!isPaused) animate();
@@ -98,8 +151,12 @@ function initGUI(simulation) {
 
   const actionsFolder = gui.addFolder("Actions");
   actionsFolder.add(actions, "reset").name("Reset");
-  actionsFolder.add(actions, "flipGravity").name("Flip Gravity");
   const pauseController = actionsFolder.add(actions, "pause").name("Pause");
+
+  // Add obstacle size control
+  actionsFolder
+    .add(simulation.grid.particleSystem, "circleRadius", 60, 200, 1)
+    .name("Obstacle Size");
 
   // Presets folder with improved handling
   const presetFolder = gui.addFolder("Presets");
@@ -109,30 +166,12 @@ function initGUI(simulation) {
     console.log("Available presets:", presetNames);
 
     if (presetNames.length > 0) {
-      // Create preset control object
+      // Create preset control object with default preset
       const presetControl = {
-        current: presetNames[0],
+        current: simulation.presetManager.defaultPreset,
       };
 
-      // Add preset selection dropdown
-      presetFolder
-        .add(presetControl, "current", presetNames)
-        .name("Load Preset")
-        .onChange((value) => {
-          console.log("Loading preset:", value);
-          if (simulation.presetManager.applyPreset(value)) {
-            // Update all GUI controllers after successful preset load
-            for (const folder of Object.values(gui.folders)) {
-              for (const controller of folder.controllers) {
-                controller.updateDisplay();
-              }
-            }
-            // Setup particles if count changed
-            simulation.grid.particleSystem.setupParticles();
-          }
-        });
-
-      // Add export button
+      // Add preset controls in correct order
       presetFolder
         .add(
           {
@@ -145,7 +184,30 @@ function initGUI(simulation) {
           "export"
         )
         .name("Export to Console");
+
+      // Add preset selection after export
+      presetFolder
+        .add(presetControl, "current", presetNames)
+        .name("Load Preset")
+        .onChange((value) => {
+          console.log("Loading preset:", value);
+          if (simulation.presetManager.applyPreset(value)) {
+            // Update GUI
+            for (const folder of Object.values(gui.folders)) {
+              for (const controller of folder.controllers) {
+                controller.updateDisplay();
+              }
+            }
+            // Setup particles if count changed
+            simulation.grid.particleSystem.setupParticles();
+          }
+        });
     }
+  });
+
+  // Apply to all folders
+  Object.values(gui.folders).forEach((folder) => {
+    folder.controllers.forEach(addSliderUpdate);
   });
 
   return gui;

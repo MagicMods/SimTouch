@@ -1,14 +1,14 @@
 {
   "sliders": {
-    "particleSlider": 338,
-    "particleSizeSlider": 4,
     "gravitySlider": 0,
     "velocityDampingSlider": 1,
-    "flipRatioSlider": 0.84,
+    "flipRatioSlider": 0,
     "pressureSlider": 40,
     "relaxSlider": 1.9,
+    "particleCountSlider": 338,
+    "particleSizeSlider": 4,
     "collisionDampingSlider": 0.5,
-    "repulsionSlider": 1000,
-    "obstacleSlider": 100
+    "repulsionSlider": 2420,
+    "obstacleSizeSlider": 87
   }
 }
