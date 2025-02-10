@@ -3,41 +3,27 @@ import { FluidSim } from "./simulation/fluidSim.js";
 
 class Main {
   constructor() {
+    // Get canvas and initialize WebGL
     this.canvas = document.getElementById("glCanvas");
     if (!this.canvas) {
       throw new Error("Canvas not found");
     }
 
-    // Initialize renderer and simulation
-    this.renderer = new GridRenderer(this.canvas);
-    this.simulation = new FluidSim(this.canvas);
-
-    console.log("Main constructor complete");
-  }
-
-  async initialize() {
-    try {
-      // Initialize shaders and get program info
-      const programInfo = await this.renderer.initShaders();
-      console.log("Shader initialization complete:", programInfo);
-
-      // Store programInfo for simulation
-      this.simulation.programInfo = programInfo;
-
-      // Start simulation
-      this.simulation.start();
-
-      console.log("Simulation initialized and started");
-    } catch (error) {
-      console.error("Initialization failed:", error);
-      throw error;
+    const gl = this.canvas.getContext("webgl2");
+    if (!gl) {
+      throw new Error("WebGL2 not supported");
     }
+
+    // Initialize simulation
+    this.simulation = new FluidSim(gl, 29, 14);
+    console.log("Main constructor complete");
+
+    // Start animation after initialization
+    this.simulation.start();
   }
 
-  static async create() {
-    const main = new Main();
-    await main.initialize();
-    return main;
+  static create() {
+    return new Main();
   }
 }
 

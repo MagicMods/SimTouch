@@ -1,26 +1,16 @@
 import { ShaderManager } from "../shaders/shaderManager.js";
 
 class BaseRenderer {
-  constructor(canvas) {
-    this.canvas = canvas;
-    this.gl = canvas.getContext("webgl", {
-      antialias: true,
-      alpha: false,
-    });
-
-    if (!this.gl) {
-      throw new Error("WebGL not supported");
+  constructor(gl, width, height) {
+    if (!gl) {
+      throw new Error("WebGL context is required");
     }
-
-    // Store canvas dimensions for reference
-    this.width = canvas.width;
-    this.height = canvas.height;
-
-    // Create vertex buffer
-    this.vertexBuffer = this.gl.createBuffer();
-    if (!this.vertexBuffer) {
-      throw new Error("Failed to create vertex buffer");
+    if (typeof gl.createBuffer !== "function") {
+      throw new Error("Invalid WebGL context");
     }
+    this.gl = gl;
+    this.width = width;
+    this.height = height;
   }
 
   async initShaders() {

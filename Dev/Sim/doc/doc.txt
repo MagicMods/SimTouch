@@ -1,0 +1,12 @@
+├── shaders/
+│   ├── shaderLoader.js     # Loads shader files
+│   ├── shaderManager.js    # Manages shader programs
+│   └── *.{vert,frag}      # Shader source files
+├── renderer/
+│   ├── gridRenderer.js     # Grid visualization
+│   ├── particleRenderer.js # Particle rendering
+│   └── debugRenderer.js    # Debug visualization
+├── simulation/
+│   ├── fluidSim.js        # Main simulation controller
+│   └── fluidSolver.js     # Physics solver
+└── main.js     

@@ -1,32 +1,38 @@
 import { FluidSolver } from "./fluidSolver.js";
 import { GridRenderer } from "../renderer/gridRenderer.js";
-import { DebugRenderer } from "../renderer/debugRenderer.js";
 import { ParticleRenderer } from "../renderer/particleRenderer.js";
 import { ShaderManager } from "../shaders/shaderManager.js";
 
 class FluidSim {
-  constructor(canvas) {
-    // Initialize WebGL context
-    this.gl = canvas.getContext("webgl");
-    if (!this.gl) {
-      throw new Error("WebGL not supported");
+  constructor(gl, width, height) {
+    if (!gl || typeof gl.createBuffer !== "function") {
+      throw new Error("Valid WebGL context required");
     }
 
-    // Initialize components
-    this.solver = new FluidSolver(29, 14);
-    this.canvas = canvas;
-    this.running = false;
+    this.gl = gl;
+    this.width = width;
+    this.height = height;
 
-    // Initialize particles in grid
-    this.solver.initializeParticles(100); // Add initial particles
+    // Initialize solver with numeric values
+    this.solver = new FluidSolver({
+      width: Number(width),
+      height: Number(height),
+      timeStep: 1 / 60,
+    });
 
-    // Create renderers
-    this.gridRenderer = new GridRenderer(canvas);
+    // Initialize renderers with validated context
+    this.gridRenderer = new GridRenderer(this.gl, this.width, this.height);
     this.particleRenderer = new ParticleRenderer(
-      canvas,
-      this.solver.width,
-      this.solver.height
+      this.gl,
+      this.width,
+      this.height
     );
+
+    // Initialize shader manager
+    this.shaderManager = new ShaderManager(this.gl);
+
+    // Start shader initialization
+    this.initialize();
 
     console.log("FluidSim initialized");
   }
@@ -38,9 +44,9 @@ class FluidSim {
       if (!this.programInfo) {
         throw new Error("Failed to initialize shaders");
       }
-      console.log("Shader initialization complete:", this.programInfo);
+      console.log("Shader initialization complete");
 
-      // Start simulation
+      // Start animation
       this.start();
     } catch (error) {
       console.error("Initialization failed:", error);
@@ -60,17 +66,10 @@ class FluidSim {
         this.mouse.prevY = this.mouse.y;
         this.updateMousePosition(e);
 
-        // Calculate velocity from mouse movement
-        const velocityX = (this.mouse.x - this.mouse.prevX) * 0.5;
-        const velocityY = (this.mouse.y - this.mouse.prevY) * 0.5;
-
-        // Apply force to fluid
-        this.solver.applyForce(
-          this.mouse.x,
-          this.mouse.y,
-          velocityX,
-          velocityY
-        );
+        // Calculate and apply force
+        const dx = this.mouse.x - this.mouse.prevX;
+        const dy = this.mouse.y - this.mouse.prevY;
+        this.solver.applyForce(this.mouse.x, this.mouse.y, dx, dy);
       }
     });
 
@@ -85,17 +84,13 @@ class FluidSim {
 
   updateMousePosition(e) {
     const rect = this.canvas.getBoundingClientRect();
-    // Convert to simulation space (0 to 1)
-    this.mouse.x = ((e.clientX - rect.left) / rect.width) * this.solver.width;
-    this.mouse.y = ((e.clientY - rect.top) / rect.height) * this.solver.height;
+    this.mouse.x = ((e.clientX - rect.left) / rect.width) * this.width;
+    this.mouse.y = ((e.clientY - rect.top) / rect.height) * this.height;
   }
 
   start() {
-    if (!this.running) {
-      this.running = true;
-      this.animate();
-      console.log("Simulation started");
-    }
+    requestAnimationFrame(() => this.animate());
+    console.log("Animation started");
   }
 
   stop() {
@@ -104,27 +99,18 @@ class FluidSim {
   }
 
   animate() {
-    if (!this.running) return;
-
-    // Clear canvas
-    this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    this.gl.clearColor(0.1, 0.1, 0.1, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
-    // Draw grid
-    this.gridRenderer.draw(this.programInfo);
-
-    // Update simulation
     this.solver.step();
 
-    // Draw particles
-    if (this.solver.particles && this.solver.particles.length > 0) {
-      this.gl.enable(this.gl.BLEND);
-      this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+    if (this.programInfo) {
+      this.gl.useProgram(this.programInfo.program);
+      this.gridRenderer.draw(this.programInfo);
       this.particleRenderer.drawParticles(
         this.solver.particles,
         this.programInfo
       );
-      this.gl.disable(this.gl.BLEND);
     }
 
     requestAnimationFrame(() => this.animate());

@@ -1,18 +1,31 @@
 import { BaseRenderer } from "./baseRenderer.js";
 
 class ParticleRenderer extends BaseRenderer {
-  constructor(canvas, width, height) {
-    super(canvas);
-    this.gl = canvas.getContext("webgl");
+  constructor(gl, width, height) {
+    if (!gl || typeof gl.createBuffer !== "function") {
+      throw new Error("Valid WebGL context required");
+    }
+    super(gl, width, height);
+    this.gl = gl;
     this.width = width;
     this.height = height;
 
+    this.initBuffers();
+    console.log(
+      "ParticleRenderer initialized with dimensions:",
+      width,
+      "x",
+      height
+    );
+  }
+
+  initBuffers() {
     // Create buffers
     this.vertexBuffer = this.gl.createBuffer();
     this.indexBuffer = this.gl.createBuffer();
 
     // Use brighter blue color for particles
-    this.particleColor = [0.2, 0.6, 1.0, 0.9]; // Bright blue with high alpha
+    this.particleColor = [0.2, 0.6, 1.0, 0.9];
 
     // Make particles slightly larger
     const particleSize = 0.015;
@@ -41,7 +54,6 @@ class ParticleRenderer extends BaseRenderer {
       indices[indexOffset + 5] = vertexOffset + 2;
     }
 
-    // Upload indices
     this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
     this.gl.bufferData(
       this.gl.ELEMENT_ARRAY_BUFFER,
@@ -49,15 +61,7 @@ class ParticleRenderer extends BaseRenderer {
       this.gl.STATIC_DRAW
     );
 
-    // Vertex array for batching
     this.vertexArray = new Float32Array(maxQuads * 8);
-
-    console.log(
-      "ParticleRenderer initialized with dimensions:",
-      width,
-      "x",
-      height
-    );
   }
 
   drawParticles(particles, programInfo) {
@@ -70,42 +74,26 @@ class ParticleRenderer extends BaseRenderer {
     gl.enable(gl.BLEND);
     gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
 
-    // Set bright blue color
+    // Set particle color
     gl.uniform4fv(programInfo.uniforms.color, this.particleColor);
 
-    // Transform all particles
+    // Update vertex positions
     const numParticles = particles.length / 2;
-    let vertexOffset = 0;
-
     for (let i = 0; i < numParticles; i++) {
-      // Scale coordinates to clip space
       const x = (particles[i * 2] / this.width) * 2 - 1;
-      const y = -(particles[i * 2 + 1] / this.height) * 2 + 1;
+      const y = -((particles[i * 2 + 1] / this.height) * 2 - 1);
 
-      // Add vertices for this particle
-      const offset = i * 8;
-      this.vertexArray[offset + 0] = x + this.quadTemplate[0];
-      this.vertexArray[offset + 1] = y + this.quadTemplate[1];
-      this.vertexArray[offset + 2] = x + this.quadTemplate[2];
-      this.vertexArray[offset + 3] = y + this.quadTemplate[3];
-      this.vertexArray[offset + 4] = x + this.quadTemplate[4];
-      this.vertexArray[offset + 5] = y + this.quadTemplate[5];
-      this.vertexArray[offset + 6] = x + this.quadTemplate[6];
-      this.vertexArray[offset + 7] = y + this.quadTemplate[7];
-
-      vertexOffset += 8;
+      const vertexOffset = i * 8;
+      for (let j = 0; j < 4; j++) {
+        this.vertexArray[vertexOffset + j * 2] = x + this.quadTemplate[j * 2];
+        this.vertexArray[vertexOffset + j * 2 + 1] =
+          y + this.quadTemplate[j * 2 + 1];
+      }
     }
 
-    // Upload vertex data
+    // Upload vertices and draw
     gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-    gl.bufferData(
-      gl.ARRAY_BUFFER,
-      this.vertexArray.subarray(0, vertexOffset),
-      gl.DYNAMIC_DRAW
-    );
-
-    // Set attribute
-    gl.enableVertexAttribArray(programInfo.attributes.position);
+    gl.bufferData(gl.ARRAY_BUFFER, this.vertexArray, gl.DYNAMIC_DRAW);
     gl.vertexAttribPointer(
       programInfo.attributes.position,
       2,
@@ -114,14 +102,9 @@ class ParticleRenderer extends BaseRenderer {
       0,
       0
     );
+    gl.enableVertexAttribArray(programInfo.attributes.position);
 
-    // Bind index buffer
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-
-    // Draw all particles in one call
     gl.drawElements(gl.TRIANGLES, numParticles * 6, gl.UNSIGNED_SHORT, 0);
-
-    // Cleanup
     gl.disable(gl.BLEND);
   }
 }
