@@ -3,119 +3,75 @@ import { ShaderLoader } from "./shaderLoader.js";
 class ShaderManager {
   constructor(gl) {
     this.gl = gl;
-    this.programs = new Map();
+    this.programInfo = null;
   }
 
   async init() {
-    try {
-      console.log("Loading vertex shader");
-      const vertexSource = await ShaderLoader.loadShader("shaders/basic.vert");
-      console.log("Vertex shader loaded:", vertexSource);
+    const vertexSource = `
+      attribute vec2 position;
+      void main() {
+        gl_Position = vec4(position, 0.0, 1.0);
+      }
+    `;
 
-      console.log("Loading fragment shader");
-      const fragmentSource = await ShaderLoader.loadShader(
-        "shaders/basic.frag"
-      );
-      console.log("Fragment shader loaded:", fragmentSource);
+    const fragmentSource = `
+      precision mediump float;
+      uniform vec4 color;
+      void main() {
+        gl_FragColor = color;
+      }
+    `;
 
-      console.log("Creating program");
-      const programInfo = this.createProgram(
-        "basic",
-        vertexSource,
-        fragmentSource
-      );
-      console.log("Program created:", programInfo);
-
-      return programInfo;
-    } catch (error) {
-      console.error("ShaderManager init failed:", error);
-      throw error;
-    }
+    this.programInfo = this.createProgram(vertexSource, fragmentSource);
+    return this.programInfo;
   }
 
-  createProgram(name, vertexSource, fragmentSource) {
-    const program = this.gl.createProgram();
+  createProgram(vertexSource, fragmentSource) {
+    const gl = this.gl;
 
-    // Compile shaders
-    const vertexShader = this.compileShader(
-      vertexSource,
-      this.gl.VERTEX_SHADER
-    );
+    // Create shaders
+    const vertexShader = this.compileShader(gl.VERTEX_SHADER, vertexSource);
     const fragmentShader = this.compileShader(
-      fragmentSource,
-      this.gl.FRAGMENT_SHADER
+      gl.FRAGMENT_SHADER,
+      fragmentSource
     );
 
-    // Attach and link
-    this.gl.attachShader(program, vertexShader);
-    this.gl.attachShader(program, fragmentShader);
-    this.gl.linkProgram(program);
+    // Create and link program
+    const program = gl.createProgram();
+    gl.attachShader(program, vertexShader);
+    gl.attachShader(program, fragmentShader);
+    gl.linkProgram(program);
 
-    // Check for linking errors
-    if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
-      const error = this.gl.getProgramInfoLog(program);
-      this.cleanup(program, vertexShader, fragmentShader);
-      throw new Error(`Program linking failed: ${error}`);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      console.error("Program linking failed:", gl.getProgramInfoLog(program));
+      return null;
     }
 
-    // Store program info with debug logging
-    const attributes = this.getAttributes(program);
-    const uniforms = this.getUniforms(program);
-    console.log("Program attributes:", attributes);
-    console.log("Program uniforms:", uniforms);
-
-    const programInfo = {
+    // Get attributes and uniforms
+    return {
       program: program,
-      attributes: attributes,
-      uniforms: uniforms,
+      attributes: {
+        position: gl.getAttribLocation(program, "position"),
+      },
+      uniforms: {
+        color: gl.getUniformLocation(program, "color"),
+      },
     };
-
-    this.programs.set(name, programInfo);
-    return programInfo;
   }
 
-  compileShader(source, type) {
-    const shader = this.gl.createShader(type);
-    this.gl.shaderSource(shader, source);
-    this.gl.compileShader(shader);
+  compileShader(type, source) {
+    const gl = this.gl;
+    const shader = gl.createShader(type);
+    gl.shaderSource(shader, source);
+    gl.compileShader(shader);
 
-    if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
-      const error = this.gl.getShaderInfoLog(shader);
-      this.gl.deleteShader(shader);
-      throw new Error(`Shader compilation failed: ${error}`);
+    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+      console.error("Shader compilation failed:", gl.getShaderInfoLog(shader));
+      gl.deleteShader(shader);
+      return null;
     }
 
     return shader;
-  }
-
-  getAttributes(program) {
-    const attributes = {};
-    const numAttributes = this.gl.getProgramParameter(
-      program,
-      this.gl.ACTIVE_ATTRIBUTES
-    );
-
-    for (let i = 0; i < numAttributes; i++) {
-      const info = this.gl.getActiveAttrib(program, i);
-      attributes[info.name] = this.gl.getAttribLocation(program, info.name);
-    }
-
-    return attributes;
-  }
-
-  getUniforms(program) {
-    const uniforms = {};
-    const numUniforms = this.gl.getProgramParameter(
-      program,
-      this.gl.ACTIVE_UNIFORMS
-    );
-
-    for (let i = 0; i < numUniforms; i++) {
-      const info = this.gl.getActiveUniform(program, i);
-      uniforms[info.name] = this.gl.getUniformLocation(program, info.name);
-    }
-
-    return uniforms;
   }
 
   getProgram(name) {
