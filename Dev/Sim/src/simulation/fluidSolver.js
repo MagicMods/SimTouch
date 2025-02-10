@@ -13,10 +13,14 @@ class FluidSolver {
     this.height = config.height;
     this.timeStep = config.timeStep || 1 / 60;
 
-    // Initialize single test particle
-    this.particles = new Float32Array(2);
-    this.particles[0] = this.width / 2; // x position (center)
-    this.particles[1] = this.height * 0.2; // y position (near top)
+    // Initialize particle arrays (start with 100 particles)
+    this.numParticles = 100;
+    this.particles = new Float32Array(this.numParticles * 2); // x,y positions
+    this.velocitiesX = new Float32Array(this.numParticles);
+    this.velocitiesY = new Float32Array(this.numParticles);
+
+    // Initialize particles in a grid pattern near the top
+    this.initializeParticles();
 
     // Add velocity for the particle
     this.velocityX = 0;
@@ -26,10 +30,12 @@ class FluidSolver {
 
     // Match grid renderer's circular boundary
     const aspectRatio = this.width / this.height;
-    this.boundaryRadius = Math.min(1.0, 1.0 / aspectRatio) * 0.96; // from 0.8 to 0.88
+    this.boundaryRadius = Math.min(1.0, 1.0 / aspectRatio) * 0.96;
 
-    // Scale to grid dimensions
+    // Scale to grid dimensions, accounting for aspect ratio
     this.boundaryRadius *= Math.min(this.width, this.height);
+    this.boundaryRadiusX = this.boundaryRadius * aspectRatio;
+    this.boundaryRadiusY = this.boundaryRadius;
 
     // Center coordinates
     this.centerX = this.width / 2;
@@ -42,37 +48,69 @@ class FluidSolver {
     );
   }
 
+  initializeParticles() {
+    const spacing = 0.5; // Space between particles
+    const startX = this.width * 0.3;
+    const startY = this.height * 0.2;
+
+    for (let i = 0; i < this.numParticles; i++) {
+      const row = Math.floor(i / 10);
+      const col = i % 10;
+
+      this.particles[i * 2] = startX + col * spacing; // x position
+      this.particles[i * 2 + 1] = startY + row * spacing; // y position
+      this.velocitiesX[i] = 0;
+      this.velocitiesY[i] = 0;
+    }
+  }
+
   step() {
-    // Apply gravity and update position
-    this.velocityY += this.gravity * this.timeStep;
+    // Update all particles
+    for (let i = 0; i < this.numParticles; i++) {
+      // Apply gravity
+      this.velocitiesY[i] += this.gravity * this.timeStep;
 
-    // Update position
-    const newX = this.particles[0] + this.velocityX * this.timeStep;
-    const newY = this.particles[1] + this.velocityY * this.timeStep;
+      // Update position
+      const newX = this.particles[i * 2] + this.velocitiesX[i] * this.timeStep;
+      const newY =
+        this.particles[i * 2 + 1] + this.velocitiesY[i] * this.timeStep;
 
-    // Check boundary collision
-    const dx = newX - this.centerX;
-    const dy = newY - this.centerY;
-    const distSq = dx * dx + dy * dy;
+      // Check boundary collision using elliptical boundary
+      const dx = (newX - this.centerX) / this.boundaryRadiusX;
+      const dy = (newY - this.centerY) / this.boundaryRadiusY;
+      const distSq = dx * dx + dy * dy;
 
-    if (distSq > this.boundaryRadius * this.boundaryRadius) {
-      // Collision response
-      const dist = Math.sqrt(distSq);
-      const nx = dx / dist; // Normal x
-      const ny = dy / dist; // Normal y
+      if (distSq > 1.0) {
+        // Using normalized distance
+        // Collision response
+        const dist = Math.sqrt(distSq);
+        const nx = dx / dist; // Normalized normal X
+        const ny = dy / dist; // Normalized normal Y
 
-      // Reflect velocity
-      const dot = this.velocityX * nx + this.velocityY * ny;
-      this.velocityX -= 2 * dot * nx * this.restitution;
-      this.velocityY -= 2 * dot * ny * this.restitution;
+        // Scale normals back to world space
+        const worldNx = nx * this.boundaryRadiusX;
+        const worldNy = ny * this.boundaryRadiusY;
+        const worldNormLen = Math.sqrt(worldNx * worldNx + worldNy * worldNy);
 
-      // Place particle on boundary
-      this.particles[0] = this.centerX + nx * this.boundaryRadius;
-      this.particles[1] = this.centerY + ny * this.boundaryRadius;
-    } else {
-      // No collision, update position
-      this.particles[0] = newX;
-      this.particles[1] = newY;
+        // Normalize world space normal
+        const finalNx = worldNx / worldNormLen;
+        const finalNy = worldNy / worldNormLen;
+
+        // Reflect velocity
+        const dot =
+          this.velocitiesX[i] * finalNx + this.velocitiesY[i] * finalNy;
+        this.velocitiesX[i] -= 2 * dot * finalNx * this.restitution;
+        this.velocitiesY[i] -= 2 * dot * finalNy * this.restitution;
+
+        // Place particle on boundary
+        this.particles[i * 2] = this.centerX + finalNx * this.boundaryRadiusX;
+        this.particles[i * 2 + 1] =
+          this.centerY + finalNy * this.boundaryRadiusY;
+      } else {
+        // No collision, update position
+        this.particles[i * 2] = newX;
+        this.particles[i * 2 + 1] = newY;
+      }
     }
   }
 }
