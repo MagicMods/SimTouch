@@ -1,5 +1,6 @@
 import { GridRenderer } from "./renderer/gridRenderer.js";
 import { FluidSim } from "./simulation/fluidSim.js";
+import { UI } from "./ui/ui.js";
 
 class Main {
   constructor() {
@@ -17,6 +18,9 @@ class Main {
     // Pass canvas reference to FluidSim
     this.simulation = new FluidSim(gl, this.canvas, 29, 14);
     console.log("Main constructor complete");
+
+    // Initialize UI after simulation
+    this.ui = new UI(this.simulation);
 
     // Start animation after initialization
     this.simulation.start();
