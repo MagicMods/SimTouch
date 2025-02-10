@@ -106,6 +106,7 @@ class FluidSim {
 
     if (this.programInfo) {
       this.gl.useProgram(this.programInfo.program);
+      this.gridRenderer.boundaryRadius = this.solver.boundaryRadius;
       this.gridRenderer.draw(this.programInfo);
       this.particleRenderer.drawParticles(
         this.solver.particles,

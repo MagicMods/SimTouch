@@ -1,8 +1,14 @@
 import { BaseRenderer } from "./baseRenderer.js";
 
 class GridRenderer extends BaseRenderer {
-  constructor(canvas) {
-    super(canvas);
+  constructor(gl, width, height) {
+    super(gl, width, height);
+
+    // Calculate aspect-ratio independent radius, 10% larger
+    const aspectRatio = this.gl.canvas.width / this.gl.canvas.height;
+    this.boundaryRadius = Math.min(1.0, 1.0 / aspectRatio) * 0.96; // from 0.8 to 0.88
+
+    this.aspectRatio = width / height;
 
     // Grid layout parameters
     this.rowCounts = [13, 19, 23, 25, 27, 29, 29, 29, 29, 27, 25, 23, 19, 13];
@@ -12,6 +18,7 @@ class GridRenderer extends BaseRenderer {
     // Create buffer
     this.vertexBuffer = this.gl.createBuffer();
     this.createGridGeometry();
+    this.initBoundary();
   }
 
   createGridGeometry() {
@@ -67,6 +74,57 @@ class GridRenderer extends BaseRenderer {
     );
   }
 
+  initBoundary() {
+    this.boundaryBuffer = this.gl.createBuffer();
+    const segments = 32;
+    const vertices = new Float32Array(segments * 2);
+
+    // Generate circle points for perfect circle
+    for (let i = 0; i < segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      vertices[i * 2] = Math.cos(angle) * this.boundaryRadius;
+      vertices[i * 2 + 1] = Math.sin(angle) * this.boundaryRadius;
+    }
+
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.boundaryBuffer);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
+    this.boundaryVertexCount = segments;
+  }
+
+  drawBoundary(programInfo, radius) {
+    const gl = this.gl;
+    const segments = 32;
+    const vertices = new Float32Array(segments * 2);
+
+    // Generate circle vertices
+    for (let i = 0; i < segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      vertices[i * 2] = Math.cos(angle) * radius * 2; // Scale for visibility
+      vertices[i * 2 + 1] = Math.sin(angle) * radius * 2; // Scale for visibility
+    }
+
+    // Create and bind buffer
+    const boundaryBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, boundaryBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+    // Set line properties
+    gl.lineWidth(2.0);
+    gl.uniform4fv(programInfo.uniforms.color, [1.0, 1.0, 1.0, 1.0]); // White color
+
+    // Draw boundary
+    gl.vertexAttribPointer(
+      programInfo.attributes.position,
+      2,
+      gl.FLOAT,
+      false,
+      0,
+      0
+    );
+    gl.enableVertexAttribArray(programInfo.attributes.position);
+    gl.drawArrays(gl.LINE_LOOP, 0, segments);
+  }
+
   draw(programInfo) {
     if (!programInfo) return;
 
@@ -88,6 +146,24 @@ class GridRenderer extends BaseRenderer {
     gl.uniform4fv(programInfo.uniforms.color, [0.3, 0.3, 0.3, 1.0]);
 
     gl.drawArrays(gl.TRIANGLES, 0, this.gridVertices.length / 2);
+
+    // Draw boundary after grid
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.boundaryBuffer);
+    this.gl.vertexAttribPointer(
+      programInfo.attributes.position,
+      2,
+      this.gl.FLOAT,
+      false,
+      0,
+      0
+    );
+
+    // Set white color and double line width
+    this.gl.uniform4fv(programInfo.uniforms.color, [1.0, 1.0, 1.0, 1.0]);
+    this.gl.lineWidth(2.0);
+
+    // Draw circle
+    this.gl.drawArrays(this.gl.LINE_LOOP, 0, this.boundaryVertexCount);
   }
 }
 
