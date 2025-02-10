@@ -14,8 +14,8 @@ class Main {
       throw new Error("WebGL2 not supported");
     }
 
-    // Initialize simulation
-    this.simulation = new FluidSim(gl, 29, 14);
+    // Pass canvas reference to FluidSim
+    this.simulation = new FluidSim(gl, this.canvas, 29, 14);
     console.log("Main constructor complete");
 
     // Start animation after initialization

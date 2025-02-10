@@ -113,6 +113,28 @@ class FluidSolver {
       }
     }
   }
+
+  applyForce(mouseX, mouseY, forceX, forceY) {
+    const radius = 4.0; // Increased radius of effect
+    const strength = 20.0; // Increased force strength
+
+    for (let i = 0; i < this.numParticles; i++) {
+      const dx = this.particles[i * 2] - mouseX;
+      const dy = this.particles[i * 2 + 1] - mouseY;
+      const distSq = dx * dx + dy * dy;
+
+      if (distSq < radius * radius) {
+        // Scale force by distance (stronger near mouse)
+        const scale = 1.0 - Math.sqrt(distSq) / radius;
+        this.velocitiesX[i] += forceX * strength * scale;
+        this.velocitiesY[i] += forceY * strength * scale;
+
+        // console.log(
+        //   `Force applied to particle ${i}: vx=${this.velocitiesX[i]}, vy=${this.velocitiesY[i]}`
+        // );
+      }
+    }
+  }
 }
 
 export { FluidSolver };

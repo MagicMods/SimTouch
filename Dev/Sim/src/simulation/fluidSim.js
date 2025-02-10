@@ -4,12 +4,13 @@ import { ParticleRenderer } from "../renderer/particleRenderer.js";
 import { ShaderManager } from "../shaders/shaderManager.js";
 
 class FluidSim {
-  constructor(gl, width, height) {
+  constructor(gl, canvas, width, height) {
     if (!gl || typeof gl.createBuffer !== "function") {
       throw new Error("Valid WebGL context required");
     }
 
     this.gl = gl;
+    this.canvas = canvas;
     this.width = width;
     this.height = height;
 
@@ -34,6 +35,11 @@ class FluidSim {
     // Start shader initialization
     this.initialize();
 
+    // Initialize mouse state
+    this.mouse = { down: false, x: 0, y: 0, prevX: 0, prevY: 0 };
+    this.canvas = canvas;
+    this.setupMouseHandlers();
+
     console.log("FluidSim initialized");
   }
 
@@ -55,37 +61,53 @@ class FluidSim {
   }
 
   setupMouseHandlers() {
+    if (!this.canvas) {
+      throw new Error("Canvas reference required for mouse handlers");
+    }
+
     this.canvas.addEventListener("mousedown", (e) => {
+      const pos = this.getMousePosition(e);
       this.mouse.down = true;
-      this.updateMousePosition(e);
+      this.mouse.x = pos.x;
+      this.mouse.y = pos.y;
+      this.mouse.prevX = pos.x;
+      this.mouse.prevY = pos.y;
+      console.log("Mouse down:", pos);
     });
 
     this.canvas.addEventListener("mousemove", (e) => {
-      if (this.mouse.down) {
-        this.mouse.prevX = this.mouse.x;
-        this.mouse.prevY = this.mouse.y;
-        this.updateMousePosition(e);
+      if (!this.mouse.down) return;
 
-        // Calculate and apply force
-        const dx = this.mouse.x - this.mouse.prevX;
-        const dy = this.mouse.y - this.mouse.prevY;
-        this.solver.applyForce(this.mouse.x, this.mouse.y, dx, dy);
+      const pos = this.getMousePosition(e);
+      const dx = pos.x - this.mouse.prevX;
+      const dy = pos.y - this.mouse.prevY;
+
+      if (dx !== 0 || dy !== 0) {
+        console.log("Mouse force:", { x: pos.x, y: pos.y, dx, dy });
+        this.solver.applyForce(pos.x, pos.y, dx, dy);
       }
+
+      this.mouse.prevX = pos.x;
+      this.mouse.prevY = pos.y;
     });
 
     this.canvas.addEventListener("mouseup", () => {
+      console.log("Mouse up");
       this.mouse.down = false;
     });
 
     this.canvas.addEventListener("mouseleave", () => {
       this.mouse.down = false;
     });
+
+    console.log("Mouse handlers initialized");
   }
 
-  updateMousePosition(e) {
+  getMousePosition(e) {
     const rect = this.canvas.getBoundingClientRect();
-    this.mouse.x = ((e.clientX - rect.left) / rect.width) * this.width;
-    this.mouse.y = ((e.clientY - rect.top) / rect.height) * this.height;
+    const x = ((e.clientX - rect.left) / rect.width) * this.width;
+    const y = ((e.clientY - rect.top) / rect.height) * this.height;
+    return { x, y };
   }
 
   start() {
