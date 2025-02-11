@@ -14,26 +14,22 @@ class FluidSim {
     this.width = width;
     this.height = height;
 
+    // Create shader manager first
+    this.shaderManager = new ShaderManager(gl);
+    const program = this.shaderManager.init();
+    if (!program) {
+      throw new Error("Failed to initialize shaders");
+    }
+
+    // Create renderers with shader manager
+    this.gridRenderer = new GridRenderer(gl, this.shaderManager);
+
     // Initialize solver with numeric values
     this.solver = new FluidSolver({
       width: Number(width),
       height: Number(height),
       timeStep: 1 / 60,
     });
-
-    // Initialize renderers with validated context
-    this.gridRenderer = new GridRenderer(this.gl, this.width, this.height);
-    this.particleRenderer = new ParticleRenderer(
-      this.gl,
-      this.width,
-      this.height
-    );
-
-    // Initialize shader manager
-    this.shaderManager = new ShaderManager(this.gl);
-
-    // Start shader initialization
-    this.initialize();
 
     // Initialize mouse state
     this.mouse = { down: false, x: 0, y: 0, prevX: 0, prevY: 0 };
@@ -44,6 +40,13 @@ class FluidSim {
   }
 
   async initialize() {
+    this.shaderManager = new ShaderManager(this.gl);
+    await this.shaderManager.init();
+
+    // Create renderers with shader manager
+    this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
+    this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager);
+
     try {
       // Initialize shaders
       this.programInfo = await this.shaderManager.init();
@@ -121,7 +124,8 @@ class FluidSim {
   }
 
   animate() {
-    this.gl.clearColor(0.1, 0.1, 0.1, 1.0);
+    // Clear canvas first
+    this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
     this.solver.step();
@@ -135,6 +139,9 @@ class FluidSim {
         this.programInfo
       );
     }
+
+    // Draw grid
+    this.gridRenderer.draw();
 
     requestAnimationFrame(() => this.animate());
   }

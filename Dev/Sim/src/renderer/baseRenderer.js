@@ -1,7 +1,7 @@
 import { ShaderManager } from "../shaders/shaderManager.js";
 
 class BaseRenderer {
-  constructor(gl, width, height) {
+  constructor(gl, shaderManager) {
     if (!gl) {
       throw new Error("WebGL context is required");
     }
@@ -9,14 +9,35 @@ class BaseRenderer {
       throw new Error("Invalid WebGL context");
     }
     this.gl = gl;
-    this.width = width;
-    this.height = height;
+    this.shaderManager = shaderManager;
+    this.vertexBuffer = gl.createBuffer();
   }
 
   async initShaders() {
     const shaderManager = new ShaderManager(this.gl);
     this.programInfo = await shaderManager.init();
     return this.programInfo;
+  }
+
+  setupShader(name) {
+    const program = this.shaderManager.use(name);
+    if (!program) {
+      console.error("Failed to set up shader program:", name);
+      return null;
+    }
+    return program;
+  }
+
+  setVertexData(data) {
+    const gl = this.gl;
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+  }
+
+  bindAttribute(location, size) {
+    const gl = this.gl;
+    gl.enableVertexAttribArray(location);
+    gl.vertexAttribPointer(location, size, gl.FLOAT, false, 0, 0);
   }
 
   drawShape(vertices, color, programInfo) {
