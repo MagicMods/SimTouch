@@ -2,6 +2,7 @@ import { FluidSolver } from "./fluidSolver.js";
 import { GridRenderer } from "../renderer/gridRenderer.js";
 import { ParticleRenderer } from "../renderer/particleRenderer.js";
 import { ShaderManager } from "../shaders/shaderManager.js";
+import { StateManager } from "../util/stateManager.js";
 
 class FluidSim {
   constructor(gl, canvas, numX, numY) {
@@ -30,6 +31,9 @@ class FluidSim {
       prevX: 0,
       prevY: 0,
     };
+
+    // Add state manager
+    this.stateManager = new StateManager();
   }
 
   async initialize() {
@@ -144,20 +148,21 @@ class FluidSim {
   }
 
   animate() {
-    // Clear canvas
+    this.stateManager.startFrame();
+
+    // Clear and setup frame
     this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
-    // Draw grid
-    if (this.gridRenderer) {
-      this.gridRenderer.draw();
-    }
+    // Draw grid and boundary
+    this.gridRenderer.draw();
 
     // Draw particles
-    if (this.particleRenderer && this.particles.length > 0) {
+    if (this.particles && this.particles.length > 0) {
       this.particleRenderer.draw(this.particles);
     }
 
+    this.stateManager.endFrame();
     requestAnimationFrame(() => this.animate());
   }
 

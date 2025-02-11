@@ -7,39 +7,29 @@ class Main {
     this.canvas = document.getElementById("glCanvas");
     if (!this.canvas) throw new Error("Canvas not found");
 
-    this.gl = this.canvas.getContext("webgl2");
-    if (!this.gl) throw new Error("WebGL2 not supported");
+    const gl = this.canvas.getContext("webgl2");
+    if (!gl) throw new Error("WebGL2 not supported");
 
-    // Ensure numeric dimensions
-    const width = 29;
-    const height = 14;
-
-    this.simulation = new FluidSim(this.gl, this.canvas, width, height);
+    this.simulation = new FluidSim(gl, this.canvas, 29, 14);
     console.log("Main constructor complete");
   }
 
-  async create() {
+  async init() {
     try {
-      // Initialize simulation first
       await this.simulation.initialize();
-
-      // Create UI after simulation is initialized
       this.ui = new UI(this.simulation);
-
-      // Start animation loop only after everything is ready
       this.simulation.start();
-
-      return this;
     } catch (error) {
-      console.error("Failed to create simulation:", error);
+      console.error("Failed to initialize:", error);
       throw error;
     }
   }
 
-  static async init() {
+  static async create() {
     const main = new Main();
-    return main.create();
+    await main.init();
+    return main;
   }
 }
 
-window.onload = () => Main.init();
+window.onload = () => Main.create().catch(console.error);

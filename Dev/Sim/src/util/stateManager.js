@@ -1,12 +1,37 @@
 class StateManager {
   constructor() {
     this.metrics = {
-      _lastUpdateTime: performance.now(),
-      _frameTime: 0,
-      _totalSimTime: 0,
-      _pressureSolveTime: 0,
-      _particleAdvectTime: 0,
-      _particleCount: 0,
+      frameCount: 0,
+      lastTime: performance.now(),
+      fps: 0,
+    };
+  }
+
+  // Basic timing methods
+  startFrame() {
+    this.metrics.frameStart = performance.now();
+  }
+
+  endFrame() {
+    const now = performance.now();
+    const dt = now - this.metrics.lastTime;
+    this.metrics.lastTime = now;
+    this.metrics.fps = Math.round(1000 / dt);
+    this.metrics.frameCount++;
+  }
+
+  getMetrics() {
+    return {
+      fps: this.metrics.fps,
+      frameCount: this.metrics.frameCount,
+    };
+  }
+
+  reset() {
+    this.metrics = {
+      frameCount: 0,
+      lastTime: performance.now(),
+      fps: 0,
     };
   }
 
@@ -21,7 +46,7 @@ class StateManager {
     if (start) {
       this.metrics[`_${metric}Time`] = end - start;
     }
-    this.metrics._lastUpdateTime = end;
+    this.metrics.lastTime = end;
   }
 
   getTimingMetrics() {
@@ -88,28 +113,13 @@ class StateManager {
 
   // Performance metrics
   getPerformanceMetrics(grid) {
-    if (!grid?.particleSystem) {
-      console.warn("Grid or particle system not initialized");
-      return {};
-    }
-
+    // Basic metrics only
     const now = performance.now();
+    const dt = now - this.metrics.lastTime;
+    this.metrics.lastTime = now;
+
     return {
-      fps: 1000 / (now - this.metrics._lastUpdateTime),
-      frameTime: this.metrics._frameTime,
-      totalSimTime: this.metrics._totalSimTime,
-      pressureSolveTime: this.metrics._pressureSolveTime,
-      particleAdvectTime: this.metrics._particleAdvectTime,
-      gridCells: grid.numX * grid.numY,
-      activeParticles: grid.particleSystem?.getParticles()?.length || 0,
-      pressureIterations: grid.numPressureIters,
-      memoryUsage:
-        (((grid.u?.length || 0) +
-          (grid.v?.length || 0) +
-          (grid.p?.length || 0)) *
-          4) /
-        1024,
-      particleCount: this.metrics._particleCount,
+      fps: Math.round(1000 / dt),
     };
   }
 
@@ -130,7 +140,7 @@ class StateManager {
 
   resetMetrics() {
     Object.keys(this.metrics).forEach((key) => {
-      this.metrics[key] = key === "_lastUpdateTime" ? performance.now() : 0;
+      this.metrics[key] = key === "lastTime" ? performance.now() : 0;
     });
   }
 }
