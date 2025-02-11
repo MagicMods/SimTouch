@@ -47,7 +47,7 @@ class ShaderManager {
     if (this.currentProgram !== program.program) {
       this.gl.useProgram(program.program);
       this.currentProgram = program.program;
-      console.log(`Using shader program: ${name}`);
+      // console.log(`Using shader program: ${name}`);
     }
     return program;
   }
@@ -136,52 +136,48 @@ class ShaderManager {
     });
     this.programs.clear();
   }
-}
 
-// Define shaders as static property after class definition
-ShaderManager.SHADERS = {
-  basic: {
-    vert: `
-        attribute vec2 position;
-        uniform float pointSize;
-        
-        void main() {
-          gl_Position = vec4(position, 0.0, 1.0);
-          gl_PointSize = pointSize;
-        }
-      `,
-    frag: `
-        precision mediump float;
-        uniform vec4 color;
-        
-        void main() {
-          gl_FragColor = color;
-        }
-      `,
-  },
-  particles: {
-    vert: `
-        attribute vec2 position;
-        
-        void main() {
-          gl_Position = vec4(position, 0.0, 1.0);
-          gl_PointSize = 4.0;
-        }
-      `,
-    frag: `
-        precision mediump float;
-        uniform vec4 color;
-        
-        void main() {
-          vec2 coord = gl_PointCoord * 2.0 - 1.0;
-          float r = dot(coord, coord);
-          if (r > 1.0) {
-            discard;
+  static SHADERS = {
+    basic: {
+      vert: `
+          attribute vec2 position;
+          void main() {
+              gl_Position = vec4(position, 0.0, 1.0);
           }
-          gl_FragColor = color;
-        }
-      `,
-  },
-};
+        `,
+      frag: `
+          precision mediump float;
+          uniform vec4 color;
+          
+          void main() {
+            gl_FragColor = color;
+          }
+        `,
+    },
+    particles: {
+      vert: `
+          attribute vec2 position;
+          uniform float pointSize;
+          void main() {
+            gl_Position = vec4(position, 0.0, 1.0);
+            gl_PointSize = pointSize;
+          }
+        `,
+      frag: `
+          precision mediump float;
+          uniform vec4 color;
+          
+          void main() {
+            vec2 coord = gl_PointCoord * 2.0 - 1.0;
+            float r = dot(coord, coord);
+            if (r > 1.0) {
+              discard;
+            }
+            gl_FragColor = color;
+          }
+        `,
+    },
+  };
+}
 
 export { ShaderManager };

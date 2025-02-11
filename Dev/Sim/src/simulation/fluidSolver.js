@@ -1,17 +1,20 @@
 class FluidSolver {
-  constructor(config) {
-    if (
-      !config ||
-      typeof config.width !== "number" ||
-      typeof config.height !== "number"
-    ) {
+  constructor({ width, height, timeStep = 1 / 60 }) {
+    // Validate dimensions
+    const gridWidth = Math.floor(Number(width));
+    const gridHeight = Math.floor(Number(height));
+
+    if (!Number.isFinite(gridWidth) || !Number.isFinite(gridHeight)) {
       throw new Error("FluidSolver requires numeric width and height");
     }
 
-    // Grid dimensions
-    this.width = config.width;
-    this.height = config.height;
-    this.timeStep = config.timeStep || 1 / 60;
+    if (gridWidth <= 0 || gridHeight <= 0) {
+      throw new Error("FluidSolver dimensions must be positive");
+    }
+
+    this.width = gridWidth;
+    this.height = gridHeight;
+    this.timeStep = timeStep;
 
     // Initialize particle arrays (start with 100 particles)
     this.numParticles = 100;

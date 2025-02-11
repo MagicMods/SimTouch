@@ -4,63 +4,78 @@ import { ParticleRenderer } from "../renderer/particleRenderer.js";
 import { ShaderManager } from "../shaders/shaderManager.js";
 
 class FluidSim {
-  constructor(gl, canvas, width, height) {
+  constructor(gl, canvas, numX, numY) {
     if (!gl || typeof gl.createBuffer !== "function") {
       throw new Error("Valid WebGL context required");
     }
 
     this.gl = gl;
     this.canvas = canvas;
-    this.width = width;
-    this.height = height;
+    this.width = Math.floor(Number(numX));
+    this.height = Math.floor(Number(numY));
 
-    // Create shader manager first
-    this.shaderManager = new ShaderManager(gl);
-    const program = this.shaderManager.init();
-    if (!program) {
-      throw new Error("Failed to initialize shaders");
+    if (this.width <= 0 || this.height <= 0) {
+      throw new Error("Invalid dimensions");
     }
 
-    // Create renderers with shader manager
-    this.gridRenderer = new GridRenderer(gl, this.shaderManager);
-
-    // Initialize solver with numeric values
-    this.solver = new FluidSolver({
-      width: Number(width),
-      height: Number(height),
-      timeStep: 1 / 60,
-    });
+    // Initialize arrays
+    this.particleCount = 100;
+    this.particles = [];
 
     // Initialize mouse state
-    this.mouse = { down: false, x: 0, y: 0, prevX: 0, prevY: 0 };
-    this.canvas = canvas;
-    this.setupMouseHandlers();
-
-    console.log("FluidSim initialized");
+    this.mouse = {
+      down: false,
+      x: 0,
+      y: 0,
+      prevX: 0,
+      prevY: 0,
+    };
   }
 
   async initialize() {
-    this.shaderManager = new ShaderManager(this.gl);
-    await this.shaderManager.init();
-
-    // Create renderers with shader manager
-    this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
-    this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager);
-
     try {
-      // Initialize shaders
-      this.programInfo = await this.shaderManager.init();
-      if (!this.programInfo) {
-        throw new Error("Failed to initialize shaders");
-      }
-      console.log("Shader initialization complete");
+      // Initialize shader manager
+      this.shaderManager = new ShaderManager(this.gl);
+      await this.shaderManager.init();
 
-      // Start animation
-      this.start();
+      // Create renderers
+      this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
+      this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager);
+
+      // Initialize fluid solver with config object
+      this.fluidSolver = new FluidSolver({
+        width: this.width,
+        height: this.height,
+        timeStep: 1 / 60,
+      });
+
+      // Add initial particles
+      this.addInitialParticles();
+
+      console.log("FluidSim initialized");
+      return true;
     } catch (error) {
-      console.error("Initialization failed:", error);
+      console.error("FluidSim initialization failed:", error);
       throw error;
     }
+  }
+
+  addInitialParticles() {
+    const numParticles = 100;
+    const spacing = 0.1;
+    const startX = -0.4;
+    const startY = -0.4;
+
+    for (let i = 0; i < 10; i++) {
+      for (let j = 0; j < 10; j++) {
+        const x = startX + i * spacing;
+        const y = startY + j * spacing;
+        this.particles.push({ x, y });
+      }
+    }
+    console.log(
+      `Created ${this.particles.length} initial particles in grid pattern`
+    );
   }
 
   setupMouseHandlers() {
@@ -114,8 +129,13 @@ class FluidSim {
   }
 
   start() {
-    requestAnimationFrame(() => this.animate());
-    console.log("Animation started");
+    if (!this.gridRenderer || !this.particleRenderer) {
+      console.error("Renderers not initialized - Call initialize() first");
+      return false;
+    }
+    console.log("Animation starting with initialized renderers");
+    this.animate();
+    return true;
   }
 
   stop() {
@@ -124,24 +144,19 @@ class FluidSim {
   }
 
   animate() {
-    // Clear canvas first
+    // Clear canvas
     this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
-    this.solver.step();
-
-    if (this.programInfo) {
-      this.gl.useProgram(this.programInfo.program);
-      this.gridRenderer.boundaryRadius = this.solver.boundaryRadius;
-      this.gridRenderer.draw(this.programInfo);
-      this.particleRenderer.drawParticles(
-        this.solver.particles,
-        this.programInfo
-      );
+    // Draw grid
+    if (this.gridRenderer) {
+      this.gridRenderer.draw();
     }
 
-    // Draw grid
-    this.gridRenderer.draw();
+    // Draw particles
+    if (this.particleRenderer && this.particles.length > 0) {
+      this.particleRenderer.draw(this.particles);
+    }
 
     requestAnimationFrame(() => this.animate());
   }

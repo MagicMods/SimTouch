@@ -3,6 +3,8 @@ import { BaseRenderer } from "./baseRenderer.js";
 class GridRenderer extends BaseRenderer {
   constructor(gl, shaderManager) {
     super(gl, shaderManager);
+    this.vertexBuffer = gl.createBuffer();
+    this.boundaryBuffer = gl.createBuffer();
 
     // Grid layout parameters
     this.rowCounts = [13, 19, 23, 25, 27, 29, 29, 29, 29, 27, 25, 23, 19, 13];
@@ -18,7 +20,11 @@ class GridRenderer extends BaseRenderer {
     this.stepX = 8 * scale;
     this.stepY = 17 * scale;
 
+    // Create grid geometry
     this.createGridGeometry();
+    // Create boundary geometry
+    this.createBoundaryGeometry();
+
     console.log("GridRenderer initialized with scale:", scale);
   }
 
@@ -77,65 +83,30 @@ class GridRenderer extends BaseRenderer {
     );
   }
 
-  initBoundary() {
-    this.boundaryBuffer = this.gl.createBuffer();
-    const segments = 32;
-    const vertices = new Float32Array(segments * 2);
-
-    // Generate circle points for perfect circle
-    for (let i = 0; i < segments; i++) {
-      const angle = (i / segments) * Math.PI * 2;
-      vertices[i * 2] = Math.cos(angle) * this.boundaryRadius;
-      vertices[i * 2 + 1] = Math.sin(angle) * this.boundaryRadius;
-    }
-
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.boundaryBuffer);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
-    this.boundaryVertexCount = segments;
-  }
-
-  drawBoundary(programInfo, radius) {
-    const gl = this.gl;
-    const segments = 32;
+  createBoundaryGeometry() {
+    const segments = 64; // More segments for smoother circle
     const vertices = new Float32Array(segments * 2);
 
     // Generate circle vertices
     for (let i = 0; i < segments; i++) {
       const angle = (i / segments) * Math.PI * 2;
-      vertices[i * 2] = Math.cos(angle) * radius * 2; // Scale for visibility
-      vertices[i * 2 + 1] = Math.sin(angle) * radius * 2; // Scale for visibility
+      vertices[i * 2] = Math.cos(angle) * 0.95; // x, slightly smaller than 1.0
+      vertices[i * 2 + 1] = Math.sin(angle) * 0.95; // y, slightly smaller than 1.0
     }
 
-    // Create and bind buffer
-    const boundaryBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, boundaryBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.boundaryBuffer);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
+    this.boundaryVertexCount = segments;
 
-    // Set line properties
-    gl.lineWidth(2.0);
-    gl.uniform4fv(programInfo.uniforms.color, [1.0, 1.0, 1.0, 1.0]); // White color
-
-    // Draw boundary
-    gl.vertexAttribPointer(
-      programInfo.attributes.position,
-      2,
-      gl.FLOAT,
-      false,
-      0,
-      0
-    );
-    gl.enableVertexAttribArray(programInfo.attributes.position);
-    gl.drawArrays(gl.LINE_LOOP, 0, segments);
+    console.log("Boundary geometry created:", segments, "vertices");
   }
 
   draw() {
     const program = this.setupShader("basic");
     if (!program) return;
 
-    // Bind vertex buffer
+    // Draw grid
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
-
-    // Set up position attribute
     this.gl.enableVertexAttribArray(program.attributes.position);
     this.gl.vertexAttribPointer(
       program.attributes.position,
@@ -145,14 +116,21 @@ class GridRenderer extends BaseRenderer {
       0,
       0
     );
-
-    // Set color uniform
     this.gl.uniform4fv(program.uniforms.color, [0.2, 0.2, 0.2, 1.0]);
-
-    // Draw triangles
     this.gl.drawArrays(this.gl.TRIANGLES, 0, this.gridVertices.length / 2);
 
-    console.log("Grid drawn:", this.gridVertices.length / 2, "vertices");
+    // Draw boundary
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.boundaryBuffer);
+    this.gl.vertexAttribPointer(
+      program.attributes.position,
+      2,
+      this.gl.FLOAT,
+      false,
+      0,
+      0
+    );
+    this.gl.uniform4fv(program.uniforms.color, [0.4, 0.4, 0.4, 1.0]);
+    this.gl.drawArrays(this.gl.LINE_LOOP, 0, this.boundaryVertexCount);
   }
 }
 

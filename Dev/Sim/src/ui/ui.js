@@ -1,56 +1,44 @@
 import GUI from "lil-gui";
 
 class UI {
-  constructor(fluidSim) {
-    this.sim = fluidSim;
-    this.gui = new GUI();
-
+  constructor(simulation) {
+    if (!simulation) {
+      throw new Error("Simulation instance required");
+    }
+    this.sim = simulation;
     this.stats = {
       fps: 0,
-      particles: this.sim.solver.numParticles,
+      frameTime: 0,
+      lastTime: performance.now(),
     };
 
+    this.gui = new GUI();
     this.initGUI();
     this.startStatsUpdate();
+
+    console.log("UI initialized");
   }
 
   initGUI() {
-    // Stats folder
-    const statsFolder = this.gui.addFolder("Stats");
-    statsFolder.add(this.stats, "fps").listen().name("FPS");
-    statsFolder.add(this.stats, "particles").name("Particles");
-
-    // Simulation Controls
+    // Simulation controls
     const simFolder = this.gui.addFolder("Simulation");
-    simFolder.add(this.sim.solver, "gravity", -10, 10, 0.1).name("Gravity");
-    simFolder
-      .add(this.sim.solver, "timeStep", 0.001, 0.05, 0.001)
-      .name("Time Step");
-    simFolder
-      .add(this.sim.solver, "velocityDamping", 0.9, 1, 0.001)
-      .name("Velocity Damping");
-    simFolder
-      .add(this.sim.solver, "boundaryDamping", 0, 1, 0.05)
-      .name("Boundary Damping");
+    simFolder.add(this.sim, "particleCount", 0, 500, 10).name("Particle Count");
 
-    // Particle Controls
+    // Particle appearance
     const particleFolder = this.gui.addFolder("Particles");
     particleFolder
-      .add(this.sim.solver, "particleRadius", 0.1, 2, 0.1)
+      .add(this.sim.particleRenderer.config, "size", 1, 30, 0.5)
       .name("Size");
-    particleFolder
-      .add(this.sim.solver, "particleMass", 0.1, 5, 0.1)
-      .name("Mass");
-    particleFolder
-      .add(this.sim.solver, "particleStiffness", 0, 1, 0.05)
-      .name("Stiffness");
-    particleFolder
-      .add(this.sim.solver, "restitution", 0, 1, 0.05)
-      .name("Restitution");
 
-    // Open folders by default
-    statsFolder.open();
-    simFolder.open();
+    const color = particleFolder
+      .addColor(this.sim.particleRenderer.config, "color")
+      .name("Color");
+
+    // Stats folder
+    const statsFolder = this.gui.addFolder("Stats");
+    statsFolder.add(this.stats, "fps").name("FPS").listen();
+
+    console.log("UI initialized with particle controls");
   }
 
   startStatsUpdate() {
@@ -73,6 +61,15 @@ class UI {
     };
 
     updateStats();
+  }
+
+  updateStats() {
+    const now = performance.now();
+    const dt = now - this.stats.lastTime;
+    this.stats.lastTime = now;
+    this.stats.frameTime = dt;
+    this.stats.fps = Math.round(1000 / dt);
+    requestAnimationFrame(() => this.updateStats());
   }
 }
 

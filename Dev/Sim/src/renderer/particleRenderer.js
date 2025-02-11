@@ -1,111 +1,71 @@
 import { BaseRenderer } from "./baseRenderer.js";
 
 class ParticleRenderer extends BaseRenderer {
-  constructor(gl, width, height) {
-    if (!gl || typeof gl.createBuffer !== "function") {
-      throw new Error("Valid WebGL context required");
-    }
-    super(gl, width, height);
-    this.gl = gl;
-    this.width = width;
-    this.height = height;
-
-    this.initBuffers();
-    console.log(
-      "ParticleRenderer initialized with dimensions:",
-      width,
-      "x",
-      height
-    );
+  constructor(gl, shaderManager) {
+    super(gl, shaderManager);
+    this.particleBuffer = gl.createBuffer();
+    this.config = {
+      size: 4.0,
+      color: [0.2, 0.4, 1.0, 0.8],
+    };
+    console.log("ParticleRenderer initialized");
   }
 
-  initBuffers() {
-    // Create buffers
-    this.vertexBuffer = this.gl.createBuffer();
-    this.indexBuffer = this.gl.createBuffer();
-
-    // Use brighter blue color for particles
-    this.particleColor = [0.2, 0.6, 1.0, 0.9];
-
-    // Make particles slightly larger
-    const particleSize = 0.015;
-    this.quadTemplate = new Float32Array([
-      -particleSize,
-      -particleSize,
-      particleSize,
-      -particleSize,
-      -particleSize,
-      particleSize,
-      particleSize,
-      particleSize,
-    ]);
-
-    // Setup index buffer for quad rendering
-    const maxQuads = 1000;
-    const indices = new Uint16Array(maxQuads * 6);
-    for (let i = 0; i < maxQuads; i++) {
-      const vertexOffset = i * 4;
-      const indexOffset = i * 6;
-      indices[indexOffset + 0] = vertexOffset + 0;
-      indices[indexOffset + 1] = vertexOffset + 1;
-      indices[indexOffset + 2] = vertexOffset + 2;
-      indices[indexOffset + 3] = vertexOffset + 1;
-      indices[indexOffset + 4] = vertexOffset + 3;
-      indices[indexOffset + 5] = vertexOffset + 2;
+  draw(particles) {
+    // Get shader program
+    const program = this.setupShader("particles");
+    if (!program) {
+      console.error("Failed to setup particle shader");
+      return;
     }
 
-    this.gl.bindBuffer(this.gl.ELEMENT_ARRAY_BUFFER, this.indexBuffer);
-    this.gl.bufferData(
-      this.gl.ELEMENT_ARRAY_BUFFER,
-      indices,
-      this.gl.STATIC_DRAW
-    );
+    // Set configurable uniforms
+    this.gl.uniform1f(program.uniforms.pointSize, this.config.size);
 
-    this.vertexArray = new Float32Array(maxQuads * 8);
-  }
-
-  drawParticles(particles, programInfo) {
-    if (!programInfo || !particles || particles.length === 0) return;
-
-    const gl = this.gl;
-    gl.useProgram(programInfo.program);
-
-    // Setup blending
-    gl.enable(gl.BLEND);
-    gl.blendFunc(gl.SRC_ALPHA, gl.ONE);
-
-    // Set particle color
-    gl.uniform4fv(programInfo.uniforms.color, this.particleColor);
-
-    // Update vertex positions
-    const numParticles = particles.length / 2;
-    for (let i = 0; i < numParticles; i++) {
-      const x = (particles[i * 2] / this.width) * 2 - 1;
-      const y = -((particles[i * 2 + 1] / this.height) * 2 - 1);
-
-      const vertexOffset = i * 8;
-      for (let j = 0; j < 4; j++) {
-        this.vertexArray[vertexOffset + j * 2] = x + this.quadTemplate[j * 2];
-        this.vertexArray[vertexOffset + j * 2 + 1] =
-          y + this.quadTemplate[j * 2 + 1];
-      }
+    // Early exit if no particles
+    if (!particles || particles.length === 0) {
+      console.log("No particles to draw");
+      return;
     }
 
-    // Upload vertices and draw
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.vertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, this.vertexArray, gl.DYNAMIC_DRAW);
-    gl.vertexAttribPointer(
-      programInfo.attributes.position,
+    // console.log(`Drawing ${particles.length} particles`);
+
+    // Update particle positions in buffer
+    const vertices = new Float32Array(particles.flatMap((p) => [p.x, p.y]));
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.particleBuffer);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.DYNAMIC_DRAW);
+
+    // Enable blending for transparent particles
+    this.gl.enable(this.gl.BLEND);
+    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+
+    // Set up vertex attributes
+    this.gl.enableVertexAttribArray(program.attributes.position);
+    this.gl.vertexAttribPointer(
+      program.attributes.position,
       2,
-      gl.FLOAT,
+      this.gl.FLOAT,
       false,
       0,
       0
     );
-    gl.enableVertexAttribArray(programInfo.attributes.position);
 
-    gl.drawElements(gl.TRIANGLES, numParticles * 6, gl.UNSIGNED_SHORT, 0);
-    gl.disable(gl.BLEND);
+    // Set particle color uniform
+    this.gl.uniform4fv(program.uniforms.color, this.config.color);
+
+    // Draw the particles
+    this.gl.drawArrays(this.gl.POINTS, 0, particles.length);
+
+    // Cleanup GL state
+    this.gl.disable(this.gl.BLEND);
+  }
+
+  // Clean up resources
+  dispose() {
+    if (this.particleBuffer) {
+      this.gl.deleteBuffer(this.particleBuffer);
+      this.particleBuffer = null;
+    }
   }
 }
 

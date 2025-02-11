@@ -4,40 +4,42 @@ import { UI } from "./ui/ui.js";
 
 class Main {
   constructor() {
-    // Get canvas and initialize WebGL
     this.canvas = document.getElementById("glCanvas");
-    if (!this.canvas) {
-      throw new Error("Canvas not found");
-    }
+    if (!this.canvas) throw new Error("Canvas not found");
 
-    const gl = this.canvas.getContext("webgl2");
-    if (!gl) {
-      throw new Error("WebGL2 not supported");
-    }
+    this.gl = this.canvas.getContext("webgl2");
+    if (!this.gl) throw new Error("WebGL2 not supported");
 
-    // Pass canvas reference to FluidSim
-    this.simulation = new FluidSim(gl, this.canvas, 29, 14);
+    // Ensure numeric dimensions
+    const width = 29;
+    const height = 14;
+
+    this.simulation = new FluidSim(this.gl, this.canvas, width, height);
     console.log("Main constructor complete");
-
-    // Initialize UI after simulation
-    this.ui = new UI(this.simulation);
-
-    // Start animation after initialization
-    this.simulation.start();
   }
 
-  static create() {
-    return new Main();
+  async create() {
+    try {
+      // Initialize simulation first
+      await this.simulation.initialize();
+
+      // Create UI after simulation is initialized
+      this.ui = new UI(this.simulation);
+
+      // Start animation loop only after everything is ready
+      this.simulation.start();
+
+      return this;
+    } catch (error) {
+      console.error("Failed to create simulation:", error);
+      throw error;
+    }
+  }
+
+  static async init() {
+    const main = new Main();
+    return main.create();
   }
 }
 
-// Entry point
-window.onload = async () => {
-  try {
-    await Main.create();
-  } catch (error) {
-    console.error("Failed to create simulation:", error);
-  }
-};
-
-export { Main };
+window.onload = () => Main.init();
