@@ -5,7 +5,7 @@ class ParticleRenderer extends BaseRenderer {
     super(gl, shaderManager);
     this.particleBuffer = gl.createBuffer();
     this.config = {
-      size: 4.0,
+      size: 10.0,
       color: [0.2, 0.4, 1.0, 0.8],
     };
     console.log("ParticleRenderer initialized");

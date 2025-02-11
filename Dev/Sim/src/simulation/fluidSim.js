@@ -19,6 +19,16 @@ class FluidSim {
       throw new Error("Invalid dimensions");
     }
 
+    // Physics parameters
+    this.physics = {
+      gravity: -9.81,
+      timeStep: 1 / 60,
+      damping: 0.98,
+      bounds: {
+        radius: 0.95, // Slightly smaller than render boundary
+      },
+    };
+
     // Initialize arrays
     this.particleCount = 100;
     this.particles = [];
@@ -65,16 +75,20 @@ class FluidSim {
   }
 
   addInitialParticles() {
-    const numParticles = 100;
     const spacing = 0.1;
     const startX = -0.4;
-    const startY = -0.4;
+    const startY = 0.4; // Start from top
 
     for (let i = 0; i < 10; i++) {
       for (let j = 0; j < 10; j++) {
         const x = startX + i * spacing;
-        const y = startY + j * spacing;
-        this.particles.push({ x, y });
+        const y = startY - j * spacing;
+        this.particles.push({
+          x: x,
+          y: y,
+          vx: 0,
+          vy: 0,
+        });
       }
     }
     console.log(
@@ -150,6 +164,9 @@ class FluidSim {
   animate() {
     this.stateManager.startFrame();
 
+    // Update physics
+    this.updateParticlePhysics();
+
     // Clear and setup frame
     this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
@@ -198,6 +215,40 @@ class FluidSim {
       debug: this.debugEnabled,
       solver: this.solver.getDebugInfo(),
     };
+  }
+
+  updateParticlePhysics() {
+    for (let particle of this.particles) {
+      // Add velocity if not exists
+      if (!particle.vx) particle.vx = 0;
+      if (!particle.vy) particle.vy = 0;
+
+      // Apply gravity
+      particle.vy += this.physics.gravity * this.physics.timeStep;
+
+      // Update position
+      particle.x += particle.vx * this.physics.timeStep;
+      particle.y += particle.vy * this.physics.timeStep;
+
+      // Check boundary collision
+      const distanceFromCenter = Math.sqrt(
+        particle.x * particle.x + particle.y * particle.y
+      );
+      if (distanceFromCenter > this.physics.bounds.radius) {
+        // Calculate normal vector
+        const nx = particle.x / distanceFromCenter;
+        const ny = particle.y / distanceFromCenter;
+
+        // Place on boundary
+        particle.x = nx * this.physics.bounds.radius;
+        particle.y = ny * this.physics.bounds.radius;
+
+        // Reflect velocity
+        const dot = particle.vx * nx + particle.vy * ny;
+        particle.vx = (particle.vx - 2 * dot * nx) * this.physics.damping;
+        particle.vy = (particle.vy - 2 * dot * ny) * this.physics.damping;
+      }
+    }
   }
 }
 

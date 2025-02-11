@@ -23,7 +23,7 @@ class UI {
     // Particle appearance
     const appearanceFolder = this.gui.addFolder("Appearance");
     appearanceFolder
-      .add(this.sim.particleRenderer.config, "size", 1, 10)
+      .add(this.sim.particleRenderer.config, "size", 1, 50)
       .name("Size");
 
     console.log("UI initialized");
