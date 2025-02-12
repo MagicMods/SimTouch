@@ -12,15 +12,15 @@ class UI {
 
   initGUI() {
     // Reference system controls
-    const refFolder = this.gui.addFolder("Reference");
-    refFolder
-      .add(this.main.simulation, "particleCount", 0, 500, 10)
-      .name("Particles")
-      .onChange(() => {
-        console.log(
-          `Reference particles: ${this.main.simulation.particleCount}`
-        );
-      });
+    // const refFolder = this.gui.addFolder("Reference");
+    // refFolder
+    //   .add(this.main.simulation, "particleCount", 0, 500, 10)
+    //   .name("Particles")
+    //   .onChange(() => {
+    //     console.log(
+    //       `Reference particles: ${this.main.simulation.particleCount}`
+    //     );
+    //   });
 
     // PIC system controls
     const picFolder = this.gui.addFolder("PIC");

@@ -8,16 +8,16 @@ class ParticleSystem {
     // Core particle data
     this.numParticles = particleCount;
     this.timeStep = timeStep;
-    this.gravity = -gravity * 0.1; // Scale for [0,1] space
+    this.gravity = gravity * 0.1; // Scale for [0,1] space
 
     // Physics parameters - values represent preservation rather than loss
-    this.restitution = 0.5; // 50% energy preserved on bounce
+    this.restitution = 0.8; // 50% energy preserved on bounce
     this.velocityDamping = 0.98; // 98% velocity preserved in air
     this.boundaryDamping = 0.95; // 95% velocity preserved on wall
     this.velocityThreshold = 0.001; // Increased threshold
     this.positionThreshold = 0.0001; // New: threshold for position changes
-    this.particleRadius = 0.1; // 1% of space width
-    this.renderScale = 500; // Scale to reasonable screen size
+    this.particleRadius = 0.01; // 1% of space width
+    this.renderScale = 2000; // Scale to reasonable screen size
 
     // Animation control
     this.timeScale = 1.0; // Multiplier for animation speed
@@ -26,7 +26,7 @@ class ParticleSystem {
     this.debugEnabled = false; // Add debug toggle
 
     // Particle interaction parameters
-    this.collisionEnabled = false; // Toggle for particle collisions
+    this.collisionEnabled = true; // Toggle for particle collisions
     this.repulsion = 0.0; // Repulsion strength (0 = no repulsion)
     this.collisionDamping = 0.98; // Energy preservation in collisions
 
@@ -57,23 +57,53 @@ class ParticleSystem {
   }
 
   initializeParticles() {
-    const spacing = 0.05; // In [0,1] space
-    const particlesPerRow = 10;
-    const rows = this.numParticles / particlesPerRow;
+    // Calculate rings based on particle count
+    const rings = Math.ceil(Math.sqrt(this.numParticles));
+    const particlesPerRing = Math.ceil(this.numParticles / rings);
 
-    // Start near top in [0,1] space
-    const startX = this.centerX - (particlesPerRow * spacing) / 2;
-    const startY = 0.2; // 20% from top
+    // Safe spawn radius (80% of container radius to avoid immediate boundary collision)
+    const spawnRadius = this.radius * 0.8;
 
-    for (let i = 0; i < this.numParticles; i++) {
-      const row = Math.floor(i / particlesPerRow);
-      const col = i % particlesPerRow;
+    let particleIndex = 0;
 
-      this.particles[i * 2] = startX + col * spacing;
-      this.particles[i * 2 + 1] = startY + row * spacing;
-      this.velocitiesX[i] = 0;
-      this.velocitiesY[i] = 0;
+    // Create concentric rings of particles
+    for (
+      let ring = 0;
+      ring < rings && particleIndex < this.numParticles;
+      ring++
+    ) {
+      // Current ring radius
+      const ringRadius = (spawnRadius * (ring + 1)) / rings;
+
+      // Particles in this ring (adjusted for outer rings)
+      const ringParticles = Math.min(
+        Math.floor((particlesPerRing * (ring + 1)) / 2),
+        this.numParticles - particleIndex
+      );
+
+      // Distribute particles around the ring
+      for (
+        let i = 0;
+        i < ringParticles && particleIndex < this.numParticles;
+        i++
+      ) {
+        const angle = (i / ringParticles) * Math.PI * 2;
+
+        // Calculate position relative to center
+        this.particles[particleIndex * 2] =
+          this.centerX + Math.cos(angle) * ringRadius;
+        this.particles[particleIndex * 2 + 1] =
+          this.centerY + Math.sin(angle) * ringRadius;
+
+        // Initialize with zero velocity
+        this.velocitiesX[particleIndex] = 0;
+        this.velocitiesY[particleIndex] = 0;
+
+        particleIndex++;
+      }
     }
+
+    console.log(`Initialized ${particleIndex} particles in spherical pattern`);
   }
 
   updateGrid() {
@@ -201,7 +231,7 @@ class ParticleSystem {
     // First pass: Update velocities and positions
     for (let i = 0; i < this.numParticles; i++) {
       // Apply gravity ([0,1] space: positive Y is down)
-      this.velocitiesY[i] += this.gravity * dt;
+      this.velocitiesY[i] += -this.gravity * dt;
 
       // Apply damping directly (values are preservation factors)
       this.velocitiesX[i] *= this.velocityDamping;
