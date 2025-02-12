@@ -155,12 +155,12 @@ class ShaderManager {
     particles: {
       vert: `
           attribute vec2 position;
-void main() {
-    // Single transformation point: [0,1] -> [-1,1]
-    vec2 clipSpace = (position * 2.0) - 1.0;
-    gl_Position = vec4(clipSpace, 0.0, 1.0);
-    gl_PointSize = 10.0;
-}
+          uniform float pointSize;
+          void main() {
+              vec2 clipSpace = (position * 2.0) - 1.0;
+              gl_Position = vec4(clipSpace, 0.0, 1.0);
+              gl_PointSize = pointSize;
+          }
         `,
       frag: `
           precision mediump float;

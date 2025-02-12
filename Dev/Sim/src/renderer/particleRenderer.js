@@ -27,12 +27,9 @@ class ParticleRenderer extends BaseRenderer {
       return;
     }
 
-    // Set configurable uniforms
-    if (this.shaderType === "particlesOld" && program.uniforms.pointSize) {
-      this.gl.uniform1f(program.uniforms.pointSize, 8.0);
-    } else {
-      this.gl.uniform1f(program.uniforms.pointSize, this.config.size);
-    }
+    // Use particle size from system
+    const pointSize = particles[0].size || this.config.size;
+    this.gl.uniform1f(program.uniforms.pointSize, pointSize);
 
     // Update particle positions in buffer
     const vertices = new Float32Array(particles.flatMap((p) => [p.x, p.y]));

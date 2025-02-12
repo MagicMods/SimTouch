@@ -3,26 +3,29 @@ class ParticleSystem {
     // Standard [0,1] space parameters
     this.centerX = 0.5; // Center point
     this.centerY = 0.5; // Center point
-    this.radius = 0.495; // 95% of normalized space
+    this.radius = 0.475; // Slightly smaller for better visibility
 
     // Core particle data
     this.numParticles = particleCount;
     this.timeStep = timeStep;
-    this.gravity = -gravity;
+    this.gravity = -gravity; // Scale gravity for [0,1] space
 
-    // Physics parameters
-    this.restitution = 0.5;
-    this.velocityDamping = 0.995;
-    this.boundaryDamping = 0.6;
-    this.particleRadius = 0.01;
+    // Physics parameters - tuned for better behavior
+    this.restitution = 0.7; // More bounce
+    this.velocityDamping = 0.998; // Less air resistance
+    this.boundaryDamping = 0.8; // More energy preservation
+    this.particleRadius = 0.1; // Smaller particles
+    this.renderScale = 500; // Larger visible size
 
-    // Initialize particle arrays in [0,1] space
+    // Animation control
+    this.timeScale = 1.0; // Multiplier for animation speed
+
+    // Initialize arrays
     this.particles = new Float32Array(this.numParticles * 2);
     this.velocitiesX = new Float32Array(this.numParticles);
     this.velocitiesY = new Float32Array(this.numParticles);
 
     this.initializeParticles();
-    // this.boundaryPoints = this.createBoundaryPoints();
   }
 
   createBoundaryPoints() {
@@ -59,18 +62,20 @@ class ParticleSystem {
   }
 
   step() {
+    // Scale time step by animation speed
+    const dt = this.timeStep * this.timeScale;
+
     for (let i = 0; i < this.numParticles; i++) {
       // Apply gravity ([0,1] space: positive Y is down)
-      this.velocitiesY[i] += this.gravity * this.timeStep;
+      this.velocitiesY[i] += this.gravity * dt;
 
       // Apply velocity damping
       this.velocitiesX[i] *= this.velocityDamping;
       this.velocitiesY[i] *= this.velocityDamping;
 
       // Update position
-      const newX = this.particles[i * 2] + this.velocitiesX[i] * this.timeStep;
-      const newY =
-        this.particles[i * 2 + 1] + this.velocitiesY[i] * this.timeStep;
+      const newX = this.particles[i * 2] + this.velocitiesX[i] * dt;
+      const newY = this.particles[i * 2 + 1] + this.velocitiesY[i] * dt;
 
       // Check circular boundary collision in [0,1] space
       const dx = newX - this.centerX;
@@ -115,6 +120,7 @@ class ParticleSystem {
         y: this.particles[i * 2 + 1],
         vx: this.velocitiesX[i],
         vy: this.velocitiesY[i],
+        size: this.particleRadius * this.renderScale, // Scale radius to visible size
       });
     }
     return particles;

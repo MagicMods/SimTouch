@@ -40,27 +40,41 @@ class UI {
       console.log(`PIC particles reinitialized with count: ${value}`);
     });
 
-    // Physics parameters
+    // Physics parameters with refined ranges
     const physicsFolder = picFolder.addFolder("Physics");
-    physicsFolder.add(physics, "gravity", -20, 20, 0.1).name("Gravity");
-    physicsFolder.add(physics, "restitution", 0, 2, 0.05).name("Restitution");
     physicsFolder
-      .add(physics, "velocityDamping", 0.9, 1, 0.001)
+      .add(physics, "gravity", -5, 5, 0.1) // Smaller range for [0,1] space
+      .name("Gravity");
+    physicsFolder
+      .add(physics, "restitution", 0.1, 1.0, 0.05) // More natural bounce range
+      .name("Restitution");
+    physicsFolder
+      .add(physics, "velocityDamping", 0.95, 1.0, 0.001)
       .name("Velocity Damping");
     physicsFolder
-      .add(physics, "boundaryDamping", 0, 1, 0.05)
+      .add(physics, "boundaryDamping", 0.5, 1.0, 0.05)
       .name("Boundary Damping");
     physicsFolder
-      .add(physics, "particleRadius", 0.001, 0.02, 0.001)
+      .add(physics, "particleRadius", 0.08, 1, 0.001) // Finer size control
       .name("Particle Size");
 
     // Boundary parameters
     const boundaryFolder = picFolder.addFolder("Boundary");
     boundaryFolder.add(physics, "radius", 0.3, 0.495, 0.005).name("Radius");
 
+    // Animation controls
+    const animationFolder = picFolder.addFolder("Animation");
+    animationFolder
+      .add(physics, "timeScale", 0, 2, 0.1)
+      .name("Speed")
+      .onChange((value) => {
+        console.log(`Animation speed: ${value}x`);
+      });
+
     // Open relevant folders
     picFolder.open();
     physicsFolder.open();
+    animationFolder.open();
 
     console.log("UI initialized with PIC parameters");
   }
