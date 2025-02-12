@@ -27,13 +27,23 @@ class ParticleSystem {
 
     // Particle interaction parameters
     this.collisionEnabled = true; // Toggle for particle collisions
-    this.repulsion = 0.0; // Repulsion strength (0 = no repulsion)
+    this.repulsion = 1.0; // Repulsion strength (0 = no repulsion)
     this.collisionDamping = 0.98; // Energy preservation in collisions
 
     // Spatial partitioning parameters
     this.gridSize = 10; // Number of cells per side
     this.cellSize = 1.0 / this.gridSize; // In [0,1] space
     this.grid = new Array(this.gridSize * this.gridSize).fill().map(() => []);
+
+    // Enhanced turbulence parameters
+    this.turbulenceEnabled = true;
+    this.turbulenceStrength = 0.5;
+    this.turbulenceScale = 4.0;
+    this.turbulenceSpeed = 1.0;
+    this.turbulenceOctaves = 3; // Number of noise layers
+    this.turbulencePersistence = 0.5; // How much each octave contributes
+    this.turbulenceRotation = 0.0; // Rotation of the turbulence field
+    this.time = 0; // For animated turbulence
 
     // Initialize arrays
     this.particles = new Float32Array(this.numParticles * 2);
@@ -224,9 +234,76 @@ class ParticleSystem {
     }
   }
 
+  // Improved noise function with rotation
+  noise2D(x, y) {
+    // Apply rotation to input coordinates
+    const cos = Math.cos(this.turbulenceRotation);
+    const sin = Math.sin(this.turbulenceRotation);
+    const rx = x * cos - y * sin;
+    const ry = x * sin + y * cos;
+
+    let noise = 0;
+    let amplitude = 1;
+    let frequency = 1;
+    let maxValue = 0;
+
+    // Sum multiple octaves of noise
+    for (let i = 0; i < this.turbulenceOctaves; i++) {
+      const sx = rx * frequency;
+      const sy = ry * frequency;
+      const s = (sx + sy) * 0.5;
+
+      // Basic smooth noise
+      const t = this.time * this.turbulenceSpeed * frequency;
+      noise +=
+        amplitude *
+        (Math.cos(s + t) * Math.sin(s * 1.5 + t * 0.5) +
+          Math.sin(sx * 0.8 + t * 1.2) * Math.cos(sy * 1.2 + t * 0.7));
+
+      maxValue += amplitude;
+      amplitude *= this.turbulencePersistence;
+      frequency *= 2;
+    }
+
+    // Normalize to [0,1] range
+    return (noise / maxValue + 1) * 0.5;
+  }
+
+  applyTurbulence(i, dt) {
+    if (!this.turbulenceEnabled) return;
+
+    const x = this.particles[i * 2];
+    const y = this.particles[i * 2 + 1];
+
+    // Sample noise at different offsets for more variation
+    const scale = this.turbulenceScale;
+    const n1 = this.noise2D(x * scale, y * scale);
+    const n2 = this.noise2D(y * scale + 1.234, x * scale + 5.678);
+
+    // Create circular motion tendency
+    const dx = x - this.centerX;
+    const dy = y - this.centerY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    const angle = Math.atan2(dy, dx);
+
+    // Combine circular and noise forces
+    const fx =
+      (n1 - 0.5) * this.turbulenceStrength +
+      Math.cos(angle + Math.PI / 2) * this.turbulenceStrength * 0.2;
+    const fy =
+      (n2 - 0.5) * this.turbulenceStrength +
+      Math.sin(angle + Math.PI / 2) * this.turbulenceStrength * 0.2;
+
+    // Apply forces with distance falloff
+    const falloff = 1 - dist / this.radius;
+    this.velocitiesX[i] += fx * dt * falloff;
+    this.velocitiesY[i] += fy * dt * falloff;
+  }
+
   step() {
     // Scale time step by animation speed
     const dt = this.timeStep * this.timeScale;
+    this.time += dt; // Update time for animated turbulence
 
     // First pass: Update velocities and positions
     for (let i = 0; i < this.numParticles; i++) {
@@ -236,6 +313,9 @@ class ParticleSystem {
       // Apply damping directly (values are preservation factors)
       this.velocitiesX[i] *= this.velocityDamping;
       this.velocitiesY[i] *= this.velocityDamping;
+
+      // Apply turbulence
+      this.applyTurbulence(i, dt);
 
       // Check for rest state
       const velocityMagnitude = Math.sqrt(

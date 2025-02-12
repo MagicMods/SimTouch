@@ -57,7 +57,7 @@ class UI {
 
     // Air friction: 0 = no friction, 1 = maximum friction
     collisionFolder
-      .add(physics, "velocityDamping", 0.0, 1.0, 0.01)
+      .add(physics, "velocityDamping", 0.8, 1.0, 0.01)
       .name("Air Friction")
       .onChange((value) => (physics.velocityDamping = value)); // Invert for damping
 
@@ -83,9 +83,9 @@ class UI {
       .add(physics, "particleRadius", 0.001, 0.05, 0.001)
       .name("Size %");
 
-    particleFolder
-      .add(physics, "renderScale", 100, 1000, 50)
-      .name("Visual Scale");
+    // particleFolder
+    //   .add(physics, "renderScale", 100, 1000, 50)
+    //   .name("Visual Scale");
 
     // Add particle interaction controls
     const interactionFolder = physicsFolder.addFolder("Interaction");
@@ -96,12 +96,39 @@ class UI {
       .name("Enable Collisions");
 
     // Repulsion strength
-    interactionFolder.add(physics, "repulsion", 0, 1, 0.05).name("Repulsion");
+    interactionFolder.add(physics, "repulsion", 0, 100, 0.05).name("Repulsion");
 
     // Collision energy preservation
     interactionFolder
       .add(physics, "collisionDamping", 0.5, 1.0, 0.01)
       .name("Collision Preserve");
+
+    // Add turbulence controls
+    const turbulenceFolder = physicsFolder.addFolder("Turbulence");
+
+    turbulenceFolder.add(physics, "turbulenceEnabled").name("Enable");
+
+    turbulenceFolder
+      .add(physics, "turbulenceStrength", 0, 10, 0.1)
+      .name("Strength");
+
+    turbulenceFolder.add(physics, "turbulenceScale", 1, 10, 0.5).name("Scale");
+
+    turbulenceFolder.add(physics, "turbulenceSpeed", 0, 5, 0.1).name("Speed");
+
+    turbulenceFolder
+      .add(physics, "turbulenceOctaves", 1, 5, 1)
+      .name("Complexity");
+
+    turbulenceFolder
+      .add(physics, "turbulencePersistence", 0, 1, 0.1)
+      .name("Roughness");
+
+    turbulenceFolder
+      .add(physics, "turbulenceRotation", 0, Math.PI * 2, 0.1)
+      .name("Rotation");
+
+    turbulenceFolder.open();
 
     // Open new folder
     interactionFolder.open();
