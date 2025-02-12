@@ -1,15 +1,14 @@
 import { FluidSolver } from "./fluidSolver.js";
 import { GridRenderer } from "../renderer/gridRenderer.js";
 import { ParticleRenderer } from "../renderer/particleRenderer.js";
-import { ShaderManager } from "../shaders/shaderManager.js";
 import { StateManager } from "../util/stateManager.js";
 
 class FluidSim {
-  constructor(gl, canvas, numX, numY) {
+  // Add shaderManager as a parameter
+  constructor(gl, canvas, numX, numY, shaderManager) {
     if (!gl || typeof gl.createBuffer !== "function") {
       throw new Error("Valid WebGL context required");
     }
-
     this.gl = gl;
     this.canvas = canvas;
     this.width = Math.floor(Number(numX));
@@ -29,11 +28,9 @@ class FluidSim {
       },
     };
 
-    // Initialize arrays
+    // Initialize arrays and mouse state
     this.particleCount = 100;
     this.particles = [];
-
-    // Initialize mouse state
     this.mouse = {
       down: false,
       x: 0,
@@ -44,20 +41,22 @@ class FluidSim {
 
     // Add state manager
     this.stateManager = new StateManager();
+
+    // Accept the shaderManager passed from Main
+    this.shaderManager = shaderManager;
   }
 
   async initialize() {
     try {
-      // Initialize shader manager
-      this.shaderManager = new ShaderManager(this.gl);
-      await this.shaderManager.init();
+      // Assume shaderManager is already created and (optionally) initialized by Main
+      // await this.shaderManager.init(); // Remove or call if needed
 
-      // Create renderers with specific shader types
+      // Create renderers with specific shader types using the shared shaderManager
       this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
       this.particleRenderer = new ParticleRenderer(
         this.gl,
         this.shaderManager,
-        "particlesOld" // Specify old shader for fluid sim
+        "particlesOld" // Leave as is for now if still needed by FluidSim
       );
 
       // Initialize fluid solver with config object
