@@ -6,35 +6,20 @@ class ShaderManager {
     console.log("ShaderManager created");
   }
 
-  init() {
+  async init() {
     try {
-      // Create both shader programs
-      const basicProgram = this.createProgram(
-        ShaderManager.SHADERS.basic.vert,
-        ShaderManager.SHADERS.basic.frag
-      );
-      this.programs.set("basic", {
-        program: basicProgram,
-        attributes: this.getAttributes(basicProgram),
-        uniforms: this.getUniforms(basicProgram),
-      });
-      console.log("Created shader program: basic");
-
-      const particleProgram = this.createProgram(
-        ShaderManager.SHADERS.particles.vert,
-        ShaderManager.SHADERS.particles.frag
-      );
-      this.programs.set("particles", {
-        program: particleProgram,
-        attributes: this.getAttributes(particleProgram),
-        uniforms: this.getUniforms(particleProgram),
-      });
-      console.log("Created shader program: particles");
-
+      // Create all shader programs
+      for (const [name, shaders] of Object.entries(ShaderManager.SHADERS)) {
+        await this.createProgram(
+          name,
+          shaders.vert || shaders.vertex,
+          shaders.frag || shaders.fragment
+        );
+      }
       return true;
     } catch (error) {
-      console.error("Failed to initialize shader:", error);
-      return false;
+      console.error("Shader initialization failed:", error);
+      throw error;
     }
   }
 
@@ -78,28 +63,41 @@ class ShaderManager {
     return uniforms;
   }
 
-  createProgram(vertexSource, fragmentSource) {
-    const vertexShader = this.compileShader(
-      this.gl.VERTEX_SHADER,
-      vertexSource
-    );
-    const fragmentShader = this.compileShader(
-      this.gl.FRAGMENT_SHADER,
-      fragmentSource
-    );
-
-    const program = this.gl.createProgram();
-    this.gl.attachShader(program, vertexShader);
-    this.gl.attachShader(program, fragmentShader);
-    this.gl.linkProgram(program);
-
-    if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
-      throw new Error(
-        `Failed to link program: ${this.gl.getProgramInfoLog(program)}`
+  createProgram(name, vertexSource, fragmentSource) {
+    try {
+      const vertexShader = this.compileShader(
+        this.gl.VERTEX_SHADER,
+        vertexSource
       );
-    }
+      const fragmentShader = this.compileShader(
+        this.gl.FRAGMENT_SHADER,
+        fragmentSource
+      );
 
-    return program;
+      const program = this.gl.createProgram();
+      this.gl.attachShader(program, vertexShader);
+      this.gl.attachShader(program, fragmentShader);
+      this.gl.linkProgram(program);
+
+      if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
+        throw new Error(
+          `Failed to link program: ${this.gl.getProgramInfoLog(program)}`
+        );
+      }
+
+      // Store program info
+      this.programs.set(name, {
+        program,
+        attributes: this.getAttributes(program),
+        uniforms: this.getUniforms(program),
+      });
+
+      console.log(`Created shader program: ${name}`);
+      return this.programs.get(name);
+    } catch (error) {
+      console.error(`Failed to create shader program ${name}:`, error);
+      throw error;
+    }
   }
 
   compileShader(type, source) {
@@ -157,11 +155,12 @@ class ShaderManager {
     particles: {
       vert: `
           attribute vec2 position;
-          uniform float pointSize;
-          void main() {
-            gl_Position = vec4(position, 0.0, 1.0);
-            gl_PointSize = pointSize;
-          }
+void main() {
+    // Single transformation point: [0,1] -> [-1,1]
+    vec2 clipSpace = (position * 2.0) - 1.0;
+    gl_Position = vec4(clipSpace, 0.0, 1.0);
+    gl_PointSize = 10.0;
+}
         `,
       frag: `
           precision mediump float;
@@ -176,6 +175,23 @@ class ShaderManager {
             gl_FragColor = color;
           }
         `,
+    },
+    particlesOld: {
+      vertex: `
+          attribute vec2 position;
+          uniform float pointSize;
+          void main() {
+              gl_Position = vec4(position, 0.0, 1.0);
+              gl_PointSize = pointSize;
+          }
+      `,
+      fragment: `
+          precision mediump float;
+          uniform vec4 color;
+          void main() {
+              gl_FragColor = color;
+          }
+      `,
     },
   };
 }

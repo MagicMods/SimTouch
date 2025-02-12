@@ -1,28 +1,28 @@
 class ParticleSystem {
   constructor({ particleCount = 100, timeStep = 1 / 60, gravity = 9.81 }) {
-    // Match grid's center and scale
-    this.centerX = 0;
-    this.centerY = 0;
-    this.radius = 0.95;
+    // Standard [0,1] space parameters
+    this.centerX = 0.5; // Center point
+    this.centerY = 0.5; // Center point
+    this.radius = 0.475; // 95% of normalized space
 
     // Core particle data
     this.numParticles = particleCount;
     this.timeStep = timeStep;
-    this.gravity = -gravity; // Negative for downward
-
-    // Particle arrays (in normalized space)
-    this.particles = new Float32Array(this.numParticles * 2);
-    this.velocitiesX = new Float32Array(this.numParticles);
-    this.velocitiesY = new Float32Array(this.numParticles);
+    this.gravity = -gravity;
 
     // Physics parameters
     this.restitution = 0.5;
     this.velocityDamping = 0.995;
     this.boundaryDamping = 0.6;
-    this.particleRadius = 0.01; // In normalized space
+    this.particleRadius = 0.01;
+
+    // Initialize particle arrays in [0,1] space
+    this.particles = new Float32Array(this.numParticles * 2);
+    this.velocitiesX = new Float32Array(this.numParticles);
+    this.velocitiesY = new Float32Array(this.numParticles);
 
     this.initializeParticles();
-    this.boundaryPoints = this.createBoundaryPoints(); // Create and store boundary points
+    this.boundaryPoints = this.createBoundaryPoints();
   }
 
   createBoundaryPoints() {
@@ -30,59 +30,37 @@ class ParticleSystem {
     const segments = 32;
     for (let i = 0; i <= segments; i++) {
       const angle = (i / segments) * Math.PI * 2;
-      const x = this.centerX + this.radius * Math.cos(angle); // Center at (0.5, 0.5)
-      const y = this.centerY + this.radius * Math.sin(angle);
-      points.push({
-        x: x,
-        y: y,
-        vx: 0,
-        vy: 0,
-      });
+      // Create directly in [0,1] space
+      const x = this.centerX + Math.cos(angle) * this.radius;
+      const y = this.centerY + Math.sin(angle) * this.radius;
+      points.push({ x, y, vx: 0, vy: 0 });
     }
     return points;
   }
 
-  getBoundaryPoints() {
-    return this.boundaryPoints;
-  }
-
   initializeParticles() {
-    const spacing = 0.05;
+    const spacing = 0.05; // In [0,1] space
     const particlesPerRow = 10;
     const rows = this.numParticles / particlesPerRow;
 
-    // Center the grid of particles
+    // Start near top in [0,1] space
     const startX = this.centerX - (particlesPerRow * spacing) / 2;
-    const startY = 0.8; // Start near top
+    const startY = 0.2; // 20% from top
 
     for (let i = 0; i < this.numParticles; i++) {
       const row = Math.floor(i / particlesPerRow);
       const col = i % particlesPerRow;
 
-      // Store directly in [0,1] space
       this.particles[i * 2] = startX + col * spacing;
-      this.particles[i * 2 + 1] = startY - row * spacing;
+      this.particles[i * 2 + 1] = startY + row * spacing;
       this.velocitiesX[i] = 0;
       this.velocitiesY[i] = 0;
     }
   }
 
-  getParticles() {
-    const particles = [];
-    for (let i = 0; i < this.numParticles; i++) {
-      particles.push({
-        x: this.particles[i * 2],
-        y: this.particles[i * 2 + 1],
-        vx: this.velocitiesX[i],
-        vy: this.velocitiesY[i],
-      });
-    }
-    return particles;
-  }
-
   step() {
     for (let i = 0; i < this.numParticles; i++) {
-      // Apply gravity
+      // Apply gravity ([0,1] space: positive Y is down)
       this.velocitiesY[i] += this.gravity * this.timeStep;
 
       // Apply velocity damping
@@ -94,7 +72,7 @@ class ParticleSystem {
       const newY =
         this.particles[i * 2 + 1] + this.velocitiesY[i] * this.timeStep;
 
-      // Check boundary collision (relative to center)
+      // Check circular boundary collision in [0,1] space
       const dx = newX - this.centerX;
       const dy = newY - this.centerY;
       const distSq = dx * dx + dy * dy;
@@ -126,6 +104,24 @@ class ParticleSystem {
         this.particles[i * 2 + 1] = newY;
       }
     }
+  }
+
+  // No coordinate conversion needed - already in [0,1] space
+  getParticles() {
+    const particles = [];
+    for (let i = 0; i < this.numParticles; i++) {
+      particles.push({
+        x: this.particles[i * 2],
+        y: this.particles[i * 2 + 1],
+        vx: this.velocitiesX[i],
+        vy: this.velocitiesY[i],
+      });
+    }
+    return particles;
+  }
+
+  getBoundaryPoints() {
+    return this.boundaryPoints;
   }
 }
 

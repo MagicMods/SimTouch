@@ -1,8 +1,11 @@
 import { BaseRenderer } from "./baseRenderer.js";
 
 class ParticleRenderer extends BaseRenderer {
-  constructor(gl, shaderManager) {
+  constructor(gl, shaderManager, shaderType = "particles") {
     super(gl, shaderManager);
+    this.gl = gl;
+    this.shaderManager = shaderManager;
+    this.shaderType = shaderType;
     this.particleBuffer = gl.createBuffer();
     this.config = {
       size: 10.0,
@@ -11,38 +14,25 @@ class ParticleRenderer extends BaseRenderer {
     console.log("ParticleRenderer initialized");
   }
 
-  draw(particles, color) {
-    console.log("ParticleRenderer.draw called with:", {
-      particlesReceived: {
-        count: particles?.length || 0,
-        first: particles?.[0]
-          ? {
-              x: particles[0].x.toFixed(3),
-              y: particles[0].y.toFixed(3),
-            }
-          : null,
-        isArray: Array.isArray(particles),
-        hasValidFormat:
-          particles?.[0]?.hasOwnProperty("x") &&
-          particles?.[0]?.hasOwnProperty("y"),
-      },
-      color: color,
-    });
-
+  draw(particles, color = [0.2, 0.6, 1.0, 1.0]) {
     if (!particles || !Array.isArray(particles) || particles.length === 0) {
       console.warn("No valid particles to draw");
       return;
     }
 
-    // Get shader program
-    const program = this.setupShader("particles");
+    // Use specified shader program
+    const program = this.shaderManager.use(this.shaderType);
     if (!program) {
       console.error("Failed to setup particle shader");
       return;
     }
 
     // Set configurable uniforms
-    this.gl.uniform1f(program.uniforms.pointSize, this.config.size);
+    if (this.shaderType === "particlesOld" && program.uniforms.pointSize) {
+      this.gl.uniform1f(program.uniforms.pointSize, 8.0);
+    } else {
+      this.gl.uniform1f(program.uniforms.pointSize, this.config.size);
+    }
 
     // Update particle positions in buffer
     const vertices = new Float32Array(particles.flatMap((p) => [p.x, p.y]));
@@ -83,4 +73,5 @@ class ParticleRenderer extends BaseRenderer {
   }
 }
 
+// Single export at the end
 export { ParticleRenderer };

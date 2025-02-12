@@ -10,3 +10,20 @@
 │   ├── fluidSim.js        # Main simulation controller
 │   └── fluidSolver.js     # Physics solver
 └── main.js     
+
+
+
+
+# Coordinate System Standard
+
+## Application Space [0,1]
+- All simulation coordinates use [0,1] space
+- Origin (0,0) at top-left
+- (1,1) at bottom-right
+- Center at (0.5, 0.5)
+- Circular boundary radius: 0.475
+
+## WebGL Transformation
+- Single transformation in vertex shader
+- Converts [0,1] to [-1,1] clip space
+- No other coordinate transformations in the system

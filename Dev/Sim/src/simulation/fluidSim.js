@@ -52,9 +52,13 @@ class FluidSim {
       this.shaderManager = new ShaderManager(this.gl);
       await this.shaderManager.init();
 
-      // Create renderers
+      // Create renderers with specific shader types
       this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
-      this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager);
+      this.particleRenderer = new ParticleRenderer(
+        this.gl,
+        this.shaderManager,
+        "particlesOld" // Specify old shader for fluid sim
+      );
 
       // Initialize fluid solver with config object
       this.fluidSolver = new FluidSolver({

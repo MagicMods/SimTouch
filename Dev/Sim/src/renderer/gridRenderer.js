@@ -84,21 +84,14 @@ class GridRenderer extends BaseRenderer {
   }
 
   createBoundaryGeometry() {
-    const segments = 64; // More segments for smoother circle
-    const vertices = new Float32Array(segments * 2);
-
-    // Generate circle vertices
-    for (let i = 0; i < segments; i++) {
-      const angle = (i / segments) * Math.PI * 2;
-      vertices[i * 2] = Math.cos(angle) * 0.95; // x, slightly smaller than 1.0
-      vertices[i * 2 + 1] = Math.sin(angle) * 0.95; // y, slightly smaller than 1.0
+    // Convert from clip space [-1,1] to normalized [0,1]
+    const vertices = new Float32Array(this.segments * 2);
+    for (let i = 0; i < this.segments; i++) {
+      const angle = (i / this.segments) * Math.PI * 2;
+      vertices[i * 2] = (Math.cos(angle) * 0.95 + 1) * 0.5; // x in [0,1]
+      vertices[i * 2 + 1] = (Math.sin(angle) * 0.95 + 1) * 0.5; // y in [0,1]
     }
-
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.boundaryBuffer);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
-    this.boundaryVertexCount = segments;
-
-    console.log("Boundary geometry created:", segments, "vertices");
+    return vertices;
   }
 
   draw() {

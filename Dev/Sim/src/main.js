@@ -1,6 +1,7 @@
 import { FluidSim } from "./simulation/fluidSim.js";
 import { ParticleSystem } from "./simulation/particleSystem.js";
 import { UI } from "./ui/ui.js";
+import { ParticleRenderer } from "./renderer/particleRenderer.js";
 
 class Main {
   constructor() {
@@ -28,7 +29,7 @@ class Main {
 
     // Add debug center particle
     this.debugParticle = {
-      x: 0.5, // Center in normalized space
+      x: 0.5, // Center in [0,1] space
       y: 0.5,
       vx: 0,
       vy: 0,
@@ -78,6 +79,13 @@ class Main {
       await this.simulation.initialize();
       this.ui = new UI(this.simulation);
 
+      // Create test particle renderer with new shader
+      this.testParticleRenderer = new ParticleRenderer(
+        this.simulation.gl,
+        this.simulation.shaderManager,
+        "particles" // New shader for test system
+      );
+
       // Start our custom animation loop instead of simulation.start()
       this.animate();
       return true;
@@ -101,11 +109,8 @@ class Main {
     // Draw grid
     this.simulation.gridRenderer.draw();
 
-    // Draw debug center particle (green)
-    this.simulation.particleRenderer.draw(
-      [this.debugParticle],
-      [0.0, 1.0, 0.0, 1.0]
-    );
+    // Draw debug center particle with new shader (green)
+    this.testParticleRenderer.draw([this.debugParticle], [0.0, 1.0, 0.0, 1.0]);
 
     // Draw reference particles (blue)
     this.simulation.particleRenderer.draw(
@@ -117,44 +122,41 @@ class Main {
     const testParticles = this.particleSystem.getParticles();
     const boundaryPoints = this.particleSystem.getBoundaryPoints();
 
-    console.log("Particle Systems Debug:", {
-      testParticles: {
-        count: testParticles?.length || 0,
-        first: testParticles?.[0]
-          ? {
-              x: testParticles[0].x.toFixed(3),
-              y: testParticles[0].y.toFixed(3),
-            }
-          : null,
-        last: testParticles?.[testParticles.length - 1]
-          ? {
-              x: testParticles[testParticles.length - 1].x.toFixed(3),
-              y: testParticles[testParticles.length - 1].y.toFixed(3),
-            }
-          : null,
-      },
-      boundaryPoints: {
-        count: boundaryPoints?.length || 0,
-        first: boundaryPoints?.[0]
-          ? {
-              x: boundaryPoints[0].x.toFixed(3),
-              y: boundaryPoints[0].y.toFixed(3),
-            }
-          : null,
-      },
-    });
+    // console.log("Particle Systems Debug:", {
+    //   testParticles: {
+    //     count: testParticles?.length || 0,
+    //     first: testParticles?.[0]
+    //       ? {
+    //           x: testParticles[0].x.toFixed(3),
+    //           y: testParticles[0].y.toFixed(3),
+    //         }
+    //       : null,
+    //     last: testParticles?.[testParticles.length - 1]
+    //       ? {
+    //           x: testParticles[testParticles.length - 1].x.toFixed(3),
+    //           y: testParticles[testParticles.length - 1].y.toFixed(3),
+    //         }
+    //       : null,
+    //   },
+    //   boundaryPoints: {
+    //     count: boundaryPoints?.length || 0,
+    //     first: boundaryPoints?.[0]
+    //       ? {
+    //           x: boundaryPoints[0].x.toFixed(3),
+    //           y: boundaryPoints[0].y.toFixed(3),
+    //         }
+    //       : null,
+    //   },
+    // });
 
     // Draw boundary with explicit check
     if (boundaryPoints && boundaryPoints.length > 0) {
-      this.simulation.particleRenderer.draw(
-        boundaryPoints,
-        [1.0, 0.0, 0.0, 0.5]
-      );
+      this.testParticleRenderer.draw(boundaryPoints, [1.0, 0.0, 0.0, 0.5]);
     }
 
     // Draw particles with explicit check
     if (testParticles && testParticles.length > 0) {
-      this.simulation.particleRenderer.draw(testParticles, this.colors.test);
+      this.testParticleRenderer.draw(testParticles, this.colors.test);
     }
 
     // Log center particle position periodically
