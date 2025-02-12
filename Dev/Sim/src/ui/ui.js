@@ -42,27 +42,56 @@ class UI {
 
     // Physics parameters with refined ranges
     const physicsFolder = picFolder.addFolder("Physics");
+
+    // Core parameters - gravity now positive up
     physicsFolder
-      .add(physics, "gravity", -5, 5, 0.1) // Smaller range for [0,1] space
-      .name("Gravity");
-    physicsFolder
-      .add(physics, "restitution", 0.1, 1.0, 0.05) // More natural bounce range
-      .name("Restitution");
-    physicsFolder
-      .add(physics, "velocityDamping", 0.95, 1.0, 0.001)
-      .name("Velocity Damping");
-    physicsFolder
-      .add(physics, "boundaryDamping", 0.5, 1.0, 0.05)
-      .name("Boundary Damping");
-    physicsFolder
-      .add(physics, "particleRadius", 0.08, 1, 0.001) // Finer size control
-      .name("Particle Size");
+      .add(physics, "gravity", 0, 9.89, 0.1)
+      .name("Gravity")
+      .onChange((value) => (physics.gravity = -value)); // Invert for screen space
+
+    // Collision parameters - corrected ranges
+    const collisionFolder = physicsFolder.addFolder("Collision");
+
+    // Restitution: 0 = no bounce, 1 = perfect bounce
+    collisionFolder.add(physics, "restitution", 0.0, 1.0, 0.05).name("Bounce");
+
+    // Air friction: 0 = no friction, 1 = maximum friction
+    collisionFolder
+      .add(physics, "velocityDamping", 0.0, 1.0, 0.01)
+      .name("Air Friction")
+      .onChange((value) => (physics.velocityDamping = value)); // Invert for damping
+
+    // Wall friction: 0 = no friction, 1 = maximum friction
+    collisionFolder
+      .add(physics, "boundaryDamping", 0.0, 1.0, 0.01)
+      .name("Wall Friction")
+      .onChange((value) => (physics.boundaryDamping = value)); // Invert for damping
+
+    // Rest state - lower values = more precise rest detection
+    const restFolder = physicsFolder.addFolder("Rest State");
+    restFolder
+      .add(physics, "velocityThreshold", 0.00001, 0.01, 0.00001)
+      .name("Min Speed");
+
+    restFolder
+      .add(physics, "positionThreshold", 0.000001, 0.001, 0.000001)
+      .name("Min Move");
+
+    // Particle parameters - size as percentage of space
+    const particleFolder = physicsFolder.addFolder("Particles");
+    particleFolder
+      .add(physics, "particleRadius", 0.001, 0.05, 0.001)
+      .name("Size %");
+
+    particleFolder
+      .add(physics, "renderScale", 100, 1000, 50)
+      .name("Visual Scale");
 
     // Boundary parameters
     const boundaryFolder = picFolder.addFolder("Boundary");
     boundaryFolder.add(physics, "radius", 0.3, 0.495, 0.005).name("Radius");
 
-    // Animation controls
+    // Animation speed
     const animationFolder = picFolder.addFolder("Animation");
     animationFolder
       .add(physics, "timeScale", 0, 2, 0.1)
@@ -74,6 +103,9 @@ class UI {
     // Open relevant folders
     picFolder.open();
     physicsFolder.open();
+    collisionFolder.open();
+    restFolder.open();
+    particleFolder.open();
     animationFolder.open();
 
     console.log("UI initialized with PIC parameters");

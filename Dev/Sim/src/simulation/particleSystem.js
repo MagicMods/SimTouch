@@ -8,17 +8,22 @@ class ParticleSystem {
     // Core particle data
     this.numParticles = particleCount;
     this.timeStep = timeStep;
-    this.gravity = -gravity; // Scale gravity for [0,1] space
+    this.gravity = -gravity * 0.1; // Scale for [0,1] space
 
-    // Physics parameters - tuned for better behavior
-    this.restitution = 0.7; // More bounce
-    this.velocityDamping = 0.998; // Less air resistance
-    this.boundaryDamping = 0.8; // More energy preservation
-    this.particleRadius = 0.1; // Smaller particles
-    this.renderScale = 500; // Larger visible size
+    // Physics parameters - values represent preservation rather than loss
+    this.restitution = 0.5; // 50% energy preserved on bounce
+    this.velocityDamping = 0.98; // 98% velocity preserved in air
+    this.boundaryDamping = 0.95; // 95% velocity preserved on wall
+    this.velocityThreshold = 0.001; // Increased threshold
+    this.positionThreshold = 0.0001; // New: threshold for position changes
+    this.particleRadius = 0.1; // 1% of space width
+    this.renderScale = 500; // Scale to reasonable screen size
 
     // Animation control
     this.timeScale = 1.0; // Multiplier for animation speed
+
+    // Debug visualization
+    this.debugEnabled = false; // Add debug toggle
 
     // Initialize arrays
     this.particles = new Float32Array(this.numParticles * 2);
@@ -69,23 +74,44 @@ class ParticleSystem {
       // Apply gravity ([0,1] space: positive Y is down)
       this.velocitiesY[i] += this.gravity * dt;
 
-      // Apply velocity damping
+      // Apply damping directly (values are preservation factors)
       this.velocitiesX[i] *= this.velocityDamping;
       this.velocitiesY[i] *= this.velocityDamping;
+
+      // Check for rest state
+      const velocityMagnitude = Math.sqrt(
+        this.velocitiesX[i] * this.velocitiesX[i] +
+          this.velocitiesY[i] * this.velocitiesY[i]
+      );
+
+      // Position change check
+      const dx = this.velocitiesX[i] * dt;
+      const dy = this.velocitiesY[i] * dt;
+      const positionChange = Math.sqrt(dx * dx + dy * dy);
+
+      if (
+        velocityMagnitude < this.velocityThreshold &&
+        positionChange < this.positionThreshold
+      ) {
+        // Put particle fully to rest
+        this.velocitiesX[i] = 0;
+        this.velocitiesY[i] = 0;
+        continue; // Skip position update for resting particles
+      }
 
       // Update position
       const newX = this.particles[i * 2] + this.velocitiesX[i] * dt;
       const newY = this.particles[i * 2 + 1] + this.velocitiesY[i] * dt;
 
       // Check circular boundary collision in [0,1] space
-      const dx = newX - this.centerX;
-      const dy = newY - this.centerY;
-      const distSq = dx * dx + dy * dy;
+      const dxBoundary = newX - this.centerX;
+      const dyBoundary = newY - this.centerY;
+      const distSq = dxBoundary * dxBoundary + dyBoundary * dyBoundary;
 
       if (distSq > this.radius * this.radius) {
         const dist = Math.sqrt(distSq);
-        const nx = dx / dist;
-        const ny = dy / dist;
+        const nx = dxBoundary / dist;
+        const ny = dyBoundary / dist;
 
         // Calculate impact
         const dot = this.velocitiesX[i] * nx + this.velocitiesY[i] * ny;
@@ -100,8 +126,9 @@ class ParticleSystem {
           this.velocitiesY[i] *= this.boundaryDamping;
         }
 
-        // Move inside boundary
-        const safeRadius = this.radius - this.particleRadius;
+        // Fix: Place particle exactly at boundary minus its radius
+        // This prevents cumulative offset issues
+        const safeRadius = this.radius - this.particleRadius * 0.5; // Use half radius for better contact
         this.particles[i * 2] = this.centerX + nx * safeRadius;
         this.particles[i * 2 + 1] = this.centerY + ny * safeRadius;
       } else {
@@ -128,6 +155,20 @@ class ParticleSystem {
 
   getBoundaryPoints() {
     return this.boundaryPoints;
+  }
+
+  // Add debug visualization method
+  drawDebugBounds(renderer) {
+    if (!this.debugEnabled) return;
+
+    // Draw physical bounds of a single particle
+    const debugParticle = {
+      x: this.centerX,
+      y: this.centerY,
+      size: this.particleRadius * this.renderScale,
+    };
+
+    renderer.draw([debugParticle], [0.0, 1.0, 0.0, 0.5]);
   }
 }
 
