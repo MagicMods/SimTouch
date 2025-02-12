@@ -47,7 +47,7 @@ class UI {
     physicsFolder
       .add(physics, "gravity", 0, 9.89, 0.1)
       .name("Gravity")
-      .onChange((value) => (physics.gravity = -value)); // Invert for screen space
+      .onChange((value) => (physics.gravity = value)); // Invert for screen space
 
     // Collision parameters - corrected ranges
     const collisionFolder = physicsFolder.addFolder("Collision");
@@ -87,6 +87,25 @@ class UI {
       .add(physics, "renderScale", 100, 1000, 50)
       .name("Visual Scale");
 
+    // Add particle interaction controls
+    const interactionFolder = physicsFolder.addFolder("Interaction");
+
+    // Toggle particle collisions
+    interactionFolder
+      .add(physics, "collisionEnabled")
+      .name("Enable Collisions");
+
+    // Repulsion strength
+    interactionFolder.add(physics, "repulsion", 0, 1, 0.05).name("Repulsion");
+
+    // Collision energy preservation
+    interactionFolder
+      .add(physics, "collisionDamping", 0.5, 1.0, 0.01)
+      .name("Collision Preserve");
+
+    // Open new folder
+    interactionFolder.open();
+
     // Boundary parameters
     const boundaryFolder = picFolder.addFolder("Boundary");
     boundaryFolder.add(physics, "radius", 0.3, 0.495, 0.005).name("Radius");
@@ -99,6 +118,10 @@ class UI {
       .onChange((value) => {
         console.log(`Animation speed: ${value}x`);
       });
+
+    // Debug parameters
+    const debugFolder = picFolder.addFolder("Debug");
+    debugFolder.add(physics, "debugEnabled").name("Show Grid");
 
     // Open relevant folders
     picFolder.open();

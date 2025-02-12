@@ -25,6 +25,16 @@ class ParticleSystem {
     // Debug visualization
     this.debugEnabled = false; // Add debug toggle
 
+    // Particle interaction parameters
+    this.collisionEnabled = false; // Toggle for particle collisions
+    this.repulsion = 0.0; // Repulsion strength (0 = no repulsion)
+    this.collisionDamping = 0.98; // Energy preservation in collisions
+
+    // Spatial partitioning parameters
+    this.gridSize = 10; // Number of cells per side
+    this.cellSize = 1.0 / this.gridSize; // In [0,1] space
+    this.grid = new Array(this.gridSize * this.gridSize).fill().map(() => []);
+
     // Initialize arrays
     this.particles = new Float32Array(this.numParticles * 2);
     this.velocitiesX = new Float32Array(this.numParticles);
@@ -66,10 +76,129 @@ class ParticleSystem {
     }
   }
 
+  updateGrid() {
+    // Clear grid
+    for (let i = 0; i < this.grid.length; i++) {
+      this.grid[i].length = 0;
+    }
+
+    // Add particles to grid cells
+    for (let i = 0; i < this.numParticles; i++) {
+      const x = this.particles[i * 2];
+      const y = this.particles[i * 2 + 1];
+
+      // Get grid cell indices
+      const cellX = Math.floor(x * this.gridSize);
+      const cellY = Math.floor(y * this.gridSize);
+
+      // Skip if outside bounds
+      if (
+        cellX < 0 ||
+        cellX >= this.gridSize ||
+        cellY < 0 ||
+        cellY >= this.gridSize
+      )
+        continue;
+
+      // Add particle index to cell
+      const cellIndex = cellY * this.gridSize + cellX;
+      this.grid[cellIndex].push(i);
+    }
+  }
+
+  checkCellCollisions(cellIndex) {
+    const cell = this.grid[cellIndex];
+
+    // Check collisions within cell
+    for (let i = 0; i < cell.length; i++) {
+      const particleI = cell[i];
+
+      // Check against other particles in same cell
+      for (let j = i + 1; j < cell.length; j++) {
+        const particleJ = cell[j];
+        this.resolveCollision(particleI, particleJ);
+      }
+
+      // Check against neighboring cells (right and bottom only to avoid duplicates)
+      const x = cellIndex % this.gridSize;
+      const y = Math.floor(cellIndex / this.gridSize);
+
+      // Right neighbor
+      if (x < this.gridSize - 1) {
+        const rightCell = this.grid[cellIndex + 1];
+        for (const particleJ of rightCell) {
+          this.resolveCollision(particleI, particleJ);
+        }
+      }
+
+      // Bottom neighbor
+      if (y < this.gridSize - 1) {
+        const bottomCell = this.grid[cellIndex + this.gridSize];
+        for (const particleJ of bottomCell) {
+          this.resolveCollision(particleI, particleJ);
+        }
+      }
+
+      // Bottom-right neighbor
+      if (x < this.gridSize - 1 && y < this.gridSize - 1) {
+        const bottomRightCell = this.grid[cellIndex + this.gridSize + 1];
+        for (const particleJ of bottomRightCell) {
+          this.resolveCollision(particleI, particleJ);
+        }
+      }
+    }
+  }
+
+  resolveCollision(i, j) {
+    const dx = this.particles[j * 2] - this.particles[i * 2];
+    const dy = this.particles[j * 2 + 1] - this.particles[i * 2 + 1];
+    const distSq = dx * dx + dy * dy;
+    const minDist = this.particleRadius * 2;
+
+    if (distSq < minDist * minDist) {
+      // ...existing collision response code...
+      const dist = Math.sqrt(distSq);
+      const nx = dx / dist;
+      const ny = dy / dist;
+
+      // Calculate relative velocity
+      const dvx = this.velocitiesX[j] - this.velocitiesX[i];
+      const dvy = this.velocitiesY[j] - this.velocitiesY[i];
+      const vn = dvx * nx + dvy * ny;
+
+      // Only collide if particles are approaching
+      if (vn < 0) {
+        // Collision impulse
+        const impulse = -(1 + this.restitution) * vn;
+        this.velocitiesX[i] -= impulse * nx * 0.5;
+        this.velocitiesY[i] -= impulse * ny * 0.5;
+        this.velocitiesX[j] += impulse * nx * 0.5;
+        this.velocitiesY[j] += impulse * ny * 0.5;
+
+        // Apply collision damping
+        this.velocitiesX[i] *= this.collisionDamping;
+        this.velocitiesY[i] *= this.collisionDamping;
+        this.velocitiesX[j] *= this.collisionDamping;
+        this.velocitiesY[j] *= this.collisionDamping;
+      }
+
+      // Add repulsion force
+      if (this.repulsion > 0) {
+        const overlap = minDist - dist;
+        const repulsionForce = overlap * this.repulsion;
+        this.velocitiesX[i] -= nx * repulsionForce;
+        this.velocitiesY[i] -= ny * repulsionForce;
+        this.velocitiesX[j] += nx * repulsionForce;
+        this.velocitiesY[j] += ny * repulsionForce;
+      }
+    }
+  }
+
   step() {
     // Scale time step by animation speed
     const dt = this.timeStep * this.timeScale;
 
+    // First pass: Update velocities and positions
     for (let i = 0; i < this.numParticles; i++) {
       // Apply gravity ([0,1] space: positive Y is down)
       this.velocitiesY[i] += this.gravity * dt;
@@ -136,6 +265,16 @@ class ParticleSystem {
         this.particles[i * 2 + 1] = newY;
       }
     }
+
+    // Second pass: Particle-particle collisions (if enabled)
+    if (this.collisionEnabled) {
+      this.updateGrid();
+
+      // Check collisions using grid
+      for (let i = 0; i < this.grid.length; i++) {
+        this.checkCellCollisions(i);
+      }
+    }
   }
 
   // No coordinate conversion needed - already in [0,1] space
@@ -169,6 +308,26 @@ class ParticleSystem {
     };
 
     renderer.draw([debugParticle], [0.0, 1.0, 0.0, 0.5]);
+  }
+
+  drawDebugGrid(renderer) {
+    if (!this.debugEnabled) return;
+
+    const gridLines = [];
+
+    // Vertical lines
+    for (let i = 0; i <= this.gridSize; i++) {
+      const x = i * this.cellSize;
+      gridLines.push({ x, y: 0 }, { x, y: 1 });
+    }
+
+    // Horizontal lines
+    for (let i = 0; i <= this.gridSize; i++) {
+      const y = i * this.cellSize;
+      gridLines.push({ x: 0, y }, { x: 1, y });
+    }
+
+    renderer.draw(gridLines, [0.2, 0.2, 0.2, 0.5]);
   }
 }
 

@@ -193,6 +193,22 @@ class ShaderManager {
           }
       `,
     },
+    lines: {
+      vert: `
+            attribute vec2 position;
+            void main() {
+                vec2 clipSpace = (position * 2.0) - 1.0;
+                gl_Position = vec4(clipSpace, 0.0, 1.0);
+            }
+        `,
+      frag: `
+            precision mediump float;
+            uniform vec4 color;
+            void main() {
+                gl_FragColor = color;
+            }
+        `,
+    },
   };
 }
 

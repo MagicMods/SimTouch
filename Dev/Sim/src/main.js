@@ -2,6 +2,7 @@ import { FluidSim } from "./simulation/fluidSim.js";
 import { ParticleSystem } from "./simulation/particleSystem.js";
 import { UI } from "./ui/ui.js";
 import { ParticleRenderer } from "./renderer/particleRenderer.js";
+import { LineRenderer } from "./renderer/lineRenderer.js";
 
 class Main {
   constructor() {
@@ -91,6 +92,12 @@ class Main {
         "particles"
       );
 
+      // Create line renderer for debug visualization
+      this.lineRenderer = new LineRenderer(
+        this.simulation.gl,
+        this.simulation.shaderManager
+      );
+
       this.animate();
       return true;
     } catch (error) {
@@ -161,6 +168,11 @@ class Main {
     // Draw particles with explicit check
     if (testParticles && testParticles.length > 0) {
       this.testParticleRenderer.draw(testParticles, this.colors.test);
+    }
+
+    // Draw debug grid if enabled
+    if (this.particleSystem.debugEnabled) {
+      this.particleSystem.drawDebugGrid(this.lineRenderer);
     }
 
     // Log center particle position periodically
