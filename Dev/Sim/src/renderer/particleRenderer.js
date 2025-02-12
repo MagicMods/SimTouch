@@ -11,7 +11,7 @@ class ParticleRenderer extends BaseRenderer {
     console.log("ParticleRenderer initialized");
   }
 
-  draw(particles) {
+  draw(particles, color = null) {
     // Get shader program
     const program = this.setupShader("particles");
     if (!program) {
@@ -50,8 +50,8 @@ class ParticleRenderer extends BaseRenderer {
       0
     );
 
-    // Set particle color uniform
-    this.gl.uniform4fv(program.uniforms.color, this.config.color);
+    // Set particle color uniform (use provided color or default)
+    this.gl.uniform4fv(program.uniforms.color, color || this.config.color);
 
     // Draw the particles
     this.gl.drawArrays(this.gl.POINTS, 0, particles.length);
