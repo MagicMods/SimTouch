@@ -26,6 +26,20 @@ class UI {
     const picFolder = this.gui.addFolder("PIC");
     const physics = this.main.particleSystem;
 
+    // Particle count with reinit
+    const particleControl = picFolder
+      .add(physics, "numParticles", 10, 500, 10)
+      .name("Particles");
+
+    particleControl.onChange((value) => {
+      physics.numParticles = value;
+      physics.particles = new Float32Array(value * 2);
+      physics.velocitiesX = new Float32Array(value);
+      physics.velocitiesY = new Float32Array(value);
+      physics.initializeParticles();
+      console.log(`PIC particles reinitialized with count: ${value}`);
+    });
+
     // Physics parameters
     const physicsFolder = picFolder.addFolder("Physics");
     physicsFolder.add(physics, "gravity", -20, 20, 0.1).name("Gravity");
