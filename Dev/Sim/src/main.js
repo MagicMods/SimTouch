@@ -26,7 +26,51 @@ class Main {
       gravity: 9.81,
     });
 
-    console.log("Main constructor complete");
+    // Add debug center particle
+    this.debugParticle = {
+      x: 0.5, // Center in normalized space
+      y: 0.5,
+      vx: 0,
+      vy: 0,
+    };
+
+    // Add mouse debug
+    this.setupMouseDebug();
+
+    console.log("Main constructor complete with debug additions");
+  }
+
+  setupMouseDebug() {
+    this.canvas.addEventListener("mousedown", (e) => {
+      const rect = this.canvas.getBoundingClientRect();
+      const mouseX = (e.clientX - rect.left) / rect.width;
+      const mouseY = (e.clientY - rect.top) / rect.height;
+
+      console.table({
+        "Mouse Click": {
+          x: mouseX.toFixed(3),
+          y: mouseY.toFixed(3),
+        },
+        "Relative to Center": {
+          x: (mouseX - 0.5).toFixed(3),
+          y: (mouseY - 0.5).toFixed(3),
+        },
+        "Debug Particle": {
+          x: this.debugParticle.x.toFixed(3),
+          y: this.debugParticle.y.toFixed(3),
+        },
+        "Canvas Pixels": {
+          x: Math.round(e.clientX - rect.left),
+          y: Math.round(e.clientY - rect.top),
+        },
+      });
+
+      // Log boundary info
+      console.log("Boundary:", {
+        radiusX: this.particleSystem.boundaryRadiusX.toFixed(3),
+        radiusY: this.particleSystem.boundaryRadiusY.toFixed(3),
+      });
+    });
   }
 
   async init() {
@@ -57,15 +101,73 @@ class Main {
     // Draw grid
     this.simulation.gridRenderer.draw();
 
+    // Draw debug center particle (green)
+    this.simulation.particleRenderer.draw(
+      [this.debugParticle],
+      [0.0, 1.0, 0.0, 1.0]
+    );
+
     // Draw reference particles (blue)
     this.simulation.particleRenderer.draw(
       this.simulation.particles,
       this.colors.reference
     );
 
-    // Draw test particles (orange)
+    // Add detailed logging for particle data flow
     const testParticles = this.particleSystem.getParticles();
-    this.simulation.particleRenderer.draw(testParticles, this.colors.test);
+    const boundaryPoints = this.particleSystem.getBoundaryPoints();
+
+    console.log("Particle Systems Debug:", {
+      testParticles: {
+        count: testParticles?.length || 0,
+        first: testParticles?.[0]
+          ? {
+              x: testParticles[0].x.toFixed(3),
+              y: testParticles[0].y.toFixed(3),
+            }
+          : null,
+        last: testParticles?.[testParticles.length - 1]
+          ? {
+              x: testParticles[testParticles.length - 1].x.toFixed(3),
+              y: testParticles[testParticles.length - 1].y.toFixed(3),
+            }
+          : null,
+      },
+      boundaryPoints: {
+        count: boundaryPoints?.length || 0,
+        first: boundaryPoints?.[0]
+          ? {
+              x: boundaryPoints[0].x.toFixed(3),
+              y: boundaryPoints[0].y.toFixed(3),
+            }
+          : null,
+      },
+    });
+
+    // Draw boundary with explicit check
+    if (boundaryPoints && boundaryPoints.length > 0) {
+      this.simulation.particleRenderer.draw(
+        boundaryPoints,
+        [1.0, 0.0, 0.0, 0.5]
+      );
+    }
+
+    // Draw particles with explicit check
+    if (testParticles && testParticles.length > 0) {
+      this.simulation.particleRenderer.draw(testParticles, this.colors.test);
+    }
+
+    // Log center particle position periodically
+    if (this.frame % 60 === 0) {
+      // Every second at 60fps
+      console.log("Center Particle:", {
+        position: this.debugParticle,
+        normalized: {
+          x: this.debugParticle.x,
+          y: this.debugParticle.y,
+        },
+      });
+    }
 
     // Continue animation
     requestAnimationFrame(() => this.animate());

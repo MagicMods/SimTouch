@@ -11,7 +11,29 @@ class ParticleRenderer extends BaseRenderer {
     console.log("ParticleRenderer initialized");
   }
 
-  draw(particles, color = null) {
+  draw(particles, color) {
+    console.log("ParticleRenderer.draw called with:", {
+      particlesReceived: {
+        count: particles?.length || 0,
+        first: particles?.[0]
+          ? {
+              x: particles[0].x.toFixed(3),
+              y: particles[0].y.toFixed(3),
+            }
+          : null,
+        isArray: Array.isArray(particles),
+        hasValidFormat:
+          particles?.[0]?.hasOwnProperty("x") &&
+          particles?.[0]?.hasOwnProperty("y"),
+      },
+      color: color,
+    });
+
+    if (!particles || !Array.isArray(particles) || particles.length === 0) {
+      console.warn("No valid particles to draw");
+      return;
+    }
+
     // Get shader program
     const program = this.setupShader("particles");
     if (!program) {
@@ -21,14 +43,6 @@ class ParticleRenderer extends BaseRenderer {
 
     // Set configurable uniforms
     this.gl.uniform1f(program.uniforms.pointSize, this.config.size);
-
-    // Early exit if no particles
-    if (!particles || particles.length === 0) {
-      console.log("No particles to draw");
-      return;
-    }
-
-    // console.log(`Drawing ${particles.length} particles`);
 
     // Update particle positions in buffer
     const vertices = new Float32Array(particles.flatMap((p) => [p.x, p.y]));
