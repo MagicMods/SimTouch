@@ -1,32 +1,54 @@
 import GUI from "lil-gui";
 
 class UI {
-  constructor(simulation) {
-    if (!simulation) {
-      throw new Error("Simulation instance required");
+  constructor(main) {
+    if (!main) {
+      throw new Error("Main instance required");
     }
-    this.sim = simulation;
+    this.main = main;
     this.gui = new GUI();
     this.initGUI();
   }
 
   initGUI() {
-    // Simulation controls
-    const simFolder = this.gui.addFolder("Simulation");
-    simFolder
-      .add(this.sim, "particleCount", 0, 500, 10)
+    // Reference system controls
+    const refFolder = this.gui.addFolder("Reference");
+    refFolder
+      .add(this.main.simulation, "particleCount", 0, 500, 10)
       .name("Particles")
       .onChange(() => {
-        console.log(`Particle count updated: ${this.sim.particleCount}`);
+        console.log(
+          `Reference particles: ${this.main.simulation.particleCount}`
+        );
       });
 
-    // Particle appearance
-    const appearanceFolder = this.gui.addFolder("Appearance");
-    appearanceFolder
-      .add(this.sim.particleRenderer.config, "size", 1, 50)
-      .name("Size");
+    // PIC system controls
+    const picFolder = this.gui.addFolder("PIC");
+    const physics = this.main.particleSystem;
 
-    console.log("UI initialized");
+    // Physics parameters
+    const physicsFolder = picFolder.addFolder("Physics");
+    physicsFolder.add(physics, "gravity", -20, 20, 0.1).name("Gravity");
+    physicsFolder.add(physics, "restitution", 0, 2, 0.05).name("Restitution");
+    physicsFolder
+      .add(physics, "velocityDamping", 0.9, 1, 0.001)
+      .name("Velocity Damping");
+    physicsFolder
+      .add(physics, "boundaryDamping", 0, 1, 0.05)
+      .name("Boundary Damping");
+    physicsFolder
+      .add(physics, "particleRadius", 0.001, 0.02, 0.001)
+      .name("Particle Size");
+
+    // Boundary parameters
+    const boundaryFolder = picFolder.addFolder("Boundary");
+    boundaryFolder.add(physics, "radius", 0.3, 0.495, 0.005).name("Radius");
+
+    // Open relevant folders
+    picFolder.open();
+    physicsFolder.open();
+
+    console.log("UI initialized with PIC parameters");
   }
 
   dispose() {

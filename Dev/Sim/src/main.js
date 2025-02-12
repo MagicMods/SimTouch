@@ -80,16 +80,17 @@ class Main {
   async init() {
     try {
       await this.simulation.initialize();
-      this.ui = new UI(this.simulation);
 
-      // Create test particle renderer with new shader
+      // Initialize UI with main instance
+      this.ui = new UI(this); // Pass main instance instead of simulation
+
+      // Create test particle renderer
       this.testParticleRenderer = new ParticleRenderer(
         this.simulation.gl,
         this.simulation.shaderManager,
-        "particles" // New shader for test system
+        "particles"
       );
 
-      // Start our custom animation loop instead of simulation.start()
       this.animate();
       return true;
     } catch (error) {
