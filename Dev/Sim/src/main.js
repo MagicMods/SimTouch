@@ -27,18 +27,18 @@ class Main {
       gravity: 9.81,
     });
 
-    // Add debug center particle
-    this.debugParticle = {
-      x: 0.5, // Center in [0,1] space
-      y: 0.5,
-      vx: 0,
-      vy: 0,
-    };
+    // // Add debug center particle
+    // this.debugParticle = {
+    //   x: 0.5, // Center in [0,1] space
+    //   y: 0.5,
+    //   vx: 0,
+    //   vy: 0,
+    // };
 
-    // Add mouse debug
-    this.setupMouseDebug();
+    // // Add mouse debug
+    // this.setupMouseDebug();
 
-    console.log("Main constructor complete with debug additions");
+    // console.log("Main constructor complete with debug additions");
   }
 
   setupMouseDebug() {
@@ -66,10 +66,13 @@ class Main {
         },
       });
 
-      // Log boundary info
+      // Log boundary info from ParticleSystem
       console.log("Boundary:", {
-        radiusX: this.particleSystem.boundaryRadiusX.toFixed(3),
-        radiusY: this.particleSystem.boundaryRadiusY.toFixed(3),
+        center: {
+          x: this.particleSystem.centerX.toFixed(3),
+          y: this.particleSystem.centerY.toFixed(3),
+        },
+        radius: this.particleSystem.radius.toFixed(3),
       });
     });
   }
@@ -109,8 +112,8 @@ class Main {
     // Draw grid
     this.simulation.gridRenderer.draw();
 
-    // Draw debug center particle with new shader (green)
-    this.testParticleRenderer.draw([this.debugParticle], [0.0, 1.0, 0.0, 1.0]);
+    // // Draw debug center particle with new shader (green)
+    // this.testParticleRenderer.draw([this.debugParticle], [0.0, 1.0, 0.0, 1.0]);
 
     // Draw reference particles (blue)
     this.simulation.particleRenderer.draw(

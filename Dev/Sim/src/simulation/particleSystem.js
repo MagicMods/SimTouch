@@ -3,7 +3,7 @@ class ParticleSystem {
     // Standard [0,1] space parameters
     this.centerX = 0.5; // Center point
     this.centerY = 0.5; // Center point
-    this.radius = 0.475; // 95% of normalized space
+    this.radius = 0.495; // 95% of normalized space
 
     // Core particle data
     this.numParticles = particleCount;
@@ -22,7 +22,7 @@ class ParticleSystem {
     this.velocitiesY = new Float32Array(this.numParticles);
 
     this.initializeParticles();
-    this.boundaryPoints = this.createBoundaryPoints();
+    // this.boundaryPoints = this.createBoundaryPoints();
   }
 
   createBoundaryPoints() {
