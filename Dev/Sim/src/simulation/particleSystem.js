@@ -349,27 +349,22 @@ class ParticleSystem {
 
       if (distSq > this.radius * this.radius) {
         const dist = Math.sqrt(distSq);
+        const penetration = dist - this.radius;
         const nx = dxBoundary / dist;
         const ny = dyBoundary / dist;
 
-        // Calculate impact
+        // Reflect velocity if particle is moving outward
         const dot = this.velocitiesX[i] * nx + this.velocitiesY[i] * ny;
-
         if (dot > 0) {
-          // Reflect velocity
           this.velocitiesX[i] -= (1 + this.restitution) * dot * nx;
           this.velocitiesY[i] -= (1 + this.restitution) * dot * ny;
-
-          // Apply damping
           this.velocitiesX[i] *= this.boundaryDamping;
           this.velocitiesY[i] *= this.boundaryDamping;
         }
 
-        // Fix: Place particle exactly at boundary minus its radius
-        // This prevents cumulative offset issues
-        const safeRadius = this.radius - this.particleRadius * 0.5; // Use half radius for better contact
-        this.particles[i * 2] = this.centerX + nx * safeRadius;
-        this.particles[i * 2 + 1] = this.centerY + ny * safeRadius;
+        // Instead of snapping, subtract only the penetration distance to correct the position
+        this.particles[i * 2] -= penetration * nx;
+        this.particles[i * 2 + 1] -= penetration * ny;
       } else {
         this.particles[i * 2] = newX;
         this.particles[i * 2 + 1] = newY;
