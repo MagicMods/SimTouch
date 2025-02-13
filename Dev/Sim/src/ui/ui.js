@@ -23,13 +23,15 @@ class UI {
     //   });
 
     // PIC system controls
-    const picFolder = this.gui.addFolder("PIC");
+    const picFolder = this.gui.addFolder("Particles");
     const physics = this.main.particleSystem;
 
-    // Particle count with reinit
+    // Particle count and size controls
     const particleControl = picFolder
-      .add(physics, "numParticles", 10, 500, 10)
-      .name("Particles");
+      .add(physics, "numParticles", 10, 1000, 10)
+      .name("N");
+
+    picFolder.add(physics, "particleRadius", 0.001, 0.05, 0.001).name("Size");
 
     particleControl.onChange((value) => {
       physics.numParticles = value;
@@ -197,7 +199,7 @@ class UI {
 
     flipFolder
       .add(physics, "picFlipRatio", 0, 1, 0.01)
-      .name("FLIP Ratio")
+      .name("PIC / FLIP")
       .onChange((value) => {
         console.log(`PIC/FLIP mixing ratio: ${value * 100}% FLIP`);
       });
