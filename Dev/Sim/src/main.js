@@ -27,9 +27,9 @@ class Main {
 
     // Create simulation based on ParticleSystem alone
     this.particleSystem = new ParticleSystem({
-      particleCount: 100,
+      particleCount: 500,
       timeStep: 1 / 60,
-      gravity: 9.81,
+      gravity: 0,
     });
 
     // Create renderer for particles

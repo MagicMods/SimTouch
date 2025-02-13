@@ -2,9 +2,9 @@ import { FluidFLIP } from "./fluidFLIP.js";
 
 class ParticleSystem {
   constructor({
-    particleCount = 100,
+    particleCount = 500,
     timeStep = 1 / 60,
-    gravity = 9.81,
+    gravity = 0,
     picFlipRatio = 0.97, // New: FLIP mixing ratio
   } = {}) {
     // Standard [0,1] space parameters
