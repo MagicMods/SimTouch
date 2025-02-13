@@ -174,10 +174,6 @@ class UI {
       .add(physics, "impulseMag", 0.001, 0.2, 0.001)
       .name("Input Strength");
 
-    mouseInputFolder
-      .add(physics, "mouseInfluence", 0, 2, 0.1)
-      .name("Input Mix");
-
     // Debug parameters
     const debugFolder = picFolder.addFolder("Debug");
     debugFolder.add(physics, "debugEnabled").name("Show Debug Overlay");

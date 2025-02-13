@@ -55,7 +55,6 @@ class ParticleSystem {
     this.mouseAttractor = false; // Toggle between attractor and drag modes
     this.impulseRadius = 0.1; // Radius of influence in [0,1] space
     this.impulseMag = 0.03; // Base strength of the impulse
-    this.mouseInfluence = 1.0; // Multiplier for impulse strength
 
     // Initialize arrays
     this.particles = new Float32Array(this.numParticles * 2);
@@ -339,7 +338,7 @@ class ParticleSystem {
 
       if (dist < this.impulseRadius && dist > 0) {
         const factor = 1 - dist / this.impulseRadius;
-        let force = factor * this.impulseMag * this.mouseInfluence;
+        let force = factor * this.impulseMag;
 
         // Reverse force direction for attract mode
         if (mode === "attract") {
@@ -370,7 +369,7 @@ class ParticleSystem {
 
       if (dist < this.impulseRadius) {
         const factor = 1 - dist / this.impulseRadius;
-        const force = factor * this.impulseMag * this.mouseInfluence;
+        const force = factor * this.impulseMag;
 
         this.velocitiesX[i] += force * ndx;
         this.velocitiesY[i] += force * ndy;
