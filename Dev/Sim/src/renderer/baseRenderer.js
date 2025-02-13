@@ -40,8 +40,13 @@ class BaseRenderer {
     gl.vertexAttribPointer(location, size, gl.FLOAT, false, 0, 0);
   }
 
-  drawShape(vertices, color, programInfo) {
+  drawShape(vertices, color, programInfo, mode) {
     const gl = this.gl;
+
+    // Save WebGL state
+    const lastProgram = this.gl.getParameter(this.gl.CURRENT_PROGRAM);
+
+    this.gl.useProgram(programInfo.program);
 
     // Clear canvas
     gl.clearColor(0.0, 0.0, 0.0, 1.0);
@@ -65,6 +70,9 @@ class BaseRenderer {
 
     // Draw
     gl.drawArrays(gl.TRIANGLES, 0, vertices.length / 2);
+
+    // Restore WebGL state
+    this.gl.useProgram(lastProgram);
   }
 }
 

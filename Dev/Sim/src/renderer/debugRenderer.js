@@ -1,45 +1,60 @@
 import { BaseRenderer } from "./baseRenderer.js";
 
 class DebugRenderer extends BaseRenderer {
-  constructor(canvas) {
-    super(canvas);
+  constructor(gl) {
+    super(gl);
+    this.programInfo = null; // Will store shader program info
     this.arrowLength = 20; // Length of velocity arrows
     this.pressureScale = 0.1; // Scale for pressure visualization
   }
 
-  drawDebugOverlay(physics, programInfo) {
-    if (!programInfo) return;
+  init() {
+    // Create shader program for debug visualization
+    this.programInfo = createDebugShaderProgram(this.gl);
+  }
 
-    // Existing debug overlays…
+  // Rename render to drawDebugOverlay to match the call in main.js
+  drawDebugOverlay(physics, programInfo) {
+    if (!physics.debugEnabled) return;
+
+    const program = programInfo || this.programInfo;
+    if (!program) {
+      console.warn("No shader program available for debug rendering");
+      return;
+    }
+
     if (physics.debugShowVelocityField) {
-      this.drawVelocityField(physics, programInfo);
+      this.drawVelocityField(physics, program);
     }
     if (physics.debugShowPressureField) {
-      this.drawPressureField(physics, programInfo);
+      this.drawPressureField(physics, program);
     }
     if (physics.debugShowBoundaries) {
-      this.drawBoundaries(physics, programInfo);
+      this.drawBoundaries(physics, program);
     }
-    // NEW: Draw noise field visualization if enabled
+    if (physics.debugShowFlipGrid) {
+      this.drawFlipGrid(physics, program);
+    }
     if (physics.debugShowNoiseField) {
-      this.drawNoiseField(physics, programInfo);
+      this.drawNoiseField(physics, program);
     }
   }
 
-  drawVelocityField(solver, programInfo) {
+  drawVelocityField(physics, programInfo) {
+    // Should be physics.fluid instead of solver
     const vertices = [];
     const scale = this.arrowLength;
 
-    // Sample velocity field at regular intervals
-    for (let y = 0; y < solver.height; y += 2) {
-      for (let x = 0; x < solver.width; x += 2) {
-        const i = solver.IX(x, y);
-        const u = solver.u[i];
-        const v = solver.v[i];
+    // Sample velocity field from FLIP fluid
+    for (let y = 0; y < physics.fluid.gridSize; y += 2) {
+      for (let x = 0; x < physics.fluid.gridSize; x += 2) {
+        const i = x + y * physics.fluid.gridSize;
+        const u = physics.fluid.u[i];
+        const v = physics.fluid.v[i];
 
         // Convert to screen space
-        const x1 = (x / solver.width) * 2 - 1;
-        const y1 = -((y / solver.height) * 2 - 1);
+        const x1 = (x / physics.fluid.gridSize) * 2 - 1;
+        const y1 = -((y / physics.fluid.gridSize) * 2 - 1);
         const x2 = x1 + u * scale;
         const y2 = y1 - v * scale;
 
@@ -56,40 +71,33 @@ class DebugRenderer extends BaseRenderer {
     );
   }
 
-  drawPressureField(solver, programInfo) {
+  drawPressureField(physics, programInfo) {
     const vertices = [];
     const colors = [];
+    const n = physics.fluid.gridSize;
 
-    // Compute cell size in clip space:
-    const cellWidth = 2 / solver.width;
-    const cellHeight = 2 / solver.height;
-
-    for (let y = 0; y < solver.height; y++) {
-      for (let x = 0; x < solver.width; x++) {
-        const p = solver.p[solver.IX(x, y)];
-        // Map the pressure to an intensity
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        const idx = i * n + j;
+        const p = physics.fluid.pressure[idx];
+        // ...rest of pressure visualization
         const intensity = Math.min(Math.abs(p) * this.pressureScale, 1.0);
-        // Build a color where positive pressure is red and negative is blue
         const r = p > 0 ? intensity : 0.0;
         const b = p < 0 ? intensity : 0.0;
         const a = 0.5;
-        // Convert grid cell position to clip space coordinates
-        const x1 = (x / solver.width) * 2 - 1;
-        const y1 = -((y / solver.height) * 2 - 1);
-        const x2 = x1 + cellWidth;
-        const y2 = y1 - cellHeight;
+        const x1 = (j / n) * 2 - 1;
+        const y1 = -((i / n) * 2 - 1);
+        const x2 = x1 + 2 / n;
+        const y2 = y1 - 2 / n;
 
-        // Two triangles for the cell (quad)
         vertices.push(x1, y1, x2, y1, x1, y2, x2, y1, x2, y2, x1, y2);
 
-        // Same color for all vertices in this cell
-        for (let i = 0; i < 6; i++) {
+        for (let k = 0; k < 6; k++) {
           colors.push(r, 0, b, a);
         }
       }
     }
 
-    // Create buffers and send to GPU
     const vertexBuffer = this.gl.createBuffer();
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
     this.gl.bufferData(
@@ -106,7 +114,6 @@ class DebugRenderer extends BaseRenderer {
       this.gl.STATIC_DRAW
     );
 
-    // Set up attributes from programInfo
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
     this.gl.enableVertexAttribArray(programInfo.attributes.position);
     this.gl.vertexAttribPointer(
@@ -129,23 +136,22 @@ class DebugRenderer extends BaseRenderer {
       0
     );
 
-    // Draw all quads
     this.gl.drawArrays(this.gl.TRIANGLES, 0, vertices.length / 2);
 
-    // Cleanup
     this.gl.deleteBuffer(vertexBuffer);
     this.gl.deleteBuffer(colorBuffer);
   }
 
-  drawBoundaries(solver, programInfo) {
+  drawBoundaries(physics, programInfo) {
     const vertices = [];
+    const n = physics.fluid.gridSize;
 
-    for (let y = 0; y < solver.height; y++) {
-      for (let x = 0; x < solver.width; x++) {
-        if (solver.s[solver.IX(x, y)] === 1.0) {
-          const x1 = (x / solver.width) * 2 - 1;
-          const y1 = -((y / solver.height) * 2 - 1);
-          vertices.push(x1, y1);
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        if (physics.fluid.solid[i * n + j]) {
+          const x = (j / n) * 2 - 1;
+          const y = -((i / n) * 2 - 1);
+          vertices.push(x, y);
         }
       }
     }
@@ -255,6 +261,136 @@ class DebugRenderer extends BaseRenderer {
     // Cleanup buffers
     this.gl.deleteBuffer(vertexBuffer);
     this.gl.deleteBuffer(colorBuffer);
+  }
+
+  drawFlipGrid(physics, programInfo) {
+    const vertices = [];
+    const colors = [];
+    const n = physics.fluid.gridSize;
+    // console.log("FLIP grid size:", n);
+
+    if (!n) {
+      console.warn("Invalid grid size");
+      return;
+    }
+
+    // First draw the centered pressure points (using FLIP's [0,1] space)
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        // Cell centers in [0,1] space
+        const x = (j + 0.5) / n;
+        const y = (i + 0.5) / n;
+
+        // Convert to clip space
+        const xClip = x * 2 - 1;
+        const yClip = -(y * 2 - 1); // Flip Y for WebGL
+
+        const size = 0.01; // Increased for visibility
+        vertices.push(
+          xClip - size,
+          yClip,
+          xClip + size,
+          yClip,
+          xClip,
+          yClip - size,
+          xClip,
+          yClip + size
+        );
+
+        // Red crosses for pressure points
+        for (let k = 0; k < 4; k++) {
+          colors.push(1, 0, 0, 1);
+        }
+      }
+    }
+
+    // Draw U velocity points (vertical faces)
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j <= n; j++) {
+        const x = j / n; // Staggered U positions
+        const y = (i + 0.5) / n; // Cell centers in Y
+
+        const xClip = x * 2 - 1;
+        const yClip = -(y * 2 - 1);
+
+        const size = 0.008;
+        vertices.push(xClip - size, yClip, xClip + size, yClip);
+
+        // Green for U velocities
+        colors.push(0, 1, 0, 1, 0, 1, 0, 1);
+      }
+    }
+
+    // Draw V velocity points (horizontal faces)
+    for (let i = 0; i <= n; i++) {
+      for (let j = 0; j < n; j++) {
+        const x = (j + 0.5) / n; // Cell centers in X
+        const y = i / n; // Staggered V positions
+
+        const xClip = x * 2 - 1;
+        const yClip = -(y * 2 - 1);
+
+        const size = 0.008;
+        vertices.push(xClip, yClip - size, xClip, yClip + size);
+
+        // Blue for V velocities
+        colors.push(0, 0, 1, 1, 0, 0, 1, 1);
+      }
+    }
+
+    // Create buffers
+    const vertexBuffer = this.gl.createBuffer();
+    const colorBuffer = this.gl.createBuffer();
+
+    // Save current WebGL state
+    const lastProgram = this.gl.getParameter(this.gl.CURRENT_PROGRAM);
+
+    // Set up drawing
+    this.gl.useProgram(programInfo.program);
+
+    // Bind vertex buffer
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      new Float32Array(vertices),
+      this.gl.STATIC_DRAW
+    );
+    this.gl.vertexAttribPointer(
+      programInfo.attributes.position,
+      2,
+      this.gl.FLOAT,
+      false,
+      0,
+      0
+    );
+    this.gl.enableVertexAttribArray(programInfo.attributes.position);
+
+    // Bind color buffer
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, colorBuffer);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      new Float32Array(colors),
+      this.gl.STATIC_DRAW
+    );
+    this.gl.vertexAttribPointer(
+      programInfo.attributes.color,
+      4,
+      this.gl.FLOAT,
+      false,
+      0,
+      0
+    );
+    this.gl.enableVertexAttribArray(programInfo.attributes.color);
+
+    // Draw the grid
+    this.gl.drawArrays(this.gl.LINES, 0, vertices.length / 2);
+
+    // Cleanup
+    this.gl.deleteBuffer(vertexBuffer);
+    this.gl.deleteBuffer(colorBuffer);
+
+    // Restore WebGL state
+    this.gl.useProgram(lastProgram);
   }
 }
 

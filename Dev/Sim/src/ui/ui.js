@@ -184,7 +184,8 @@ class UI {
       .add(physics, "debugShowPressureField")
       .name("Show Pressure Field");
     debugFolder.add(physics, "debugShowBoundaries").name("Show Boundaries");
-    // NEW: Toggle for visualizing the noise field
+    // NEW: Toggle for FLIP grid visualization
+    debugFolder.add(physics, "debugShowFlipGrid").name("Show FLIP Grid");
     debugFolder.add(physics, "debugShowNoiseField").name("Show Noise Field");
     // NEW: Control noise field resolution
     debugFolder

@@ -30,10 +30,11 @@ class ParticleSystem {
     this.timeScale = 1.0; // Multiplier for animation speed
 
     // Debug visualization
-    this.debugEnabled = false; // Add debug toggle
+    this.debugEnabled = true; // Add debug toggle
     this.debugShowVelocityField = false;
     this.debugShowPressureField = false;
     this.debugShowBoundaries = false;
+    this.debugShowFlipGrid = false; // NEW: FLIP grid visualization toggle
     this.debugShowNoiseField = false;
     this.noiseFieldResolution = 20;
 
@@ -42,7 +43,12 @@ class ParticleSystem {
     this.repulsion = 0.2; // Repulsion strength (0 = no repulsion)
     this.collisionDamping = 0.98; // Energy preservation in collisions
 
-    // Spatial partitioning parameters
+    // Initialize particle arrays first
+    this.particles = new Float32Array(particleCount * 2);
+    this.velocitiesX = new Float32Array(particleCount);
+    this.velocitiesY = new Float32Array(particleCount);
+
+    // Spatial partitioning parameters - moved after particle initialization
     this.gridSize = 10; // Number of cells per side
     this.cellSize = 1.0 / this.gridSize; // In [0,1] space
     this.grid = new Array(this.gridSize * this.gridSize).fill().map(() => []);
@@ -60,8 +66,8 @@ class ParticleSystem {
 
     // Mouse interaction parameters
     this.mouseAttractor = false; // Toggle between attractor and drag modes
-    this.impulseRadius = 0.1; // Radius of influence in [0,1] space
-    this.impulseMag = 0.03; // Base strength of the impulse
+    this.impulseRadius = 0.15; // Increased radius
+    this.impulseMag = 0.01; // Reduced magnitude for better control
 
     // FLIP parameters
     this.picFlipRatio = picFlipRatio;
@@ -70,13 +76,12 @@ class ParticleSystem {
       gridSize: 32,
       picFlipRatio: this.picFlipRatio,
       dt: timeStep,
+      centerX: this.centerX,
+      centerY: this.centerY,
+      radius: this.radius,
     });
 
-    // Initialize arrays
-    this.particles = new Float32Array(this.numParticles * 2);
-    this.velocitiesX = new Float32Array(this.numParticles);
-    this.velocitiesY = new Float32Array(this.numParticles);
-
+    // Initialize particles after grid setup
     this.initializeParticles();
   }
 
@@ -144,7 +149,7 @@ class ParticleSystem {
   }
 
   updateGrid() {
-    // Clear grid
+    // Clear all grid cells first
     for (let i = 0; i < this.grid.length; i++) {
       this.grid[i].length = 0;
     }
@@ -169,7 +174,10 @@ class ParticleSystem {
 
       // Add particle index to cell
       const cellIndex = cellY * this.gridSize + cellX;
-      this.grid[cellIndex].push(i);
+      if (this.grid[cellIndex]) {
+        // Add safety check
+        this.grid[cellIndex].push(i);
+      }
     }
   }
 
@@ -344,6 +352,9 @@ class ParticleSystem {
   }
 
   applyImpulseAt(x, y, mode = "repulse") {
+    // Scale impulse based on FLIP ratio
+    const impulseScale = 1.0 + this.picFlipRatio * 2.0; // Stronger effect with more FLIP
+
     for (let i = 0; i < this.numParticles; i++) {
       const px = this.particles[i * 2];
       const py = this.particles[i * 2 + 1];
@@ -353,10 +364,9 @@ class ParticleSystem {
       const dist = Math.hypot(dx, dy);
 
       if (dist < this.impulseRadius && dist > 0) {
-        const factor = 1 - dist / this.impulseRadius;
-        let force = factor * this.impulseMag;
+        const factor = Math.pow(1 - dist / this.impulseRadius, 2); // Quadratic falloff
+        let force = factor * this.impulseMag * impulseScale;
 
-        // Reverse force direction for attract mode
         if (mode === "attract") {
           force = -force;
         }
@@ -395,45 +405,56 @@ class ParticleSystem {
 
   step() {
     const dt = this.timeStep * this.timeScale;
-    this.time += dt; // Update time for animated turbulence
+    this.time += dt;
 
-    // 1. Transfer particle velocities to grid
-    this.fluid.transferToGrid(
-      this.particles,
-      this.velocitiesX,
-      this.velocitiesY
-    );
+    // Scale gravity to match FLIP grid space
+    const scaledGravity = this.gravity * (this.picFlipRatio > 0 ? 0.5 : 1.0);
 
-    // 2. Solve incompressibility
-    this.fluid.solveIncompressibility();
-
-    // 3. Update particle velocities with PIC/FLIP mix
-    this.fluid.transferToParticles(
-      this.particles,
-      this.velocitiesX,
-      this.velocitiesY
-    );
-
-    // 4. Move particles with updated velocities
-    // First pass: Update velocities and positions
+    // Apply scaled gravity
     for (let i = 0; i < this.numParticles; i++) {
-      // Apply gravity ([0,1] space: positive Y is down)
-      this.velocitiesY[i] += -this.gravity * dt;
+      this.velocitiesY[i] += -scaledGravity * dt;
+    }
 
-      // Apply damping directly (values are preservation factors)
+    // 2. Transfer to grid and solve fluid
+    if (this.picFlipRatio > 0) {
+      // Only do FLIP steps if ratio > 0
+      // Transfer particle velocities to grid
+      this.fluid.transferToGrid(
+        this.particles,
+        this.velocitiesX,
+        this.velocitiesY
+      );
+
+      // Solve incompressibility
+      this.fluid.solveIncompressibility();
+
+      // Update particle velocities with PIC/FLIP mix
+      this.fluid.transferToParticles(
+        this.particles,
+        this.velocitiesX,
+        this.velocitiesY
+      );
+    }
+
+    // 3. Apply turbulence if enabled
+    if (this.turbulenceEnabled) {
+      for (let i = 0; i < this.numParticles; i++) {
+        this.applyTurbulence(i, dt);
+      }
+    }
+
+    // 4. Update positions with velocity damping
+    for (let i = 0; i < this.numParticles; i++) {
+      // Apply velocity damping
       this.velocitiesX[i] *= this.velocityDamping;
       this.velocitiesY[i] *= this.velocityDamping;
 
-      // Apply turbulence
-      this.applyTurbulence(i, dt);
-
-      // Check for rest state
+      // Check if particle should be put to rest
       const velocityMagnitude = Math.sqrt(
         this.velocitiesX[i] * this.velocitiesX[i] +
           this.velocitiesY[i] * this.velocitiesY[i]
       );
 
-      // Position change check
       const dx = this.velocitiesX[i] * dt;
       const dy = this.velocitiesY[i] * dt;
       const positionChange = Math.sqrt(dx * dx + dy * dy);
@@ -445,14 +466,14 @@ class ParticleSystem {
         // Put particle fully to rest
         this.velocitiesX[i] = 0;
         this.velocitiesY[i] = 0;
-        continue; // Skip position update for resting particles
+        continue;
       }
 
       // Update position
       const newX = this.particles[i * 2] + this.velocitiesX[i] * dt;
       const newY = this.particles[i * 2 + 1] + this.velocitiesY[i] * dt;
 
-      // Check circular boundary collision in [0,1] space
+      // Check circular boundary collision
       const dxBoundary = newX - this.centerX;
       const dyBoundary = newY - this.centerY;
       const distSq = dxBoundary * dxBoundary + dyBoundary * dyBoundary;
@@ -472,7 +493,7 @@ class ParticleSystem {
           this.velocitiesY[i] *= this.boundaryDamping;
         }
 
-        // Instead of snapping, subtract only the penetration distance to correct the position
+        // Correct position by penetration distance
         this.particles[i * 2] -= penetration * nx;
         this.particles[i * 2 + 1] -= penetration * ny;
       } else {
@@ -481,12 +502,9 @@ class ParticleSystem {
       }
     }
 
-    // 5. Apply boundary conditions
-    // Second pass: Particle-particle collisions (if enabled)
+    // 5. Handle particle collisions if enabled
     if (this.collisionEnabled) {
       this.updateGrid();
-
-      // Check collisions using grid
       for (let i = 0; i < this.grid.length; i++) {
         this.checkCellCollisions(i);
       }

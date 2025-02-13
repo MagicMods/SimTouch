@@ -176,23 +176,6 @@ class ShaderManager {
           }
         `,
     },
-    particlesOld: {
-      vertex: `
-          attribute vec2 position;
-          uniform float pointSize;
-          void main() {
-              gl_Position = vec4(position, 0.0, 1.0);
-              gl_PointSize = pointSize;
-          }
-      `,
-      fragment: `
-          precision mediump float;
-          uniform vec4 color;
-          void main() {
-              gl_FragColor = color;
-          }
-      `,
-    },
     lines: {
       vert: `
             attribute vec2 position;
