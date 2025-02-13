@@ -1,5 +1,12 @@
+import { FluidFLIP } from "./fluidFLIP.js";
+
 class ParticleSystem {
-  constructor({ particleCount = 100, timeStep = 1 / 60, gravity = 9.81 } = {}) {
+  constructor({
+    particleCount = 100,
+    timeStep = 1 / 60,
+    gravity = 9.81,
+    picFlipRatio = 0.97, // New: FLIP mixing ratio
+  } = {}) {
     // Standard [0,1] space parameters
     this.centerX = 0.5; // Center point
     this.centerY = 0.5; // Center point
@@ -32,7 +39,7 @@ class ParticleSystem {
 
     // Particle interaction parameters
     this.collisionEnabled = true; // Toggle for particle collisions
-    this.repulsion = 1.0; // Repulsion strength (0 = no repulsion)
+    this.repulsion = 0.2; // Repulsion strength (0 = no repulsion)
     this.collisionDamping = 0.98; // Energy preservation in collisions
 
     // Spatial partitioning parameters
@@ -55,6 +62,15 @@ class ParticleSystem {
     this.mouseAttractor = false; // Toggle between attractor and drag modes
     this.impulseRadius = 0.1; // Radius of influence in [0,1] space
     this.impulseMag = 0.03; // Base strength of the impulse
+
+    // FLIP parameters
+    this.picFlipRatio = picFlipRatio;
+    this.flipIterations = 20;
+    this.fluid = new FluidFLIP({
+      gridSize: 32,
+      picFlipRatio: this.picFlipRatio,
+      dt: timeStep,
+    });
 
     // Initialize arrays
     this.particles = new Float32Array(this.numParticles * 2);
@@ -378,10 +394,27 @@ class ParticleSystem {
   }
 
   step() {
-    // Scale time step by animation speed
     const dt = this.timeStep * this.timeScale;
     this.time += dt; // Update time for animated turbulence
 
+    // 1. Transfer particle velocities to grid
+    this.fluid.transferToGrid(
+      this.particles,
+      this.velocitiesX,
+      this.velocitiesY
+    );
+
+    // 2. Solve incompressibility
+    this.fluid.solveIncompressibility();
+
+    // 3. Update particle velocities with PIC/FLIP mix
+    this.fluid.transferToParticles(
+      this.particles,
+      this.velocitiesX,
+      this.velocitiesY
+    );
+
+    // 4. Move particles with updated velocities
     // First pass: Update velocities and positions
     for (let i = 0; i < this.numParticles; i++) {
       // Apply gravity ([0,1] space: positive Y is down)
@@ -448,6 +481,7 @@ class ParticleSystem {
       }
     }
 
+    // 5. Apply boundary conditions
     // Second pass: Particle-particle collisions (if enabled)
     if (this.collisionEnabled) {
       this.updateGrid();

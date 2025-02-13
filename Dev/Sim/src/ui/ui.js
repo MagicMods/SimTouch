@@ -191,6 +191,23 @@ class UI {
       .add(physics, "noiseFieldResolution", 5, 50, 1)
       .name("Noise Field Resolution");
 
+    // Add FLIP controls
+    const flipFolder = picFolder.addFolder("FLIP");
+
+    flipFolder
+      .add(physics, "picFlipRatio", 0, 1, 0.01)
+      .name("FLIP Ratio")
+      .onChange((value) => {
+        console.log(`PIC/FLIP mixing ratio: ${value * 100}% FLIP`);
+      });
+
+    // FLIP parameters
+    flipFolder
+      .add(physics, "flipIterations", 1, 40, 1)
+      .name("Pressure Iterations");
+
+    flipFolder.open();
+
     mouseInputFolder.open();
 
     // Open relevant folders
