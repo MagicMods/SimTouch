@@ -107,32 +107,29 @@ class UI {
 
     // Add turbulence controls
     const turbulenceFolder = physicsFolder.addFolder("Turbulence");
+    const turbulence = this.main.turbulenceField; // Get reference to turbulence field
 
-    turbulenceFolder.add(physics, "turbulenceEnabled").name("Enable");
+    turbulenceFolder.add(turbulence, "enabled").name("Enable");
 
-    turbulenceFolder
-      .add(physics, "turbulenceStrength", 0, 2, 0.1)
-      .name("Strength");
+    turbulenceFolder.add(turbulence, "strength", 0, 2, 0.1).name("Strength");
 
-    turbulenceFolder.add(physics, "turbulenceScale", 1, 10, 0.5).name("Scale");
+    turbulenceFolder.add(turbulence, "scale", 1, 10, 0.5).name("Scale");
 
-    turbulenceFolder.add(physics, "turbulenceSpeed", 0, 5, 0.1).name("Speed");
+    turbulenceFolder.add(turbulence, "speed", 0, 5, 0.1).name("Speed");
 
-    turbulenceFolder
-      .add(physics, "turbulenceOctaves", 1, 5, 1)
-      .name("Complexity");
+    turbulenceFolder.add(turbulence, "octaves", 1, 5, 1).name("Complexity");
 
     turbulenceFolder
-      .add(physics, "turbulencePersistence", 0, 1, 0.1)
+      .add(turbulence, "persistence", 0, 1, 0.1)
       .name("Roughness");
 
     turbulenceFolder
-      .add(physics, "turbulenceRotation", 0, Math.PI * 2, 0.1)
+      .add(turbulence, "rotation", 0, Math.PI * 2, 0.1)
       .name("Rotation");
 
     turbulenceFolder
-      .add(physics, "turbulenceInwardFactor", -2, 2, 0.1)
-      .name("Inward Push Factor");
+      .add(turbulence, "inwardFactor", -2, 2, 0.1)
+      .name("Inward Push");
 
     turbulenceFolder.open();
 

@@ -6,6 +6,7 @@ import { ParticleRenderer } from "./renderer/particleRenderer.js";
 import { LineRenderer } from "./renderer/lineRenderer.js";
 import { GridRenderer } from "./renderer/gridRenderer.js"; // Import GridRenderer
 import { DebugRenderer } from "./renderer/debugRenderer.js"; // Import DebugRenderer
+import { TurbulenceField } from "./simulation/turbulenceField.js";
 
 class Main {
   constructor() {
@@ -25,11 +26,22 @@ class Main {
       test: [1.0, 0.4, 0.2, 0.8], // Orange
     };
 
-    // Create simulation based on ParticleSystem alone
+    // Create turbulence field first
+    this.turbulenceField = new TurbulenceField({
+      centerX: 0.5,
+      centerY: 0.5,
+      radius: 0.475,
+      enabled: true, // Make sure this is defined
+      strength: 0.5,
+      scale: 4.0,
+    });
+
+    // Create particle system with turbulence reference
     this.particleSystem = new ParticleSystem({
       particleCount: 500,
       timeStep: 1 / 60,
       gravity: 0,
+      turbulence: this.turbulenceField, // Pass reference
     });
 
     // Create renderer for particles
@@ -172,6 +184,9 @@ class Main {
 
   animate() {
     this.frame++;
+
+    // Update turbulence before particle step
+    this.turbulenceField.update(1 / 60); // Use fixed timestep or this.particleSystem.timeStep
 
     // Apply continuous force if active
     if (this.activeForcePos && this.activeForceMode) {

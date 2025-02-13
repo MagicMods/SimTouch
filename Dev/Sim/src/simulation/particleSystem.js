@@ -1,75 +1,65 @@
 import { FluidFLIP } from "./fluidFLIP.js";
+import { TurbulenceField } from "./turbulenceField.js";
 
 class ParticleSystem {
   constructor({
     particleCount = 500,
     timeStep = 1 / 60,
     gravity = 0,
-    picFlipRatio = 0.97, // New: FLIP mixing ratio
+    picFlipRatio = 0.97,
+    turbulence = null, // Keep turbulence as optional parameter
   } = {}) {
-    // Standard [0,1] space parameters
-    this.centerX = 0.5; // Center point
-    this.centerY = 0.5; // Center point
-    this.radius = 0.475; // Slightly smaller for better visibility
+    // Core parameters
+    this.centerX = 0.5;
+    this.centerY = 0.5;
+    this.radius = 0.475;
 
-    // Core particle data
+    // Particle properties
     this.numParticles = particleCount;
     this.timeStep = timeStep;
-    this.gravity = gravity * 0.1; // Scale for [0,1] space
+    this.gravity = gravity * 0.1;
+    this.particleRadius = 0.01;
+    this.renderScale = 2000;
 
-    // Physics parameters - values represent preservation rather than loss
-    this.restitution = 0.8; // 50% energy preserved on bounce
-    this.velocityDamping = 0.98; // 98% velocity preserved in air
-    this.boundaryDamping = 0.95; // 95% velocity preserved on wall
-    this.velocityThreshold = 0.001; // Increased threshold
-    this.positionThreshold = 0.0001; // New: threshold for position changes
-    this.particleRadius = 0.01; // 1% of space width
-    this.renderScale = 2000; // Scale to reasonable screen size
+    // Physics parameters
+    this.restitution = 0.8;
+    this.velocityDamping = 0.98;
+    this.boundaryDamping = 0.95;
+    this.velocityThreshold = 0.001;
+    this.positionThreshold = 0.0001;
 
     // Animation control
-    this.timeScale = 1.0; // Multiplier for animation speed
+    this.timeScale = 1.0;
 
-    // Debug visualization
-    this.debugEnabled = true; // Add debug toggle
+    // Debug flags
+    this.debugEnabled = true;
     this.debugShowVelocityField = false;
     this.debugShowPressureField = false;
     this.debugShowBoundaries = false;
-    this.debugShowFlipGrid = false; // NEW: FLIP grid visualization toggle
+    this.debugShowFlipGrid = false;
     this.debugShowNoiseField = false;
     this.noiseFieldResolution = 20;
 
-    // Particle interaction parameters
-    this.collisionEnabled = true; // Toggle for particle collisions
-    this.repulsion = 0.2; // Repulsion strength (0 = no repulsion)
-    this.collisionDamping = 0.98; // Energy preservation in collisions
-
-    // Initialize particle arrays first
+    // Particle arrays
     this.particles = new Float32Array(particleCount * 2);
     this.velocitiesX = new Float32Array(particleCount);
     this.velocitiesY = new Float32Array(particleCount);
 
-    // Spatial partitioning parameters - moved after particle initialization
-    this.gridSize = 10; // Number of cells per side
-    this.cellSize = 1.0 / this.gridSize; // In [0,1] space
+    // Collision system
+    this.collisionEnabled = true;
+    this.repulsion = 0.2;
+    this.collisionDamping = 0.98;
+    this.gridSize = 10;
+    this.cellSize = 1.0 / this.gridSize;
     this.grid = new Array(this.gridSize * this.gridSize).fill().map(() => []);
 
-    // Enhanced turbulence parameters
-    this.turbulenceEnabled = true;
-    this.turbulenceStrength = 0.5;
-    this.turbulenceScale = 4.0;
-    this.turbulenceSpeed = 1.0;
-    this.turbulenceOctaves = 3; // Number of noise layers
-    this.turbulencePersistence = 0.5; // How much each octave contributes
-    this.turbulenceRotation = 0.0; // Rotation of the turbulence field
-    this.turbulenceInwardFactor = 1.0; // New: Control inward/outward push
-    this.time = 0; // For animated turbulence
+    // External forces
+    this.turbulence = turbulence; // Store turbulence reference
+    this.mouseAttractor = false;
+    this.impulseRadius = 0.15;
+    this.impulseMag = 0.01;
 
-    // Mouse interaction parameters
-    this.mouseAttractor = false; // Toggle between attractor and drag modes
-    this.impulseRadius = 0.15; // Increased radius
-    this.impulseMag = 0.01; // Reduced magnitude for better control
-
-    // FLIP parameters
+    // FLIP system
     this.picFlipRatio = picFlipRatio;
     this.flipIterations = 20;
     this.fluid = new FluidFLIP({
@@ -81,7 +71,6 @@ class ParticleSystem {
       radius: this.radius,
     });
 
-    // Initialize particles after grid setup
     this.initializeParticles();
   }
 
@@ -269,88 +258,6 @@ class ParticleSystem {
     }
   }
 
-  // Improved noise function with rotation
-  noise2D(x, y) {
-    // Apply rotation to input coordinates
-    const cos = Math.cos(this.turbulenceRotation);
-    const sin = Math.sin(this.turbulenceRotation);
-    const rx = x * cos - y * sin;
-    const ry = x * sin + y * cos;
-
-    let noise = 0;
-    let amplitude = 1;
-    let frequency = 1;
-    let maxValue = 0;
-
-    // Sum multiple octaves of noise
-    for (let i = 0; i < this.turbulenceOctaves; i++) {
-      const sx = rx * frequency;
-      const sy = ry * frequency;
-      const s = (sx + sy) * 0.5;
-
-      // Basic smooth noise
-      const t = this.time * this.turbulenceSpeed * frequency;
-      noise +=
-        amplitude *
-        (Math.cos(s + t) * Math.sin(s * 1.5 + t * 0.5) +
-          Math.sin(sx * 0.8 + t * 1.2) * Math.cos(sy * 1.2 + t * 0.7));
-
-      maxValue += amplitude;
-      amplitude *= this.turbulencePersistence;
-      frequency *= 2;
-    }
-
-    // Normalize to [0,1] range
-    return (noise / maxValue + 1) * 0.5;
-  }
-
-  applyTurbulence(i, dt) {
-    if (!this.turbulenceEnabled) return;
-
-    const x = this.particles[i * 2];
-    const y = this.particles[i * 2 + 1];
-
-    const scale = this.turbulenceScale;
-    const n1 = this.noise2D(x * scale, y * scale);
-    const n2 = this.noise2D(y * scale + 1.234, x * scale + 5.678);
-
-    // Use noise to produce random forces
-    const randomForceX = (n1 - 0.5) * this.turbulenceStrength;
-    const randomForceY = (n2 - 0.5) * this.turbulenceStrength;
-
-    // Compute distance from the center
-    const dx = x - this.centerX;
-    const dy = y - this.centerY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    // If particle is near the outer boundary, add an inward (or outward) push
-    let inwardForceX = 0;
-    let inwardForceY = 0;
-    const threshold = 0.8 * this.radius; // modify threshold as needed
-    if (dist > threshold) {
-      // The excess fraction beyond the threshold determines the push strength
-      const excess = (dist - threshold) / (this.radius - threshold);
-      inwardForceX =
-        (-dx / dist) *
-        excess *
-        this.turbulenceStrength *
-        this.turbulenceInwardFactor;
-      inwardForceY =
-        (-dy / dist) *
-        excess *
-        this.turbulenceStrength *
-        this.turbulenceInwardFactor;
-    }
-
-    // Combine the random force with the inward force.
-    const fx = randomForceX + inwardForceX;
-    const fy = randomForceY + inwardForceY;
-
-    // Apply the combined force directly
-    this.velocitiesX[i] += fx * dt;
-    this.velocitiesY[i] += fy * dt;
-  }
-
   applyImpulseAt(x, y, mode = "repulse") {
     // Scale impulse based on FLIP ratio
     const impulseScale = 1.0 + this.picFlipRatio * 2.0; // Stronger effect with more FLIP
@@ -405,17 +312,42 @@ class ParticleSystem {
 
   step() {
     const dt = this.timeStep * this.timeScale;
-    this.time += dt;
 
-    // Scale gravity to match FLIP grid space
+    // 1. Apply external forces
+    this.applyGravity(dt);
+    this.applyTurbulence(dt);
+
+    // 2. FLIP update
+    this.updateFLIP(dt);
+
+    // 3. Update positions
+    this.updatePositions(dt);
+
+    // 4. Handle collisions
+    if (this.collisionEnabled) {
+      this.handleCollisions();
+    }
+  }
+
+  applyGravity(dt) {
     const scaledGravity = this.gravity * (this.picFlipRatio > 0 ? 0.5 : 1.0);
-
-    // Apply scaled gravity
     for (let i = 0; i < this.numParticles; i++) {
       this.velocitiesY[i] += -scaledGravity * dt;
     }
+  }
 
-    // 2. Transfer to grid and solve fluid
+  applyTurbulence(dt) {
+    if (this.turbulence?.enabled) {
+      for (let i = 0; i < this.numParticles; i++) {
+        const pos = [this.particles[i * 2], this.particles[i * 2 + 1]];
+        const vel = [this.velocitiesX[i], this.velocitiesY[i]];
+        [this.velocitiesX[i], this.velocitiesY[i]] =
+          this.turbulence.applyTurbulence(pos, vel, dt);
+      }
+    }
+  }
+
+  updateFLIP(dt) {
     if (this.picFlipRatio > 0) {
       // Only do FLIP steps if ratio > 0
       // Transfer particle velocities to grid
@@ -435,15 +367,9 @@ class ParticleSystem {
         this.velocitiesY
       );
     }
+  }
 
-    // 3. Apply turbulence if enabled
-    if (this.turbulenceEnabled) {
-      for (let i = 0; i < this.numParticles; i++) {
-        this.applyTurbulence(i, dt);
-      }
-    }
-
-    // 4. Update positions with velocity damping
+  updatePositions(dt) {
     for (let i = 0; i < this.numParticles; i++) {
       // Apply velocity damping
       this.velocitiesX[i] *= this.velocityDamping;
@@ -501,13 +427,12 @@ class ParticleSystem {
         this.particles[i * 2 + 1] = newY;
       }
     }
+  }
 
-    // 5. Handle particle collisions if enabled
-    if (this.collisionEnabled) {
-      this.updateGrid();
-      for (let i = 0; i < this.grid.length; i++) {
-        this.checkCellCollisions(i);
-      }
+  handleCollisions() {
+    this.updateGrid();
+    for (let i = 0; i < this.grid.length; i++) {
+      this.checkCellCollisions(i);
     }
   }
 
