@@ -43,6 +43,7 @@ class ParticleSystem {
     this.turbulenceOctaves = 3; // Number of noise layers
     this.turbulencePersistence = 0.5; // How much each octave contributes
     this.turbulenceRotation = 0.0; // Rotation of the turbulence field
+    this.turbulenceInwardFactor = 1.0; // New: Control inward/outward push
     this.time = 0; // For animated turbulence
 
     // Initialize arrays
@@ -275,29 +276,45 @@ class ParticleSystem {
     const x = this.particles[i * 2];
     const y = this.particles[i * 2 + 1];
 
-    // Sample noise at different offsets for more variation
     const scale = this.turbulenceScale;
     const n1 = this.noise2D(x * scale, y * scale);
     const n2 = this.noise2D(y * scale + 1.234, x * scale + 5.678);
 
-    // Create circular motion tendency
+    // Use noise to produce random forces
+    const randomForceX = (n1 - 0.5) * this.turbulenceStrength;
+    const randomForceY = (n2 - 0.5) * this.turbulenceStrength;
+
+    // Compute distance from the center
     const dx = x - this.centerX;
     const dy = y - this.centerY;
     const dist = Math.sqrt(dx * dx + dy * dy);
-    const angle = Math.atan2(dy, dx);
 
-    // Combine circular and noise forces
-    const fx =
-      (n1 - 0.5) * this.turbulenceStrength +
-      Math.cos(angle + Math.PI / 2) * this.turbulenceStrength * 0.2;
-    const fy =
-      (n2 - 0.5) * this.turbulenceStrength +
-      Math.sin(angle + Math.PI / 2) * this.turbulenceStrength * 0.2;
+    // If particle is near the outer boundary, add an inward (or outward) push
+    let inwardForceX = 0;
+    let inwardForceY = 0;
+    const threshold = 0.8 * this.radius; // modify threshold as needed
+    if (dist > threshold) {
+      // The excess fraction beyond the threshold determines the push strength
+      const excess = (dist - threshold) / (this.radius - threshold);
+      inwardForceX =
+        (-dx / dist) *
+        excess *
+        this.turbulenceStrength *
+        this.turbulenceInwardFactor;
+      inwardForceY =
+        (-dy / dist) *
+        excess *
+        this.turbulenceStrength *
+        this.turbulenceInwardFactor;
+    }
 
-    // Apply forces with distance falloff
-    const falloff = 1 - dist / this.radius;
-    this.velocitiesX[i] += fx * dt * falloff;
-    this.velocitiesY[i] += fy * dt * falloff;
+    // Combine the random force with the inward force.
+    const fx = randomForceX + inwardForceX;
+    const fy = randomForceY + inwardForceY;
+
+    // Apply the combined force directly
+    this.velocitiesX[i] += fx * dt;
+    this.velocitiesY[i] += fy * dt;
   }
 
   step() {

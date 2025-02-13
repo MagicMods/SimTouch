@@ -128,6 +128,10 @@ class UI {
       .add(physics, "turbulenceRotation", 0, Math.PI * 2, 0.1)
       .name("Rotation");
 
+    turbulenceFolder
+      .add(physics, "turbulenceInwardFactor", -2, 2, 0.1)
+      .name("Inward Push Factor");
+
     turbulenceFolder.open();
 
     // Open new folder
