@@ -51,6 +51,12 @@ class ParticleSystem {
     this.turbulenceInwardFactor = 1.0; // New: Control inward/outward push
     this.time = 0; // For animated turbulence
 
+    // Mouse interaction parameters
+    this.mouseAttractor = false; // Toggle between attractor and drag modes
+    this.impulseRadius = 0.1; // Radius of influence in [0,1] space
+    this.impulseMag = 0.03; // Base strength of the impulse
+    this.mouseInfluence = 1.0; // Multiplier for impulse strength
+
     // Initialize arrays
     this.particles = new Float32Array(this.numParticles * 2);
     this.velocitiesX = new Float32Array(this.numParticles);
@@ -320,6 +326,56 @@ class ParticleSystem {
     // Apply the combined force directly
     this.velocitiesX[i] += fx * dt;
     this.velocitiesY[i] += fy * dt;
+  }
+
+  applyImpulseAt(x, y, mode = "repulse") {
+    for (let i = 0; i < this.numParticles; i++) {
+      const px = this.particles[i * 2];
+      const py = this.particles[i * 2 + 1];
+
+      const dx = px - x;
+      const dy = py - y;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist < this.impulseRadius && dist > 0) {
+        const factor = 1 - dist / this.impulseRadius;
+        let force = factor * this.impulseMag * this.mouseInfluence;
+
+        // Reverse force direction for attract mode
+        if (mode === "attract") {
+          force = -force;
+        }
+
+        const nx = dx / dist;
+        const ny = dy / dist;
+
+        this.velocitiesX[i] += force * nx;
+        this.velocitiesY[i] += force * ny;
+      }
+    }
+  }
+
+  applyDragImpulse(x, y, dx, dy) {
+    const dragMag = Math.hypot(dx, dy);
+    if (dragMag === 0) return;
+
+    const ndx = dx / dragMag;
+    const ndy = dy / dragMag;
+
+    for (let i = 0; i < this.numParticles; i++) {
+      const px = this.particles[i * 2];
+      const py = this.particles[i * 2 + 1];
+
+      const dist = Math.hypot(px - x, py - y);
+
+      if (dist < this.impulseRadius) {
+        const factor = 1 - dist / this.impulseRadius;
+        const force = factor * this.impulseMag * this.mouseInfluence;
+
+        this.velocitiesX[i] += force * ndx;
+        this.velocitiesY[i] += force * ndy;
+      }
+    }
   }
 
   step() {

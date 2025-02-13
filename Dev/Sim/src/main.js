@@ -50,6 +50,18 @@ class Main {
 
     // Frame counter for logging
     this.frame = 0;
+
+    // Add mouse state tracking
+    this.isMouseDown = false;
+    this.mouseButton = null;
+    this.lastMousePos = null;
+
+    // Add state for continuous force application
+    this.activeForcePos = null;
+    this.activeForceMode = null;
+
+    // Set up mouse interaction
+    this.setupMouseInteraction();
   }
 
   setupMouseDebug() {
@@ -86,6 +98,64 @@ class Main {
     });
   }
 
+  setupMouseInteraction() {
+    this.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
+
+    this.canvas.addEventListener("mousedown", (e) => {
+      this.isMouseDown = true;
+      this.mouseButton = e.button;
+      this.lastMousePos = this.getMouseSimulationCoords(e);
+
+      // Set active force position and mode when mouse is pressed
+      if (this.particleSystem.mouseAttractor) {
+        this.activeForcePos = this.lastMousePos;
+        this.activeForceMode = this.mouseButton === 0 ? "attract" : "repulse";
+      }
+    });
+
+    this.canvas.addEventListener("mousemove", (e) => {
+      const currentPos = this.getMouseSimulationCoords(e);
+
+      if (this.isMouseDown) {
+        if (this.particleSystem.mouseAttractor) {
+          // Update force position
+          this.activeForcePos = currentPos;
+        } else if (this.mouseButton === 0) {
+          // Drag mode
+          const dx = currentPos.x - this.lastMousePos.x;
+          const dy = currentPos.y - this.lastMousePos.y;
+          this.particleSystem.applyDragImpulse(
+            currentPos.x,
+            currentPos.y,
+            dx,
+            dy
+          );
+        }
+
+        this.lastMousePos = currentPos;
+      }
+    });
+
+    const clearMouseState = () => {
+      this.isMouseDown = false;
+      this.mouseButton = null;
+      this.lastMousePos = null;
+      this.activeForcePos = null;
+      this.activeForceMode = null;
+    };
+
+    this.canvas.addEventListener("mouseup", clearMouseState);
+    this.canvas.addEventListener("mouseleave", clearMouseState);
+  }
+
+  getMouseSimulationCoords(e) {
+    const rect = this.canvas.getBoundingClientRect();
+    return {
+      x: (e.clientX - rect.left) / rect.width,
+      y: 1 - (e.clientY - rect.top) / rect.height, // Flip Y coordinate
+    };
+  }
+
   async init() {
     try {
       await this.shaderManager.init();
@@ -102,6 +172,15 @@ class Main {
 
   animate() {
     this.frame++;
+
+    // Apply continuous force if active
+    if (this.activeForcePos && this.activeForceMode) {
+      this.particleSystem.applyImpulseAt(
+        this.activeForcePos.x,
+        this.activeForcePos.y,
+        this.activeForceMode
+      );
+    }
 
     // Step particle simulation
     this.particleSystem.step();

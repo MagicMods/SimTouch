@@ -109,7 +109,7 @@ class UI {
     turbulenceFolder.add(physics, "turbulenceEnabled").name("Enable");
 
     turbulenceFolder
-      .add(physics, "turbulenceStrength", 0, 10, 0.1)
+      .add(physics, "turbulenceStrength", 0, 2, 0.1)
       .name("Strength");
 
     turbulenceFolder.add(physics, "turbulenceScale", 1, 10, 0.5).name("Scale");
@@ -156,6 +156,28 @@ class UI {
         console.log(`Animation speed: ${value}x`);
       });
 
+    // Add Mouse Input controls
+    const mouseInputFolder = picFolder.addFolder("Mouse Input");
+
+    mouseInputFolder
+      .add(physics, "mouseAttractor")
+      .name("Attractor Mode")
+      .onChange((value) => {
+        console.log("Mouse mode:", value ? "Attractor/Repulsor" : "Drag");
+      });
+
+    mouseInputFolder
+      .add(physics, "impulseRadius", 0.05, 0.5, 0.01)
+      .name("Input Radius");
+
+    mouseInputFolder
+      .add(physics, "impulseMag", 0.001, 0.2, 0.001)
+      .name("Input Strength");
+
+    mouseInputFolder
+      .add(physics, "mouseInfluence", 0, 2, 0.1)
+      .name("Input Mix");
+
     // Debug parameters
     const debugFolder = picFolder.addFolder("Debug");
     debugFolder.add(physics, "debugEnabled").name("Show Debug Overlay");
@@ -172,6 +194,8 @@ class UI {
     debugFolder
       .add(physics, "noiseFieldResolution", 5, 50, 1)
       .name("Noise Field Resolution");
+
+    mouseInputFolder.open();
 
     // Open relevant folders
     picFolder.open();
