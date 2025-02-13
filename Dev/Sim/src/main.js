@@ -1,12 +1,12 @@
 // import { FluidSim } from "./simulation/fluidSim.js";
 import { ShaderManager } from "./shaders/shaderManager.js";
-import { ParticleSystem } from "./simulation/particleSystem.js";
+import { ParticleSystem } from "./simulation/core/particleSystem.js";
 import { UI } from "./ui/ui.js";
 import { ParticleRenderer } from "./renderer/particleRenderer.js";
 import { LineRenderer } from "./renderer/lineRenderer.js";
 import { GridRenderer } from "./renderer/gridRenderer.js"; // Import GridRenderer
 import { DebugRenderer } from "./renderer/debugRenderer.js"; // Import DebugRenderer
-import { TurbulenceField } from "./simulation/turbulenceField.js";
+import { TurbulenceField } from "./simulation/forces/turbulenceField.js";
 
 class Main {
   constructor() {

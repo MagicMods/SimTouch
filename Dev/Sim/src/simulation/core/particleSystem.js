@@ -1,5 +1,5 @@
 import { FluidFLIP } from "./fluidFLIP.js";
-import { TurbulenceField } from "./turbulenceField.js";
+import { TurbulenceField } from "../forces/turbulenceField.js";
 
 class ParticleSystem {
   constructor({
