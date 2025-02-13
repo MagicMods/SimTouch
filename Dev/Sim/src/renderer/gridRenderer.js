@@ -37,6 +37,7 @@ class GridRenderer extends BaseRenderer {
 
   createGridGeometry() {
     const vertices = [];
+    const margin = 0.9; // Scale down grid positions to reserve a margin around the grid
     // Center vertically
     const totalHeight = this.numY * this.stepY;
     const yStart = totalHeight / 2;
@@ -50,11 +51,13 @@ class GridRenderer extends BaseRenderer {
       for (let x = 0; x < rowCount; x++) {
         const xPos = xStart + x * this.stepX;
 
-        // Convert to clip space coordinates (-1 to 1)
-        const x1 = xPos / (this.gl.canvas.width / 2);
-        const x2 = (xPos + this.rectWidth) / (this.gl.canvas.width / 2);
-        const y1 = yPos / (this.gl.canvas.height / 2);
-        const y2 = (yPos - this.rectHeight) / (this.gl.canvas.height / 2);
+        // Convert to clip space coordinates (-1 to 1) and apply margin factor
+        const x1 = (xPos / (this.gl.canvas.width / 2)) * margin;
+        const x2 =
+          ((xPos + this.rectWidth) / (this.gl.canvas.width / 2)) * margin;
+        const y1 = (yPos / (this.gl.canvas.height / 2)) * margin;
+        const y2 =
+          ((yPos - this.rectHeight) / (this.gl.canvas.height / 2)) * margin;
 
         // Add two triangles for the rectangle
         vertices.push(
@@ -103,13 +106,16 @@ class GridRenderer extends BaseRenderer {
 
   // Allow external code (e.g., UI) to update the visual boundary radius.
   updateBoundaryGeometry(newRadius) {
-    this.boundaryRadius = newRadius * 2;
+    const marginFactor = 1.01; // Adjust this factor to leave a margin (values < 1.0 shrink the circle)
+    // Previously, boundaryRadius was set to newRadius * 2.
+    // Now, multiply by marginFactor to ensure the circle (visual boundary) doesn't reach the screen edge.
+    this.boundaryRadius = newRadius * 2 * marginFactor;
     const vertices = this.createBoundaryGeometry();
     this.boundaryVertices = vertices;
     this.boundaryVertexCount = vertices.length / 2;
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.boundaryBuffer);
     this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
-    console.log("Boundary geometry updated with radius:", newRadius);
+    console.log("Boundary geometry updated with radius:", this.boundaryRadius);
   }
 
   draw() {
