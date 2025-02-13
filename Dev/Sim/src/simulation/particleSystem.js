@@ -1,5 +1,5 @@
 class ParticleSystem {
-  constructor({ particleCount = 100, timeStep = 1 / 60, gravity = 9.81 }) {
+  constructor({ particleCount = 100, timeStep = 1 / 60, gravity = 9.81 } = {}) {
     // Standard [0,1] space parameters
     this.centerX = 0.5; // Center point
     this.centerY = 0.5; // Center point
@@ -24,6 +24,11 @@ class ParticleSystem {
 
     // Debug visualization
     this.debugEnabled = false; // Add debug toggle
+    this.debugShowVelocityField = false;
+    this.debugShowPressureField = false;
+    this.debugShowBoundaries = false;
+    this.debugShowNoiseField = false;
+    this.noiseFieldResolution = 20;
 
     // Particle interaction parameters
     this.collisionEnabled = true; // Toggle for particle collisions

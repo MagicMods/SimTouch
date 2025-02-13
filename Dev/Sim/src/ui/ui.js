@@ -158,7 +158,20 @@ class UI {
 
     // Debug parameters
     const debugFolder = picFolder.addFolder("Debug");
-    debugFolder.add(physics, "debugEnabled").name("Show Grid");
+    debugFolder.add(physics, "debugEnabled").name("Show Debug Overlay");
+    debugFolder
+      .add(physics, "debugShowVelocityField")
+      .name("Show Velocity Field");
+    debugFolder
+      .add(physics, "debugShowPressureField")
+      .name("Show Pressure Field");
+    debugFolder.add(physics, "debugShowBoundaries").name("Show Boundaries");
+    // NEW: Toggle for visualizing the noise field
+    debugFolder.add(physics, "debugShowNoiseField").name("Show Noise Field");
+    // NEW: Control noise field resolution
+    debugFolder
+      .add(physics, "noiseFieldResolution", 5, 50, 1)
+      .name("Noise Field Resolution");
 
     // Open relevant folders
     picFolder.open();

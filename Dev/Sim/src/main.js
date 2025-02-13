@@ -5,6 +5,7 @@ import { UI } from "./ui/ui.js";
 import { ParticleRenderer } from "./renderer/particleRenderer.js";
 import { LineRenderer } from "./renderer/lineRenderer.js";
 import { GridRenderer } from "./renderer/gridRenderer.js"; // Import GridRenderer
+import { DebugRenderer } from "./renderer/debugRenderer.js"; // Import DebugRenderer
 
 class Main {
   constructor() {
@@ -43,6 +44,9 @@ class Main {
 
     // Create GridRenderer instance (restores grid rendering lost with FluidSim)
     this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
+
+    // NEW: Create DebugRenderer instance
+    this.debugRenderer = new DebugRenderer(this.gl);
 
     // Frame counter for logging
     this.frame = 0;
@@ -109,9 +113,22 @@ class Main {
     // Draw grid
     this.gridRenderer.draw();
 
-    // Optionally draw debug grid via line renderer if ParticleSystem provides one
-    if (this.particleSystem.debugEnabled) {
+    // Optionally draw debug grid via line renderer
+    if (
+      this.particleSystem.debugEnabled &&
+      typeof this.particleSystem.drawDebugGrid === "function"
+    ) {
       this.particleSystem.drawDebugGrid(this.lineRenderer);
+    }
+
+    // NEW: Draw debug overlays if debug is enabled
+    if (this.particleSystem.debugEnabled) {
+      const debugProgram = this.shaderManager.getProgram("lines");
+      if (debugProgram) {
+        this.debugRenderer.drawDebugOverlay(this.particleSystem, debugProgram);
+      } else {
+        console.error("Debug shader program 'lines' not found.");
+      }
     }
 
     // Draw particles
