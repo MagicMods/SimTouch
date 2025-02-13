@@ -135,7 +135,13 @@ class UI {
 
     // Boundary parameters
     const boundaryFolder = picFolder.addFolder("Boundary");
-    boundaryFolder.add(physics, "radius", 0.3, 0.495, 0.005).name("Radius");
+    boundaryFolder
+      .add(physics, "radius", 0.3, 0.55, 0.005)
+      .name("Radius")
+      .onChange((value) => {
+        physics.radius = value;
+        this.main.gridRenderer.updateBoundaryGeometry(value);
+      });
 
     // Animation speed
     const animationFolder = picFolder.addFolder("Animation");

@@ -1,4 +1,4 @@
-import { FluidSim } from "./simulation/fluidSim.js";
+// import { FluidSim } from "./simulation/fluidSim.js";
 import { ShaderManager } from "./shaders/shaderManager.js";
 import { ParticleSystem } from "./simulation/particleSystem.js";
 import { UI } from "./ui/ui.js";
@@ -32,7 +32,7 @@ class Main {
     });
 
     // Create renderer for particles
-    this.testParticleRenderer = new ParticleRenderer(
+    this.particleRenderer = new ParticleRenderer(
       this.gl,
       this.shaderManager,
       "particles"
@@ -43,9 +43,6 @@ class Main {
 
     // Create GridRenderer instance (restores grid rendering lost with FluidSim)
     this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
-
-    // Create a debug particle (for UI purposes)
-    this.debugParticle = { x: 0.5, y: 0.5 };
 
     // Frame counter for logging
     this.frame = 0;
@@ -65,10 +62,6 @@ class Main {
         "Relative to Center": {
           x: (mouseX - 0.5).toFixed(3),
           y: (mouseY - 0.5).toFixed(3),
-        },
-        "Debug Particle": {
-          x: this.debugParticle.x.toFixed(3),
-          y: this.debugParticle.y.toFixed(3),
         },
         "Canvas Pixels": {
           x: Math.round(e.clientX - rect.left),
@@ -113,7 +106,7 @@ class Main {
     this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
 
-    // Draw grid first (debug view)
+    // Draw grid
     this.gridRenderer.draw();
 
     // Optionally draw debug grid via line renderer if ParticleSystem provides one
@@ -122,27 +115,10 @@ class Main {
     }
 
     // Draw particles
-    this.testParticleRenderer.draw(
+    this.particleRenderer.draw(
       this.particleSystem.getParticles(),
       this.colors.test
     );
-
-    // Bring boundary visualization back:
-    const boundaryPoints = this.particleSystem.getBoundaryPoints();
-    if (boundaryPoints && boundaryPoints.length > 0) {
-      this.testParticleRenderer.draw(boundaryPoints, [1.0, 0.0, 0.0, 0.5]);
-    }
-
-    // Log center particle position periodically
-    if (this.frame % 60 === 0 && this.debugParticle) {
-      console.log("Center Particle:", {
-        position: this.debugParticle,
-        normalized: {
-          x: this.debugParticle.x,
-          y: this.debugParticle.y,
-        },
-      });
-    }
 
     requestAnimationFrame(() => this.animate());
   }

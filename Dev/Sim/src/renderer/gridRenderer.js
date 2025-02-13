@@ -22,15 +22,21 @@ class GridRenderer extends BaseRenderer {
 
     // Create grid geometry
     this.createGridGeometry();
-    // Create boundary geometry
-    this.createBoundaryGeometry();
+    // Create boundary geometry (a simple circle using this.boundaryRadius)
+    this.boundaryVertices = this.createBoundaryGeometry();
+    this.boundaryVertexCount = this.boundaryVertices.length / 2;
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.boundaryBuffer);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      this.boundaryVertices,
+      this.gl.STATIC_DRAW
+    );
 
     console.log("GridRenderer initialized with scale:", scale);
   }
 
   createGridGeometry() {
     const vertices = [];
-
     // Center vertically
     const totalHeight = this.numY * this.stepY;
     const yStart = totalHeight / 2;
@@ -83,22 +89,34 @@ class GridRenderer extends BaseRenderer {
     );
   }
 
+  // Uses the current this.boundaryRadius to generate circle vertices.
   createBoundaryGeometry() {
-    // Convert from clip space [-1,1] to normalized [0,1]
-    const vertices = new Float32Array(this.segments * 2);
-    for (let i = 0; i < this.segments; i++) {
-      const angle = (i / this.segments) * Math.PI * 2;
-      vertices[i * 2] = (Math.cos(angle) * 0.95 + 1) * 0.5; // x in [0,1]
-      vertices[i * 2 + 1] = (Math.sin(angle) * 0.95 + 1) * 0.5; // y in [0,1]
+    const segments = 100; // Number of segments for the circle
+    const vertices = new Float32Array(segments * 2);
+    for (let i = 0; i < segments; i++) {
+      const angle = (i / segments) * Math.PI * 2;
+      vertices[i * 2] = Math.cos(angle) * this.boundaryRadius; // x coordinate
+      vertices[i * 2 + 1] = Math.sin(angle) * this.boundaryRadius; // y coordinate
     }
     return vertices;
+  }
+
+  // Allow external code (e.g., UI) to update the visual boundary radius.
+  updateBoundaryGeometry(newRadius) {
+    this.boundaryRadius = newRadius * 2;
+    const vertices = this.createBoundaryGeometry();
+    this.boundaryVertices = vertices;
+    this.boundaryVertexCount = vertices.length / 2;
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.boundaryBuffer);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
+    console.log("Boundary geometry updated with radius:", newRadius);
   }
 
   draw() {
     const program = this.setupShader("basic");
     if (!program) return;
 
-    // Draw grid
+    // Draw grid rectangles
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
     this.gl.enableVertexAttribArray(program.attributes.position);
     this.gl.vertexAttribPointer(
@@ -109,10 +127,11 @@ class GridRenderer extends BaseRenderer {
       0,
       0
     );
+    // Draw grid in a dark gray color
     this.gl.uniform4fv(program.uniforms.color, [0.2, 0.2, 0.2, 1.0]);
     this.gl.drawArrays(this.gl.TRIANGLES, 0, this.gridVertices.length / 2);
 
-    // Draw boundary
+    // Draw circle boundary
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.boundaryBuffer);
     this.gl.vertexAttribPointer(
       program.attributes.position,
@@ -122,7 +141,10 @@ class GridRenderer extends BaseRenderer {
       0,
       0
     );
-    this.gl.uniform4fv(program.uniforms.color, [0.4, 0.4, 0.4, 1.0]);
+    // Set white color for the boundary line
+    this.gl.uniform4fv(program.uniforms.color, [1.0, 1.0, 1.0, 1.0]);
+    // Set line width to 2px (note: on some systems, lineWidth might not work as expected)
+    this.gl.lineWidth(2);
     this.gl.drawArrays(this.gl.LINE_LOOP, 0, this.boundaryVertexCount);
   }
 }
