@@ -114,46 +114,51 @@ class Main {
     this.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
     this.canvas.addEventListener("mousedown", (e) => {
-      this.isMouseDown = true;
+      const pos = this.getMouseSimulationCoords(e);
       this.mouseButton = e.button;
-      this.lastMousePos = this.getMouseSimulationCoords(e);
+      this.lastMousePos = pos;
 
-      // Set active force position and mode when mouse is pressed
-      if (this.particleSystem.mouseAttractor) {
-        this.activeForcePos = this.lastMousePos;
-        this.activeForceMode = this.mouseButton === 0 ? "attract" : "repulse";
-      }
+      // Update mouse force state
+      this.particleSystem.mouseForces.setMouseState(
+        pos.x,
+        pos.y,
+        true,
+        e.button
+      );
     });
 
     this.canvas.addEventListener("mousemove", (e) => {
-      const currentPos = this.getMouseSimulationCoords(e);
+      const pos = this.getMouseSimulationCoords(e);
 
-      if (this.isMouseDown) {
-        if (this.particleSystem.mouseAttractor) {
-          // Update force position
-          this.activeForcePos = currentPos;
-        } else if (this.mouseButton === 0) {
-          // Drag mode
-          const dx = currentPos.x - this.lastMousePos.x;
-          const dy = currentPos.y - this.lastMousePos.y;
-          this.particleSystem.applyDragImpulse(
-            currentPos.x,
-            currentPos.y,
-            dx,
-            dy
-          );
+      if (
+        this.mouseButton === 0 &&
+        !this.particleSystem.mouseForces.mouseAttractor
+      ) {
+        // Normal mode: left mouse drag
+        if (this.lastMousePos) {
+          const dx = pos.x - this.lastMousePos.x;
+          const dy = pos.y - this.lastMousePos.y;
+          this.particleSystem.applyDragImpulse(pos.x, pos.y, dx, dy);
         }
-
-        this.lastMousePos = currentPos;
       }
+
+      // Update position for continuous force application
+      if (this.mouseButton !== null) {
+        this.particleSystem.mouseForces.setMouseState(
+          pos.x,
+          pos.y,
+          true,
+          this.mouseButton
+        );
+      }
+
+      this.lastMousePos = pos;
     });
 
     const clearMouseState = () => {
-      this.isMouseDown = false;
       this.mouseButton = null;
       this.lastMousePos = null;
-      this.activeForcePos = null;
-      this.activeForceMode = null;
+      this.particleSystem.mouseForces.setMouseState(0, 0, false);
     };
 
     this.canvas.addEventListener("mouseup", clearMouseState);
@@ -186,7 +191,7 @@ class Main {
     this.frame++;
 
     // Update turbulence before particle step
-    this.turbulenceField.update(1 / 60); // Use fixed timestep or this.particleSystem.timeStep
+    this.turbulenceField.update(this.particleSystem.timeStep); // Use fixed timestep or this.particleSystem.timeStep
 
     // Apply continuous force if active
     if (this.activeForcePos && this.activeForceMode) {
@@ -230,6 +235,9 @@ class Main {
       this.particleSystem.getParticles(),
       this.colors.test
     );
+
+    // Update mouse forces
+    this.particleSystem.mouseForces.update(this.particleSystem);
 
     requestAnimationFrame(() => this.animate());
   }

@@ -107,29 +107,32 @@ class UI {
 
     // Add turbulence controls
     const turbulenceFolder = physicsFolder.addFolder("Turbulence");
-    const turbulence = this.main.turbulenceField; // Get reference to turbulence field
 
-    turbulenceFolder.add(turbulence, "enabled").name("Enable");
-
-    turbulenceFolder.add(turbulence, "strength", 0, 2, 0.1).name("Strength");
-
-    turbulenceFolder.add(turbulence, "scale", 1, 10, 0.5).name("Scale");
-
-    turbulenceFolder.add(turbulence, "speed", 0, 5, 0.1).name("Speed");
-
-    turbulenceFolder.add(turbulence, "octaves", 1, 5, 1).name("Complexity");
+    turbulenceFolder.add(physics, "turbulenceEnabled").name("Enable");
 
     turbulenceFolder
-      .add(turbulence, "persistence", 0, 1, 0.1)
+      .add(physics, "turbulenceStrength", 0, 2, 0.1)
+      .name("Strength");
+
+    turbulenceFolder.add(physics, "turbulenceScale", 1, 10, 0.5).name("Scale");
+
+    turbulenceFolder.add(physics, "turbulenceSpeed", 0, 5, 0.1).name("Speed");
+
+    turbulenceFolder
+      .add(physics, "turbulenceOctaves", 1, 5, 1)
+      .name("Complexity");
+
+    turbulenceFolder
+      .add(physics, "turbulencePersistence", 0, 1, 0.1)
       .name("Roughness");
 
     turbulenceFolder
-      .add(turbulence, "rotation", 0, Math.PI * 2, 0.1)
+      .add(physics, "turbulenceRotation", 0, Math.PI * 2, 0.1)
       .name("Rotation");
 
     turbulenceFolder
-      .add(turbulence, "inwardFactor", -2, 2, 0.1)
-      .name("Inward Push");
+      .add(physics, "turbulenceInwardFactor", -2, 2, 0.1)
+      .name("Inward Push Factor");
 
     turbulenceFolder.open();
 
@@ -158,24 +161,20 @@ class UI {
     // Add Mouse Input controls
     const mouseInputFolder = picFolder.addFolder("Mouse Input");
 
-    if (physics.mouseForces) {
-      mouseInputFolder
-        .add(physics.mouseForces, "mouseAttractor")
-        .name("Attractor Mode")
-        .onChange((value) => {
-          console.log("Mouse mode:", value ? "Attractor/Repulsor" : "Drag");
-        });
+    mouseInputFolder
+      .add(physics, "mouseAttractor")
+      .name("Attractor Mode")
+      .onChange((value) => {
+        console.log("Mouse mode:", value ? "Attractor/Repulsor" : "Drag");
+      });
 
-      mouseInputFolder
-        .add(physics.mouseForces, "impulseRadius", 0.05, 0.5, 0.01)
-        .name("Input Radius");
+    mouseInputFolder
+      .add(physics, "impulseRadius", 0.05, 0.5, 0.01)
+      .name("Input Radius");
 
-      mouseInputFolder
-        .add(physics.mouseForces, "impulseMag", 0.001, 0.2, 0.001)
-        .name("Input Strength");
-    } else {
-      console.warn("Mouse forces not initialized");
-    }
+    mouseInputFolder
+      .add(physics, "impulseMag", 0.001, 0.2, 0.001)
+      .name("Input Strength");
 
     // Debug parameters
     const debugFolder = picFolder.addFolder("Debug");
