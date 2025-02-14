@@ -3,7 +3,7 @@ class CircularBoundary {
     centerX = 0.5,
     centerY = 0.5,
     radius = 0.475,
-    restitution = 0.8,
+    cBoundaryRestitution = 0.8, // Renamed to be specific
     damping = 0.95,
     segments = 64, // Higher segment count for smoother circle
   } = {}) {
@@ -13,7 +13,7 @@ class CircularBoundary {
     this.radius = radius;
 
     // Physics parameters
-    this.restitution = restitution;
+    this.cBoundaryRestitution = cBoundaryRestitution; // Renamed
     this.damping = damping;
     this.segments = segments;
 
@@ -93,11 +93,11 @@ class CircularBoundary {
       const nx = dx / dist;
       const ny = dy / dist;
 
-      // Reflect velocity
+      // Reflect velocity using boundary-specific restitution
       const dot = velocity[0] * nx + velocity[1] * ny;
       if (dot > 0) {
-        velocity[0] -= (1 + this.restitution) * dot * nx;
-        velocity[1] -= (1 + this.restitution) * dot * ny;
+        velocity[0] -= (1 + this.cBoundaryRestitution) * dot * nx; // Updated
+        velocity[1] -= (1 + this.cBoundaryRestitution) * dot * ny; // Updated
         velocity[0] *= this.damping;
         velocity[1] *= this.damping;
       }

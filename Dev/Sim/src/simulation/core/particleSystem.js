@@ -1,7 +1,7 @@
 import { FluidFLIP } from "./fluidFLIP.js";
 import { MouseForces } from "../forces/mouseForces.js";
 import { CircularBoundary } from "../boundary/circularBoundary.js";
-
+import { CollisionSystem } from "../forces/collisionSystem.js";
 class ParticleSystem {
   constructor({
     particleCount = 500,
@@ -10,11 +10,6 @@ class ParticleSystem {
     picFlipRatio = 0.97,
     turbulence = null, // Keep turbulence as optional parameter
   } = {}) {
-    // Core parameters
-    // this.centerX = 0.5;
-    // this.centerY = 0.5;
-    // this.radius = 0.475;
-
     // Particle properties
     this.numParticles = particleCount;
     this.timeStep = timeStep;
@@ -58,18 +53,28 @@ class ParticleSystem {
     this.turbulence = turbulence; // Store turbulence reference
     this.mouseAttractor = false;
     this.impulseRadius = 0.15;
-    this.impulseMag = 0.01;
+    this.impulseMag = 0.022;
 
     // FLIP system
     this.picFlipRatio = picFlipRatio;
     this.flipIterations = 20;
 
-    // Create boundary first
+    // Create collision system with particle-specific restitution
+    this.collisionSystem = new CollisionSystem({
+      enabled: true,
+      gridSize: 10,
+      repulsion: 0.2,
+      damping: 0.98,
+      particleRestitution: 0.6, // Different from boundary restitution
+      particleRadius: this.particleRadius,
+    });
+
+    // Create boundary with its own restitution
     this.boundary = new CircularBoundary({
       centerX: 0.5,
       centerY: 0.5,
       radius: 0.475,
-      restitution: 0.8,
+      restitution: 0.8, // Boundary-specific restitution
       damping: 0.95,
     });
 

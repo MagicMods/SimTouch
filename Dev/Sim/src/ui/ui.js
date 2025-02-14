@@ -46,13 +46,15 @@ class UI {
         ]);
       });
 
+    // Wall friction: 0 = no friction, 1 = maximum friction
     boundaryFolder
-      .add(physics.boundary, "restitution", 0.0, 1.0, 0.05)
-      .name("Bounce");
+      .add(physics, "boundaryDamping", 0.0, 1.0, 0.01)
+      .name("Wall Friction")
+      .onChange((value) => (physics.boundaryDamping = value)); // Invert for damping
 
     boundaryFolder
-      .add(physics.boundary, "damping", 0.5, 1.0, 0.01)
-      .name("Friction");
+      .add(physics.boundary, "cBoundaryRestitution", 0.0, 1.0, 0.05)
+      .name("Bounce");
 
     // Visual controls
     const visualFolder = boundaryFolder.addFolder("Visual");
@@ -60,46 +62,15 @@ class UI {
 
     visualFolder.add(physics.boundary, "lineWidth", 1, 5, 1).name("Line Width");
 
-    // PIC system controls
-    // const picFolder = this.gui.addFolder("Particles");
-    // const physics = this.main.particleSystem;
-
-    // Particle count and size controls
-    // const particleControl = picFolder
-    //   .add(physics, "numParticles", 10, 1000, 10)
-    //   .name("N");
-
-    // picFolder.add(physics, "particleRadius", 0.001, 0.05, 0.001).name("Size");
-
-    // particleControl.onChange((value) => {
-    //   physics.numParticles = value;
-    //   physics.particles = new Float32Array(value * 2);
-    //   physics.velocitiesX = new Float32Array(value);
-    //   physics.velocitiesY = new Float32Array(value);
-    //   physics.initializeParticles();
-    //   console.log(`PIC particles reinitialized with count: ${value}`);
-    // });
-
-    // Physics parameters with refined ranges
-    // const physicsFolder = picFolder.addFolder("Physics");
-
-    // Core parameters - gravity now positive up
-    // physicsFolder
-    //   .add(physics, "gravity", 0, 9.89, 0.1)
-    //   .name("Gravity")
-    //   .onChange((value) => (physics.gravity = value)); // Invert for screen space
-
     // Collision parameters - corrected ranges
     const collisionFolder = physicsFolder.addFolder("Collision");
 
+    // Toggle particle collisions
+    collisionFolder.add(physics, "collisionEnabled").name("Enable Collisions");
+    // Repulsion strength
+    collisionFolder.add(physics, "repulsion", 0, 100, 0.05).name("Repulsion");
     // Restitution: 0 = no bounce, 1 = perfect bounce
     collisionFolder.add(physics, "restitution", 0.0, 1.0, 0.05).name("Bounce");
-
-    // Wall friction: 0 = no friction, 1 = maximum friction
-    collisionFolder
-      .add(physics, "boundaryDamping", 0.0, 1.0, 0.01)
-      .name("Wall Friction")
-      .onChange((value) => (physics.boundaryDamping = value)); // Invert for damping
 
     // Rest state - lower values = more precise rest detection
     const restFolder = physicsFolder.addFolder("Rest State");
@@ -111,31 +82,7 @@ class UI {
       .add(physics, "positionThreshold", 0.000001, 0.001, 0.000001)
       .name("Min Move");
 
-    // Particle parameters - size as percentage of space
-    // const particleFolder = physicsFolder.addFolder("Particles");
-    // particleFolder
-    //   .add(physics, "particleRadius", 0.001, 0.05, 0.001)
-    //   .name("Size %");
-
-    // particleFolder
-    //   .add(physics, "renderScale", 100, 1000, 50)
-    //   .name("Visual Scale");
-
     // Add particle interaction controls
-    const interactionFolder = physicsFolder.addFolder("Interaction");
-
-    // Toggle particle collisions
-    interactionFolder
-      .add(physics, "collisionEnabled")
-      .name("Enable Collisions");
-
-    // Repulsion strength
-    interactionFolder.add(physics, "repulsion", 0, 100, 0.05).name("Repulsion");
-
-    // Collision energy preservation
-    interactionFolder
-      .add(physics, "collisionDamping", 0.5, 1.0, 0.01)
-      .name("Collision Preserve");
 
     // Add turbulence controls
     const turbulenceFolder = physicsFolder.addFolder("Turbulence");
@@ -164,9 +111,6 @@ class UI {
       .name("Inward Push");
 
     turbulenceFolder.open();
-
-    // Open new folder
-    interactionFolder.open();
 
     // Boundary parameters
     // const boundaryFolder = picFolder.addFolder("Boundary");
