@@ -27,3 +27,43 @@
 - Single transformation in vertex shader
 - Converts [0,1] to [-1,1] clip space
 - No other coordinate transformations in the system
+
+
+
+
+1. Fluid Dynamics
+Viscosity simulation
+Surface tension
+Vorticity confinement
+Temperature influence
+Density variations
+2. Pattern Generation
+Voronoi diagrams for particle distribution
+Cellular automata rules
+Reaction-diffusion patterns
+Flocking behavior
+Crystal growth patterns
+3. Force Fields
+Magnetic fields
+Electric charge simulation
+Wind fields
+Vortex fields
+Custom force field editor
+4. Particle Properties
+Particle age/lifetime
+Color based on velocity/density
+Variable particle masses
+Particle merging/splitting
+State changes (solid/liquid/gas)
+5. Cellular Automata Features
+Rule-based behavior
+Multi-state particles
+Particle-automata interaction
+Rule editor
+Pattern presets
+6. Advanced Visualization
+Real-time Voronoi visualization
+Density field visualization
+Velocity field streamlines
+Particle pressure maps
+Pattern evolution tracking

@@ -87,19 +87,6 @@ class ParticleSystem {
     this.initializeParticles();
   }
 
-  createBoundaryPoints() {
-    const points = [];
-    const segments = 32;
-    for (let i = 0; i <= segments; i++) {
-      const angle = (i / segments) * Math.PI * 2;
-      // Create directly in [0,1] space
-      const x = this.boundary.centerX + Math.cos(angle) * this.boundary.radius;
-      const y = this.boundary.centerY + Math.sin(angle) * this.boundary.radius;
-      points.push({ x, y, vx: 0, vy: 0 });
-    }
-    return points;
-  }
-
   initializeParticles() {
     // Calculate rings based on particle count
     const rings = Math.ceil(Math.sqrt(this.numParticles));
