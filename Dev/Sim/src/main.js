@@ -1,4 +1,3 @@
-// import { FluidSim } from "./simulation/fluidSim.js";
 import { ShaderManager } from "./shaders/shaderManager.js";
 import { ParticleSystem } from "./simulation/core/particleSystem.js";
 import { UI } from "./ui/ui.js";
@@ -7,6 +6,7 @@ import { LineRenderer } from "./renderer/lineRenderer.js";
 import { GridRenderer } from "./renderer/gridRenderer.js"; // Import GridRenderer
 import { DebugRenderer } from "./renderer/debugRenderer.js"; // Import DebugRenderer
 import { TurbulenceField } from "./simulation/forces/turbulenceField.js";
+import { CircularBoundary } from "./simulation/boundary/circularBoundary.js";
 
 class Main {
   constructor() {
@@ -26,22 +26,29 @@ class Main {
       test: [1.0, 0.4, 0.2, 0.8], // Orange
     };
 
-    // Create turbulence field first
-    this.turbulenceField = new TurbulenceField({
+    // Create boundary first
+    this.boundary = new CircularBoundary({
       centerX: 0.5,
       centerY: 0.5,
       radius: 0.475,
-      enabled: true, // Make sure this is defined
+      restitution: 0.8,
+      damping: 0.95,
+    });
+
+    // Create turbulence with boundary reference
+    this.turbulenceField = new TurbulenceField({
+      boundary: this.boundary,
+      enabled: true,
       strength: 0.5,
       scale: 4.0,
     });
 
-    // Create particle system with turbulence reference
+    // Create particle system with dependencies
     this.particleSystem = new ParticleSystem({
       particleCount: 500,
       timeStep: 1 / 60,
       gravity: 0,
-      turbulence: this.turbulenceField, // Pass reference
+      turbulence: this.turbulenceField,
     });
 
     // Create renderer for particles

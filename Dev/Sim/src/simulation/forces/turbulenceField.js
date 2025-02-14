@@ -1,4 +1,4 @@
-export class TurbulenceField {
+class TurbulenceField {
   constructor({
     enabled = true,
     strength = 0.5,
@@ -8,10 +8,24 @@ export class TurbulenceField {
     persistence = 0.5,
     rotation = 0.0,
     inwardFactor = 1.0,
-    centerX = 0.5,
-    centerY = 0.5,
-    radius = 0.475,
+    boundary = null,
   } = {}) {
+    // Validate boundary interface first
+    if (
+      !boundary ||
+      typeof boundary.centerX !== "number" ||
+      typeof boundary.centerY !== "number" ||
+      typeof boundary.getRadius !== "function"
+    ) {
+      throw new Error(
+        "TurbulenceField requires valid CircularBoundary with centerX, centerY, and getRadius()"
+      );
+    }
+
+    // Store boundary reference
+    this.boundary = boundary;
+
+    // Core parameters
     this.enabled = enabled;
     this.strength = strength;
     this.scale = scale;
@@ -20,10 +34,6 @@ export class TurbulenceField {
     this.persistence = persistence;
     this.rotation = rotation;
     this.inwardFactor = inwardFactor;
-    this.centerX = centerX;
-    this.centerY = centerY;
-    this.radius = radius;
-
     this.time = 0;
   }
 
@@ -72,14 +82,15 @@ export class TurbulenceField {
     let forceX = (n1 - 0.5) * this.strength;
     let forceY = (n2 - 0.5) * this.strength;
 
-    // Add boundary-aware forces
-    const dx = x - this.centerX;
-    const dy = y - this.centerY;
+    // Use boundary reference for containment forces
+    const dx = x - this.boundary.centerX;
+    const dy = y - this.boundary.centerY;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    const threshold = 0.8 * this.radius;
+    const threshold = 0.8 * this.boundary.getRadius();
     if (dist > threshold) {
-      const excess = (dist - threshold) / (this.radius - threshold);
+      const excess =
+        (dist - threshold) / (this.boundary.getRadius() - threshold);
       const inwardX = (-dx / dist) * excess * this.strength * this.inwardFactor;
       const inwardY = (-dy / dist) * excess * this.strength * this.inwardFactor;
 
@@ -95,3 +106,4 @@ export class TurbulenceField {
     this.time += dt;
   }
 }
+export { TurbulenceField };
