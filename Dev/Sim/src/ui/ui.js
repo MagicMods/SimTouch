@@ -24,8 +24,12 @@ class UI {
       });
 
     particleFolder
-      .add(physics, "particleRadius", 0.001, 0.05, 0.001)
-      .name("Size");
+      .add(physics, "particleRadius", 0.01, 0.03, 0.001)
+      .name("Size")
+      .onChange((value) => {
+        // Update collision system's particle radius
+        physics.collisionSystem.particleRadius = value * 2; // Double for collision distance
+      });
 
     // 2. Physics Parameters
     const physicsFolder = picFolder.addFolder("Physics");
@@ -64,25 +68,32 @@ class UI {
 
     // Collision parameters - corrected ranges
     const collisionFolder = physicsFolder.addFolder("Collision");
+    // Update to use collisionSystem
+    collisionFolder
+      .add(physics.collisionSystem, "enabled")
+      .name("Enable Collisions");
 
-    // Toggle particle collisions
-    collisionFolder.add(physics, "collisionEnabled").name("Enable Collisions");
-    // Repulsion strength
-    collisionFolder.add(physics, "repulsion", 0, 100, 0.05).name("Repulsion");
-    // Restitution: 0 = no bounce, 1 = perfect bounce
-    collisionFolder.add(physics, "restitution", 0.0, 1.0, 0.05).name("Bounce");
+    collisionFolder
+      .add(physics.collisionSystem, "repulsion", 0, 100.0, 0.05)
+      .name("Repulsion");
+
+    collisionFolder
+      .add(physics.collisionSystem, "particleRestitution", 0.0, 1.0, 0.05)
+      .name("Bounce");
+
+    collisionFolder
+      .add(physics.collisionSystem, "damping", 0.5, 1.0, 0.01)
+      .name("Collision Damping");
 
     // Rest state - lower values = more precise rest detection
     const restFolder = physicsFolder.addFolder("Rest State");
     restFolder
-      .add(physics, "velocityThreshold", 0.00001, 0.01, 0.00001)
+      .add(physics, "velocityThreshold", 0.00001, 0.1, 0.00001)
       .name("Min Speed");
 
     restFolder
-      .add(physics, "positionThreshold", 0.000001, 0.001, 0.000001)
+      .add(physics, "positionThreshold", 0.000001, 0.1, 0.000001)
       .name("Min Move");
-
-    // Add particle interaction controls
 
     // Add turbulence controls
     const turbulenceFolder = physicsFolder.addFolder("Turbulence");
@@ -112,16 +123,6 @@ class UI {
 
     turbulenceFolder.open();
 
-    // Boundary parameters
-    // const boundaryFolder = picFolder.addFolder("Boundary");
-    // boundaryFolder
-    //   .add(physics, "radius", 0.3, 0.55, 0.005)
-    //   .name("Radius")
-    //   .onChange((value) => {
-    //     physics.radius = value;
-    //     this.main.gridRenderer.updateBoundaryGeometry(value);
-    //   });
-
     // Animation speed
     const animationFolder = picFolder.addFolder("Animation");
     animationFolder
@@ -147,7 +148,7 @@ class UI {
         .name("Input Radius");
 
       mouseInputFolder
-        .add(physics.mouseForces, "impulseMag", 0.001, 0.2, 0.001)
+        .add(physics.mouseForces, "impulseMag", 0.001, 0.1, 0.001)
         .name("Input Strength");
     } else {
       console.warn("Mouse forces not initialized");

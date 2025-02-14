@@ -1,4 +1,4 @@
-export class CollisionSystem {
+class CollisionSystem {
   constructor({
     enabled = true,
     gridSize = 10,
@@ -13,7 +13,7 @@ export class CollisionSystem {
     this.repulsion = repulsion;
     this.damping = damping;
     this.particleRestitution = particleRestitution; // Clear naming
-    this.particleRadius = particleRadius;
+    this.particleRadius = particleRadius * 2; // Double the radius for collision distance
 
     // Initialize spatial grid
     this.grid = new Array(this.gridSize * this.gridSize).fill().map(() => []);
@@ -76,7 +76,7 @@ export class CollisionSystem {
         );
       }
 
-      // Neighboring cells
+      // Check neighboring cells
       this.checkNeighborCell(
         x + 1,
         y,
@@ -104,19 +104,89 @@ export class CollisionSystem {
     }
   }
 
+  checkNeighborCell(x, y, particleI, particles, velocitiesX, velocitiesY) {
+    if (x < 0 || x >= this.gridSize || y < 0 || y >= this.gridSize) {
+      return;
+    }
+
+    const neighborIndex = y * this.gridSize + x;
+    const neighborCell = this.grid[neighborIndex];
+
+    for (const particleJ of neighborCell) {
+      this.resolveCollision(
+        particleI,
+        particleJ,
+        particles,
+        velocitiesX,
+        velocitiesY
+      );
+    }
+  }
+
   resolveCollision(i, j, particles, velocitiesX, velocitiesY) {
     const dx = particles[j * 2] - particles[i * 2];
     const dy = particles[j * 2 + 1] - particles[i * 2 + 1];
     const distSq = dx * dx + dy * dy;
-    const minDist = this.particleRadius * 2;
+    const minDist = this.particleRadius; // Already doubled in constructor
 
-    if (distSq < minDist * minDist) {
-      const dist = Math.sqrt(distSq);
-      const nx = dx / dist;
-      const ny = dy / dist;
+    if (distSq >= minDist * minDist) return;
 
-      // Collision response
-      this.applyCollisionResponse(i, j, nx, ny, dist, velocitiesX, velocitiesY);
+    const dist = Math.sqrt(distSq);
+    const nx = dx / dist;
+    const ny = dy / dist;
+
+    // Relative velocity
+    const dvx = velocitiesX[j] - velocitiesX[i];
+    const dvy = velocitiesY[j] - velocitiesY[i];
+    const vn = dvx * nx + dvy * ny;
+
+    // Only collide if approaching
+    if (vn < 0) {
+      const impulse = -(1 + this.particleRestitution) * vn * 0.5;
+      velocitiesX[i] -= impulse * nx;
+      velocitiesY[i] -= impulse * ny;
+      velocitiesX[j] += impulse * nx;
+      velocitiesY[j] += impulse * ny;
+
+      // Apply damping
+      velocitiesX[i] *= this.damping;
+      velocitiesY[i] *= this.damping;
+      velocitiesX[j] *= this.damping;
+      velocitiesY[j] *= this.damping;
     }
+
+    // Apply repulsion
+    const overlap = minDist - dist;
+    const repulsionForce = overlap * this.repulsion;
+    velocitiesX[i] -= nx * repulsionForce;
+    velocitiesY[i] -= ny * repulsionForce;
+    velocitiesX[j] += nx * repulsionForce;
+    velocitiesY[j] += ny * repulsionForce;
+  }
+
+  applyImpulse(i, j, nx, ny, vn, velocitiesX, velocitiesY) {
+    const impulse = -(1 + this.particleRestitution) * vn * 0.5;
+
+    velocitiesX[i] -= impulse * nx;
+    velocitiesY[i] -= impulse * ny;
+    velocitiesX[j] += impulse * nx;
+    velocitiesY[j] += impulse * ny;
+
+    // Apply damping
+    velocitiesX[i] *= this.damping;
+    velocitiesY[i] *= this.damping;
+    velocitiesX[j] *= this.damping;
+    velocitiesY[j] *= this.damping;
+  }
+
+  applyRepulsion(i, j, nx, ny, dist, velocitiesX, velocitiesY) {
+    const overlap = this.particleRadius * 2 - dist;
+    const repulsionForce = overlap * this.repulsion;
+
+    velocitiesX[i] -= nx * repulsionForce;
+    velocitiesY[i] -= ny * repulsionForce;
+    velocitiesX[j] += nx * repulsionForce;
+    velocitiesY[j] += ny * repulsionForce;
   }
 }
+export { CollisionSystem };
