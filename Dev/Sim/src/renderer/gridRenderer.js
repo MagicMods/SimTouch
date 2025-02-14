@@ -32,7 +32,58 @@ class GridRenderer extends BaseRenderer {
       this.gl.STATIC_DRAW
     );
 
+    // Add density field parameters
+    this.density = new Float32Array(this.getTotalCells());
+    this.maxDensity = 5.0;
+    this.gradient = this.createGradient();
+
     console.log("GridRenderer initialized with scale:", scale);
+  }
+
+  getTotalCells() {
+    return this.rowCounts.reduce((sum, count) => sum + count, 0);
+  }
+
+  createGradient() {
+    const gradient = new Array(256).fill(0).map(() => ({ r: 0, g: 0, b: 0 }));
+
+    // Define color control points
+    const rawGradient = [
+      { pos: 0, r: 0, g: 0, b: 0 },
+      { pos: 60, r: 144 / 255, g: 3 / 255, b: 0 },
+      { pos: 80, r: 1, g: 6 / 255, b: 0 },
+      { pos: 95, r: 1, g: 197 / 255, b: 0 },
+      { pos: 100, r: 1, g: 1, b: 1 },
+    ];
+
+    // Interpolate between control points
+    for (let i = 0; i < 256; i++) {
+      const t = i / 255;
+      let lower = rawGradient[0];
+      let upper = rawGradient[rawGradient.length - 1];
+
+      for (let j = 0; j < rawGradient.length - 1; j++) {
+        if (t * 100 >= rawGradient[j].pos && t * 100 < rawGradient[j + 1].pos) {
+          lower = rawGradient[j];
+          upper = rawGradient[j + 1];
+          break;
+        }
+      }
+
+      const range = upper.pos - lower.pos;
+      const localT = (t * 100 - lower.pos) / range;
+      gradient[i] = {
+        r: this.lerp(lower.r, upper.r, localT),
+        g: this.lerp(lower.g, upper.g, localT),
+        b: this.lerp(lower.b, upper.b, localT),
+      };
+    }
+
+    return gradient;
+  }
+
+  lerp(a, b, t) {
+    return a + (b - a) * t;
   }
 
   createGridGeometry() {
@@ -118,11 +169,80 @@ class GridRenderer extends BaseRenderer {
     console.log("Boundary geometry updated with radius:", this.boundaryRadius);
   }
 
-  draw() {
-    const program = this.setupShader("basic");
-    if (!program) return;
+  updateDensityField(particleSystem) {
+    if (!particleSystem || !particleSystem.getParticles) return; // Safety check
 
-    // Draw grid rectangles
+    this.density.fill(0);
+    const particles = particleSystem.getParticles();
+
+    if (!particles || !particles.length) return; // Check particles exist
+
+    for (const p of particles) {
+      // Calculate grid cell influence
+      const relY = (1 - p.y) * this.gl.canvas.height;
+      const row = Math.floor(relY / this.stepY);
+
+      // Check neighboring rows
+      for (
+        let j = Math.max(0, row - 2);
+        j < Math.min(this.numY, row + 3);
+        j++
+      ) {
+        const rowWidth = this.rowCounts[j] * this.stepX;
+        const rowBaseX = (this.gl.canvas.width - rowWidth) / 2;
+        const relX = p.x * this.gl.canvas.width - rowBaseX;
+        const col = Math.floor(relX / this.stepX);
+
+        // Check neighboring cells in this row
+        for (
+          let i = Math.max(0, col - 2);
+          i < Math.min(this.rowCounts[j], col + 3);
+          i++
+        ) {
+          const idx = this.getCellIndex(i, j);
+          if (idx === -1) continue;
+
+          // Calculate cell center
+          const cellCenterX = rowBaseX + (i + 0.5) * this.stepX;
+          const cellCenterY = j * this.stepY + this.stepY * 0.5;
+
+          // Calculate influence based on distance
+          const dx = p.x * this.gl.canvas.width - cellCenterX;
+          const dy = (1 - p.y) * this.gl.canvas.height - cellCenterY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const influence = Math.max(0, 1 - dist / (this.stepX * 1.5));
+
+          this.density[idx] += influence;
+        }
+      }
+    }
+  }
+
+  getCellIndex(col, row) {
+    if (
+      row < 0 ||
+      row >= this.rowCounts.length ||
+      col < 0 ||
+      col >= this.rowCounts[row]
+    ) {
+      return -1;
+    }
+
+    let index = 0;
+    for (let i = 0; i < row; i++) {
+      index += this.rowCounts[i];
+    }
+    return index + col;
+  }
+
+  draw(particleSystem) {
+    const program = this.setupShader("basic");
+    if (!program || !particleSystem) return; // Early return if no particle system
+
+    // Update density field based on particle positions
+    this.updateDensityField(particleSystem);
+
+    // Draw grid cells with density colors
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
     this.gl.enableVertexAttribArray(program.attributes.position);
     this.gl.vertexAttribPointer(
@@ -133,11 +253,31 @@ class GridRenderer extends BaseRenderer {
       0,
       0
     );
-    // Draw grid in a dark gray color
-    this.gl.uniform4fv(program.uniforms.color, [0.2, 0.2, 0.2, 1.0]);
-    this.gl.drawArrays(this.gl.TRIANGLES, 0, this.gridVertices.length / 2);
 
-    // Draw circle boundary
+    let cellOffset = 0;
+    for (let y = 0; y < this.numY; y++) {
+      for (let x = 0; x < this.rowCounts[y]; x++) {
+        const density = Math.min(this.density[cellOffset] / this.maxDensity, 1);
+        const gradientIdx = Math.floor(density * 255);
+        const color = this.gradient[gradientIdx];
+
+        this.gl.uniform4fv(program.uniforms.color, [
+          color.r,
+          color.g,
+          color.b,
+          1.0,
+        ]);
+        this.gl.drawArrays(this.gl.TRIANGLES, cellOffset * 6, 6);
+
+        cellOffset++;
+      }
+    }
+
+    // Draw boundary
+    this.drawBoundary(program);
+  }
+
+  drawBoundary(program) {
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.boundaryBuffer);
     this.gl.vertexAttribPointer(
       program.attributes.position,
@@ -147,9 +287,7 @@ class GridRenderer extends BaseRenderer {
       0,
       0
     );
-    // Set white color for the boundary line
     this.gl.uniform4fv(program.uniforms.color, [1.0, 1.0, 1.0, 1.0]);
-    // Set line width to 2px (note: on some systems, lineWidth might not work as expected)
     this.gl.lineWidth(2);
     this.gl.drawArrays(this.gl.LINE_LOOP, 0, this.boundaryVertexCount);
   }

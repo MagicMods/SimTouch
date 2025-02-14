@@ -219,6 +219,9 @@ class Main {
     // Draw grid
     this.gridRenderer.draw();
 
+    // Update grid with particle system reference
+    this.gridRenderer.draw(this.particleSystem);
+
     // Optionally draw debug grid via line renderer
     if (
       this.particleSystem.debugEnabled &&
