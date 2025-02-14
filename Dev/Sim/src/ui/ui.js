@@ -95,12 +95,6 @@ class UI {
     // Restitution: 0 = no bounce, 1 = perfect bounce
     collisionFolder.add(physics, "restitution", 0.0, 1.0, 0.05).name("Bounce");
 
-    // Air friction: 0 = no friction, 1 = maximum friction
-    collisionFolder
-      .add(physics, "velocityDamping", 0.8, 1.0, 0.01)
-      .name("Air Friction")
-      .onChange((value) => (physics.velocityDamping = value)); // Invert for damping
-
     // Wall friction: 0 = no friction, 1 = maximum friction
     collisionFolder
       .add(physics, "boundaryDamping", 0.0, 1.0, 0.01)
