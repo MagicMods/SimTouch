@@ -2,7 +2,7 @@ class CollisionSystem {
   constructor({
     enabled = true,
     gridSize = 10,
-    repulsion = 0.2,
+    repulsion = 2,
     damping = 0.98,
     particleRestitution = 0.8, // Renamed to be specific
     particleRadius = 0.01,
@@ -187,6 +187,11 @@ class CollisionSystem {
     velocitiesY[i] -= ny * repulsionForce;
     velocitiesX[j] += nx * repulsionForce;
     velocitiesY[j] += ny * repulsionForce;
+  }
+
+  reset() {
+    // Clear all grid cells
+    this.grid.forEach((cell) => (cell.length = 0));
   }
 }
 export { CollisionSystem };

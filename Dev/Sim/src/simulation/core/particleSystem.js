@@ -54,7 +54,7 @@ class ParticleSystem {
     this.collisionSystem = new CollisionSystem({
       enabled: true,
       gridSize: 10,
-      repulsion: 0.2,
+      repulsion: 2,
       damping: 0.98,
       particleRestitution: 0.6, // Different from boundary restitution
       particleRadius: this.particleRadius,
@@ -150,6 +150,22 @@ class ParticleSystem {
     }
 
     console.log(`Initialized ${particleIndex} particles in spherical pattern`);
+  }
+
+  reinitializeParticles(newCount) {
+    // Update particle count
+    this.numParticles = newCount;
+
+    // Recreate particle arrays with new size
+    this.particles = new Float32Array(newCount * 2);
+    this.velocitiesX = new Float32Array(newCount);
+    this.velocitiesY = new Float32Array(newCount);
+
+    // Clear collision grid
+    this.collisionSystem.reset();
+
+    // Reinitialize particle positions
+    this.initializeParticles();
   }
 
   applyImpulseAt(x, y, mode) {

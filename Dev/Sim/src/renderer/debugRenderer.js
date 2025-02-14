@@ -4,8 +4,8 @@ class DebugRenderer extends BaseRenderer {
   constructor(gl) {
     super(gl);
     this.programInfo = null; // Will store shader program info
-    this.arrowLength = 20; // Length of velocity arrows
-    this.pressureScale = 0.1; // Scale for pressure visualization
+    this.arrowLength = 2; // Length of velocity arrows
+    this.pressureScale = 0.01; // Scale for pressure visualization
   }
 
   init() {
@@ -43,7 +43,8 @@ class DebugRenderer extends BaseRenderer {
   drawVelocityField(physics, programInfo) {
     // Should be physics.fluid instead of solver
     const vertices = [];
-    const scale = this.arrowLength;
+    // const scale = this.arrowLength;
+    const scale = 0.1;
 
     // Sample velocity field from FLIP fluid
     for (let y = 0; y < physics.fluid.gridSize; y += 2) {
@@ -67,7 +68,7 @@ class DebugRenderer extends BaseRenderer {
       new Float32Array(vertices),
       [0.0, 1.0, 0.0, 0.5], // Semi-transparent green
       programInfo,
-      this.gl.LINES
+      this.gl.BASIC
     );
   }
 

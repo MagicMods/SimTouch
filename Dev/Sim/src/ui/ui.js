@@ -101,7 +101,7 @@ class UI {
 
     turbulenceFolder.add(turbulence, "enabled").name("Enable");
 
-    turbulenceFolder.add(turbulence, "strength", 0, 2, 0.1).name("Strength");
+    turbulenceFolder.add(turbulence, "strength", 0, 10, 0.1).name("Strength");
 
     turbulenceFolder.add(turbulence, "scale", 1, 10, 0.5).name("Scale");
 
