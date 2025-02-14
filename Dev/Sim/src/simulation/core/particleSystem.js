@@ -1,5 +1,6 @@
 import { FluidFLIP } from "./fluidFLIP.js";
 import { MouseForces } from "../forces/mouseForces.js";
+import { CircularBoundary } from "../boundary/circularBoundary.js";
 
 class ParticleSystem {
   constructor({
@@ -10,9 +11,9 @@ class ParticleSystem {
     turbulence = null, // Keep turbulence as optional parameter
   } = {}) {
     // Core parameters
-    this.centerX = 0.5;
-    this.centerY = 0.5;
-    this.radius = 0.475;
+    // this.centerX = 0.5;
+    // this.centerY = 0.5;
+    // this.radius = 0.475;
 
     // Particle properties
     this.numParticles = particleCount;
@@ -62,13 +63,22 @@ class ParticleSystem {
     // FLIP system
     this.picFlipRatio = picFlipRatio;
     this.flipIterations = 20;
+
+    // Create boundary first
+    this.boundary = new CircularBoundary({
+      centerX: 0.5,
+      centerY: 0.5,
+      radius: 0.475,
+      restitution: 0.8,
+      damping: 0.95,
+    });
+
+    // Then create FLIP system with boundary reference
     this.fluid = new FluidFLIP({
       gridSize: 32,
       picFlipRatio: this.picFlipRatio,
       dt: timeStep,
-      centerX: this.centerX,
-      centerY: this.centerY,
-      radius: this.radius,
+      boundary: this.boundary,
     });
 
     // Initialize mouse forces
@@ -87,8 +97,8 @@ class ParticleSystem {
     for (let i = 0; i <= segments; i++) {
       const angle = (i / segments) * Math.PI * 2;
       // Create directly in [0,1] space
-      const x = this.centerX + Math.cos(angle) * this.radius;
-      const y = this.centerY + Math.sin(angle) * this.radius;
+      const x = this.boundary.centerX + Math.cos(angle) * this.boundary.radius;
+      const y = this.boundary.centerY + Math.sin(angle) * this.boundary.radius;
       points.push({ x, y, vx: 0, vy: 0 });
     }
     return points;
@@ -100,7 +110,9 @@ class ParticleSystem {
     const particlesPerRing = Math.ceil(this.numParticles / rings);
 
     // Safe spawn radius (80% of container radius to avoid immediate boundary collision)
-    const spawnRadius = this.radius * 0.8;
+    const spawnRadius = this.boundary.radius * 0.8;
+    const centerX = this.boundary.centerX;
+    const centerY = this.boundary.centerY;
 
     let particleIndex = 0;
 
@@ -129,9 +141,9 @@ class ParticleSystem {
 
         // Calculate position relative to center
         this.particles[particleIndex * 2] =
-          this.centerX + Math.cos(angle) * ringRadius;
+          centerX + Math.cos(angle) * ringRadius;
         this.particles[particleIndex * 2 + 1] =
-          this.centerY + Math.sin(angle) * ringRadius;
+          centerY + Math.sin(angle) * ringRadius;
 
         // Initialize with zero velocity
         this.velocitiesX[particleIndex] = 0;
@@ -276,30 +288,24 @@ class ParticleSystem {
   step() {
     const dt = this.timeStep * this.timeScale;
 
-    // 1. Apply external forces
-    this.applyGravity(dt);
-    this.applyTurbulence(dt);
+    // 1. External forces
+    this.applyExternalForces(dt);
 
-    // 2. FLIP update
+    // 2. FLIP/PIC update
     this.updateFLIP(dt);
 
-    // 3. Update positions
-    this.updatePositions(dt);
-
-    // 4. Handle collisions
-    if (this.collisionEnabled) {
-      this.handleCollisions();
-    }
+    // 3. Position and boundary update
+    this.updateParticles(dt);
   }
 
-  applyGravity(dt) {
+  applyExternalForces(dt) {
+    // Apply gravity with FLIP scaling
     const scaledGravity = this.gravity * (this.picFlipRatio > 0 ? 0.5 : 1.0);
     for (let i = 0; i < this.numParticles; i++) {
       this.velocitiesY[i] += -scaledGravity * dt;
     }
-  }
 
-  applyTurbulence(dt) {
+    // Apply turbulence if enabled
     if (this.turbulence?.enabled) {
       for (let i = 0; i < this.numParticles; i++) {
         const pos = [this.particles[i * 2], this.particles[i * 2 + 1]];
@@ -308,6 +314,64 @@ class ParticleSystem {
           this.turbulence.applyTurbulence(pos, vel, dt);
       }
     }
+  }
+
+  updateParticles(dt) {
+    // Update grid for collision detection
+    if (this.collisionEnabled) {
+      this.updateGrid();
+    }
+
+    for (let i = 0; i < this.numParticles; i++) {
+      // 1. Apply velocity damping
+      this.velocitiesX[i] *= this.velocityDamping;
+      this.velocitiesY[i] *= this.velocityDamping;
+
+      // 2. Check rest state
+      if (this.checkRestState(i, dt)) continue;
+
+      // 3. Update position
+      const position = [this.particles[i * 2], this.particles[i * 2 + 1]];
+      const velocity = [this.velocitiesX[i], this.velocitiesY[i]];
+
+      // Apply position update
+      position[0] += velocity[0] * dt;
+      position[1] += velocity[1] * dt;
+
+      // 4. Resolve boundary collision
+      this.boundary.resolveCollision(position, velocity);
+
+      // 5. Store updated values
+      this.particles[i * 2] = position[0];
+      this.particles[i * 2 + 1] = position[1];
+      this.velocitiesX[i] = velocity[0];
+      this.velocitiesY[i] = velocity[1];
+    }
+
+    // 6. Handle particle-particle collisions
+    if (this.collisionEnabled) {
+      for (let i = 0; i < this.grid.length; i++) {
+        this.checkCellCollisions(i);
+      }
+    }
+  }
+
+  checkRestState(index, dt) {
+    const vx = this.velocitiesX[index];
+    const vy = this.velocitiesY[index];
+
+    const velocityMagnitude = Math.hypot(vx, vy);
+    const positionChange = velocityMagnitude * dt;
+
+    if (
+      velocityMagnitude < this.velocityThreshold &&
+      positionChange < this.positionThreshold
+    ) {
+      this.velocitiesX[index] = 0;
+      this.velocitiesY[index] = 0;
+      return true;
+    }
+    return false;
   }
 
   updateFLIP(dt) {
@@ -329,73 +393,6 @@ class ParticleSystem {
         this.velocitiesX,
         this.velocitiesY
       );
-    }
-  }
-
-  updatePositions(dt) {
-    for (let i = 0; i < this.numParticles; i++) {
-      // Apply velocity damping
-      this.velocitiesX[i] *= this.velocityDamping;
-      this.velocitiesY[i] *= this.velocityDamping;
-
-      // Check if particle should be put to rest
-      const velocityMagnitude = Math.sqrt(
-        this.velocitiesX[i] * this.velocitiesX[i] +
-          this.velocitiesY[i] * this.velocitiesY[i]
-      );
-
-      const dx = this.velocitiesX[i] * dt;
-      const dy = this.velocitiesY[i] * dt;
-      const positionChange = Math.sqrt(dx * dx + dy * dy);
-
-      if (
-        velocityMagnitude < this.velocityThreshold &&
-        positionChange < this.positionThreshold
-      ) {
-        // Put particle fully to rest
-        this.velocitiesX[i] = 0;
-        this.velocitiesY[i] = 0;
-        continue;
-      }
-
-      // Update position
-      const newX = this.particles[i * 2] + this.velocitiesX[i] * dt;
-      const newY = this.particles[i * 2 + 1] + this.velocitiesY[i] * dt;
-
-      // Check circular boundary collision
-      const dxBoundary = newX - this.centerX;
-      const dyBoundary = newY - this.centerY;
-      const distSq = dxBoundary * dxBoundary + dyBoundary * dyBoundary;
-
-      if (distSq > this.radius * this.radius) {
-        const dist = Math.sqrt(distSq);
-        const penetration = dist - this.radius;
-        const nx = dxBoundary / dist;
-        const ny = dyBoundary / dist;
-
-        // Reflect velocity if particle is moving outward
-        const dot = this.velocitiesX[i] * nx + this.velocitiesY[i] * ny;
-        if (dot > 0) {
-          this.velocitiesX[i] -= (1 + this.restitution) * dot * nx;
-          this.velocitiesY[i] -= (1 + this.restitution) * dot * ny;
-          this.velocitiesX[i] *= this.boundaryDamping;
-          this.velocitiesY[i] *= this.boundaryDamping;
-        }
-
-        // Correct position by penetration distance
-        this.particles[i * 2] -= penetration * nx;
-        this.particles[i * 2 + 1] -= penetration * ny;
-      } else {
-        this.particles[i * 2] = newX;
-        this.particles[i * 2 + 1] = newY;
-      }
-    }
-  }
-
-  handleCollisions() {
-    this.updateGrid();
-    for (let i = 0; i < this.grid.length; i++) {
-      this.checkCellCollisions(i);
     }
   }
 
@@ -424,8 +421,8 @@ class ParticleSystem {
 
     // Draw physical bounds of a single particle
     const debugParticle = {
-      x: this.centerX,
-      y: this.centerY,
+      x: this.boundary.centerX,
+      y: this.boundary.centerY,
       size: this.particleRadius * this.renderScale,
     };
 

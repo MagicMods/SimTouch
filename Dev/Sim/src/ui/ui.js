@@ -11,45 +11,83 @@ class UI {
   }
 
   initGUI() {
-    // Reference system controls
-    // const refFolder = this.gui.addFolder("Reference");
-    // refFolder
-    //   .add(this.main.simulation, "particleCount", 0, 500, 10)
-    //   .name("Particles")
-    //   .onChange(() => {
-    //     console.log(
-    //       `Reference particles: ${this.main.simulation.particleCount}`
-    //     );
-    //   });
+    const physics = this.main.particleSystem;
+    const picFolder = this.gui.addFolder("Particles");
+
+    // 1. Particle Properties
+    const particleFolder = picFolder.addFolder("Properties");
+    particleFolder
+      .add(physics, "numParticles", 10, 1000, 10)
+      .name("Count")
+      .onChange((value) => {
+        physics.reinitializeParticles(value);
+      });
+
+    particleFolder
+      .add(physics, "particleRadius", 0.001, 0.05, 0.001)
+      .name("Size");
+
+    // 2. Physics Parameters
+    const physicsFolder = picFolder.addFolder("Physics");
+    physicsFolder.add(physics, "gravity", 0, 9.89, 0.1).name("Gravity");
+
+    physicsFolder
+      .add(physics, "velocityDamping", 0.8, 1.0, 0.01)
+      .name("Air Friction");
+
+    // 3. Boundary Controls
+    const boundaryFolder = picFolder.addFolder("Boundary");
+    boundaryFolder
+      .add(physics.boundary, "radius", 0.3, 0.55, 0.005)
+      .name("Size")
+      .onChange((value) => {
+        physics.boundary.update({ radius: value }, [
+          (boundary) => this.main.gridRenderer.updateBoundaryGeometry(boundary),
+        ]);
+      });
+
+    boundaryFolder
+      .add(physics.boundary, "restitution", 0.0, 1.0, 0.05)
+      .name("Bounce");
+
+    boundaryFolder
+      .add(physics.boundary, "damping", 0.5, 1.0, 0.01)
+      .name("Friction");
+
+    // Visual controls
+    const visualFolder = boundaryFolder.addFolder("Visual");
+    visualFolder.addColor(physics.boundary, "color").name("Color");
+
+    visualFolder.add(physics.boundary, "lineWidth", 1, 5, 1).name("Line Width");
 
     // PIC system controls
-    const picFolder = this.gui.addFolder("Particles");
-    const physics = this.main.particleSystem;
+    // const picFolder = this.gui.addFolder("Particles");
+    // const physics = this.main.particleSystem;
 
     // Particle count and size controls
-    const particleControl = picFolder
-      .add(physics, "numParticles", 10, 1000, 10)
-      .name("N");
+    // const particleControl = picFolder
+    //   .add(physics, "numParticles", 10, 1000, 10)
+    //   .name("N");
 
-    picFolder.add(physics, "particleRadius", 0.001, 0.05, 0.001).name("Size");
+    // picFolder.add(physics, "particleRadius", 0.001, 0.05, 0.001).name("Size");
 
-    particleControl.onChange((value) => {
-      physics.numParticles = value;
-      physics.particles = new Float32Array(value * 2);
-      physics.velocitiesX = new Float32Array(value);
-      physics.velocitiesY = new Float32Array(value);
-      physics.initializeParticles();
-      console.log(`PIC particles reinitialized with count: ${value}`);
-    });
+    // particleControl.onChange((value) => {
+    //   physics.numParticles = value;
+    //   physics.particles = new Float32Array(value * 2);
+    //   physics.velocitiesX = new Float32Array(value);
+    //   physics.velocitiesY = new Float32Array(value);
+    //   physics.initializeParticles();
+    //   console.log(`PIC particles reinitialized with count: ${value}`);
+    // });
 
     // Physics parameters with refined ranges
-    const physicsFolder = picFolder.addFolder("Physics");
+    // const physicsFolder = picFolder.addFolder("Physics");
 
     // Core parameters - gravity now positive up
-    physicsFolder
-      .add(physics, "gravity", 0, 9.89, 0.1)
-      .name("Gravity")
-      .onChange((value) => (physics.gravity = value)); // Invert for screen space
+    // physicsFolder
+    //   .add(physics, "gravity", 0, 9.89, 0.1)
+    //   .name("Gravity")
+    //   .onChange((value) => (physics.gravity = value)); // Invert for screen space
 
     // Collision parameters - corrected ranges
     const collisionFolder = physicsFolder.addFolder("Collision");
@@ -80,10 +118,10 @@ class UI {
       .name("Min Move");
 
     // Particle parameters - size as percentage of space
-    const particleFolder = physicsFolder.addFolder("Particles");
-    particleFolder
-      .add(physics, "particleRadius", 0.001, 0.05, 0.001)
-      .name("Size %");
+    // const particleFolder = physicsFolder.addFolder("Particles");
+    // particleFolder
+    //   .add(physics, "particleRadius", 0.001, 0.05, 0.001)
+    //   .name("Size %");
 
     // particleFolder
     //   .add(physics, "renderScale", 100, 1000, 50)
@@ -137,14 +175,14 @@ class UI {
     interactionFolder.open();
 
     // Boundary parameters
-    const boundaryFolder = picFolder.addFolder("Boundary");
-    boundaryFolder
-      .add(physics, "radius", 0.3, 0.55, 0.005)
-      .name("Radius")
-      .onChange((value) => {
-        physics.radius = value;
-        this.main.gridRenderer.updateBoundaryGeometry(value);
-      });
+    // const boundaryFolder = picFolder.addFolder("Boundary");
+    // boundaryFolder
+    //   .add(physics, "radius", 0.3, 0.55, 0.005)
+    //   .name("Radius")
+    //   .onChange((value) => {
+    //     physics.radius = value;
+    //     this.main.gridRenderer.updateBoundaryGeometry(value);
+    //   });
 
     // Animation speed
     const animationFolder = picFolder.addFolder("Animation");

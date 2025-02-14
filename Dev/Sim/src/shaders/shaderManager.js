@@ -192,6 +192,43 @@ class ShaderManager {
             }
         `,
     },
+    circle: {
+      vert: `
+            precision mediump float;
+            attribute vec2 position;
+            
+            void main() {
+                gl_Position = vec4(position, 0.0, 1.0);
+            }
+        `,
+      frag: `
+            precision mediump float;
+            
+            uniform vec2 resolution;
+            uniform vec2 center;
+            uniform float radius;
+            uniform float aspect;
+            uniform vec4 color;
+            uniform float lineWidth;
+            
+            void main() {
+                vec2 uv = gl_FragCoord.xy / resolution;
+                vec2 pos = uv * 2.0 - 1.0;
+                pos.x *= aspect;  // Correct for aspect ratio
+                
+                vec2 centerPos = center * 2.0 - 1.0;
+                centerPos.x *= aspect;
+                
+                float dist = length(pos - centerPos);
+                float circleRadius = radius * 2.0;  // Scale radius to match boundary
+                
+                float circle = smoothstep(circleRadius - lineWidth, circleRadius, dist) *
+                             smoothstep(circleRadius + lineWidth, circleRadius, dist);
+                             
+                gl_FragColor = vec4(color.rgb, color.a * circle);
+            }
+        `,
+    },
   };
 }
 

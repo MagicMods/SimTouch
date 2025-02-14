@@ -230,6 +230,9 @@ class Main {
       }
     }
 
+    // Draw boundary using shader manager
+    this.particleSystem.boundary.draw(this.gl, this.shaderManager);
+
     // Draw particles
     this.particleRenderer.draw(
       this.particleSystem.getParticles(),

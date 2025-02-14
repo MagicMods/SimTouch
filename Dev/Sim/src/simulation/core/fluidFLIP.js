@@ -5,13 +5,25 @@ class FluidFLIP {
     dt = 1 / 60,
     iterations = 20,
     overRelaxation = 1.9,
-    centerX = 0.5,
-    centerY = 0.5,
-    radius = 0.475,
+    boundary = null,
+    ...params
   } = {}) {
+    // Core parameters
     this.gridSize = gridSize;
     this.picFlipRatio = picFlipRatio;
     this.dt = dt;
+
+    // Store boundary reference
+    if (!boundary) {
+      throw new Error("FluidFLIP requires a boundary reference");
+    }
+    this.boundary = boundary;
+    this.radius = boundary.getRadius();
+
+    // Add update listener
+    this.boundary.addUpdateCallback(() => {
+      this.radius = this.boundary.getRadius();
+    });
 
     // Add missing scale factors
     this.gridToWorldScale = 1.0 / gridSize;
@@ -42,9 +54,6 @@ class FluidFLIP {
     this.velocityScale = 1.0;
 
     // Add boundary parameters
-    this.centerX = centerX;
-    this.centerY = centerY;
-    this.radius = radius;
     this.safetyMargin = 0.01;
     this.boundaryDamping = 0.85;
     this.velocityDamping = 0.999;
@@ -71,21 +80,21 @@ class FluidFLIP {
     const n = this.gridSize;
     const h = this.h;
 
-    // Mark solid cells for circular boundary
+    // Use boundary properties
+    const centerX = this.boundary.centerX;
+    const centerY = this.boundary.centerY;
+    const radius = this.boundary.getRadius();
+
+    // Mark solid cells
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) {
-        // Get cell center position
         const x = (j + 0.5) * h;
         const y = (i + 0.5) * h;
-
-        // Check if cell center is outside boundary
-        const dx = x - this.centerX;
-        const dy = y - this.centerY;
+        const dx = x - centerX;
+        const dy = y - centerY;
         const distSq = dx * dx + dy * dy;
 
-        if (distSq > this.radius * this.radius) {
-          this.solid[i * n + j] = 1;
-        }
+        this.solid[i * n + j] = distSq > radius * radius ? 1 : 0;
       }
     }
   }
