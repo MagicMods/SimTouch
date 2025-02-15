@@ -1,7 +1,7 @@
 class MouseForces {
   constructor({
-    impulseRadius = 0.15,
-    impulseMag = 0.01,
+    impulseRadius = 0.3,
+    impulseMag = 0.08,
     mouseAttractor = false,
   } = {}) {
     // Core parameters

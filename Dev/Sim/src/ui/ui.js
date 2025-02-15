@@ -75,7 +75,7 @@ class UI {
     visualFolder.addColor(physics.boundary, "color").name("Color");
 
     visualFolder
-      .add(physics.boundary, "lineWidth", 0.1, 2, 1)
+      .add(physics.boundary, "lineWidth", 0.2, 2, 0.1)
       .name("Line Width");
 
     // Collision parameters - corrected ranges
@@ -185,19 +185,22 @@ class UI {
       .name("Noise Field Resolution");
 
     // Add FLIP controls
-    const flipFolder = picFolder.addFolder("FLIP");
+    const flipFolder = physicsFolder.addFolder("FLIP/PIC");
 
     flipFolder
-      .add(physics, "picFlipRatio", 0, 1, 0.01)
-      .name("PIC / FLIP")
+      .add(physics.fluid, "picFlipRatio", 0, 1, 0.01)
+      .name("PIC/FLIP")
       .onChange((value) => {
-        console.log(`PIC/FLIP mixing ratio: ${value * 100}% FLIP`);
+        physics.picFlipRatio = value; // Keep in sync
       });
 
-    // FLIP parameters
     flipFolder
-      .add(physics, "flipIterations", 1, 40, 1)
+      .add(physics.fluid, "iterations", 1, 50, 1)
       .name("Pressure Iterations");
+
+    flipFolder
+      .add(physics.fluid, "velocityDamping", 0.9, 1.0, 0.001)
+      .name("FLIP Damping");
 
     flipFolder.open();
 

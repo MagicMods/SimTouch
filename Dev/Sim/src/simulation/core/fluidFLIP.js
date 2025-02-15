@@ -1,7 +1,7 @@
 class FluidFLIP {
   constructor({
     gridSize = 32,
-    picFlipRatio = 0.97,
+    picFlipRatio = 0.97, // Default should be high for FLIP
     dt = 1 / 60,
     iterations = 20,
     overRelaxation = 1.9,
@@ -233,11 +233,16 @@ class FluidFLIP {
       const flipVelX = velocitiesX[pIndex] + (picVelX - oldVelX);
       const flipVelY = velocitiesY[pIndex] + (picVelY - oldVelY);
 
-      // PIC/FLIP blend
+      // Corrected PIC/FLIP blend
+      // FLIP = 1.0, pure FLIP behavior
+      // FLIP = 0.0, pure PIC behavior
       velocitiesX[pIndex] =
-        picVelX * (1 - this.picFlipRatio) + flipVelX * this.picFlipRatio;
+        picVelX * (1.0 - this.picFlipRatio) + // PIC contribution
+        flipVelX * this.picFlipRatio; // FLIP contribution
+
       velocitiesY[pIndex] =
-        picVelY * (1 - this.picFlipRatio) + flipVelY * this.picFlipRatio;
+        picVelY * (1.0 - this.picFlipRatio) + // PIC contribution
+        flipVelY * this.picFlipRatio; // FLIP contribution
 
       // Apply damping
       velocitiesX[pIndex] *= this.velocityDamping;
