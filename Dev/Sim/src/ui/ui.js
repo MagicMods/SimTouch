@@ -149,13 +149,6 @@ class UI {
 
     if (physics.mouseForces) {
       mouseInputFolder
-        .add(physics.mouseForces, "mouseAttractor")
-        .name("Attractor Mode")
-        .onChange((value) => {
-          console.log("Mouse mode:", value ? "Attractor/Repulsor" : "Drag");
-        });
-
-      mouseInputFolder
         .add(physics.mouseForces, "impulseRadius", 0.05, 0.5, 0.01)
         .name("Input Radius");
 
