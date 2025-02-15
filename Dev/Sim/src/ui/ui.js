@@ -33,8 +33,13 @@ class UI {
 
     // Add opacity control after size control
     particleFolder
-      .add(this.main.particleRenderer, "particleOpacity", 0.0, 1.0, 0.1)
+      .add(this.main.particleRenderer, "particleOpacity", 0.0, 1.0, 0.01)
       .name("Opacity");
+
+    // Add color control after opacity in particle folder
+    particleFolder
+      .addColor(this.main.particleRenderer, "particleColor")
+      .name("Color");
 
     // 2. Physics Parameters
     const physicsFolder = picFolder.addFolder("Physics");
@@ -203,9 +208,6 @@ class UI {
     // Density Map controls
     const densityFolder = gridFolder.addFolder("Density Map");
     densityFolder.add(gridRenderer, "showDensity").name("Show Density");
-    densityFolder
-      .add(gridRenderer, "densityOpacity", 0, 1, 0.1)
-      .name("Opacity");
     densityFolder
       .add(gridRenderer, "minDensity", 0, 10, 0.1)
       .name("Min Density");

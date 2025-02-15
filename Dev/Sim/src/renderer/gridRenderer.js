@@ -35,7 +35,7 @@ class GridRenderer extends BaseRenderer {
     // Add density field parameters with defaults
     this.density = new Float32Array(this.getTotalCells());
     this.minDensity = 0.0;
-    this.maxDensity = 5.0;
+    this.maxDensity = 7.0;
     this.gradientPoints = [
       { pos: 0, r: 0, g: 0, b: 0 },
       { pos: 60, r: 144 / 255, g: 3 / 255, b: 0 },
@@ -47,7 +47,6 @@ class GridRenderer extends BaseRenderer {
 
     // Visualization settings
     this.showDensity = true;
-    this.densityOpacity = 0.8;
 
     console.log("GridRenderer initialized with scale:", scale);
   }

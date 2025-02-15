@@ -9,13 +9,14 @@ class ParticleRenderer extends BaseRenderer {
     this.particleBuffer = gl.createBuffer();
     this.config = {
       size: 10.0,
-      color: [0.2, 0.4, 1.0, 0.8],
+      color: [1, 0.6, 1.0, 0.8], // Default blue color
     };
-    this.particleOpacity = 0.3; // Add opacity property
+    this.particleOpacity = 0.13; // Add opacity property
+    this.particleColor = [1.0, 1.0, 1.0]; // RGB components for UI
     console.log("ParticleRenderer initialized");
   }
 
-  draw(particles, color = [0.2, 0.6, 1.0, 1.0]) {
+  draw(particles) {
     if (!particles || !Array.isArray(particles) || particles.length === 0) {
       console.warn("No valid particles to draw");
       return;
@@ -53,8 +54,7 @@ class ParticleRenderer extends BaseRenderer {
     );
 
     // Create color with opacity
-    const finalColor = [...color];
-    finalColor[3] = this.particleOpacity; // Apply opacity to alpha channel
+    const finalColor = [...this.particleColor, this.particleOpacity];
 
     // Set particle color uniform with opacity
     this.gl.uniform4fv(program.uniforms.color, finalColor);
