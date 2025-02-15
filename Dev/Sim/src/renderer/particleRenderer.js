@@ -11,6 +11,7 @@ class ParticleRenderer extends BaseRenderer {
       size: 10.0,
       color: [0.2, 0.4, 1.0, 0.8],
     };
+    this.particleOpacity = 0.3; // Add opacity property
     console.log("ParticleRenderer initialized");
   }
 
@@ -51,8 +52,12 @@ class ParticleRenderer extends BaseRenderer {
       0
     );
 
-    // Set particle color uniform (use provided color or default)
-    this.gl.uniform4fv(program.uniforms.color, color || this.config.color);
+    // Create color with opacity
+    const finalColor = [...color];
+    finalColor[3] = this.particleOpacity; // Apply opacity to alpha channel
+
+    // Set particle color uniform with opacity
+    this.gl.uniform4fv(program.uniforms.color, finalColor);
 
     // Draw the particles
     this.gl.drawArrays(this.gl.POINTS, 0, particles.length);

@@ -32,10 +32,22 @@ class GridRenderer extends BaseRenderer {
       this.gl.STATIC_DRAW
     );
 
-    // Add density field parameters
+    // Add density field parameters with defaults
     this.density = new Float32Array(this.getTotalCells());
+    this.minDensity = 0.0;
     this.maxDensity = 5.0;
+    this.gradientPoints = [
+      { pos: 0, r: 0, g: 0, b: 0 },
+      { pos: 60, r: 144 / 255, g: 3 / 255, b: 0 },
+      { pos: 80, r: 1, g: 6 / 255, b: 0 },
+      { pos: 95, r: 1, g: 197 / 255, b: 0 },
+      { pos: 100, r: 1, g: 1, b: 1 },
+    ];
     this.gradient = this.createGradient();
+
+    // Visualization settings
+    this.showDensity = true;
+    this.densityOpacity = 0.8;
 
     console.log("GridRenderer initialized with scale:", scale);
   }
@@ -48,13 +60,7 @@ class GridRenderer extends BaseRenderer {
     const gradient = new Array(256).fill(0).map(() => ({ r: 0, g: 0, b: 0 }));
 
     // Define color control points
-    const rawGradient = [
-      { pos: 0, r: 0, g: 0, b: 0 },
-      { pos: 60, r: 144 / 255, g: 3 / 255, b: 0 },
-      { pos: 80, r: 1, g: 6 / 255, b: 0 },
-      { pos: 95, r: 1, g: 197 / 255, b: 0 },
-      { pos: 100, r: 1, g: 1, b: 1 },
-    ];
+    const rawGradient = this.gradientPoints;
 
     // Interpolate between control points
     for (let i = 0; i < 256; i++) {
@@ -237,7 +243,7 @@ class GridRenderer extends BaseRenderer {
 
   draw(particleSystem) {
     const program = this.setupShader("basic");
-    if (!program || !particleSystem) return; // Early return if no particle system
+    if (!program || !particleSystem) return;
 
     // Update density field based on particle positions
     this.updateDensityField(particleSystem);
@@ -257,22 +263,34 @@ class GridRenderer extends BaseRenderer {
     let cellOffset = 0;
     for (let y = 0; y < this.numY; y++) {
       for (let x = 0; x < this.rowCounts[y]; x++) {
-        const density = Math.min(this.density[cellOffset] / this.maxDensity, 1);
-        const gradientIdx = Math.floor(density * 255);
-        const color = this.gradient[gradientIdx];
+        if (this.showDensity) {
+          // Map density to [0,1] range using min/max
+          const normalizedDensity = Math.max(
+            0,
+            Math.min(
+              1,
+              (this.density[cellOffset] - this.minDensity) /
+                (this.maxDensity - this.minDensity)
+            )
+          );
+          const gradientIdx = Math.floor(normalizedDensity * 255);
+          const color = this.gradient[gradientIdx];
 
-        this.gl.uniform4fv(program.uniforms.color, [
-          color.r,
-          color.g,
-          color.b,
-          1.0,
-        ]);
+          this.gl.uniform4fv(program.uniforms.color, [
+            color.r,
+            color.g,
+            color.b,
+            this.densityOpacity,
+          ]);
+        } else {
+          // Default grid color when density display is off
+          this.gl.uniform4fv(program.uniforms.color, [0.2, 0.2, 0.2, 0.5]);
+        }
+
         this.gl.drawArrays(this.gl.TRIANGLES, cellOffset * 6, 6);
-
         cellOffset++;
       }
     }
-
     // Draw boundary
     this.drawBoundary(program);
   }
@@ -290,6 +308,11 @@ class GridRenderer extends BaseRenderer {
     this.gl.uniform4fv(program.uniforms.color, [1.0, 1.0, 1.0, 1.0]);
     this.gl.lineWidth(2);
     this.gl.drawArrays(this.gl.LINE_LOOP, 0, this.boundaryVertexCount);
+  }
+
+  // Add method to update gradient
+  updateGradient() {
+    this.gradient = this.createGradient();
   }
 }
 

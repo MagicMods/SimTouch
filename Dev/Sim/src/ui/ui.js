@@ -31,6 +31,11 @@ class UI {
         physics.collisionSystem.particleRadius = value * 2; // Double for collision distance
       });
 
+    // Add opacity control after size control
+    particleFolder
+      .add(this.main.particleRenderer, "particleOpacity", 0.0, 1.0, 0.1)
+      .name("Opacity");
+
     // 2. Physics Parameters
     const physicsFolder = picFolder.addFolder("Physics");
     physicsFolder.add(physics, "gravity", 0, 9.89, 0.1).name("Gravity");
@@ -64,7 +69,9 @@ class UI {
     const visualFolder = boundaryFolder.addFolder("Visual");
     visualFolder.addColor(physics.boundary, "color").name("Color");
 
-    visualFolder.add(physics.boundary, "lineWidth", 1, 5, 1).name("Line Width");
+    visualFolder
+      .add(physics.boundary, "lineWidth", 0.1, 2, 1)
+      .name("Line Width");
 
     // Collision parameters - corrected ranges
     const collisionFolder = physicsFolder.addFolder("Collision");
@@ -188,6 +195,52 @@ class UI {
       .name("Pressure Iterations");
 
     flipFolder.open();
+
+    // Add Grid Controls
+    const gridFolder = picFolder.addFolder("Grid");
+    const gridRenderer = this.main.gridRenderer;
+
+    // Density Map controls
+    const densityFolder = gridFolder.addFolder("Density Map");
+    densityFolder.add(gridRenderer, "showDensity").name("Show Density");
+    densityFolder
+      .add(gridRenderer, "densityOpacity", 0, 1, 0.1)
+      .name("Opacity");
+    densityFolder
+      .add(gridRenderer, "minDensity", 0, 10, 0.1)
+      .name("Min Density");
+    densityFolder
+      .add(gridRenderer, "maxDensity", 0, 10, 0.1)
+      .name("Max Density");
+
+    // Gradient controls
+    const gradientFolder = gridFolder.addFolder("Gradient");
+    const gradientPoints = gridRenderer.gradientPoints;
+
+    // Add color controls for each gradient point
+    gradientPoints.forEach((point, index) => {
+      const pointFolder = gradientFolder.addFolder(`Point ${index + 1}`);
+      pointFolder
+        .add(point, "pos", 0, 100, 1)
+        .name("Position")
+        .onChange(() => gridRenderer.updateGradient());
+      pointFolder
+        .addColor(point, "r", 0, 1)
+        .name("Red")
+        .onChange(() => gridRenderer.updateGradient());
+      pointFolder
+        .addColor(point, "g", 0, 1)
+        .name("Green")
+        .onChange(() => gridRenderer.updateGradient());
+      pointFolder
+        .addColor(point, "b", 0, 1)
+        .name("Blue")
+        .onChange(() => gridRenderer.updateGradient());
+    });
+
+    // Open folders
+    gridFolder.open();
+    densityFolder.open();
 
     mouseInputFolder.open();
 
