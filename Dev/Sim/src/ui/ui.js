@@ -7,11 +7,38 @@ class UI {
     }
     this.main = main;
     this.gui = new GUI();
+    this.presets = {};
+    this.currentPreset = "";
     this.initGUI();
+    this.loadStoredPresets();
   }
 
   initGUI() {
     const physics = this.main.particleSystem;
+
+    // Add Presets folder at the top
+    const presetFolder = this.gui.addFolder("Presets");
+    presetFolder.open();
+
+    const presetConfig = {
+      name: "Default",
+      save: () => this.savePreset(),
+      load: () => this.loadPreset(),
+    };
+
+    // Add preset controls
+    presetFolder.add(presetConfig, "name").name("Name");
+
+    const saveButton = presetFolder
+      .add(presetConfig, "save")
+      .name("Save Preset");
+
+    const loadButton = presetFolder
+      .add(presetConfig, "load")
+      .name("Load Preset");
+
+    // Initially disable load button
+    loadButton.disable();
 
     //#region Animation
     const globalFolder = this.gui.addFolder("Global");
@@ -93,7 +120,7 @@ class UI {
 
     //#region Rest State
     const restFolder = physicsFolder.addFolder("Rest State");
-    restFolder.close();
+    restFolder.open(false);
     restFolder
       .add(physics, "velocityThreshold", 0.00001, 0.1, 0.00001)
       .name("Min Speed");
@@ -144,7 +171,7 @@ class UI {
 
     //#region Boundary
     const boundaryFolder = particlesFolder.addFolder("Boundary");
-    boundaryFolder.close();
+    boundaryFolder.open(false);
     boundaryFolder
       .add(physics.boundary, "radius", 0.3, 0.55, 0.005)
       .name("Size")
@@ -185,7 +212,7 @@ class UI {
       .name("Max Density");
 
     const gradientFolder = gridFolder.addFolder("Gradient");
-    gradientFolder.close();
+    gradientFolder.open(false);
     const gradientPoints = this.main.gridRenderer.gradientPoints;
 
     // Add color controls for each gradient point
@@ -205,7 +232,7 @@ class UI {
 
     //#region Mouse Input
     const mouseInputFolder = this.gui.addFolder("Mouse Input");
-    mouseInputFolder.close();
+    mouseInputFolder.open(false);
     if (physics.mouseForces) {
       mouseInputFolder
         .add(physics.mouseForces, "mouseAttractor")
@@ -243,10 +270,66 @@ class UI {
     debugFolder
       .add(physics, "noiseFieldResolution", 5, 50, 1)
       .name("Noise Field Resolution");
-    debugFolder.close();
+    debugFolder.open(false);
     //#endregion
 
     console.log("UI initialized with PIC parameters");
+  }
+
+  savePreset() {
+    const name = this.gui.folders[0].controllers[0].getValue();
+    if (!name) {
+      console.warn("Please enter a preset name");
+      return;
+    }
+
+    try {
+      this.presets[name] = this.gui.save();
+      this.currentPreset = name;
+
+      // Enable load button
+      this.gui.folders[0].controllers[2].enable();
+
+      console.log(`Preset "${name}" saved`);
+
+      // Save to localStorage
+      localStorage.setItem("fluidPresets", JSON.stringify(this.presets));
+    } catch (error) {
+      console.error("Error saving preset:", error);
+    }
+  }
+
+  loadPreset() {
+    const name = this.gui.folders[0].controllers[0].getValue();
+    const preset = this.presets[name];
+
+    if (!preset) {
+      console.warn(`Preset "${name}" not found`);
+      return;
+    }
+
+    try {
+      this.gui.load(preset);
+      console.log(`Preset "${name}" loaded`);
+    } catch (error) {
+      console.error("Error loading preset:", error);
+    }
+  }
+
+  // Add method to load presets from localStorage on startup
+  loadStoredPresets() {
+    const stored = localStorage.getItem("fluidPresets");
+    if (stored) {
+      try {
+        this.presets = JSON.parse(stored);
+        // Enable load button if we have presets
+        if (Object.keys(this.presets).length > 0) {
+          this.gui.folders[0].controllers[2].enable();
+        }
+      } catch (error) {
+        console.error("Error loading stored presets:", error);
+      }
+    }
   }
 
   dispose() {
