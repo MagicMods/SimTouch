@@ -15,7 +15,7 @@ class ParticleRenderer extends BaseRenderer {
     console.log("ParticleRenderer initialized");
   }
 
-  draw(particles, color = [0.2, 0.6, 1.0, 1.0]) {
+  draw(particles) {
     if (!particles || !Array.isArray(particles) || particles.length === 0) {
       console.warn("No valid particles to draw");
       return;
@@ -53,7 +53,7 @@ class ParticleRenderer extends BaseRenderer {
     );
 
     // Create color with opacity
-    const finalColor = [...color];
+    const finalColor = [...this.config.color];
     finalColor[3] = this.particleOpacity; // Apply opacity to alpha channel
 
     // Set particle color uniform with opacity

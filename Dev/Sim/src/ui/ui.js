@@ -36,6 +36,11 @@ class UI {
       .add(this.main.particleRenderer, "particleOpacity", 0.0, 1.0, 0.1)
       .name("Opacity");
 
+    // Add after opacity control
+    particleFolder
+      .addColor(this.main.particleRenderer.config, "color")
+      .name("Color");
+
     // 2. Physics Parameters
     const physicsFolder = picFolder.addFolder("Physics");
     physicsFolder.add(physics, "gravity", 0, 9.89, 0.1).name("Gravity");
