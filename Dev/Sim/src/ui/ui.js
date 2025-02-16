@@ -43,7 +43,7 @@ class UI {
       });
 
     particleFolder
-      .add(physics, "particleRadius", 0.01, 0.03, 0.001)
+      .add(physics, "particleRadius", 0.005, 0.03, 0.001)
       .name("Size")
       .onChange((value) => {
         // Update collision system's particle radius
@@ -107,7 +107,7 @@ class UI {
     const turbulenceFolder = physicsFolder.addFolder("Turbulence");
     const turbulence = this.main.turbulenceField; // Get reference to turbulence field
 
-    turbulenceFolder.add(turbulence, "enabled").name("Enable");
+    // turbulenceFolder.add(turbulence, "enabled").name("Enable");
 
     turbulenceFolder.add(turbulence, "strength", 0, 10, 0.1).name("Strength");
 
@@ -171,13 +171,12 @@ class UI {
     const densityFolder = gridFolder.addFolder("Density Map");
     gridFolder.open();
     densityFolder.open();
-
-    densityFolder
-      .add(this.main.gridRenderer, "showDensity")
-      .name("Show Density");
-    densityFolder
-      .add(this.main.gridRenderer, "densityOpacity", 0, 1, 0.1)
-      .name("Opacity");
+    // densityFolder
+    //   .add(this.main.gridRenderer, "showDensity")
+    //   .name("Show Density");
+    // densityFolder
+    //   .add(this.main.gridRenderer, "densityOpacity", 0, 1, 0.1)
+    //   .name("Opacity");
     densityFolder
       .add(this.main.gridRenderer, "minDensity", 0, 10, 0.1)
       .name("Min Density");
@@ -197,16 +196,8 @@ class UI {
         .name("Position")
         .onChange(() => this.main.gridRenderer.updateGradient());
       pointFolder
-        .addColor(point, "r", 0, 1)
-        .name("Red")
-        .onChange(() => this.main.gridRenderer.updateGradient());
-      pointFolder
-        .addColor(point, "g", 0, 1)
-        .name("Green")
-        .onChange(() => this.main.gridRenderer.updateGradient());
-      pointFolder
-        .addColor(point, "b", 0, 1)
-        .name("Blue")
+        .addColor(point, "color")
+        .name("Color")
         .onChange(() => this.main.gridRenderer.updateGradient());
     });
 

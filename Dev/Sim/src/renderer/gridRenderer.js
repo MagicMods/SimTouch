@@ -1,4 +1,5 @@
 import { BaseRenderer } from "./baseRenderer.js";
+// import { HeatMap } from "./heatMap.js";
 
 class GridRenderer extends BaseRenderer {
   constructor(gl, shaderManager) {
@@ -36,15 +37,22 @@ class GridRenderer extends BaseRenderer {
     this.density = new Float32Array(this.getTotalCells());
     this.minDensity = 0.0;
     this.maxDensity = 7.0;
+    // this.gradientPoints = [
+    //   { pos: 0, r: 0, g: 0, b: 0 },
+    //   { pos: 60, r: 144 / 255, g: 3 / 255, b: 0 },
+    //   { pos: 80, r: 1, g: 6 / 255, b: 0 },
+    //   { pos: 95, r: 1, g: 197 / 255, b: 0 },
+    //   { pos: 100, r: 1, g: 1, b: 1 },
+    // ];
     this.gradientPoints = [
-      { pos: 0, r: 0, g: 0, b: 0 },
-      { pos: 60, r: 144 / 255, g: 3 / 255, b: 0 },
-      { pos: 80, r: 1, g: 6 / 255, b: 0 },
-      { pos: 95, r: 1, g: 197 / 255, b: 0 },
-      { pos: 100, r: 1, g: 1, b: 1 },
+      { pos: 0, color: { r: 0, g: 0, b: 0 } }, // #000000 Black
+      { pos: 30, color: { r: 0.4, g: 0, b: 0 } }, // #660000 Dark Red
+      { pos: 60, color: { r: 1, g: 0, b: 0 } }, // #FF0000 Red
+      { pos: 97, color: { r: 0.992, g: 1, b: 0.5 } }, // #FDFF80 Light Yellow
+      { pos: 100, color: { r: 1, g: 1, b: 1 } }, // #FFFFFF White
     ];
     this.gradient = this.createGradient();
-    this.densityOpacity = 1;
+
     // Visualization settings
     this.showDensity = true;
 
@@ -58,29 +66,33 @@ class GridRenderer extends BaseRenderer {
   createGradient() {
     const gradient = new Array(256).fill(0).map(() => ({ r: 0, g: 0, b: 0 }));
 
-    // Define color control points
-    const rawGradient = this.gradientPoints;
-
     // Interpolate between control points
     for (let i = 0; i < 256; i++) {
       const t = i / 255;
-      let lower = rawGradient[0];
-      let upper = rawGradient[rawGradient.length - 1];
+      let lower = this.gradientPoints[0];
+      let upper = this.gradientPoints[this.gradientPoints.length - 1];
 
-      for (let j = 0; j < rawGradient.length - 1; j++) {
-        if (t * 100 >= rawGradient[j].pos && t * 100 < rawGradient[j + 1].pos) {
-          lower = rawGradient[j];
-          upper = rawGradient[j + 1];
+      // Find the two points to interpolate between
+      for (let j = 0; j < this.gradientPoints.length - 1; j++) {
+        if (
+          t * 100 >= this.gradientPoints[j].pos &&
+          t * 100 < this.gradientPoints[j + 1].pos
+        ) {
+          lower = this.gradientPoints[j];
+          upper = this.gradientPoints[j + 1];
           break;
         }
       }
 
+      // Calculate interpolation factor
       const range = upper.pos - lower.pos;
       const localT = (t * 100 - lower.pos) / range;
+
+      // Interpolate RGB values
       gradient[i] = {
-        r: this.lerp(lower.r, upper.r, localT),
-        g: this.lerp(lower.g, upper.g, localT),
-        b: this.lerp(lower.b, upper.b, localT),
+        r: this.lerp(lower.color.r, upper.color.r, localT),
+        g: this.lerp(lower.color.g, upper.color.g, localT),
+        b: this.lerp(lower.color.b, upper.color.b, localT),
       };
     }
 
@@ -279,7 +291,7 @@ class GridRenderer extends BaseRenderer {
             color.r,
             color.g,
             color.b,
-            this.densityOpacity,
+            1,
           ]);
         } else {
           // Default grid color when density display is off

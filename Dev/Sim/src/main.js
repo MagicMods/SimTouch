@@ -83,39 +83,39 @@ class Main {
     this.setupMouseInteraction();
   }
 
-  setupMouseDebug() {
-    this.canvas.addEventListener("mousedown", (e) => {
-      const rect = this.canvas.getBoundingClientRect();
-      const mouseX = (e.clientX - rect.left) / rect.width;
-      const mouseY = (e.clientY - rect.top) / rect.height;
+  // setupMouseDebug() {
+  //   this.canvas.addEventListener("mousedown", (e) => {
+  //     const rect = this.canvas.getBoundingClientRect();
+  //     const mouseX = (e.clientX - rect.left) / rect.width;
+  //     const mouseY = (e.clientY - rect.top) / rect.height;
 
-      console.table({
-        "Mouse Click": {
-          x: mouseX.toFixed(3),
-          y: mouseY.toFixed(3),
-        },
-        "Relative to Center": {
-          x: (mouseX - 0.5).toFixed(3),
-          y: (mouseY - 0.5).toFixed(3),
-        },
-        "Canvas Pixels": {
-          x: Math.round(e.clientX - rect.left),
-          y: Math.round(e.clientY - rect.top),
-        },
-      });
+  //     console.table({
+  //       "Mouse Click": {
+  //         x: mouseX.toFixed(3),
+  //         y: mouseY.toFixed(3),
+  //       },
+  //       "Relative to Center": {
+  //         x: (mouseX - 0.5).toFixed(3),
+  //         y: (mouseY - 0.5).toFixed(3),
+  //       },
+  //       "Canvas Pixels": {
+  //         x: Math.round(e.clientX - rect.left),
+  //         y: Math.round(e.clientY - rect.top),
+  //       },
+  //     });
 
-      // Log boundary info from ParticleSystem, if available
-      if (this.particleSystem.centerX && this.particleSystem.centerY) {
-        console.log("Boundary:", {
-          center: {
-            x: this.particleSystem.centerX.toFixed(3),
-            y: this.particleSystem.centerY.toFixed(3),
-          },
-          radius: this.particleSystem.radius.toFixed(3),
-        });
-      }
-    });
-  }
+  //     // Log boundary info from ParticleSystem, if available
+  //     if (this.particleSystem.centerX && this.particleSystem.centerY) {
+  //       console.log("Boundary:", {
+  //         center: {
+  //           x: this.particleSystem.centerX.toFixed(3),
+  //           y: this.particleSystem.centerY.toFixed(3),
+  //         },
+  //         radius: this.particleSystem.radius.toFixed(3),
+  //       });
+  //     }
+  //   });
+  // }
 
   setupMouseInteraction() {
     this.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
@@ -215,9 +215,6 @@ class Main {
     // Clear frame
     this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
     this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-
-    // Draw grid
-    this.gridRenderer.draw();
 
     // Update grid with particle system reference
     this.gridRenderer.draw(this.particleSystem);
