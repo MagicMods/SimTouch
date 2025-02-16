@@ -44,7 +44,7 @@ class GridRenderer extends BaseRenderer {
       { pos: 100, r: 1, g: 1, b: 1 },
     ];
     this.gradient = this.createGradient();
-
+    this.densityOpacity = 1;
     // Visualization settings
     this.showDensity = true;
 
