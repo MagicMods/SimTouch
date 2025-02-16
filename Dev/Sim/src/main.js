@@ -45,7 +45,7 @@ class Main {
 
     // Create particle system with dependencies
     this.particleSystem = new ParticleSystem({
-      particleCount: 500,
+      particleCount: 680,
       timeStep: 1 / 60,
       gravity: 0,
       turbulence: this.turbulenceField,

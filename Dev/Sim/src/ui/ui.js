@@ -1,16 +1,13 @@
 import GUI from "lil-gui";
+import { PresetManager } from "../util/presetManager.js";
 
 class UI {
   constructor(main) {
-    if (!main) {
-      throw new Error("Main instance required");
-    }
+    if (!main) throw new Error("Main instance required");
     this.main = main;
     this.gui = new GUI();
-    this.presets = {};
-    this.currentPreset = "";
+    this.presetManager = new PresetManager(this.gui);
     this.initGUI();
-    this.loadStoredPresets();
   }
 
   initGUI() {
@@ -20,25 +17,58 @@ class UI {
     const presetFolder = this.gui.addFolder("Presets");
     presetFolder.open();
 
-    const presetConfig = {
-      name: "Default",
-      save: () => this.savePreset(),
-      load: () => this.loadPreset(),
-    };
+    // Export button only
+    presetFolder
+      .add(
+        {
+          export: () => {
+            const state = this.gui.save();
+            console.log("Current configuration:");
+            console.log(JSON.stringify(state, null, 2));
+          },
+        },
+        "export"
+      )
+      .name("Export to Console");
 
-    // Add preset controls
-    presetFolder.add(presetConfig, "name").name("Name");
+    // Load presets from files
+    this.presetManager.loadPresets().then(() => {
+      const presetNames = this.presetManager.getPresetNames();
+      if (presetNames.length > 0) {
+        const presetControl = {
+          current: this.presetManager.defaultPreset,
+        };
 
-    const saveButton = presetFolder
-      .add(presetConfig, "save")
-      .name("Save Preset");
+        // Add preset selection dropdown
+        presetFolder
+          .add(presetControl, "current", presetNames)
+          .name("Load Preset")
+          .onChange((value) => {
+            // Prevent recursion by checking if preset is already loaded
+            if (value === this.presetManager.currentPreset) return;
 
-    const loadButton = presetFolder
-      .add(presetConfig, "load")
-      .name("Load Preset");
+            if (this.presetManager.presets[value]) {
+              // Update current preset before loading
+              this.presetManager.currentPreset = value;
 
-    // Initially disable load button
-    loadButton.disable();
+              // Load preset without triggering onChange
+              this.gui.load(this.presetManager.presets[value]);
+
+              // Update all controllers manually
+              Object.values(this.gui.folders).forEach((folder) => {
+                folder.controllers.forEach((controller) => {
+                  if (controller !== this.presetDropdown) {
+                    controller.updateDisplay();
+                  }
+                });
+              });
+
+              // Update particle system if needed
+              this.main.particleSystem.reinitializeParticles();
+            }
+          });
+      }
+    });
 
     //#region Animation
     const globalFolder = this.gui.addFolder("Global");
@@ -62,11 +92,15 @@ class UI {
     const particleFolder = particlesFolder.addFolder("Properties");
     particlesFolder.open();
     particleFolder.open();
+    let previousNumParticles = physics.numParticles;
     particleFolder
-      .add(physics, "numParticles", 10, 1000, 10)
+      .add(physics, "numParticles", 10, 2000, 10)
       .name("Count")
-      .onChange((value) => {
+      .onFinishChange((value) => {
+        // if (value > previousNumParticles) {
         physics.reinitializeParticles(value);
+        // }
+        // previousNumParticles = value;
       });
 
     particleFolder
@@ -276,60 +310,10 @@ class UI {
     console.log("UI initialized with PIC parameters");
   }
 
-  savePreset() {
-    const name = this.gui.folders[0].controllers[0].getValue();
-    if (!name) {
-      console.warn("Please enter a preset name");
-      return;
-    }
-
-    try {
-      this.presets[name] = this.gui.save();
-      this.currentPreset = name;
-
-      // Enable load button
-      this.gui.folders[0].controllers[2].enable();
-
-      console.log(`Preset "${name}" saved`);
-
-      // Save to localStorage
-      localStorage.setItem("fluidPresets", JSON.stringify(this.presets));
-    } catch (error) {
-      console.error("Error saving preset:", error);
-    }
-  }
-
-  loadPreset() {
-    const name = this.gui.folders[0].controllers[0].getValue();
-    const preset = this.presets[name];
-
-    if (!preset) {
-      console.warn(`Preset "${name}" not found`);
-      return;
-    }
-
-    try {
-      this.gui.load(preset);
-      console.log(`Preset "${name}" loaded`);
-    } catch (error) {
-      console.error("Error loading preset:", error);
-    }
-  }
-
-  // Add method to load presets from localStorage on startup
-  loadStoredPresets() {
-    const stored = localStorage.getItem("fluidPresets");
-    if (stored) {
-      try {
-        this.presets = JSON.parse(stored);
-        // Enable load button if we have presets
-        if (Object.keys(this.presets).length > 0) {
-          this.gui.folders[0].controllers[2].enable();
-        }
-      } catch (error) {
-        console.error("Error loading stored presets:", error);
-      }
-    }
+  updatePresetDropdown() {
+    const presets = ["none", ...this.presetManager.getPresetNames()];
+    this.presetDropdown.options = presets;
+    this.presetDropdown.updateDisplay();
   }
 
   dispose() {

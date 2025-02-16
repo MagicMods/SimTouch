@@ -139,14 +139,16 @@ class ParticleSystem {
     console.log(`Initialized ${particleIndex} particles in spherical pattern`);
   }
 
-  reinitializeParticles(newCount) {
-    // Update particle count
-    this.numParticles = newCount;
+  reinitializeParticles(newCount = null) {
+    // If no new count provided, use current count
+    if (newCount !== null) {
+      this.numParticles = newCount;
+    }
 
-    // Recreate particle arrays with new size
-    this.particles = new Float32Array(newCount * 2);
-    this.velocitiesX = new Float32Array(newCount);
-    this.velocitiesY = new Float32Array(newCount);
+    // Ensure arrays match current particle count
+    this.particles = new Float32Array(this.numParticles * 2);
+    this.velocitiesX = new Float32Array(this.numParticles);
+    this.velocitiesY = new Float32Array(this.numParticles);
 
     // Clear collision grid
     this.collisionSystem.reset();
