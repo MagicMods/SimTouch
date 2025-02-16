@@ -19,7 +19,7 @@ class CircularBoundary {
 
     // Visual properties
     this.color = [1.0, 1.0, 1.0, 0.5]; // White, semi-transparent
-    this.lineWidth = 2;
+    this.lineWidth = 0.2;
 
     // Add FLIP-specific parameters
     this.flipBoundaryScale = 1.0; // Ensures FLIP boundary matches PIC

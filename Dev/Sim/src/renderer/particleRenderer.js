@@ -9,9 +9,9 @@ class ParticleRenderer extends BaseRenderer {
     this.particleBuffer = gl.createBuffer();
     this.config = {
       size: 10.0,
-      color: [0.2, 0.4, 1.0, 0.8],
+      color: [1, 1, 1, 0.1],
     };
-    this.particleOpacity = 0.3; // Add opacity property
+    this.particleOpacity = 0.1; // Add opacity property
     console.log("ParticleRenderer initialized");
   }
 
