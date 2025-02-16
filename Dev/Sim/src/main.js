@@ -195,6 +195,20 @@ class Main {
   }
 
   animate() {
+    // Update simulation
+    this.particleSystem.step();
+
+    // Update stats
+    this.ui.updateStats();
+
+    // Render
+    this.render();
+
+    // Request next frame
+    requestAnimationFrame(() => this.animate());
+  }
+
+  render() {
     this.frame++;
 
     // Update turbulence before particle step
@@ -245,8 +259,6 @@ class Main {
 
     // Update mouse forces
     this.particleSystem.mouseForces.update(this.particleSystem);
-
-    requestAnimationFrame(() => this.animate());
   }
 
   static async create() {

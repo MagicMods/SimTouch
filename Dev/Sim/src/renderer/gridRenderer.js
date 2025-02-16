@@ -37,13 +37,7 @@ class GridRenderer extends BaseRenderer {
     this.density = new Float32Array(this.getTotalCells());
     this.minDensity = 0.0;
     this.maxDensity = 7.0;
-    // this.gradientPoints = [
-    //   { pos: 0, r: 0, g: 0, b: 0 },
-    //   { pos: 60, r: 144 / 255, g: 3 / 255, b: 0 },
-    //   { pos: 80, r: 1, g: 6 / 255, b: 0 },
-    //   { pos: 95, r: 1, g: 197 / 255, b: 0 },
-    //   { pos: 100, r: 1, g: 1, b: 1 },
-    // ];
+
     this.gradientPoints = [
       { pos: 0, color: { r: 0, g: 0, b: 0 } }, // #000000 Black
       { pos: 30, color: { r: 0.4, g: 0, b: 0 } }, // #660000 Dark Red

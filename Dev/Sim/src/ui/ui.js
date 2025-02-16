@@ -1,5 +1,6 @@
 import GUI from "lil-gui";
 import { PresetManager } from "../util/presetManager.js";
+import Stats from "../util/statsModule.js";
 
 class UI {
   constructor(main) {
@@ -7,7 +8,23 @@ class UI {
     this.main = main;
     this.gui = new GUI();
     this.presetManager = new PresetManager(this.gui);
+    this.stats = new Stats();
+    this.initStats();
     this.initGUI();
+  }
+
+  initStats() {
+    // Create stats container
+    const statsContainer = document.createElement("div");
+    statsContainer.style.cssText = "position:absolute;top:0;left:0;";
+    statsContainer.appendChild(this.stats.dom);
+    document.body.appendChild(statsContainer);
+  }
+
+  updateStats() {
+    if (this.stats) {
+      this.stats.update();
+    }
   }
 
   initGUI() {
