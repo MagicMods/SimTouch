@@ -43,8 +43,8 @@ class ParticleSystem {
     // External forces
     this.turbulence = turbulence; // Store turbulence reference
     this.mouseAttractor = false;
-    this.impulseRadius = 0.2;
-    this.impulseMag = 0.015;
+    this.impulseRadius = 0.3;
+    this.impulseMag = 0.022;
 
     // FLIP system
     this.picFlipRatio = picFlipRatio;
@@ -81,7 +81,7 @@ class ParticleSystem {
     this.mouseForces = new MouseForces({
       impulseRadius: this.impulseRadius,
       impulseMag: this.impulseMag,
-      mouseAttractor: this.mouseAttractor,
+      mouseAttractor: false,
     });
 
     this.initializeParticles();

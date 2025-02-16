@@ -12,10 +12,29 @@ class UI {
 
   initGUI() {
     const physics = this.main.particleSystem;
-    const picFolder = this.gui.addFolder("Particles");
 
-    // 1. Particle Properties
-    const particleFolder = picFolder.addFolder("Properties");
+    //#region Animation
+    const globalFolder = this.gui.addFolder("Global");
+    globalFolder.open();
+    globalFolder
+      .add(physics, "timeScale", 0, 2, 0.1)
+      .name("Speed")
+      .onChange((value) => {
+        console.log(`Animation speed: ${value}x`);
+      });
+    globalFolder
+      .add(physics, "picFlipRatio", 0, 1, 0.01)
+      .name("PIC / FLIP")
+      .onChange((value) => {
+        console.log(`PIC/FLIP mixing ratio: ${value * 100}% FLIP`);
+      });
+    //#endregion
+
+    //#region Particles
+    const particlesFolder = this.gui.addFolder("Particles");
+    const particleFolder = particlesFolder.addFolder("Properties");
+    particlesFolder.open();
+    particleFolder.open();
     particleFolder
       .add(physics, "numParticles", 10, 1000, 10)
       .name("Count")
@@ -36,54 +55,28 @@ class UI {
       .add(this.main.particleRenderer, "particleOpacity", 0.0, 1.0, 0.01)
       .name("Opacity");
 
-    // Add color control after opacity in particle folder
+    // Add after opacity control
     particleFolder
-      .addColor(this.main.particleRenderer, "particleColor")
+      .addColor(this.main.particleRenderer.config, "color")
       .name("Color");
+    //#endregion
 
-    // 2. Physics Parameters
-    const physicsFolder = picFolder.addFolder("Physics");
+    //#region Physics
+    const physicsFolder = particlesFolder.addFolder("Physics");
+    physicsFolder.open();
     physicsFolder.add(physics, "gravity", 0, 9.89, 0.1).name("Gravity");
 
     physicsFolder
       .add(physics, "velocityDamping", 0.8, 1.0, 0.01)
       .name("Air Friction");
+    //#endregion
 
-    // 3. Boundary Controls
-    const boundaryFolder = picFolder.addFolder("Boundary");
-    boundaryFolder
-      .add(physics.boundary, "radius", 0.3, 0.55, 0.005)
-      .name("Size")
-      .onChange((value) => {
-        physics.boundary.update({ radius: value }, [
-          (boundary) => this.main.gridRenderer.updateBoundaryGeometry(boundary),
-        ]);
-      });
-
-    // Wall friction: 0 = no friction, 1 = maximum friction
-    boundaryFolder
-      .add(physics, "boundaryDamping", 0.0, 1.0, 0.01)
-      .name("Wall Friction")
-      .onChange((value) => (physics.boundaryDamping = value)); // Invert for damping
-
-    boundaryFolder
-      .add(physics.boundary, "cBoundaryRestitution", 0.0, 1.0, 0.05)
-      .name("Bounce");
-
-    // Visual controls
-    const visualFolder = boundaryFolder.addFolder("Visual");
-    visualFolder.addColor(physics.boundary, "color").name("Color");
-
-    visualFolder
-      .add(physics.boundary, "lineWidth", 0.2, 2, 0.1)
-      .name("Line Width");
-
-    // Collision parameters - corrected ranges
+    //#region Collision
     const collisionFolder = physicsFolder.addFolder("Collision");
-    // Update to use collisionSystem
-    collisionFolder
-      .add(physics.collisionSystem, "enabled")
-      .name("Enable Collisions");
+    collisionFolder.open();
+    // collisionFolder
+    //   .add(physics.collisionSystem, "enabled")
+    //   .name("Enable Collisions");
 
     collisionFolder
       .add(physics.collisionSystem, "repulsion", 0, 100.0, 0.05)
@@ -96,9 +89,11 @@ class UI {
     collisionFolder
       .add(physics.collisionSystem, "damping", 0.5, 1.0, 0.01)
       .name("Collision Damping");
+    //#endregion
 
-    // Rest state - lower values = more precise rest detection
+    //#region Rest State
     const restFolder = physicsFolder.addFolder("Rest State");
+    restFolder.close();
     restFolder
       .add(physics, "velocityThreshold", 0.00001, 0.1, 0.00001)
       .name("Min Speed");
@@ -106,8 +101,9 @@ class UI {
     restFolder
       .add(physics, "positionThreshold", 0.000001, 0.1, 0.000001)
       .name("Min Move");
+    //#endregion
 
-    // Add turbulence controls
+    //#region Turbulence
     const turbulenceFolder = physicsFolder.addFolder("Turbulence");
     const turbulence = this.main.turbulenceField; // Get reference to turbulence field
 
@@ -134,20 +130,99 @@ class UI {
       .name("Inward Push");
 
     turbulenceFolder.open();
+    //#endregion
 
-    // Animation speed
-    const animationFolder = picFolder.addFolder("Animation");
-    animationFolder
-      .add(physics, "timeScale", 0, 2, 0.1)
-      .name("Speed")
+    //#region FLIP
+    const flipFolder = particlesFolder.addFolder("FLIP");
+
+    flipFolder
+      .add(physics, "flipIterations", 1, 40, 1)
+      .name("Pressure Iterations");
+
+    flipFolder.open();
+    //#endregion
+
+    //#region Boundary
+    const boundaryFolder = particlesFolder.addFolder("Boundary");
+    boundaryFolder.close();
+    boundaryFolder
+      .add(physics.boundary, "radius", 0.3, 0.55, 0.005)
+      .name("Size")
       .onChange((value) => {
-        console.log(`Animation speed: ${value}x`);
+        physics.boundary.update({ radius: value }, [
+          (boundary) => this.main.gridRenderer.updateBoundaryGeometry(boundary),
+        ]);
       });
 
-    // Add Mouse Input controls
-    const mouseInputFolder = picFolder.addFolder("Mouse Input");
+    // Wall friction: 0 = no friction, 1 = maximum friction
+    boundaryFolder
+      .add(physics, "boundaryDamping", 0.0, 1.0, 0.01)
+      .name("Wall Friction")
+      .onChange((value) => (physics.boundaryDamping = value)); // Invert for damping
 
+    boundaryFolder
+      .add(physics.boundary, "cBoundaryRestitution", 0.0, 1.0, 0.05)
+      .name("Bounce");
+
+    //#endregion
+
+    //#region Grid
+    const gridFolder = this.gui.addFolder("Grid");
+    const densityFolder = gridFolder.addFolder("Density Map");
+    gridFolder.open();
+    densityFolder.open();
+
+    densityFolder
+      .add(this.main.gridRenderer, "showDensity")
+      .name("Show Density");
+    densityFolder
+      .add(this.main.gridRenderer, "densityOpacity", 0, 1, 0.1)
+      .name("Opacity");
+    densityFolder
+      .add(this.main.gridRenderer, "minDensity", 0, 10, 0.1)
+      .name("Min Density");
+    densityFolder
+      .add(this.main.gridRenderer, "maxDensity", 0, 10, 0.1)
+      .name("Max Density");
+
+    const gradientFolder = gridFolder.addFolder("Gradient");
+    gradientFolder.close();
+    const gradientPoints = this.main.gridRenderer.gradientPoints;
+
+    // Add color controls for each gradient point
+    gradientPoints.forEach((point, index) => {
+      const pointFolder = gradientFolder.addFolder(`Point ${index + 1}`);
+      pointFolder
+        .add(point, "pos", 0, 100, 1)
+        .name("Position")
+        .onChange(() => this.main.gridRenderer.updateGradient());
+      pointFolder
+        .addColor(point, "r", 0, 1)
+        .name("Red")
+        .onChange(() => this.main.gridRenderer.updateGradient());
+      pointFolder
+        .addColor(point, "g", 0, 1)
+        .name("Green")
+        .onChange(() => this.main.gridRenderer.updateGradient());
+      pointFolder
+        .addColor(point, "b", 0, 1)
+        .name("Blue")
+        .onChange(() => this.main.gridRenderer.updateGradient());
+    });
+
+    //#endregion
+
+    //#region Mouse Input
+    const mouseInputFolder = this.gui.addFolder("Mouse Input");
+    mouseInputFolder.close();
     if (physics.mouseForces) {
+      mouseInputFolder
+        .add(physics.mouseForces, "mouseAttractor")
+        .name("Attractor Mode")
+        .onChange((value) => {
+          console.log("Mouse mode:", value ? "Attractor/Repulsor" : "Drag");
+        });
+
       mouseInputFolder
         .add(physics.mouseForces, "impulseRadius", 0.05, 0.5, 0.01)
         .name("Input Radius");
@@ -158,9 +233,10 @@ class UI {
     } else {
       console.warn("Mouse forces not initialized");
     }
+    //#endregion
 
-    // Debug parameters
-    const debugFolder = picFolder.addFolder("Debug");
+    //#region Debug
+    const debugFolder = this.gui.addFolder("Debug");
     debugFolder.add(physics, "debugEnabled").name("Show Debug Overlay");
     debugFolder
       .add(physics, "debugShowVelocityField")
@@ -176,79 +252,8 @@ class UI {
     debugFolder
       .add(physics, "noiseFieldResolution", 5, 50, 1)
       .name("Noise Field Resolution");
-
-    // Add FLIP controls
-    const flipFolder = physicsFolder.addFolder("FLIP/PIC");
-
-    flipFolder
-      .add(physics.fluid, "picFlipRatio", 0, 1, 0.01)
-      .name("PIC/FLIP")
-      .onChange((value) => {
-        physics.picFlipRatio = value; // Keep in sync
-      });
-
-    flipFolder
-      .add(physics.fluid, "iterations", 1, 50, 1)
-      .name("Pressure Iterations");
-
-    flipFolder
-      .add(physics.fluid, "velocityDamping", 0.9, 1.0, 0.001)
-      .name("FLIP Damping");
-
-    flipFolder.open();
-
-    // Add Grid Controls
-    const gridFolder = picFolder.addFolder("Grid");
-    const gridRenderer = this.main.gridRenderer;
-
-    // Density Map controls
-    const densityFolder = gridFolder.addFolder("Density Map");
-    densityFolder.add(gridRenderer, "showDensity").name("Show Density");
-    densityFolder
-      .add(gridRenderer, "minDensity", 0, 10, 0.1)
-      .name("Min Density");
-    densityFolder
-      .add(gridRenderer, "maxDensity", 0, 10, 0.1)
-      .name("Max Density");
-
-    // Gradient controls
-    const gradientFolder = gridFolder.addFolder("Gradient");
-    const gradientPoints = gridRenderer.gradientPoints;
-
-    // Add color controls for each gradient point
-    gradientPoints.forEach((point, index) => {
-      const pointFolder = gradientFolder.addFolder(`Point ${index + 1}`);
-      pointFolder
-        .add(point, "pos", 0, 100, 1)
-        .name("Position")
-        .onChange(() => gridRenderer.updateGradient());
-      pointFolder
-        .addColor(point, "r", 0, 1)
-        .name("Red")
-        .onChange(() => gridRenderer.updateGradient());
-      pointFolder
-        .addColor(point, "g", 0, 1)
-        .name("Green")
-        .onChange(() => gridRenderer.updateGradient());
-      pointFolder
-        .addColor(point, "b", 0, 1)
-        .name("Blue")
-        .onChange(() => gridRenderer.updateGradient());
-    });
-
-    // Open folders
-    gridFolder.open();
-    densityFolder.open();
-
-    mouseInputFolder.open();
-
-    // Open relevant folders
-    picFolder.open();
-    physicsFolder.open();
-    collisionFolder.open();
-    restFolder.open();
-    particleFolder.open();
-    animationFolder.open();
+    debugFolder.close();
+    //#endregion
 
     console.log("UI initialized with PIC parameters");
   }

@@ -14,6 +14,76 @@
 
 
 
+
+Particles
+├── Properties
+│   ├── Count
+│   ├── Size
+│   ├── Opacity
+│   └── Color
+├── Physics
+│   ├── Gravity
+│   ├── Air Friction
+│   ├── Collision
+│   │   ├── Enable Collisions
+│   │   ├── Repulsion
+│   │   ├── Bounce
+│   │   └── Collision Damping
+│   ├── Rest State
+│   │   ├── Min Speed
+│   │   └── Min Move
+│   └── Turbulence
+│       ├── Enable
+│       ├── Strength
+│       ├── Scale
+│       ├── Speed
+│       ├── Complexity
+│       ├── Roughness
+│       ├── Rotation
+│       └── Inward Push
+├── Boundary
+│   ├── Size
+│   ├── Wall Friction
+│   ├── Bounce
+│   └── Visual
+│       ├── Color
+│       └── Line Width
+├── Animation
+│   └── Speed
+├── Mouse Input
+│   ├── Attractor Mode
+│   ├── Input Radius
+│   └── Input Strength
+├── Debug
+│   ├── Show Debug Overlay
+│   ├── Show Velocity Field
+│   ├── Show Pressure Field
+│   ├── Show Boundaries
+│   ├── Show FLIP Grid
+│   ├── Show Noise Field
+│   └── Noise Field Resolution
+├── FLIP
+│   ├── PIC / FLIP
+│   └── Pressure Iterations
+└── Grid
+    ├── Density Map
+    │   ├── Show Density
+    │   ├── Opacity
+    │   ├── Min Density
+    │   └── Max Density
+    └── Gradient
+        ├── Point 1
+        │   ├── Position
+        │   ├── Red
+        │   ├── Green
+        │   └── Blue
+        └── [Point 2..n]
+
+
+        
+
+
+
 # Coordinate System Standard
 
 ## Application Space [0,1]

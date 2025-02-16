@@ -1,56 +1,42 @@
 class MouseForces {
-  constructor({ impulseRadius = 0.3, impulseMag = 0.08 } = {}) {
+  constructor({
+    impulseRadius = 0.3,
+    impulseMag = 0.015,
+    mouseAttractor = false,
+  } = {}) {
     // Core parameters
     this.impulseRadius = impulseRadius;
     this.impulseMag = impulseMag;
+    this.mouseAttractor = mouseAttractor;
 
     // Mouse state
     this.activePosition = null;
-    this.leftPressed = false;
-    this.rightPressed = false;
+    this.isPressed = false;
+    this.activeButton = null;
   }
 
   setMouseState(x, y, isPressed, button = null) {
     this.activePosition = isPressed ? { x, y } : null;
-
-    // Track buttons separately
-    if (button === 0) {
-      // Left button
-      this.leftPressed = isPressed;
-    } else if (button === 2) {
-      // Right button
-      this.rightPressed = isPressed;
-    }
-
-    // Clear state when no buttons are pressed
-    if (!this.leftPressed && !this.rightPressed) {
-      this.activePosition = null;
-    }
+    this.isPressed = isPressed;
+    this.activeButton = isPressed ? button : null;
   }
 
   update(particleSystem) {
-    if (!this.activePosition || (!this.leftPressed && !this.rightPressed))
-      return;
+    if (!this.isPressed || !this.activePosition) return;
 
-    // Both buttons = repulsion
-    if (this.leftPressed && this.rightPressed) {
+    if (this.mouseAttractor) {
+      // Attractor mode: left = attract, right = repulse
+      const mode = this.activeButton === 0 ? "attract" : "repulse";
       this.applyImpulseAt(
         particleSystem,
         this.activePosition.x,
         this.activePosition.y,
-        "repulse"
+        mode
       );
+    } else if (this.activeButton === 0) {
+      // Normal mode: left button drag only
+      return; // Drag handled by mousemove events
     }
-    // Right button only = attractor
-    else if (this.rightPressed) {
-      this.applyImpulseAt(
-        particleSystem,
-        this.activePosition.x,
-        this.activePosition.y,
-        "attract"
-      );
-    }
-    // Left button only = drag (handled by mousemove events)
   }
 
   applyImpulseAt(particleSystem, x, y, mode = null) {
