@@ -181,7 +181,7 @@ class UI {
       .add(this.main.gridRenderer, "minDensity", 0, 10, 0.1)
       .name("Min Density");
     densityFolder
-      .add(this.main.gridRenderer, "maxDensity", 0, 10, 0.1)
+      .add(this.main.gridRenderer, "maxDensity", 0.1, 10, 0.1)
       .name("Max Density");
 
     const gradientFolder = gridFolder.addFolder("Gradient");
