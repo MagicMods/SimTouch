@@ -44,7 +44,7 @@ class ParticleSystem {
     this.turbulence = turbulence; // Store turbulence reference
     this.mouseAttractor = false;
     this.impulseRadius = 0.3;
-    this.impulseMag = 0.022;
+    this.impulseMag = 0.05;
 
     // FLIP system
     this.picFlipRatio = picFlipRatio;

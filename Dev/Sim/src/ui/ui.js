@@ -311,7 +311,7 @@ class UI {
         .name("Input Radius");
 
       mouseInputFolder
-        .add(physics.mouseForces, "impulseMag", 0.001, 0.1, 0.001)
+        .add(physics.mouseForces, "impulseMag", 0.02, 0.2, 0.001)
         .name("Input Strength");
     } else {
       console.warn("Mouse forces not initialized");

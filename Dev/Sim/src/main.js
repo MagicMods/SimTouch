@@ -80,104 +80,10 @@ class Main {
     this.activeForceMode = null;
 
     // Set up mouse interaction
-    this.setupMouseInteraction();
-  }
-
-  // setupMouseDebug() {
-  //   this.canvas.addEventListener("mousedown", (e) => {
-  //     const rect = this.canvas.getBoundingClientRect();
-  //     const mouseX = (e.clientX - rect.left) / rect.width;
-  //     const mouseY = (e.clientY - rect.top) / rect.height;
-
-  //     console.table({
-  //       "Mouse Click": {
-  //         x: mouseX.toFixed(3),
-  //         y: mouseY.toFixed(3),
-  //       },
-  //       "Relative to Center": {
-  //         x: (mouseX - 0.5).toFixed(3),
-  //         y: (mouseY - 0.5).toFixed(3),
-  //       },
-  //       "Canvas Pixels": {
-  //         x: Math.round(e.clientX - rect.left),
-  //         y: Math.round(e.clientY - rect.top),
-  //       },
-  //     });
-
-  //     // Log boundary info from ParticleSystem, if available
-  //     if (this.particleSystem.centerX && this.particleSystem.centerY) {
-  //       console.log("Boundary:", {
-  //         center: {
-  //           x: this.particleSystem.centerX.toFixed(3),
-  //           y: this.particleSystem.centerY.toFixed(3),
-  //         },
-  //         radius: this.particleSystem.radius.toFixed(3),
-  //       });
-  //     }
-  //   });
-  // }
-
-  setupMouseInteraction() {
-    this.canvas.addEventListener("contextmenu", (e) => e.preventDefault());
-
-    this.canvas.addEventListener("mousedown", (e) => {
-      const pos = this.getMouseSimulationCoords(e);
-      this.mouseButton = e.button;
-      this.lastMousePos = pos;
-
-      // Update mouse force state
-      this.particleSystem.mouseForces.setMouseState(
-        pos.x,
-        pos.y,
-        true,
-        e.button
-      );
-    });
-
-    this.canvas.addEventListener("mousemove", (e) => {
-      const pos = this.getMouseSimulationCoords(e);
-
-      if (
-        this.mouseButton === 0 &&
-        !this.particleSystem.mouseForces.mouseAttractor
-      ) {
-        // Normal mode: left mouse drag
-        if (this.lastMousePos) {
-          const dx = pos.x - this.lastMousePos.x;
-          const dy = pos.y - this.lastMousePos.y;
-          this.particleSystem.applyDragImpulse(pos.x, pos.y, dx, dy);
-        }
-      }
-
-      // Update position for continuous force application
-      if (this.mouseButton !== null) {
-        this.particleSystem.mouseForces.setMouseState(
-          pos.x,
-          pos.y,
-          true,
-          this.mouseButton
-        );
-      }
-
-      this.lastMousePos = pos;
-    });
-
-    const clearMouseState = () => {
-      this.mouseButton = null;
-      this.lastMousePos = null;
-      this.particleSystem.mouseForces.setMouseState(0, 0, false);
-    };
-
-    this.canvas.addEventListener("mouseup", clearMouseState);
-    this.canvas.addEventListener("mouseleave", clearMouseState);
-  }
-
-  getMouseSimulationCoords(e) {
-    const rect = this.canvas.getBoundingClientRect();
-    return {
-      x: (e.clientX - rect.left) / rect.width,
-      y: 1 - (e.clientY - rect.top) / rect.height, // Flip Y coordinate
-    };
+    this.particleSystem.mouseForces.setupMouseInteraction(
+      this.canvas,
+      this.particleSystem
+    );
   }
 
   async init() {

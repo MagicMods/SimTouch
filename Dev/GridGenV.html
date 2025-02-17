@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>WebGL SVG Conversion</title>
+    <style>
+      canvas {
+        border: 2px solid black;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="myCanvas" width="240" height="240"></canvas>
+    <script>
+      const canvas = document.getElementById("myCanvas");
+      const gl = canvas.getContext("webgl");
+
+      if (!gl) {
+        console.error("WebGL not supported");
+      }
+
+      // Vertex shader program
+      const vsSource = `
+            attribute vec2 aPosition;
+            uniform vec2 uResolution;
+            void main() {
+                vec2 zeroToOne = aPosition / uResolution;
+                vec2 zeroToTwo = zeroToOne * 2.0;
+                vec2 clipSpace = zeroToTwo - 1.0;
+                gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+            }
+        `;
+
+      // Fragment shader program
+      const fsSource = `
+            precision mediump float;
+            uniform vec4 uColor;
+            void main() {
+                gl_FragColor = uColor;
+            }
+        `;
+
+      // Initialize shaders
+      function initShaderProgram(gl, vsSource, fsSource) {
+        const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
+        const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
+        const shaderProgram = gl.createProgram();
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
+        gl.linkProgram(shaderProgram);
+
+        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+          console.error(
+            "Unable to initialize the shader program:",
+            gl.getProgramInfoLog(shaderProgram)
+          );
+          return null;
+        }
+
+        return shaderProgram;
+      }
+
+      function loadShader(gl, type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          console.error(
+            "An error occurred compiling the shaders:",
+            gl.getShaderInfoLog(shader)
+          );
+          gl.deleteShader(shader);
+          return null;
+        }
+
+        return shader;
+      }
+
+      const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
+      const programInfo = {
+        program: shaderProgram,
+        attribLocations: {
+          position: gl.getAttribLocation(shaderProgram, "aPosition"),
+        },
+        uniformLocations: {
+          resolution: gl.getUniformLocation(shaderProgram, "uResolution"),
+          color: gl.getUniformLocation(shaderProgram, "uColor"),
+        },
+      };
+
+      function generateRectangles() {
+        // New row counts that sum to 338 over 14 rows:
+        const counts = [13, 19, 23, 25, 27, 29, 29, 29, 29, 27, 25, 23, 19, 13];
+        // Use the original SVG base x values for each row:
+        const baseXs = [64, 40, 24, 16, 8, 0, 0, 0, 0, 8, 16, 24, 40, 64];
+        const rectangles = [];
+        const canvasWidth = gl.canvas.width; // 240
+        const totalRows = counts.length; // 14 rows
+
+        const rectHeight = 15; // matching SVG rectangle height
+        const rectWidth = 6; // matching SVG rectangle width
+        const stepX = 8; // horizontal pitch as in SVG (6 + 2 gap)
+        const stepY = 17; // vertical spacing as in SVG
+
+        // The grid’s y-position in SVG goes from 0 on the top row to:
+        // lastRowY = (totalRows - 1)*stepY, and plus rectHeight gives grid height.
+        const gridHeight = (totalRows - 1) * stepY + rectHeight;
+        // Compute vertical offset to center grid in 240px canvas:
+        const verticalOffset = (gl.canvas.height - gridHeight) / 2;
+
+        counts.forEach((count, rowIndex) => {
+          // Use the SVG-based starting x position:
+          const baseXVal = baseXs[rowIndex];
+          // y position: SVG rowY plus vertical offset:
+          const y = verticalOffset + rowIndex * stepY;
+          for (let i = 0; i < count; i++) {
+            const x = baseXVal + i * stepX + 5;
+            // Alternate colors similar to the SVG pattern:
+            // let isGray = i % 2 === 0;
+            // if (rowIndex % 2 !== 0) {
+            //   isGray = !isGray;
+            // }
+            rectangles.push({
+              x: x,
+              y: y,
+              width: rectWidth,
+              height: rectHeight,
+              color: [1, 1, 1, 1],
+            });
+          }
+        });
+        return rectangles;
+      }
+
+      function drawScene() {
+        gl.clearColor(1.0, 1.0, 1.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        gl.useProgram(programInfo.program);
+
+        gl.uniform2f(
+          programInfo.uniformLocations.resolution,
+          gl.canvas.width,
+          gl.canvas.height
+        );
+
+        // Draw circle with center 120,120 and radius 120:
+        drawCircle(120, 120, 120, [0, 0, 0, 1]);
+
+        // Generate and draw rectangles:
+        const rectangles = generateRectangles();
+        rectangles.forEach((rect) => {
+          drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color);
+        });
+      }
+
+      function drawCircle(cx, cy, radius, color) {
+        const numSegments = 100;
+        const vertices = [];
+        for (let i = 0; i <= numSegments; i++) {
+          const angle = (i / numSegments) * 2 * Math.PI;
+          vertices.push(
+            cx + radius * Math.cos(angle),
+            cy + radius * Math.sin(angle)
+          );
+        }
+
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(
+          gl.ARRAY_BUFFER,
+          new Float32Array(vertices),
+          gl.STATIC_DRAW
+        );
+
+        gl.vertexAttribPointer(
+          programInfo.attribLocations.position,
+          2,
+          gl.FLOAT,
+          false,
+          0,
+          0
+        );
+        gl.enableVertexAttribArray(programInfo.attribLocations.position);
+
+        gl.uniform4fv(programInfo.uniformLocations.color, color);
+
+        gl.drawArrays(gl.TRIANGLE_FAN, 0, vertices.length / 2);
+      }
+
+      function drawRectangle(x, y, width, height, color) {
+        const vertices = [
+          x,
+          y,
+          x + width,
+          y,
+          x,
+          y + height,
+          x,
+          y + height,
+          x + width,
+          y,
+          x + width,
+          y + height,
+        ];
+
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(
+          gl.ARRAY_BUFFER,
+          new Float32Array(vertices),
+          gl.STATIC_DRAW
+        );
+
+        gl.vertexAttribPointer(
+          programInfo.attribLocations.position,
+          2,
+          gl.FLOAT,
+          false,
+          0,
+          0
+        );
+        gl.enableVertexAttribArray(programInfo.attribLocations.position);
+
+        gl.uniform4fv(programInfo.uniformLocations.color, color);
+
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+      }
+
+      drawScene();
+    </script>
+  </body>
+</html>

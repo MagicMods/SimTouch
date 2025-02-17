@@ -67,7 +67,7 @@ class ParticleSystem {
     // Mouse interaction parameters
     this.mouseAttractor = false; // Toggle between attractor and drag modes
     this.impulseRadius = 0.15; // Increased radius
-    this.impulseMag = 0.01; // Reduced magnitude for better control
+    this.impulseMag = 0.03; // Reduced magnitude for better control
 
     // FLIP parameters
     this.picFlipRatio = picFlipRatio;
