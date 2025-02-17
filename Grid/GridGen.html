@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>GridGen</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+  <body>
+    <canvas id="myCanvas" width="240" height="240"></canvas>
+    <script type="module">
+      import GUI from "./node_modules/lil-gui/dist/lil-gui.esm.min.js";
+      const lil = { GUI };
+
+      const canvas = document.getElementById("myCanvas");
+      const gl = canvas.getContext("webgl");
+
+      if (!gl) {
+        console.error("WebGL not supported");
+      }
+
+      const vsSource = `
+  attribute vec2 aPosition;
+  uniform vec2 uResolution;
+  void main() {
+      vec2 clipSpace = (aPosition / uResolution) * 2.0 - 1.0;
+      gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+  }
+`;
+
+      const fsSource = `
+  precision mediump float;
+  uniform vec4 uColor;
+  void main() {
+      gl_FragColor = uColor;
+  }
+`;
+
+      function initShaderProgram(vsSource, fsSource) {
+        const vertexShader = loadShader(gl.VERTEX_SHADER, vsSource);
+        const fragmentShader = loadShader(gl.FRAGMENT_SHADER, fsSource);
+        const shaderProgram = gl.createProgram();
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
+        gl.linkProgram(shaderProgram);
+        return gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)
+          ? shaderProgram
+          : null;
+      }
+
+      function loadShader(type, source) {
+        const shader = gl.createShader(type);
+        gl.shaderSource(shader, source);
+        gl.compileShader(shader);
+        return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : null;
+      }
+
+      const shaderProgram = initShaderProgram(vsSource, fsSource);
+      const programInfo = {
+        program: shaderProgram,
+        attribLocations: {
+          position: gl.getAttribLocation(shaderProgram, "aPosition"),
+        },
+        uniformLocations: {
+          resolution: gl.getUniformLocation(shaderProgram, "uResolution"),
+          color: gl.getUniformLocation(shaderProgram, "uColor"),
+        },
+      };
+
+      const params = { target: 100, gap: 2, aspectRatio: 1 };
+
+      function generateRectangles() {
+        let rows = Math.ceil(Math.sqrt(params.target));
+        let cols = Math.ceil(params.target / rows);
+        let cellHeight = Math.floor((240 - (rows - 1) * params.gap) / rows);
+        let cellWidth = Math.round(cellHeight * params.aspectRatio);
+        let rectangles = [];
+
+        for (let row = 0; row < rows; row++) {
+          let maxCols = Math.floor(
+            (Math.sqrt(14400 - (row * cellHeight) ** 2) * 2 + params.gap) /
+              (cellWidth + params.gap)
+          );
+          for (let col = 0; col < maxCols; col++) {
+            let x =
+              120 -
+              (maxCols * cellWidth + (maxCols - 1) * params.gap) / 2 +
+              col * (cellWidth + params.gap);
+            let y = row * (cellHeight + params.gap);
+            rectangles.push({
+              x,
+              y,
+              width: cellWidth,
+              height: cellHeight,
+              color: [1, 1, 1, 1],
+            });
+          }
+        }
+        return rectangles;
+      }
+
+      function drawCircle(cx, cy, radius, color) {
+        const numSegments = 100;
+        const vertices = [];
+        for (let i = 0; i <= numSegments; i++) {
+          const angle = (i / numSegments) * 2 * Math.PI;
+          vertices.push(
+            cx + radius * Math.cos(angle),
+            cy + radius * Math.sin(angle)
+          );
+        }
+
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(
+          gl.ARRAY_BUFFER,
+          new Float32Array(vertices),
+          gl.STATIC_DRAW
+        );
+
+        gl.vertexAttribPointer(
+          programInfo.attribLocations.position,
+          2,
+          gl.FLOAT,
+          false,
+          0,
+          0
+        );
+        gl.enableVertexAttribArray(programInfo.attribLocations.position);
+        gl.uniform4fv(programInfo.uniformLocations.color, color);
+        gl.drawArrays(gl.TRIANGLE_FAN, 0, vertices.length / 2);
+      }
+
+      function drawRectangle(x, y, width, height, color) {
+        const vertices = [
+          x,
+          y,
+          x + width,
+          y,
+          x,
+          y + height,
+          x,
+          y + height,
+          x + width,
+          y,
+          x + width,
+          y + height,
+        ];
+
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(
+          gl.ARRAY_BUFFER,
+          new Float32Array(vertices),
+          gl.STATIC_DRAW
+        );
+
+        gl.vertexAttribPointer(
+          programInfo.attribLocations.position,
+          2,
+          gl.FLOAT,
+          false,
+          0,
+          0
+        );
+        gl.enableVertexAttribArray(programInfo.attribLocations.position);
+        gl.uniform4fv(programInfo.uniformLocations.color, color);
+        gl.drawArrays(gl.TRIANGLES, 0, 6);
+      }
+
+      function drawScene() {
+        gl.clearColor(1.0, 1.0, 1.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        gl.useProgram(programInfo.program);
+        gl.uniform2f(
+          programInfo.uniformLocations.resolution,
+          canvas.width,
+          canvas.height
+        );
+        drawCircle(120, 120, 120, [0, 0, 0, 1]);
+        generateRectangles().forEach((rect) =>
+          drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color)
+        );
+      }
+
+      drawScene();
+    </script>
+  </body>
+</html>
