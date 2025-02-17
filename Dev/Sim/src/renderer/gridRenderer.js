@@ -196,27 +196,24 @@ class GridRenderer extends BaseRenderer {
     let cellOffset = 0;
     for (let y = 0; y < this.numY; y++) {
       for (let x = 0; x < this.rowCounts[y]; x++) {
-        if (this.showDensity) {
-          const normalizedDensity = Math.max(
-            0,
-            Math.min(
-              1,
-              (this.density[cellOffset] - this.minDensity) /
-                (this.maxDensity - this.minDensity)
-            )
-          );
-          const gradientIdx = Math.floor(normalizedDensity * 255);
-          const color = this.gradient[gradientIdx];
-          this.gl.uniform4fv(program.uniforms.color, [
-            color.r,
-            color.g,
-            color.b,
+        const value = this.density[cellOffset];
+        const normalizedValue = Math.max(
+          0,
+          Math.min(
             1,
-          ]);
-        } else {
-          this.gl.uniform4fv(program.uniforms.color, [0.2, 0.2, 0.2, 0.5]);
-        }
+            (value - this.minDensity) / (this.maxDensity - this.minDensity)
+          )
+        );
 
+        const gradientIdx = Math.floor(normalizedValue * 255);
+        const color = this.gradient[gradientIdx] || { r: 0, g: 0, b: 0 }; // Provide default color
+
+        this.gl.uniform4fv(program.uniforms.color, [
+          color.r,
+          color.g,
+          color.b,
+          1.0,
+        ]);
         this.gl.drawArrays(this.gl.TRIANGLES, cellOffset * 6, 6);
         cellOffset++;
       }
