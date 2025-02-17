@@ -1,4 +1,5 @@
 import { BaseRenderer } from "./baseRenderer.js";
+import { gridRenderModes } from "./gridRenderModes.js";
 
 class GridRenderer extends BaseRenderer {
   constructor(gl, shaderManager) {
@@ -37,6 +38,15 @@ class GridRenderer extends BaseRenderer {
     ];
     this.gradient = this.createGradient();
     this.showDensity = true;
+
+    this.renderModes = new GridRenderModes({
+      rowCounts: this.rowCounts,
+      numX: this.numX,
+      numY: this.numY,
+      stepX: this.stepX,
+      stepY: this.stepY,
+      canvas: this.gl.canvas,
+    });
 
     console.log("GridRenderer initialized with scale:", scale);
   }
@@ -143,52 +153,8 @@ class GridRenderer extends BaseRenderer {
   }
 
   updateDensityField(particleSystem) {
-    if (!particleSystem || !particleSystem.getParticles) return; // Safety check
-
-    this.density.fill(0);
-    const particles = particleSystem.getParticles();
-
-    if (!particles || !particles.length) return; // Check particles exist
-
-    for (const p of particles) {
-      // Calculate grid cell influence
-      const relY = (1 - p.y) * this.gl.canvas.height;
-      const row = Math.floor(relY / this.stepY);
-
-      // Check neighboring rows
-      for (
-        let j = Math.max(0, row - 2);
-        j < Math.min(this.numY, row + 3);
-        j++
-      ) {
-        const rowWidth = this.rowCounts[j] * this.stepX;
-        const rowBaseX = (this.gl.canvas.width - rowWidth) / 2;
-        const relX = p.x * this.gl.canvas.width - rowBaseX;
-        const col = Math.floor(relX / this.stepX);
-
-        // Check neighboring cells in this row
-        for (
-          let i = Math.max(0, col - 2);
-          i < Math.min(this.rowCounts[j], col + 3);
-          i++
-        ) {
-          const idx = this.getCellIndex(i, j);
-          if (idx === -1) continue;
-
-          // Calculate cell center
-          const cellCenterX = rowBaseX + (i + 0.5) * this.stepX;
-          const cellCenterY = j * this.stepY + this.stepY * 0.5;
-
-          // Calculate influence based on distance
-          const dx = p.x * this.gl.canvas.width - cellCenterX;
-          const dy = (1 - p.y) * this.gl.canvas.height - cellCenterY;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-          const influence = Math.max(0, 1 - dist / (this.stepX * 1.5));
-
-          this.density[idx] += influence;
-        }
-      }
-    }
+    if (!particleSystem || !particleSystem.getParticles) return;
+    this.density = this.renderModes.getValues(particleSystem);
   }
 
   getCellIndex(col, row) {
