@@ -28,7 +28,7 @@ class UI {
   }
 
   initGUI() {
-    const physics = this.main.particleSystem;
+    const particles = this.main.particleSystem;
 
     // Add Presets folder at the top
     const presetFolder = this.gui.addFolder("Presets");
@@ -91,13 +91,13 @@ class UI {
     const globalFolder = this.gui.addFolder("Global");
     globalFolder.open();
     globalFolder
-      .add(physics, "timeScale", 0, 2, 0.1)
+      .add(particles, "timeScale", 0, 2, 0.1)
       .name("Speed")
       .onChange((value) => {
         console.log(`Animation speed: ${value}x`);
       });
     globalFolder
-      .add(physics, "picFlipRatio", 0, 1, 0.01)
+      .add(particles, "picFlipRatio", 0, 1, 0.01)
       .name("PIC / FLIP")
       .onChange((value) => {
         console.log(`PIC/FLIP mixing ratio: ${value * 100}% FLIP`);
@@ -109,23 +109,23 @@ class UI {
     const particleFolder = particlesFolder.addFolder("Properties");
     particlesFolder.open();
     particleFolder.open();
-    let previousNumParticles = physics.numParticles;
+    let previousNumParticles = particles.numParticles;
     particleFolder
-      .add(physics, "numParticles", 1, 2000, 10)
+      .add(particles, "numParticles", 1, 2000, 10)
       .name("Count")
       .onFinishChange((value) => {
         // if (value > previousNumParticles) {
-        physics.reinitializeParticles(value);
+        particles.reinitializeParticles(value);
         // }
         // previousNumParticles = value;
       });
 
     particleFolder
-      .add(physics, "particleRadius", 0.005, 0.03, 0.001)
+      .add(particles, "particleRadius", 0.005, 0.03, 0.001)
       .name("Size")
       .onChange((value) => {
         // Update collision system's particle radius
-        physics.collisionSystem.particleRadius = value * 2; // Double for collision distance
+        particles.collisionSystem.particleRadius = value * 2; // Double for collision distance
       });
 
     // Add opacity control after size control
@@ -142,10 +142,10 @@ class UI {
     //#region Physics
     const physicsFolder = particlesFolder.addFolder("Physics");
     physicsFolder.open();
-    physicsFolder.add(physics, "gravity", 0, 9.89, 0.1).name("Gravity");
+    physicsFolder.add(particles, "gravity", 0, 9.89, 0.1).name("Gravity");
 
     physicsFolder
-      .add(physics, "velocityDamping", 0.8, 1.0, 0.01)
+      .add(particles, "velocityDamping", 0.8, 1.0, 0.01)
       .name("Velocity Damping");
     //#endregion
 
@@ -153,19 +153,19 @@ class UI {
     const collisionFolder = physicsFolder.addFolder("Collision");
     collisionFolder.open();
     // collisionFolder
-    //   .add(physics.collisionSystem, "enabled")
+    //   .add(particles.collisionSystem, "enabled")
     //   .name("Enable Collisions");
 
     collisionFolder
-      .add(physics.collisionSystem, "repulsion", 0, 100.0, 0.05)
+      .add(particles.collisionSystem, "repulsion", 0, 100.0, 0.05)
       .name("Repulsion");
 
     collisionFolder
-      .add(physics.collisionSystem, "particleRestitution", 0.0, 1.0, 0.05)
+      .add(particles.collisionSystem, "particleRestitution", 0.0, 1.0, 0.05)
       .name("Bounce");
 
     collisionFolder
-      .add(physics.collisionSystem, "damping", 0.5, 1.0, 0.01)
+      .add(particles.collisionSystem, "damping", 0.5, 1.0, 0.01)
       .name("Collision Damping");
     //#endregion
 
@@ -173,11 +173,11 @@ class UI {
     const restFolder = physicsFolder.addFolder("Rest State");
     restFolder.open(false);
     restFolder
-      .add(physics, "velocityThreshold", 0.00001, 0.1, 0.00001)
+      .add(particles, "velocityThreshold", 0.00001, 0.1, 0.00001)
       .name("Min Speed");
 
     restFolder
-      .add(physics, "positionThreshold", 0.000001, 0.1, 0.000001)
+      .add(particles, "positionThreshold", 0.000001, 0.1, 0.000001)
       .name("Min Move");
     //#endregion
 
@@ -214,7 +214,7 @@ class UI {
     const flipFolder = particlesFolder.addFolder("FLIP");
 
     flipFolder
-      .add(physics, "flipIterations", 1, 40, 1)
+      .add(particles, "flipIterations", 1, 40, 1)
       .name("Pressure Iterations");
 
     flipFolder.open();
@@ -224,22 +224,22 @@ class UI {
     const boundaryFolder = particlesFolder.addFolder("Boundary");
     boundaryFolder.open(false);
     boundaryFolder
-      .add(physics.boundary, "radius", 0.3, 0.55, 0.005)
+      .add(particles.boundary, "radius", 0.3, 0.55, 0.005)
       .name("Size")
       .onChange((value) => {
-        physics.boundary.update({ radius: value }, [
+        particles.boundary.update({ radius: value }, [
           (boundary) => this.main.gridRenderer.updateBoundaryGeometry(boundary),
         ]);
       });
 
     // Wall friction: 0 = no friction, 1 = maximum friction
     boundaryFolder
-      .add(physics, "boundaryDamping", 0.0, 1.0, 0.01)
+      .add(particles, "boundaryDamping", 0.0, 1.0, 0.01)
       .name("Wall Friction")
-      .onChange((value) => (physics.boundaryDamping = value)); // Invert for damping
+      .onChange((value) => (particles.boundaryDamping = value)); // Invert for damping
 
     boundaryFolder
-      .add(physics.boundary, "cBoundaryRestitution", 0.0, 1.0, 0.05)
+      .add(particles.boundary, "cBoundaryRestitution", 0.0, 1.0, 0.05)
       .name("Bounce");
 
     //#endregion
@@ -298,13 +298,13 @@ class UI {
     //#region Mouse Input
     const mouseInputFolder = this.gui.addFolder("Mouse Input");
     mouseInputFolder.open(false);
-    if (physics.mouseForces) {
+    if (particles.mouseForces) {
       mouseInputFolder
-        .add(physics.mouseForces, "impulseRadius", 0.05, 0.5, 0.01)
+        .add(particles.mouseForces, "impulseRadius", 0.05, 0.5, 0.01)
         .name("Input Radius");
 
       mouseInputFolder
-        .add(physics.mouseForces, "impulseMag", 0.001, 0.04, 0.001)
+        .add(particles.mouseForces, "impulseMag", 0.001, 0.04, 0.001)
         .name("Impulse Magnitude");
     } else {
       console.warn("Mouse forces not initialized");
@@ -313,25 +313,65 @@ class UI {
 
     //#region Debug
     const debugFolder = this.gui.addFolder("Debug");
-    debugFolder.add(physics, "debugEnabled").name("Show Debug Overlay");
+    debugFolder.add(particles, "debugEnabled").name("Show Debug Overlay");
     debugFolder
-      .add(physics, "debugShowVelocityField")
+      .add(particles, "debugShowVelocityField")
       .name("Show Velocity Field");
     debugFolder
-      .add(physics, "debugShowPressureField")
+      .add(particles, "debugShowPressureField")
       .name("Show Pressure Field");
-    debugFolder.add(physics, "debugShowBoundaries").name("Show Boundaries");
+    debugFolder.add(particles, "debugShowBoundaries").name("Show Boundaries");
     // NEW: Toggle for FLIP grid visualization
-    debugFolder.add(physics, "debugShowFlipGrid").name("Show FLIP Grid");
-    debugFolder.add(physics, "debugShowNoiseField").name("Show Noise Field");
+    debugFolder.add(particles, "debugShowFlipGrid").name("Show FLIP Grid");
+    debugFolder.add(particles, "debugShowNoiseField").name("Show Noise Field");
     // NEW: Control noise field resolution
     debugFolder
-      .add(physics, "noiseFieldResolution", 5, 50, 1)
+      .add(particles, "noiseFieldResolution", 5, 50, 1)
       .name("Noise Field Resolution");
     debugFolder.open(false);
     //#endregion
 
-    console.log("UI initialized with PIC parameters");
+    //#region Organic Behavior
+    const organicFolder = this.gui.addFolder("Organic Behavior");
+
+    // Check if organicBehavior exists before adding controls
+    if (particles.organicBehavior) {
+      organicFolder
+        .add(particles.organicBehavior, "enabled")
+        .name("Enable")
+        .onChange((value) => {
+          console.log(`Organic behavior ${value ? "enabled" : "disabled"}`);
+        });
+
+      const fluidFolder = organicFolder.addFolder("Fluid Properties");
+      const fluidParams = particles.organicBehavior.params.fluid;
+      fluidFolder
+        .add(fluidParams, "surfaceTension", 0, 1, 0.05)
+        .name("Surface Tension");
+      fluidFolder.add(fluidParams, "viscosity", 0, 2, 0.1).name("Viscosity");
+      fluidFolder.add(fluidParams, "damping", 0.5, 1, 0.01).name("Damping");
+
+      const swarmFolder = organicFolder.addFolder("Swarm Behavior");
+      const swarmParams = particles.organicBehavior.params.swarm;
+      swarmFolder.add(swarmParams, "cohesion", 0, 1, 0.05).name("Cohesion");
+      swarmFolder.add(swarmParams, "separation", 0, 1, 0.05).name("Separation");
+      swarmFolder.add(swarmParams, "alignment", 0, 1, 0.05).name("Alignment");
+      swarmFolder.add(swarmParams, "maxSpeed", 0.5, 5, 0.1).name("Max Speed");
+
+      const automataFolder = organicFolder.addFolder("Cellular Rules");
+      const automataParams = particles.organicBehavior.params.automata;
+      automataFolder.add(automataParams, "birthMin", 1, 8, 1).name("Birth Min");
+      automataFolder.add(automataParams, "birthMax", 1, 8, 1).name("Birth Max");
+      automataFolder
+        .add(automataParams, "survivalMin", 1, 8, 1)
+        .name("Survival Min");
+      automataFolder
+        .add(automataParams, "survivalMax", 1, 8, 1)
+        .name("Survival Max");
+      automataFolder
+        .add(automataParams, "influence", 0, 1, 0.05)
+        .name("Rule Influence");
+    }
   }
 
   updatePresetDropdown() {
