@@ -70,11 +70,6 @@ class Main {
     // Frame counter for logging
     this.frame = 0;
 
-    // Add mouse state tracking
-    this.isMouseDown = false;
-    this.mouseButton = null;
-    this.lastMousePos = null;
-
     // Add state for continuous force application
     this.activeForcePos = null;
     this.activeForceMode = null;

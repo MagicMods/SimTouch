@@ -4,74 +4,61 @@ class MouseForces {
     impulseMag = 0.015,
     mouseAttractor = false,
   } = {}) {
-    // Core parameters
+    // Force parameters
     this.impulseRadius = impulseRadius;
     this.impulseMag = impulseMag;
     this.mouseAttractor = mouseAttractor;
 
-    // Mouse state
-    this.activePosition = null;
-    this.isPressed = false;
-    this.activeButton = null;
-
-    // Add Main.js mouse state properties
-    this.isMouseDown = false;
-    this.mouseButton = null;
-    this.lastMousePos = null;
-    this.activeForcePos = null;
-    this.activeForceMode = null;
+    // Unified mouse state
+    this.mouseState = {
+      position: null, // Current mouse position {x, y}
+      lastPosition: null, // Previous position for drag calculation
+      isPressed: false, // Mouse button state
+      button: null, // Active mouse button
+    };
   }
 
-  setMouseState(x, y, isPressed, button = null) {
-    this.activePosition = isPressed ? { x, y } : null;
-    this.isPressed = isPressed;
-    this.activeButton = isPressed ? button : null;
-  }
-
-  // Direct copy from Main.js
   setupMouseInteraction(canvas, particleSystem) {
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
     canvas.addEventListener("mousedown", (e) => {
       const pos = this.getMouseSimulationCoords(e, canvas);
-      this.mouseButton = e.button;
-      this.lastMousePos = pos;
-
-      // Update mouse force state
-      this.setMouseState(pos.x, pos.y, true, e.button);
+      this.mouseState.position = pos;
+      this.mouseState.lastPosition = pos;
+      this.mouseState.isPressed = true;
+      this.mouseState.button = e.button;
     });
 
     canvas.addEventListener("mousemove", (e) => {
+      if (!this.mouseState.isPressed) return;
+
       const pos = this.getMouseSimulationCoords(e, canvas);
 
-      if (this.mouseButton === 0 && !this.mouseAttractor) {
-        // Normal mode: left mouse drag
-        if (this.lastMousePos) {
-          const dx = pos.x - this.lastMousePos.x;
-          const dy = pos.y - this.lastMousePos.y;
-          particleSystem.applyDragImpulse(pos.x, pos.y, dx, dy);
-        }
+      // Handle drag force
+      if (this.mouseState.button === 0 && !this.mouseAttractor) {
+        const dx = pos.x - this.mouseState.lastPosition.x;
+        const dy = pos.y - this.mouseState.lastPosition.y;
+        // Increase sensitivity
+        this.applyDragForce(particleSystem, pos.x, pos.y, dx * 2, dy * 2);
       }
 
-      // Update position for continuous force application
-      if (this.mouseButton !== null) {
-        this.setMouseState(pos.x, pos.y, true, this.mouseButton);
-      }
-
-      this.lastMousePos = pos;
+      this.mouseState.lastPosition = this.mouseState.position;
+      this.mouseState.position = pos;
     });
 
     const clearMouseState = () => {
-      this.mouseButton = null;
-      this.lastMousePos = null;
-      this.setMouseState(0, 0, false);
+      this.mouseState = {
+        position: null,
+        lastPosition: null,
+        isPressed: false,
+        button: null,
+      };
     };
 
     canvas.addEventListener("mouseup", clearMouseState);
     canvas.addEventListener("mouseleave", clearMouseState);
   }
 
-  // Direct copy from Main.js
   getMouseSimulationCoords(e, canvas) {
     const rect = canvas.getBoundingClientRect();
     return {
@@ -81,20 +68,16 @@ class MouseForces {
   }
 
   update(particleSystem) {
-    if (!this.isPressed || !this.activePosition) return;
+    if (!this.mouseState.isPressed || !this.mouseState.position) return;
 
     if (this.mouseAttractor) {
-      // Attractor mode: left = attract, right = repulse
-      const mode = this.activeButton === 0 ? "attract" : "repulse";
+      const mode = this.mouseState.button === 0 ? "attract" : "repulse";
       this.applyImpulseAt(
         particleSystem,
-        this.activePosition.x,
-        this.activePosition.y,
+        this.mouseState.position.x,
+        this.mouseState.position.y,
         mode
       );
-    } else if (this.activeButton === 0) {
-      // Normal mode: left button drag only
-      return; // Drag handled by mousemove events
     }
   }
 
