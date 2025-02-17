@@ -146,7 +146,7 @@ class UI {
 
     physicsFolder
       .add(physics, "velocityDamping", 0.8, 1.0, 0.01)
-      .name("Air Friction");
+      .name("Velocity Damping");
     //#endregion
 
     //#region Collision
@@ -311,8 +311,8 @@ class UI {
         .name("Input Radius");
 
       mouseInputFolder
-        .add(physics.mouseForces, "impulseMag", 0.02, 0.2, 0.001)
-        .name("Input Strength");
+        .add(physics.mouseForces, "impulseMag", 0.001, 0.04, 0.001)
+        .name("Impulse Magnitude");
     } else {
       console.warn("Mouse forces not initialized");
     }

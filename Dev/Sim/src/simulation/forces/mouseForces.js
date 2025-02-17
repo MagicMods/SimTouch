@@ -1,7 +1,7 @@
 class MouseForces {
   constructor({
-    impulseRadius = 0.3,
-    impulseMag = 0.015,
+    impulseRadius = 0.35,
+    impulseMag = 0.009,
     mouseAttractor = false,
   } = {}) {
     // Force parameters
@@ -84,6 +84,8 @@ class MouseForces {
   applyImpulseAt(particleSystem, x, y, mode = null) {
     const { particles, velocitiesX, velocitiesY, numParticles } =
       particleSystem;
+    // Get inverse of velocity damping to counteract system damping
+    const dampingCompensation = 1 / particleSystem.velocityDamping;
 
     for (let i = 0; i < numParticles; i++) {
       const px = particles[i * 2];
@@ -94,7 +96,8 @@ class MouseForces {
 
       if (dist < this.impulseRadius && dist > 0) {
         const factor = Math.pow(1 - dist / this.impulseRadius, 2);
-        let force = factor * this.impulseMag;
+        // Apply damping compensation to force
+        let force = factor * this.impulseMag * dampingCompensation;
 
         if (mode === "attract") {
           force = -force;
@@ -117,6 +120,7 @@ class MouseForces {
     const dragMag = Math.hypot(dx, dy);
     if (dragMag === 0) return;
 
+    const dampingCompensation = 1 / particleSystem.velocityDamping;
     const ndx = dx / dragMag;
     const ndy = dy / dragMag;
 
@@ -127,7 +131,8 @@ class MouseForces {
 
       if (dist < this.impulseRadius) {
         const factor = 1 - dist / this.impulseRadius;
-        const force = factor * this.impulseMag;
+        // Apply damping compensation to force
+        const force = factor * this.impulseMag * dampingCompensation;
 
         velocitiesX[i] += force * ndx;
         velocitiesY[i] += force * ndy;
