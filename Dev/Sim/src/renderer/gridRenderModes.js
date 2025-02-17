@@ -4,7 +4,7 @@ export const GridField = {
   VELOCITY: "Velocity",
   PRESSURE: "Pressure",
   VORTICITY: "Vorticity",
-  // Add more fields as needed
+  COLLISION: "Collision", // New field
 };
 
 class GridRenderModes {
@@ -323,6 +323,101 @@ class GridRenderModes {
     return this.values;
   }
 
+  calculateCollision(particleSystem) {
+    this.values.fill(0);
+    const collisionSystem = particleSystem.collisionSystem;
+    if (!collisionSystem) return this.values;
+
+    const particles = particleSystem.particles;
+    if (!particles || particles.length === 0) return this.values;
+
+    // Adjusted parameters
+    const scaledRadius = collisionSystem.particleRadius * 3; // Increased from 2
+    const maxForceThreshold = collisionSystem.repulsion * 0.05; // Reduced from 0.1
+    const forceDamping = 0.1; // New: damping factor for smoother visualization
+    let maxCollisionForce = 0;
+
+    // Spatial partitioning remains the same
+    const gridMap = new Map();
+
+    for (let i = 0; i < particles.length; i += 2) {
+      const x = particles[i];
+      const y = particles[i + 1];
+      const cellKey = this.getCellIndex(
+        Math.floor((x * this.canvas.width) / this.stepX),
+        Math.floor(((1 - y) * this.canvas.height) / this.stepY)
+      );
+
+      if (cellKey !== -1) {
+        if (!gridMap.has(cellKey)) gridMap.set(cellKey, []);
+        gridMap.get(cellKey).push(i);
+      }
+    }
+
+    // Process cells with damped forces
+    for (const [cellIdx, particleIndices] of gridMap.entries()) {
+      let cellForce = 0;
+
+      for (let i = 0; i < particleIndices.length; i++) {
+        const idx1 = particleIndices[i];
+        const x1 = particles[idx1];
+        const y1 = particles[idx1 + 1];
+
+        for (let j = i + 1; j < particleIndices.length; j++) {
+          const idx2 = particleIndices[j];
+          const x2 = particles[idx2];
+          const y2 = particles[idx2 + 1];
+
+          const dx = x2 - x1;
+          const dy = y2 - y1;
+          const dist = Math.hypot(dx, dy);
+
+          if (dist < scaledRadius) {
+            const force =
+              (1 - dist / scaledRadius) *
+              collisionSystem.repulsion *
+              forceDamping;
+            if (force > maxForceThreshold) {
+              cellForce += force;
+            }
+          }
+        }
+      }
+
+      if (cellForce > 0) {
+        this.values[cellIdx] = cellForce;
+        maxCollisionForce = Math.max(maxCollisionForce, cellForce);
+      }
+    }
+
+    // Normalize with adjusted range
+    if (maxCollisionForce > 0) {
+      const minForce = maxCollisionForce * 0.05; // Reduced from 0.1
+      for (let i = 0; i < this.values.length; i++) {
+        if (this.values[i] < minForce) {
+          this.values[i] = 0;
+        } else {
+          this.values[i] = Math.min(1.0, this.values[i] / maxCollisionForce);
+        }
+      }
+    }
+
+    return this.values;
+  }
+
+  // Helper to convert particle position to grid cell index
+  getGridCell(x, y) {
+    const relY = (1 - y) * this.canvas.height;
+    const row = Math.floor(relY / this.stepY);
+
+    const rowWidth = this.rowCounts[row] * this.stepX;
+    const rowBaseX = (this.canvas.width - rowWidth) / 2;
+    const relX = x * this.canvas.width - rowBaseX;
+    const col = Math.floor(relX / this.stepX);
+
+    return this.getCellIndex(col, row);
+  }
+
   getValues(particleSystem) {
     switch (this.currentMode) {
       case this.modes.DENSITY:
@@ -333,6 +428,8 @@ class GridRenderModes {
         return this.calculatePressure(particleSystem);
       case this.modes.VORTICITY:
         return this.calculateVorticity(particleSystem);
+      case this.modes.COLLISION:
+        return this.calculateCollision(particleSystem);
       default:
         console.warn("Unsupported render mode:", this.currentMode);
         return this.values;

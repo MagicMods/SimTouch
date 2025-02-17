@@ -187,9 +187,9 @@ class UI {
 
     // turbulenceFolder.add(turbulence, "enabled").name("Enable");
 
-    turbulenceFolder.add(turbulence, "strength", 0, 10, 0.1).name("Strength");
+    turbulenceFolder.add(turbulence, "strength", 0, 4, 0.01).name("Strength");
 
-    turbulenceFolder.add(turbulence, "scale", 1, 10, 0.5).name("Scale");
+    turbulenceFolder.add(turbulence, "scale", 1, 10, 0.1).name("Scale");
 
     turbulenceFolder.add(turbulence, "speed", 0, 5, 0.1).name("Speed");
 
@@ -299,13 +299,6 @@ class UI {
     const mouseInputFolder = this.gui.addFolder("Mouse Input");
     mouseInputFolder.open(false);
     if (physics.mouseForces) {
-      mouseInputFolder
-        .add(physics.mouseForces, "mouseAttractor")
-        .name("Attractor Mode")
-        .onChange((value) => {
-          console.log("Mouse mode:", value ? "Attractor/Repulsor" : "Drag");
-        });
-
       mouseInputFolder
         .add(physics.mouseForces, "impulseRadius", 0.05, 0.5, 0.01)
         .name("Input Radius");

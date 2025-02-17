@@ -1,20 +1,15 @@
 class MouseForces {
-  constructor({
-    impulseRadius = 0.35,
-    impulseMag = 0.009,
-    mouseAttractor = false,
-  } = {}) {
+  constructor({ impulseRadius = 0.35, impulseMag = 0.009 } = {}) {
     // Force parameters
     this.impulseRadius = impulseRadius;
     this.impulseMag = impulseMag;
-    this.mouseAttractor = mouseAttractor;
 
     // Unified mouse state
     this.mouseState = {
-      position: null, // Current mouse position {x, y}
-      lastPosition: null, // Previous position for drag calculation
-      isPressed: false, // Mouse button state
-      button: null, // Active mouse button
+      position: null,
+      lastPosition: null,
+      isPressed: false,
+      buttons: new Set(), // Track multiple buttons
     };
   }
 
@@ -26,37 +21,52 @@ class MouseForces {
       this.mouseState.position = pos;
       this.mouseState.lastPosition = pos;
       this.mouseState.isPressed = true;
-      this.mouseState.button = e.button;
+      this.mouseState.buttons.add(e.button);
     });
 
     canvas.addEventListener("mousemove", (e) => {
       if (!this.mouseState.isPressed) return;
 
       const pos = this.getMouseSimulationCoords(e, canvas);
+      const dx = pos.x - this.mouseState.lastPosition.x;
+      const dy = pos.y - this.mouseState.lastPosition.y;
 
-      // Handle drag force
-      if (this.mouseState.button === 0 && !this.mouseAttractor) {
-        const dx = pos.x - this.mouseState.lastPosition.x;
-        const dy = pos.y - this.mouseState.lastPosition.y;
-        // Increase sensitivity
+      // Handle different mouse buttons
+      if (this.mouseState.buttons.has(1)) {
+        // Middle mouse button
         this.applyDragForce(particleSystem, pos.x, pos.y, dx * 2, dy * 2);
+      } else if (this.mouseState.buttons.has(0)) {
+        // Left mouse button
+        this.applyImpulseAt(particleSystem, pos.x, pos.y, "attract");
+      } else if (this.mouseState.buttons.has(2)) {
+        // Right mouse button
+        this.applyImpulseAt(particleSystem, pos.x, pos.y, "repulse");
       }
 
       this.mouseState.lastPosition = this.mouseState.position;
       this.mouseState.position = pos;
     });
 
-    const clearMouseState = () => {
+    canvas.addEventListener("mouseup", (e) => {
+      this.mouseState.buttons.delete(e.button);
+      if (this.mouseState.buttons.size === 0) {
+        this.mouseState = {
+          position: null,
+          lastPosition: null,
+          isPressed: false,
+          buttons: new Set(),
+        };
+      }
+    });
+
+    canvas.addEventListener("mouseleave", () => {
       this.mouseState = {
         position: null,
         lastPosition: null,
         isPressed: false,
-        button: null,
+        buttons: new Set(),
       };
-    };
-
-    canvas.addEventListener("mouseup", clearMouseState);
-    canvas.addEventListener("mouseleave", clearMouseState);
+    });
   }
 
   getMouseSimulationCoords(e, canvas) {
@@ -68,17 +78,8 @@ class MouseForces {
   }
 
   update(particleSystem) {
-    if (!this.mouseState.isPressed || !this.mouseState.position) return;
-
-    if (this.mouseAttractor) {
-      const mode = this.mouseState.button === 0 ? "attract" : "repulse";
-      this.applyImpulseAt(
-        particleSystem,
-        this.mouseState.position.x,
-        this.mouseState.position.y,
-        mode
-      );
-    }
+    // No longer needed as forces are applied directly in mousemove
+    return;
   }
 
   applyImpulseAt(particleSystem, x, y, mode = null) {
