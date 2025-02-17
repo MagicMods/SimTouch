@@ -2,6 +2,8 @@ import { FluidFLIP } from "./fluidFLIP.js";
 import { MouseForces } from "../forces/mouseForces.js";
 import { CircularBoundary } from "../boundary/circularBoundary.js";
 import { CollisionSystem } from "../forces/collisionSystem.js";
+import { OrganicBehavior } from "../behaviors/organicBehavior.js";
+
 class ParticleSystem {
   constructor({
     particleCount = 500,
@@ -77,11 +79,19 @@ class ParticleSystem {
       boundary: this.boundary,
     });
 
+    this.behavior = new OrganicBehavior();
     // Initialize mouse forces
     this.mouseForces = new MouseForces({
       impulseRadius: this.impulseRadius,
       impulseMag: this.impulseMag,
       mouseAttractor: false,
+    });
+
+    // Organic behavior parameters
+    this.organicBehavior = new OrganicBehavior({
+      particleRadius: this.particleRadius,
+      gridSize: this.fluid.gridSize,
+      enabled: false, // Start disabled by default
     });
 
     this.initializeParticles();
@@ -174,7 +184,12 @@ class ParticleSystem {
     // 2. FLIP/PIC update
     this.updateFLIP(dt);
 
-    // 3. Position and boundary update
+    // 3. Organic behaviors (before collision resolution)
+    if (this.organicBehavior.enabled) {
+      this.organicBehavior.updateParticles(this, dt);
+    }
+
+    // 4. Position and boundary update
     this.updateParticles(dt);
   }
 
