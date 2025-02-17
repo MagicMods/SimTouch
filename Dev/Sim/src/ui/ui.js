@@ -111,7 +111,7 @@ class UI {
     particleFolder.open();
     let previousNumParticles = physics.numParticles;
     particleFolder
-      .add(physics, "numParticles", 10, 2000, 10)
+      .add(physics, "numParticles", 1, 2000, 10)
       .name("Count")
       .onFinishChange((value) => {
         // if (value > previousNumParticles) {

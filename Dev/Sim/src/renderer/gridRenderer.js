@@ -1,5 +1,4 @@
 import { BaseRenderer } from "./baseRenderer.js";
-// import { HeatMap } from "./heatMap.js";
 
 class GridRenderer extends BaseRenderer {
   constructor(gl, shaderManager) {
@@ -23,15 +22,6 @@ class GridRenderer extends BaseRenderer {
 
     // Create grid geometry
     this.createGridGeometry();
-    // Create boundary geometry (a simple circle using this.boundaryRadius)
-    this.boundaryVertices = this.createBoundaryGeometry();
-    this.boundaryVertexCount = this.boundaryVertices.length / 2;
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.boundaryBuffer);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      this.boundaryVertices,
-      this.gl.STATIC_DRAW
-    );
 
     // Add density field parameters with defaults
     this.density = new Float32Array(this.getTotalCells());
@@ -39,15 +29,13 @@ class GridRenderer extends BaseRenderer {
     this.maxDensity = 7.0;
 
     this.gradientPoints = [
-      { pos: 0, color: { r: 0, g: 0, b: 0 } }, // #000000 Black
-      { pos: 30, color: { r: 0.4, g: 0, b: 0 } }, // #660000 Dark Red
-      { pos: 60, color: { r: 1, g: 0, b: 0 } }, // #FF0000 Red
-      { pos: 97, color: { r: 0.992, g: 1, b: 0.5 } }, // #FDFF80 Light Yellow
-      { pos: 100, color: { r: 1, g: 1, b: 1 } }, // #FFFFFF White
+      { pos: 0, color: { r: 0, g: 0, b: 0 } },
+      { pos: 30, color: { r: 0.4, g: 0, b: 0 } },
+      { pos: 60, color: { r: 1, g: 0, b: 0 } },
+      { pos: 97, color: { r: 0.992, g: 1, b: 0.5 } },
+      { pos: 100, color: { r: 1, g: 1, b: 1 } },
     ];
     this.gradient = this.createGradient();
-
-    // Visualization settings
     this.showDensity = true;
 
     console.log("GridRenderer initialized with scale:", scale);
@@ -154,32 +142,6 @@ class GridRenderer extends BaseRenderer {
     );
   }
 
-  // Uses the current this.boundaryRadius to generate circle vertices.
-  createBoundaryGeometry() {
-    const segments = 100; // Number of segments for the circle
-    const vertices = new Float32Array(segments * 2);
-    for (let i = 0; i < segments; i++) {
-      const angle = (i / segments) * Math.PI * 2;
-      vertices[i * 2] = Math.cos(angle) * this.boundaryRadius; // x coordinate
-      vertices[i * 2 + 1] = Math.sin(angle) * this.boundaryRadius; // y coordinate
-    }
-    return vertices;
-  }
-
-  // Allow external code (e.g., UI) to update the visual boundary radius.
-  updateBoundaryGeometry(newRadius) {
-    const marginFactor = 1.01; // Adjust this factor to leave a margin (values < 1.0 shrink the circle)
-    // Previously, boundaryRadius was set to newRadius * 2.
-    // Now, multiply by marginFactor to ensure the circle (visual boundary) doesn't reach the screen edge.
-    this.boundaryRadius = newRadius * 2 * marginFactor;
-    const vertices = this.createBoundaryGeometry();
-    this.boundaryVertices = vertices;
-    this.boundaryVertexCount = vertices.length / 2;
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.boundaryBuffer);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
-    console.log("Boundary geometry updated with radius:", this.boundaryRadius);
-  }
-
   updateDensityField(particleSystem) {
     if (!particleSystem || !particleSystem.getParticles) return; // Safety check
 
@@ -247,7 +209,7 @@ class GridRenderer extends BaseRenderer {
   }
 
   draw(particleSystem) {
-    const program = this.setupShader("basic");
+    const program = this.shaderManager.use("grid");
     if (!program || !particleSystem) return;
 
     // Update density field based on particle positions
@@ -269,7 +231,6 @@ class GridRenderer extends BaseRenderer {
     for (let y = 0; y < this.numY; y++) {
       for (let x = 0; x < this.rowCounts[y]; x++) {
         if (this.showDensity) {
-          // Map density to [0,1] range using min/max
           const normalizedDensity = Math.max(
             0,
             Math.min(
@@ -280,7 +241,6 @@ class GridRenderer extends BaseRenderer {
           );
           const gradientIdx = Math.floor(normalizedDensity * 255);
           const color = this.gradient[gradientIdx];
-
           this.gl.uniform4fv(program.uniforms.color, [
             color.r,
             color.g,
@@ -288,7 +248,6 @@ class GridRenderer extends BaseRenderer {
             1,
           ]);
         } else {
-          // Default grid color when density display is off
           this.gl.uniform4fv(program.uniforms.color, [0.2, 0.2, 0.2, 0.5]);
         }
 
@@ -296,23 +255,6 @@ class GridRenderer extends BaseRenderer {
         cellOffset++;
       }
     }
-    // Draw boundary
-    this.drawBoundary(program);
-  }
-
-  drawBoundary(program) {
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.boundaryBuffer);
-    this.gl.vertexAttribPointer(
-      program.attributes.position,
-      2,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
-    this.gl.uniform4fv(program.uniforms.color, [1.0, 1.0, 1.0, 1.0]);
-    this.gl.lineWidth(2);
-    this.gl.drawArrays(this.gl.LINE_LOOP, 0, this.boundaryVertexCount);
   }
 
   // Add method to update gradient

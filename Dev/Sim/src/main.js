@@ -223,6 +223,8 @@ class Main {
       );
     }
 
+    // Update mouse forces
+    this.particleSystem.mouseForces.update(this.particleSystem);
     // Step particle simulation
     this.particleSystem.step();
 
@@ -256,9 +258,6 @@ class Main {
 
     // Draw particles
     this.particleRenderer.draw(this.particleSystem.getParticles());
-
-    // Update mouse forces
-    this.particleSystem.mouseForces.update(this.particleSystem);
   }
 
   static async create() {

@@ -229,6 +229,22 @@ class ShaderManager {
             }
         `,
     },
+    grid: {
+      vert: `
+            attribute vec2 position;
+            void main() {
+                gl_Position = vec4(position, 0.0, 1.0);
+            }
+        `,
+      frag: `
+            precision mediump float;
+            uniform vec4 color;
+            
+            void main() {
+                gl_FragColor = color;
+            }
+        `,
+    },
   };
 }
 
