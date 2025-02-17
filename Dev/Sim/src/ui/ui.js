@@ -1,7 +1,7 @@
 import GUI from "lil-gui";
 import { PresetManager } from "../util/presetManager.js";
 import Stats from "../util/statsModule.js";
-
+import { GridField } from "../renderer/gridRenderModes.js";
 class UI {
   constructor(main) {
     if (!main) throw new Error("Main instance required");
@@ -246,8 +246,22 @@ class UI {
 
     //#region Grid
     const gridFolder = this.gui.addFolder("Grid");
-    const densityFolder = gridFolder.addFolder("Density Map");
     gridFolder.open();
+
+    // Add field selection dropdown
+    const fieldControl = {
+      field: this.main.gridRenderer.renderModes.currentMode,
+    };
+
+    gridFolder
+      .add(fieldControl, "field", Object.values(GridField))
+      .name("Field Type")
+      .onChange((value) => {
+        this.main.gridRenderer.renderModes.currentMode = value;
+      });
+
+    const densityFolder = gridFolder.addFolder("Density Map");
+
     densityFolder.open();
     // densityFolder
     //   .add(this.main.gridRenderer, "showDensity")

@@ -1,5 +1,5 @@
 import { BaseRenderer } from "./baseRenderer.js";
-import { gridRenderModes } from "./gridRenderModes.js";
+import { GridRenderModes } from "./gridRenderModes.js";
 
 class GridRenderer extends BaseRenderer {
   constructor(gl, shaderManager) {
