@@ -44,55 +44,31 @@ class ParticleSystem {
 
     // External forces
     this.turbulence = turbulence; // Store turbulence reference
-    // this.mouseAttractor = false;
-    // this.impulseRadius = 0.3;
-    // this.impulseMag = 0.05;
 
     // FLIP system
     this.picFlipRatio = picFlipRatio;
     this.flipIterations = 20;
 
     // Create collision system with particle-specific restitution
-    this.collisionSystem = new CollisionSystem({
-      enabled: true,
-      gridSize: 10,
-      repulsion: 2,
-      damping: 0.98,
-      particleRestitution: 0.6, // Different from boundary restitution
-      particleRadius: this.particleRadius,
-    });
+    this.collisionSystem = new CollisionSystem();
 
     // Create boundary with its own restitution
-    this.boundary = new CircularBoundary({
-      centerX: 0.5,
-      centerY: 0.5,
-      radius: 0.475,
-      cBoundaryRestitution: 0.8, // Boundary-specific restitution
-      damping: 0.95,
-    });
+    this.boundary = new CircularBoundary();
 
     // Then create FLIP system with boundary reference
     this.fluid = new FluidFLIP({
-      gridSize: 32,
-      picFlipRatio: this.picFlipRatio,
-      dt: timeStep,
+      // gridSize: 32,
+      // picFlipRatio: this.picFlipRatio,
+      // dt: timeStep,
       boundary: this.boundary,
     });
 
     this.behavior = new OrganicBehavior();
     // Initialize mouse forces
-    this.mouseForces = new MouseForces({
-      impulseRadius: this.impulseRadius,
-      impulseMag: this.impulseMag,
-      mouseAttractor: false,
-    });
+    this.mouseForces = new MouseForces({});
 
     // Organic behavior parameters
-    this.organicBehavior = new OrganicBehavior({
-      particleRadius: this.particleRadius,
-      gridSize: this.fluid.gridSize,
-      enabled: false, // Start disabled by default
-    });
+    this.organicBehavior = new OrganicBehavior({});
 
     this.initializeParticles();
   }
@@ -165,14 +141,6 @@ class ParticleSystem {
 
     // Reinitialize particle positions
     this.initializeParticles();
-  }
-
-  applyImpulseAt(x, y, mode) {
-    this.mouseForces.applyImpulseAt(this, x, y, mode);
-  }
-
-  applyDragImpulse(x, y, dx, dy) {
-    this.mouseForces.applyDragForce(this, x, y, dx, dy);
   }
 
   step() {
@@ -299,20 +267,6 @@ class ParticleSystem {
       });
     }
     return particles;
-  }
-
-  // Add debug visualization method
-  drawDebugBounds(renderer) {
-    if (!this.debugEnabled) return;
-
-    // Draw physical bounds of a single particle
-    const debugParticle = {
-      x: this.boundary.centerX,
-      y: this.boundary.centerY,
-      size: this.particleRadius * this.renderScale,
-    };
-
-    renderer.draw([debugParticle], [0.0, 1.0, 0.0, 0.5]);
   }
 
   drawDebugGrid(renderer) {

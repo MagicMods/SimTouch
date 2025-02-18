@@ -19,43 +19,18 @@ class Main {
     // Initialize our shared ShaderManager
     this.shaderManager = new ShaderManager(this.gl);
 
-    // Colors for different systems
-    this.colors = {
-      reference: [0.2, 0.4, 1.0, 0.8], // Blue
-      test: [1.0, 0.4, 0.2, 0.8], // Orange
-    };
-
-    // Create boundary first
-    this.boundary = new CircularBoundary({
-      centerX: 0.5,
-      centerY: 0.5,
-      radius: 0.475,
-      restitution: 0.8,
-      damping: 0.95,
-    });
+    this.boundary = new CircularBoundary();
 
     // Create turbulence with boundary reference
-    this.turbulenceField = new TurbulenceField({
-      boundary: this.boundary,
-      enabled: true,
-      strength: 0.5,
-      scale: 4.0,
-    });
+    this.turbulenceField = new TurbulenceField({ boundary: this.boundary });
 
     // Create particle system with dependencies
     this.particleSystem = new ParticleSystem({
-      particleCount: 680,
-      timeStep: 1 / 60,
-      gravity: 0,
       turbulence: this.turbulenceField,
     });
 
     // Create renderer for particles
-    this.particleRenderer = new ParticleRenderer(
-      this.gl,
-      this.shaderManager,
-      "particles"
-    );
+    this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager);
 
     // Create GridRenderer instance (restores grid rendering lost with FluidSim)
     this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
@@ -108,27 +83,16 @@ class Main {
   render() {
     this.frame++;
 
+    // Clear frame
+    // this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
+    // this.gl.clear(this.gl.COLOR_BUFFER_BIT);
+
     // Update turbulence before particle step
     this.turbulenceField.update(this.particleSystem.timeStep); // Use fixed timestep or this.particleSystem.timeStep
-
-    // Apply continuous force if active
-    if (this.activeForcePos && this.activeForceMode) {
-      this.particleSystem.applyImpulseAt(
-        this.activeForcePos.x,
-        this.activeForcePos.y,
-        this.activeForceMode
-      );
-    }
-
     // Update mouse forces
     this.particleSystem.mouseForces.update(this.particleSystem);
     // Step particle simulation
     this.particleSystem.step();
-
-    // Clear frame
-    this.gl.clearColor(0.0, 0.0, 0.0, 1.0);
-    this.gl.clear(this.gl.COLOR_BUFFER_BIT);
-
     // Update grid with particle system reference
     this.gridRenderer.draw(this.particleSystem);
 
