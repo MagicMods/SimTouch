@@ -2,7 +2,6 @@ import { ShaderManager } from "./shaders/shaderManager.js";
 import { ParticleSystem } from "./simulation/core/particleSystem.js";
 import { UI } from "./ui/ui.js";
 import { ParticleRenderer } from "./renderer/particleRenderer.js";
-import { LineRenderer } from "./renderer/lineRenderer.js";
 import { GridRenderer } from "./renderer/gridRenderer.js"; // Import GridRenderer
 import { DebugRenderer } from "./renderer/debugRenderer.js"; // Import DebugRenderer
 import { TurbulenceField } from "./simulation/forces/turbulenceField.js";
@@ -57,9 +56,6 @@ class Main {
       this.shaderManager,
       "particles"
     );
-
-    // Optionally create a line renderer for debug visualization
-    this.lineRenderer = new LineRenderer(this.gl, this.shaderManager);
 
     // Create GridRenderer instance (restores grid rendering lost with FluidSim)
     this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
@@ -136,26 +132,11 @@ class Main {
     // Update grid with particle system reference
     this.gridRenderer.draw(this.particleSystem);
 
-    // Optionally draw debug grid via line renderer
-    if (
-      this.particleSystem.debugEnabled &&
-      typeof this.particleSystem.drawDebugGrid === "function"
-    ) {
-      this.particleSystem.drawDebugGrid(this.lineRenderer);
-    }
-
-    // NEW: Draw debug overlays if debug is enabled
-    if (this.particleSystem.debugEnabled) {
-      const debugProgram = this.shaderManager.getProgram("lines");
-      if (debugProgram) {
-        this.debugRenderer.drawDebugOverlay(this.particleSystem, debugProgram);
-      } else {
-        console.error("Debug shader program 'lines' not found.");
-      }
-    }
-
     // Draw boundary using shader manager
-    this.particleSystem.boundary.draw(this.gl, this.shaderManager);
+    this.particleSystem.boundary.drawCircularBoundary(
+      this.gl,
+      this.shaderManager
+    );
 
     // Draw particles
     this.particleRenderer.draw(this.particleSystem.getParticles());

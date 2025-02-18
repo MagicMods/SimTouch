@@ -228,7 +228,7 @@ class UI {
       .name("Size")
       .onChange((value) => {
         particles.boundary.update({ radius: value }, [
-          (boundary) => this.main.gridRenderer.updateBoundaryGeometry(boundary),
+          (boundary) => this.main.baseRenderer.drawCircularBoundary(boundary),
         ]);
       });
 
@@ -248,34 +248,54 @@ class UI {
     const gridFolder = this.gui.addFolder("Grid");
     gridFolder.open();
 
-    // Add field selection dropdown
-    const fieldControl = {
-      field: this.main.gridRenderer.renderModes.currentMode,
-    };
+    const gridParamFolder = gridFolder.addFolder("Parameters");
+    const gridRenderer = this.main.gridRenderer;
 
-    gridFolder
-      .add(fieldControl, "field", Object.values(GridField))
-      .name("Field Type")
-      .onChange((value) => {
-        this.main.gridRenderer.renderModes.currentMode = value;
-      });
+    if (gridRenderer.gridParams) {
+      // // Grid Parameters
+      gridParamFolder
+        .add(gridRenderer.gridParams, "target", 1, 500, 1)
+        .name("Target Cells")
+        .onChange(() => gridRenderer.generateGrid());
+      gridParamFolder
+        .add(gridRenderer.gridParams, "gap", 0, 20, 1)
+        .name("Gap (px)")
+        .onChange(() => gridRenderer.generateGrid());
+      gridParamFolder
+        .add(gridRenderer.gridParams, "aspectRatio", 0.5, 4, 0.1)
+        .name("Cell Ratio")
+        .onChange(() => gridRenderer.generateGrid());
+      gridParamFolder
+        .add(gridRenderer.gridParams, "scale", 0.1, 1, 0.01)
+        .name("Grid Scale")
+        .onChange(() => gridRenderer.generateGrid());
+    }
 
+    // Grid Stats - only add if values exist
+    const stats = gridParamFolder.addFolder("Stats");
+    if (gridRenderer.gridState) {
+      // Add stat displays with proper value checking
+      const addStatDisplay = (key, name) => {
+        if (gridRenderer.gridState[key] !== undefined) {
+          stats.add(gridRenderer.gridState, key).name(name).listen().disable();
+        }
+      };
+
+      addStatDisplay("numX", "Columns");
+      addStatDisplay("numY", "Rows");
+      addStatDisplay("totalCells", "Total Cells");
+    }
+
+    // Density controls
     const densityFolder = gridFolder.addFolder("Density Map");
-
-    densityFolder.open();
-    // densityFolder
-    //   .add(this.main.gridRenderer, "showDensity")
-    //   .name("Show Density");
-    // densityFolder
-    //   .add(this.main.gridRenderer, "densityOpacity", 0, 1, 0.1)
-    //   .name("Opacity");
     densityFolder
-      .add(this.main.gridRenderer, "minDensity", 0, 10, 0.1)
+      .add(gridRenderer, "minDensity", 0, 10, 0.1)
       .name("Min Density");
     densityFolder
-      .add(this.main.gridRenderer, "maxDensity", 0.1, 10, 0.1)
+      .add(gridRenderer, "maxDensity", 0.1, 10, 0.1)
       .name("Max Density");
 
+    // Gradient controls
     const gradientFolder = gridFolder.addFolder("Gradient");
     gradientFolder.open(false);
     const gradientPoints = this.main.gridRenderer.gradientPoints;
@@ -293,6 +313,19 @@ class UI {
         .onChange(() => this.main.gridRenderer.updateGradient());
     });
 
+    // Field selection
+    if (this.main.gridRenderer.renderModes) {
+      const fieldControl = {
+        field: this.main.gridRenderer.renderModes.currentMode,
+      };
+
+      gridFolder
+        .add(fieldControl, "field", Object.values(GridField))
+        .name("Field Type")
+        .onChange((value) => {
+          this.main.gridRenderer.renderModes.currentMode = value;
+        });
+    }
     //#endregion
 
     //#region Mouse Input

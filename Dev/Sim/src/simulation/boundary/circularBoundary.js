@@ -26,22 +26,9 @@ class CircularBoundary {
 
     // Notify systems that need updating
     this.updateCallbacks = new Set();
-
-    // Generate boundary points
-    this.generateBoundaryPoints();
   }
 
-  generateBoundaryPoints() {
-    this.boundaryPoints = [];
-    for (let i = 0; i <= this.segments; i++) {
-      const angle = (i / this.segments) * Math.PI * 2;
-      const x = this.centerX + Math.cos(angle) * this.radius;
-      const y = this.centerY + Math.sin(angle) * this.radius;
-      this.boundaryPoints.push({ x, y });
-    }
-  }
-
-  draw(gl, shaderManager) {
+  drawCircularBoundary(gl, shaderManager) {
     const program = shaderManager.use("circle");
     if (!program) return;
 
@@ -134,18 +121,6 @@ class CircularBoundary {
     }
 
     return { vx, vy };
-  }
-
-  // Get visualization points for rendering
-  getPoints(segments = 32) {
-    const points = [];
-    for (let i = 0; i <= segments; i++) {
-      const angle = (i / segments) * Math.PI * 2;
-      const x = this.centerX + Math.cos(angle) * this.radius;
-      const y = this.centerY + Math.sin(angle) * this.radius;
-      points.push({ x, y });
-    }
-    return points;
   }
 
   // Update boundary parameters and notify dependents
