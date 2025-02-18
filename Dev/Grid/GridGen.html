@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
   <head>
-    <title>GridGen</title>
+    <title>GridGenSquare</title>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   </head>
@@ -10,7 +10,6 @@
     <script type="module">
       import GUI from "./node_modules/lil-gui/dist/lil-gui.esm.min.js";
       const lil = { GUI };
-
       const canvas = document.getElementById("myCanvas");
       const gl = canvas.getContext("webgl");
 
@@ -18,43 +17,67 @@
         console.error("WebGL not supported");
       }
 
+      // [Keep shader programs and WebGL initialization identical...]
+      // Vertex shader program
       const vsSource = `
-  attribute vec2 aPosition;
-  uniform vec2 uResolution;
-  void main() {
-      vec2 clipSpace = (aPosition / uResolution) * 2.0 - 1.0;
-      gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
-  }
-`;
+        attribute vec2 aPosition;
+        uniform vec2 uResolution;
+        void main() {
+            vec2 zeroToOne = aPosition / uResolution;
+            vec2 zeroToTwo = zeroToOne * 2.0;
+            vec2 clipSpace = zeroToTwo - 1.0;
+            gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
+        }
+      `;
 
+      // Fragment shader program
       const fsSource = `
-  precision mediump float;
-  uniform vec4 uColor;
-  void main() {
-      gl_FragColor = uColor;
-  }
-`;
+        precision mediump float;
+        uniform vec4 uColor;
+        void main() {
+            gl_FragColor = uColor;
+        }
+      `;
 
-      function initShaderProgram(vsSource, fsSource) {
-        const vertexShader = loadShader(gl.VERTEX_SHADER, vsSource);
-        const fragmentShader = loadShader(gl.FRAGMENT_SHADER, fsSource);
+      // Initialize shaders
+      function initShaderProgram(gl, vsSource, fsSource) {
+        const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
+        const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+
         const shaderProgram = gl.createProgram();
         gl.attachShader(shaderProgram, vertexShader);
         gl.attachShader(shaderProgram, fragmentShader);
         gl.linkProgram(shaderProgram);
-        return gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)
-          ? shaderProgram
-          : null;
+
+        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+          console.error(
+            "Unable to initialize the shader program:",
+            gl.getProgramInfoLog(shaderProgram)
+          );
+          return null;
+        }
+
+        return shaderProgram;
       }
 
-      function loadShader(type, source) {
+      function loadShader(gl, type, source) {
         const shader = gl.createShader(type);
         gl.shaderSource(shader, source);
         gl.compileShader(shader);
-        return gl.getShaderParameter(shader, gl.COMPILE_STATUS) ? shader : null;
+
+        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+          console.error(
+            "An error occurred compiling the shaders:",
+            gl.getShaderInfoLog(shader)
+          );
+          gl.deleteShader(shader);
+          return null;
+        }
+
+        return shader;
       }
 
-      const shaderProgram = initShaderProgram(vsSource, fsSource);
+      const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
       const programInfo = {
         program: shaderProgram,
         attribLocations: {
@@ -66,36 +89,96 @@
         },
       };
 
-      const params = { target: 100, gap: 2, aspectRatio: 1 };
+      // Enhanced parameters       //341/1px//R1/0.95/c23r23/rw10/rc10
+      const params = {
+        target: 341,
+        gap: 1,
+        aspectRatio: 1,
+        scale: 0.95,
+        cols: 0,
+        rows: 0,
+        width: 0,
+        height: 0,
+      };
 
       function generateRectangles() {
-        let rows = Math.ceil(Math.sqrt(params.target));
-        let cols = Math.ceil(params.target / rows);
-        let cellHeight = Math.floor((240 - (rows - 1) * params.gap) / rows);
-        let cellWidth = Math.round(cellHeight * params.aspectRatio);
-        let rectangles = [];
+        let bestCellSize = 0;
+        let bestRects = [];
+        const center = 120;
+        const radius = 120 * params.scale;
 
-        for (let row = 0; row < rows; row++) {
-          let maxCols = Math.floor(
-            (Math.sqrt(14400 - (row * cellHeight) ** 2) * 2 + params.gap) /
-              (cellWidth + params.gap)
-          );
-          for (let col = 0; col < maxCols; col++) {
-            let x =
-              120 -
-              (maxCols * cellWidth + (maxCols - 1) * params.gap) / 2 +
-              col * (cellWidth + params.gap);
-            let y = row * (cellHeight + params.gap);
-            rectangles.push({
-              x,
-              y,
-              width: cellWidth,
-              height: cellHeight,
-              color: [1, 1, 1, 1],
-            });
+        for (let cellH = 120; cellH >= 1; cellH--) {
+          const scaledH = Math.max(1, Math.round(cellH * params.scale));
+          const scaledW = Math.max(1, Math.round(params.aspectRatio * scaledH));
+
+          const stepX = scaledW + params.gap;
+          const stepY = scaledH + params.gap;
+
+          let maxCols = 0,
+            maxRows = 0;
+          while (Math.hypot(maxCols * stepX, 0) <= radius) maxCols++;
+          while (Math.hypot(0, maxRows * stepY) <= radius) maxRows++;
+
+          const cols = maxCols * 2 + 1;
+          const rows = maxRows * 2 + 1;
+          const total = cols * rows;
+
+          if (total < params.target) continue;
+
+          const rectangles = [];
+          for (let c = -maxCols; c <= maxCols; c++) {
+            for (let r = -maxRows; r <= maxRows; r++) {
+              const dx = c * stepX;
+              const dy = r * stepY;
+              if (Math.hypot(dx, dy) > radius) continue;
+
+              rectangles.push({
+                x: Math.round(center + dx - scaledW / 2),
+                y: Math.round(center + dy - scaledH / 2),
+                width: scaledW,
+                height: scaledH,
+                color: [1, 1, 1, 1],
+              });
+            }
+          }
+
+          if (rectangles.length >= params.target) {
+            params.cols = cols;
+            params.rows = rows;
+            params.width = scaledW; // Update width
+            params.height = scaledH; // Update height
+            return rectangles.slice(0, params.target);
+          }
+
+          if (rectangles.length > bestRects.length) {
+            bestRects = rectangles;
+            params.cols = cols;
+            params.rows = rows;
+            params.width = scaledW; // Update best width
+            params.height = scaledH; // Update best height
           }
         }
-        return rectangles;
+        return bestRects.slice(0, params.target);
+      }
+
+      // [Keep drawScene, drawCircle, and drawRectangle functions identical...]
+      function drawScene() {
+        gl.clearColor(1.0, 1.0, 1.0, 1.0);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+
+        gl.useProgram(programInfo.program);
+        gl.uniform2f(
+          programInfo.uniformLocations.resolution,
+          canvas.width,
+          canvas.height
+        );
+
+        drawCircle(120, 120, 120, [0.9, 0.9, 0.9, 1]);
+
+        const rectangles = generateRectangles();
+        rectangles.forEach((rect) => {
+          drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color);
+        });
       }
 
       function drawCircle(cx, cy, radius, color) {
@@ -167,20 +250,25 @@
         gl.drawArrays(gl.TRIANGLES, 0, 6);
       }
 
-      function drawScene() {
-        gl.clearColor(1.0, 1.0, 1.0, 1.0);
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.useProgram(programInfo.program);
-        gl.uniform2f(
-          programInfo.uniformLocations.resolution,
-          canvas.width,
-          canvas.height
-        );
-        drawCircle(120, 120, 120, [0, 0, 0, 1]);
-        generateRectangles().forEach((rect) =>
-          drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color)
-        );
-      }
+      // Enhanced UI controls
+      const gui = new lil.GUI();
+      gui
+        .add(params, "target", 1, 500, 1)
+        .name("Target Rect")
+        .onChange(drawScene);
+      gui.add(params, "gap", 0, 20, 1).name("Gap (px)").onChange(drawScene);
+      gui
+        .add(params, "aspectRatio", 0.5, 2, 0.01)
+        .name("Aspect Ratio")
+        .onChange(drawScene);
+      gui
+        .add(params, "scale", 0.1, 1, 0.01)
+        .name("Grid Scale")
+        .onChange(drawScene);
+      gui.add(params, "cols").name("Columns").listen();
+      gui.add(params, "rows").name("Rows").listen();
+      gui.add(params, "width").name("Rect Width").listen();
+      gui.add(params, "height").name("Rect Height").listen();
 
       drawScene();
     </script>
