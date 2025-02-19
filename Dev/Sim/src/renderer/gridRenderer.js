@@ -107,17 +107,12 @@ class GridRenderer extends BaseRenderer {
     );
   }
 
-  updateDensityField(particleSystem) {
-    if (!particleSystem || !particleSystem.getParticles) return;
-    this.density = this.renderModes.getValues(particleSystem);
-  }
-
   draw(particleSystem) {
     const program = this.shaderManager.use("grid");
     if (!program || !particleSystem) return;
 
     // Update density field based on particle positions
-    this.updateDensityField(particleSystem);
+    this.density = this.renderModes.getValues(particleSystem); //updateDensityField
 
     // Draw grid cells with density colors
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
@@ -158,11 +153,6 @@ class GridRenderer extends BaseRenderer {
         cellOffset++;
       }
     }
-  }
-
-  // Add method to update gradient
-  updateGradient() {
-    this.gradient.update();
   }
 }
 
