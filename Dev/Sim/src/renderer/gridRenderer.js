@@ -112,23 +112,6 @@ class GridRenderer extends BaseRenderer {
     this.density = this.renderModes.getValues(particleSystem);
   }
 
-  getCellIndex(col, row) {
-    if (
-      row < 0 ||
-      row >= this.rowCounts.length ||
-      col < 0 ||
-      col >= this.rowCounts[row]
-    ) {
-      return -1;
-    }
-
-    let index = 0;
-    for (let i = 0; i < row; i++) {
-      index += this.rowCounts[i];
-    }
-    return index + col;
-  }
-
   draw(particleSystem) {
     const program = this.shaderManager.use("grid");
     if (!program || !particleSystem) return;
