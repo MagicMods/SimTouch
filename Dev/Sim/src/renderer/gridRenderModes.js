@@ -50,71 +50,73 @@ class GridRenderModes {
     const particles = particleSystem.getParticles();
     if (!particles?.length) return this.values;
 
-    // Constants for proximity calculation
-    const tune = 0.15; // Tune proximity strength
-    const radius = 20; // Proximity radius in pixels
+    // Constants
+    const tune = 0.15;
+    const radius = 20;
     const radiusSq = radius * radius;
 
-    // First pass: map particles to cells
-    const cellParticles = new Map();
+    // Pre-calculate particle positions and cells
+    const particleData = particles.map((p, idx) => {
+      const px = p.x * this.TARGET_WIDTH;
+      const py = (1 - p.y) * this.TARGET_HEIGHT;
 
-    particles.forEach((particle, idx) => {
-      const px = particle.x * this.TARGET_WIDTH;
-      const py = (1 - particle.y) * this.TARGET_HEIGHT;
-
+      // Use gridMap to find cell (maintain correct coordinate system)
       const cell = this.gridMap.find((cell) => cell.contains(px, py));
-      if (cell) {
-        if (!cellParticles.has(cell.index)) {
-          cellParticles.set(cell.index, []);
+
+      return {
+        x: px,
+        y: py,
+        idx,
+        cellIndex: cell ? cell.index : -1,
+      };
+    });
+
+    // Group by cells (using correct grid indices)
+    const cellMap = new Map();
+    particleData.forEach((p) => {
+      if (p.cellIndex !== -1) {
+        if (!cellMap.has(p.cellIndex)) {
+          cellMap.set(p.cellIndex, []);
         }
-        cellParticles.get(cell.index).push({ x: px, y: py, idx });
+        cellMap.get(p.cellIndex).push(p);
       }
     });
 
-    // Second pass: calculate proximity
-    cellParticles.forEach((particlesInCell, cellIndex) => {
+    // Process cells
+    this.gridMap.forEach((cell) => {
+      const particlesInCell = cellMap.get(cell.index) || [];
       let totalProximity = 0;
 
-      // Compare each particle with others in same and neighboring cells
-      particlesInCell.forEach((p1) => {
-        particles.forEach((p2) => {
-          if (p1.idx !== particles.indexOf(p2)) {
-            const p2x = p2.x * this.TARGET_WIDTH;
-            const p2y = (1 - p2.y) * this.TARGET_HEIGHT;
-
-            const dx = p2x - p1.x;
-            const dy = p2y - p1.y;
-            const distSq = dx * dx + dy * dy;
-
-            if (distSq < radiusSq) {
-              totalProximity += 1 - distSq / radiusSq;
-            }
-          }
-        });
-      });
-
-      // Average and apply tuning
       if (particlesInCell.length > 0) {
-        this.values[cellIndex] =
+        // Find neighboring cells using gridMap
+        const neighbors = this.gridMap.filter(
+          (other) =>
+            Math.abs(other.bounds.x - cell.bounds.x) <= radius &&
+            Math.abs(other.bounds.y - cell.bounds.y) <= radius
+        );
+
+        // Calculate proximities
+        particlesInCell.forEach((p1) => {
+          neighbors.forEach((neighbor) => {
+            const neighborParticles = cellMap.get(neighbor.index) || [];
+            neighborParticles.forEach((p2) => {
+              if (p1.idx === p2.idx) return;
+
+              const dx = p2.x - p1.x;
+              const dy = p2.y - p1.y;
+              const distSq = dx * dx + dy * dy;
+
+              if (distSq < radiusSq) {
+                totalProximity += 1 - distSq / radiusSq;
+              }
+            });
+          });
+        });
+
+        this.values[cell.index] =
           (totalProximity / particlesInCell.length) * tune;
       }
     });
-
-    // // Debug output
-    // console.log(
-    //   "Proximity calculation:",
-    //   JSON.stringify(
-    //     {
-    //       mode: this.currentMode,
-    //       particles: particles.length,
-    //       nonZeroCells: this.values.filter((v) => v > 0).length,
-    //       maxProximity: Math.max(...this.values),
-    //       firstFiveValues: Array.from(this.values.slice(0, 5)),
-    //     },
-    //     null,
-    //     2
-    //   )
-    // );
 
     return this.values;
   }
@@ -219,7 +221,7 @@ class GridRenderModes {
 
     // Track particle counts for pressure calculation
     const counts = new Float32Array(this.values.length).fill(0);
-    const tune = 2.5; // Pressure sensitivity
+    const tune = 0.1; // Pressure sensitivity
 
     particles.forEach((particle) => {
       const px = particle.x * this.TARGET_WIDTH;
