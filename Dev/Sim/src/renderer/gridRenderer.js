@@ -6,7 +6,6 @@ class GridRenderer extends BaseRenderer {
   constructor(gl, shaderManager) {
     super(gl, shaderManager);
     this.vertexBuffer = gl.createBuffer();
-    this.boundaryBuffer = gl.createBuffer();
 
     // Grid layout parameters
     this.rowCounts = [13, 19, 23, 25, 27, 29, 29, 29, 29, 27, 25, 23, 19, 13];
@@ -32,7 +31,6 @@ class GridRenderer extends BaseRenderer {
 
     // Replace gradient initialization with new class
     this.gradient = new Gradient();
-    this.showDensity = true;
 
     this.renderModes = new GridRenderModes({
       rowCounts: this.rowCounts,
@@ -153,6 +151,57 @@ class GridRenderer extends BaseRenderer {
         cellOffset++;
       }
     }
+  }
+
+  drawRectangle(x, y, size, color) {
+    const program = this.shaderManager.use("grid");
+    if (!program) return;
+
+    // Convert from normalized coordinates (0-1) to clip space (-1 to 1)
+    const x1 = x * 2 - 1;
+    const y1 = y * 2 - 1;
+    const x2 = (x + size) * 2 - 1;
+    const y2 = (y + size) * 2 - 1;
+
+    const vertices = [
+      x1,
+      y1, // Top-left
+      x2,
+      y1, // Top-right
+      x1,
+      y2, // Bottom-left
+      x1,
+      y2, // Bottom-left
+      x2,
+      y1, // Top-right
+      x2,
+      y2, // Bottom-right
+    ];
+
+    // Use temporary buffer for this single rectangle
+    const buffer = this.gl.createBuffer();
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      new Float32Array(vertices),
+      this.gl.STATIC_DRAW
+    );
+
+    // Set up attributes and uniforms
+    this.gl.vertexAttribPointer(
+      program.attributes.position,
+      2,
+      this.gl.FLOAT,
+      false,
+      0,
+      0
+    );
+    this.gl.enableVertexAttribArray(program.attributes.position);
+    this.gl.uniform4fv(program.uniforms.color, color);
+
+    // Draw and cleanup
+    this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+    this.gl.deleteBuffer(buffer);
   }
 }
 
