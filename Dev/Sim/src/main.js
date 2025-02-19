@@ -64,8 +64,8 @@ class Main {
       this.gl,
       this.shaderManager
     );
-    this.gridRenderer.drawRectangle(0.5, 0.5, 0.5, [1.0, 1.0, 1.0, 0.5]);
-    this.gridRenderer.drawCircle(0.5, 0.5, 0.5, [0.5, 0.5, 0.5, 0.5]);
+    this.gridRenderer.drawRectangle(120, 120, 90, 20, [1.0, 1.0, 1.0, 0.5]);
+    this.gridRenderer.drawCircle(120, 120, 120, [0.5, 0.5, 0.5, 0.5]);
 
     // Draw particles
     this.particleRenderer.draw(this.particleSystem.getParticles());

@@ -7,6 +7,18 @@ class GridRenderer extends BaseRenderer {
     super(gl, shaderManager);
     this.vertexBuffer = gl.createBuffer();
 
+    // Fixed target resolution
+    this.TARGET_WIDTH = 240;
+    this.TARGET_HEIGHT = 240;
+
+    // Actual canvas size
+    this.width = gl.canvas.width;
+    this.height = gl.canvas.height;
+
+    // Scale factors
+    this.scaleX = this.width / this.TARGET_WIDTH;
+    this.scaleY = this.height / this.TARGET_HEIGHT;
+
     // Grid layout parameters
     this.rowCounts = [13, 19, 23, 25, 27, 29, 29, 29, 29, 27, 25, 23, 19, 13];
     this.numX = Math.max(...this.rowCounts);
@@ -106,7 +118,7 @@ class GridRenderer extends BaseRenderer {
   }
 
   draw(particleSystem) {
-    const program = this.shaderManager.use("grid");
+    const program = this.shaderManager.use("basic");
     if (!program || !particleSystem) return;
 
     // Update density field based on particle positions
@@ -153,15 +165,22 @@ class GridRenderer extends BaseRenderer {
     }
   }
 
-  drawRectangle(x, y, size, color) {
-    const program = this.shaderManager.use("grid");
+  drawRectangle(x, y, width, height, color) {
+    const program = this.shaderManager.use("basic");
     if (!program) return;
 
-    // Convert from normalized coordinates (0-1) to clip space (-1 to 1)
-    const x1 = x * 2 - 1;
-    const y1 = y * 2 - 1;
-    const x2 = (x + size) * 2 - 1;
-    const y2 = (y + size) * 2 - 1;
+    // Convert positions from pixel to clip space
+    const pos = this.pixelToClipSpace(x, y);
+    const size = {
+      width: (width / this.TARGET_WIDTH) * 2,
+      height: (height / this.TARGET_HEIGHT) * 2, // Height will be inverted by pixelToClipSpace
+    };
+
+    // Calculate rectangle corners in clip space
+    const x1 = pos.x;
+    const y1 = pos.y;
+    const x2 = pos.x + size.width;
+    const y2 = pos.y - size.height; // Subtract height since Y is flipped
 
     const vertices = [
       x1,
@@ -204,28 +223,27 @@ class GridRenderer extends BaseRenderer {
     this.gl.deleteBuffer(buffer);
   }
 
-  drawCircle(cx, cy, radius, color) {
-    const program = this.shaderManager.use("grid");
+  drawCircle(x, y, radius, color) {
+    const program = this.shaderManager.use("basic");
     if (!program) return;
 
     // Convert center and radius from normalized (0-1) to clip space (-1 to 1)
-    const centerX = cx * 2 - 1;
-    const centerY = cy * 2 - 1;
-    const radiusClip = radius * 2;
+    const center = this.pixelToClipSpace(x, y);
+    const radiusClip = (radius / this.TARGET_WIDTH) * 2;
 
     // Generate circle vertices
     const numSegments = 32; // Adjust for quality/performance
     const vertices = [];
 
     // Center vertex
-    vertices.push(centerX, centerY);
+    vertices.push(center.x, center.y);
 
     // Circumference vertices
     for (let i = 0; i <= numSegments; i++) {
       const angle = (i / numSegments) * Math.PI * 2;
       vertices.push(
-        centerX + radiusClip * Math.cos(angle),
-        centerY + radiusClip * Math.sin(angle)
+        center.x + radiusClip * Math.cos(angle),
+        center.y + radiusClip * Math.sin(angle)
       );
     }
 
@@ -260,6 +278,20 @@ class GridRenderer extends BaseRenderer {
     // Cleanup
     this.gl.disable(this.gl.BLEND);
     this.gl.deleteBuffer(buffer);
+  }
+
+  pixelToClipSpace(x, y) {
+    return {
+      x: (x / this.TARGET_WIDTH) * 2 - 1,
+      y: -((y / this.TARGET_HEIGHT) * 2 - 1), // Flip Y coordinate
+    };
+  }
+
+  clipToPixelSpace(x, y) {
+    return {
+      x: ((x + 1) / 2) * this.TARGET_WIDTH,
+      y: ((-y + 1) / 2) * this.TARGET_HEIGHT,
+    };
   }
 }
 
