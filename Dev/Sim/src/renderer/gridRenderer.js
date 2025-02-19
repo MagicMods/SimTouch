@@ -1,5 +1,6 @@
 import { BaseRenderer } from "./baseRenderer.js";
 import { GridRenderModes } from "./gridRenderModes.js";
+import { Gradient } from "../shaders/gradients.js";
 
 class GridRenderer extends BaseRenderer {
   constructor(gl, shaderManager) {
@@ -29,14 +30,8 @@ class GridRenderer extends BaseRenderer {
     this.minDensity = 0.0;
     this.maxDensity = 7.0;
 
-    this.gradientPoints = [
-      { pos: 0, color: { r: 0, g: 0, b: 0 } },
-      { pos: 30, color: { r: 0.4, g: 0, b: 0 } },
-      { pos: 60, color: { r: 1, g: 0, b: 0 } },
-      { pos: 97, color: { r: 0.992, g: 1, b: 0.5 } },
-      { pos: 100, color: { r: 1, g: 1, b: 1 } },
-    ];
-    this.gradient = this.createGradient();
+    // Replace gradient initialization with new class
+    this.gradient = new Gradient();
     this.showDensity = true;
 
     this.renderModes = new GridRenderModes({
@@ -53,46 +48,6 @@ class GridRenderer extends BaseRenderer {
 
   getTotalCells() {
     return this.rowCounts.reduce((sum, count) => sum + count, 0);
-  }
-
-  createGradient() {
-    const gradient = new Array(256).fill(0).map(() => ({ r: 0, g: 0, b: 0 }));
-
-    // Interpolate between control points
-    for (let i = 0; i < 256; i++) {
-      const t = i / 255;
-      let lower = this.gradientPoints[0];
-      let upper = this.gradientPoints[this.gradientPoints.length - 1];
-
-      // Find the two points to interpolate between
-      for (let j = 0; j < this.gradientPoints.length - 1; j++) {
-        if (
-          t * 100 >= this.gradientPoints[j].pos &&
-          t * 100 < this.gradientPoints[j + 1].pos
-        ) {
-          lower = this.gradientPoints[j];
-          upper = this.gradientPoints[j + 1];
-          break;
-        }
-      }
-
-      // Calculate interpolation factor
-      const range = upper.pos - lower.pos;
-      const localT = (t * 100 - lower.pos) / range;
-
-      // Interpolate RGB values
-      gradient[i] = {
-        r: this.lerp(lower.color.r, upper.color.r, localT),
-        g: this.lerp(lower.color.g, upper.color.g, localT),
-        b: this.lerp(lower.color.b, upper.color.b, localT),
-      };
-    }
-
-    return gradient;
-  }
-
-  lerp(a, b, t) {
-    return a + (b - a) * t;
   }
 
   createGridGeometry() {
@@ -194,6 +149,8 @@ class GridRenderer extends BaseRenderer {
     );
 
     let cellOffset = 0;
+    const gradientValues = this.gradient.getValues();
+
     for (let y = 0; y < this.numY; y++) {
       for (let x = 0; x < this.rowCounts[y]; x++) {
         const value = this.density[cellOffset];
@@ -206,7 +163,7 @@ class GridRenderer extends BaseRenderer {
         );
 
         const gradientIdx = Math.floor(normalizedValue * 255);
-        const color = this.gradient[gradientIdx] || { r: 0, g: 0, b: 0 }; // Provide default color
+        const color = gradientValues[gradientIdx];
 
         this.gl.uniform4fv(program.uniforms.color, [
           color.r,
@@ -222,7 +179,7 @@ class GridRenderer extends BaseRenderer {
 
   // Add method to update gradient
   updateGradient() {
-    this.gradient = this.createGradient();
+    this.gradient.update();
   }
 }
 

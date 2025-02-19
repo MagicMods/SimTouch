@@ -298,7 +298,7 @@ class UI {
     // Gradient controls
     const gradientFolder = gridFolder.addFolder("Gradient");
     gradientFolder.open(false);
-    const gradientPoints = this.main.gridRenderer.gradientPoints;
+    const gradientPoints = this.main.gridRenderer.gradient.points; // Direct access to points
 
     // Add color controls for each gradient point
     gradientPoints.forEach((point, index) => {
