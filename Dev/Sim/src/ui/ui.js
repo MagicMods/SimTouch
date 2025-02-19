@@ -269,6 +269,22 @@ class UI {
         .add(gridRenderer.gridParams, "scale", 0.1, 1, 0.01)
         .name("Grid Scale")
         .onChange(() => gridRenderer.generateGrid());
+      gridParamFolder
+        .add(gridRenderer.gridParams, "cols")
+        .name("Columns")
+        .listen();
+      gridParamFolder
+        .add(gridRenderer.gridParams, "rows")
+        .name("Rows")
+        .listen();
+      gridParamFolder
+        .add(gridRenderer.gridParams, "width")
+        .name("Rect Width")
+        .listen();
+      gridParamFolder
+        .add(gridRenderer.gridParams, "height")
+        .name("Rect Height")
+        .listen();
     }
 
     // Grid Stats - only add if values exist

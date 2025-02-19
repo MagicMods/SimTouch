@@ -36,6 +36,21 @@ class GridRenderer extends BaseRenderer {
     // Create grid geometry
     this.createGridGeometry();
 
+    //////////////
+
+    this.gridParams = {
+      target: 341,
+      gap: 1,
+      aspectRatio: 1,
+      scale: 0.95,
+      cols: 0,
+      rows: 0,
+      width: 0,
+      height: 0,
+    };
+
+    /////////////////
+
     // Add density field parameters with defaults
     this.density = new Float32Array(this.getTotalCells());
     this.minDensity = 0.0;
@@ -292,6 +307,66 @@ class GridRenderer extends BaseRenderer {
       x: ((x + 1) / 2) * this.TARGET_WIDTH,
       y: ((-y + 1) / 2) * this.TARGET_HEIGHT,
     };
+  }
+
+  generateRectangles() {
+    let bestCellSize = 0;
+    let bestRects = [];
+    const center = 120;
+    const radius = 120 * params.scale;
+
+    for (let cellH = 120; cellH >= 1; cellH--) {
+      const scaledH = Math.max(1, Math.round(cellH * params.scale));
+      const scaledW = Math.max(1, Math.round(params.aspectRatio * scaledH));
+
+      const stepX = scaledW + params.gap;
+      const stepY = scaledH + params.gap;
+
+      let maxCols = 0,
+        maxRows = 0;
+      while (Math.hypot(maxCols * stepX, 0) <= radius) maxCols++;
+      while (Math.hypot(0, maxRows * stepY) <= radius) maxRows++;
+
+      const cols = maxCols * 2 + 1;
+      const rows = maxRows * 2 + 1;
+      const total = cols * rows;
+
+      if (total < params.target) continue;
+
+      const rectangles = [];
+      for (let c = -maxCols; c <= maxCols; c++) {
+        for (let r = -maxRows; r <= maxRows; r++) {
+          const dx = c * stepX;
+          const dy = r * stepY;
+          if (Math.hypot(dx, dy) > radius) continue;
+
+          rectangles.push({
+            x: Math.round(center + dx - scaledW / 2),
+            y: Math.round(center + dy - scaledH / 2),
+            width: scaledW,
+            height: scaledH,
+            color: [1, 1, 1, 1],
+          });
+        }
+      }
+
+      if (rectangles.length >= params.target) {
+        params.cols = cols;
+        params.rows = rows;
+        params.width = scaledW; // Update width
+        params.height = scaledH; // Update height
+        return rectangles.slice(0, params.target);
+      }
+
+      if (rectangles.length > bestRects.length) {
+        bestRects = rectangles;
+        params.cols = cols;
+        params.rows = rows;
+        params.width = scaledW; // Update best width
+        params.height = scaledH; // Update best height
+      }
+    }
+    return bestRects.slice(0, params.target);
   }
 }
 
