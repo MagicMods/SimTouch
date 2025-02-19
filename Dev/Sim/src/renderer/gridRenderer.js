@@ -5,169 +5,129 @@ import { Gradient } from "../shaders/gradients.js";
 class GridRenderer extends BaseRenderer {
   constructor(gl, shaderManager) {
     super(gl, shaderManager);
-    this.vertexBuffer = gl.createBuffer();
 
     // Fixed target resolution
     this.TARGET_WIDTH = 240;
     this.TARGET_HEIGHT = 240;
 
-    // Actual canvas size
-    this.width = gl.canvas.width;
-    this.height = gl.canvas.height;
-
-    // Scale factors
-    this.scaleX = this.width / this.TARGET_WIDTH;
-    this.scaleY = this.height / this.TARGET_HEIGHT;
-
-    // Grid layout parameters
-    this.rowCounts = [13, 19, 23, 25, 27, 29, 29, 29, 29, 27, 25, 23, 19, 13];
-    this.numX = Math.max(...this.rowCounts);
-    this.numY = this.rowCounts.length;
-
-    // Base scale on 240x240 grid
-    const scale = Math.min(gl.canvas.width, gl.canvas.height) / 240;
-
-    // Cell dimensions
-    this.rectWidth = 6 * scale;
-    this.rectHeight = 15 * scale;
-    this.stepX = 8 * scale;
-    this.stepY = 17 * scale;
-
-    // Create grid geometry
-    this.createGridGeometry();
-
-    //////////////
-
+    // Grid parameters (all in pixels)
     this.gridParams = {
-      target: 341,
-      gap: 1,
-      aspectRatio: 1,
-      scale: 0.95,
-      cols: 0,
-      rows: 0,
-      width: 0,
-      height: 0,
+      target: 341, // Total cells
+      gap: 1, // Gap between cells
+      aspectRatio: 1, // Important for circular layout
+      scale: 0.95, // Circle coverage
+      width: 10, // Cell width in pixels
+      height: 10, // Cell height in pixels
+      cols: 23, // Fixed grid dimensions
+      rows: 23, // Fixed grid dimensions
     };
 
-    /////////////////
-
-    // Add density field parameters with defaults
-    this.density = new Float32Array(this.getTotalCells());
+    // Density parameters
     this.minDensity = 0.0;
     this.maxDensity = 7.0;
 
-    // Replace gradient initialization with new class
+    // Initialize systems
     this.gradient = new Gradient();
-
     this.renderModes = new GridRenderModes({
-      rowCounts: this.rowCounts,
-      numX: this.numX,
-      numY: this.numY,
-      stepX: this.stepX,
-      stepY: this.stepY,
+      gridParams: this.gridParams,
       canvas: this.gl.canvas,
     });
 
-    console.log("GridRenderer initialized with scale:", scale);
-  }
-
-  getTotalCells() {
-    return this.rowCounts.reduce((sum, count) => sum + count, 0);
-  }
-
-  createGridGeometry() {
-    const vertices = [];
-    const margin = 0.9; // Scale down grid positions to reserve a margin around the grid
-    // Center vertically
-    const totalHeight = this.numY * this.stepY;
-    const yStart = totalHeight / 2;
-
-    for (let y = 0; y < this.numY; y++) {
-      const rowCount = this.rowCounts[y];
-      const rowWidth = rowCount * this.stepX;
-      const xStart = -rowWidth / 2; // Center horizontally
-      const yPos = yStart - y * this.stepY;
-
-      for (let x = 0; x < rowCount; x++) {
-        const xPos = xStart + x * this.stepX;
-
-        // Convert to clip space coordinates (-1 to 1) and apply margin factor
-        const x1 = (xPos / (this.gl.canvas.width / 2)) * margin;
-        const x2 =
-          ((xPos + this.rectWidth) / (this.gl.canvas.width / 2)) * margin;
-        const y1 = (yPos / (this.gl.canvas.height / 2)) * margin;
-        const y2 =
-          ((yPos - this.rectHeight) / (this.gl.canvas.height / 2)) * margin;
-
-        // Add two triangles for the rectangle
-        vertices.push(
-          x1,
-          y1,
-          x2,
-          y1,
-          x1,
-          y2, // First triangle
-          x2,
-          y1,
-          x2,
-          y2,
-          x1,
-          y2 // Second triangle
-        );
-      }
-    }
-
-    this.gridVertices = new Float32Array(vertices);
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      this.gridVertices,
-      this.gl.STATIC_DRAW
-    );
-
-    console.log(
-      "Grid geometry created:",
-      this.gridVertices.length / 2,
-      "vertices"
-    );
+    // Debug output
+    console.log("GridRenderer initialized:", {
+      resolution: `${this.TARGET_WIDTH}x${this.TARGET_HEIGHT}`,
+      cellSize: `${this.gridParams.width}x${this.gridParams.height}`,
+      totalCells: this.gridParams.target,
+    });
   }
 
   draw(particleSystem) {
     const program = this.shaderManager.use("basic");
     if (!program || !particleSystem) return;
 
-    // Update density field based on particle positions
-    this.density = this.renderModes.getValues(particleSystem);
-
-    // Generate rectangles for the grid
+    // Generate grid rectangles
     const rectangles = this.generateRectangles();
 
-    // Calculate density values for each rectangle
-    const totalCells = rectangles.length;
-    const densityValues = new Float32Array(totalCells);
+    // Debug first few rectangles
+    console.log(
+      "Grid Layout:",
+      rectangles.slice(0, 5).map((rect) => ({
+        pos: `${rect.x},${rect.y}`,
+        size: `${rect.width}x${rect.height}`,
+      }))
+    );
 
-    // Map particle densities to grid cells
+    // Get density values from particles
+    this.density = new Float32Array(this.gridParams.target).fill(0);
+    const particles = particleSystem.getParticles();
+
+    // Count particles per cell
+    particles.forEach((particle) => {
+      // Convert normalized coordinates to pixel space
+      const px = particle.x * this.TARGET_WIDTH;
+      const py = (1 - particle.y) * this.TARGET_HEIGHT; // Fix: Invert Y coordinate
+
+      // Find corresponding rectangle
+      rectangles.forEach((rect, index) => {
+        if (
+          px >= rect.x &&
+          px < rect.x + rect.width &&
+          py >= rect.y &&
+          py < rect.y + rect.height
+        ) {
+          this.density[index]++;
+        }
+      });
+    });
+
+    // Debug density values for troubleshooting
+    console.log("Grid Mapping:", {
+      particles: particles.slice(0, 3).map((p) => ({
+        normalizedPos: `${p.x.toFixed(2)},${p.y.toFixed(2)}`,
+        pixelPos: `${(p.x * this.TARGET_WIDTH).toFixed(0)},${(
+          (1 - p.y) *
+          this.TARGET_HEIGHT
+        ).toFixed(0)}`,
+      })),
+      rectangles: rectangles.slice(0, 3).map((r) => ({
+        pos: `${r.x},${r.y}`,
+        size: `${r.width}x${r.height}`,
+      })),
+    });
+
+    // Debug density distribution
+    console.log("Density Stats:", {
+      min: Math.min(...this.density),
+      max: Math.max(...this.density),
+      nonZero: this.density.filter((d) => d > 0).length,
+    });
+
+    // Map densities to colors
     rectangles.forEach((rect, index) => {
-      // Get center of rectangle
-      const centerX = rect.x + rect.width / 2;
-      const centerY = rect.y + rect.height / 2;
-
-      // Calculate density for this cell
-      const value = this.density[index];
+      const density = this.density[index];
       const normalizedValue = Math.max(
         0,
-        Math.min(
-          1,
-          (value - this.minDensity) / (this.maxDensity - this.minDensity)
-        )
+        Math.min(1, density / this.maxDensity)
       );
 
+      // Get color from gradient
       const gradientIdx = Math.floor(normalizedValue * 255);
-      const gradientValues = this.gradient.getValues();
-      const color = gradientValues[gradientIdx] || { r: 0, g: 0, b: 0 };
+      const colorValues = this.gradient.getValues();
+      const color = colorValues[gradientIdx];
 
-      // Ensure color components exist
-      rect.color = [color.r, color.g, color.b, 1.0];
+      // Debug first few mappings
+      if (index < 5) {
+        console.log(`Cell ${index}:`, {
+          density,
+          normalized: normalizedValue,
+          gradientIdx,
+          color: color ? [color.r, color.g, color.b] : null,
+        });
+      }
+
+      rect.color = color
+        ? [color.r, color.g, color.b, 1.0]
+        : [0.2, 0.2, 0.2, 1.0]; // Dark grey for debugging
     });
 
     // Draw all rectangles

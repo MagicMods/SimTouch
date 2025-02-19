@@ -8,51 +8,49 @@ export const GridField = {
 };
 
 class GridRenderModes {
-  constructor(geometryInfo) {
-    // Grid layout info
-    this.rowCounts = geometryInfo.rowCounts;
-    this.numX = geometryInfo.numX;
-    this.numY = geometryInfo.numY;
-    this.stepX = geometryInfo.stepX;
-    this.stepY = geometryInfo.stepY;
+  constructor({ gridParams, canvas }) {
+    // Grid parameters
+    this.gridParams = gridParams;
+    this.canvas = canvas;
 
-    // Canvas info needed for coordinate transformation
-    this.canvas = geometryInfo.canvas;
+    // Create value buffer
+    this.values = new Float32Array(gridParams.target);
 
-    // Update modes to use enum
+    // Modes configuration
     this.modes = GridField;
     this.currentMode = this.modes.DENSITY;
 
-    // Create value buffer
-    this.values = new Float32Array(this.getTotalCells());
-
-    // Debug init info
-    console.log("GridRenderModes initialized:", {
-      cells: this.getTotalCells(),
-      dimensions: { numX: this.numX, numY: this.numY },
-      canvas: this.canvas ? "present" : "missing",
-    });
+    console.log(
+      "GridRenderModes initialized with new params:",
+      JSON.stringify(
+        {
+          cells: gridParams.target,
+          dimensions: {
+            cols: gridParams.cols,
+            rows: gridParams.rows,
+          },
+        },
+        null,
+        2
+      )
+    );
   }
 
-  getTotalCells() {
-    return this.rowCounts.reduce((sum, count) => sum + count, 0);
-  }
+  getCellIndex(x, y) {
+    // Convert pixel coordinates to cell index
+    const col = Math.floor(x / (this.gridParams.width + this.gridParams.gap));
+    const row = Math.floor(y / (this.gridParams.height + this.gridParams.gap));
 
-  getCellIndex(col, row) {
     if (
-      row < 0 ||
-      row >= this.rowCounts.length ||
       col < 0 ||
-      col >= this.rowCounts[row]
+      col >= this.gridParams.cols ||
+      row < 0 ||
+      row >= this.gridParams.rows
     ) {
       return -1;
     }
 
-    let index = 0;
-    for (let i = 0; i < row; i++) {
-      index += this.rowCounts[i];
-    }
-    return index + col;
+    return row * this.gridParams.cols + col;
   }
 
   calculateDensity(particleSystem) {
@@ -63,48 +61,44 @@ class GridRenderModes {
     for (const p of particles) {
       // Calculate grid cell influence
       const relY = (1 - p.y) * this.canvas.height;
-      const row = Math.floor(relY / this.stepY);
+      const row = Math.floor(relY / this.gridParams.stepY);
 
       // Check neighboring rows
       for (
         let j = Math.max(0, row - 2);
-        j < Math.min(this.numY, row + 3);
+        j < Math.min(this.gridParams.rows, row + 3);
         j++
       ) {
-        const rowWidth = this.rowCounts[j] * this.stepX;
+        const rowWidth = this.gridParams.cols * this.gridParams.stepX;
         const rowBaseX = (this.canvas.width - rowWidth) / 2;
         const relX = p.x * this.canvas.width - rowBaseX;
-        const col = Math.floor(relX / this.stepX);
+        const col = Math.floor(relX / this.gridParams.stepX);
 
         // Check neighboring cells
         for (
           let i = Math.max(0, col - 2);
-          i < Math.min(this.rowCounts[j], col + 3);
+          i < Math.min(this.gridParams.cols, col + 3);
           i++
         ) {
           const idx = this.getCellIndex(i, j);
           if (idx === -1) continue;
 
           // Calculate influence
-          const cellCenterX = rowBaseX + (i + 0.5) * this.stepX;
-          const cellCenterY = j * this.stepY + this.stepY * 0.5;
+          const cellCenterX = rowBaseX + (i + 0.5) * this.gridParams.stepX;
+          const cellCenterY =
+            j * this.gridParams.stepY + this.gridParams.stepY * 0.5;
           const dx = p.x * this.canvas.width - cellCenterX;
           const dy = (1 - p.y) * this.canvas.height - cellCenterY;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          const influence = Math.max(0, 1 - dist / (this.stepX * 1.5));
+          const influence = Math.max(
+            0,
+            1 - dist / (this.gridParams.stepX * 1.5)
+          );
 
           this.values[idx] += influence;
         }
       }
     }
-
-    // // Debug output
-    // const nonZero = this.values.filter((v) => v > 0);
-    // console.log("Density calculation:", {
-    //   nonZeroCells: nonZero.length,
-    //   maxValue: Math.max(...this.values),
-    //   minValue: Math.min(...nonZero),
-    // });
 
     return this.values;
   }
@@ -124,7 +118,7 @@ class GridRenderModes {
     for (const p of particles) {
       // Calculate grid position
       const relY = (1 - p.y) * this.canvas.height;
-      const row = Math.floor(relY / this.stepY);
+      const row = Math.floor(relY / this.gridParams.stepY);
 
       // Use particle velocity components
       const vx = p.vx || 0;
@@ -133,30 +127,31 @@ class GridRenderModes {
       // Rest of the accumulation logic...
       for (
         let j = Math.max(0, row - 2);
-        j < Math.min(this.numY, row + 3);
+        j < Math.min(this.gridParams.rows, row + 3);
         j++
       ) {
-        const rowWidth = this.rowCounts[j] * this.stepX;
+        const rowWidth = this.gridParams.cols * this.gridParams.stepX;
         const rowBaseX = (this.canvas.width - rowWidth) / 2;
         const relX = p.x * this.canvas.width - rowBaseX;
-        const col = Math.floor(relX / this.stepX);
+        const col = Math.floor(relX / this.gridParams.stepX);
 
         // Check neighboring cells
         for (
           let i = Math.max(0, col - 2);
-          i < Math.min(this.rowCounts[j], col + 3);
+          i < Math.min(this.gridParams.cols, col + 3);
           i++
         ) {
           const idx = this.getCellIndex(i, j);
           if (idx === -1) continue;
 
           // Calculate weight based on distance
-          const cellCenterX = rowBaseX + (i + 0.5) * this.stepX;
-          const cellCenterY = j * this.stepY + this.stepY * 0.5;
+          const cellCenterX = rowBaseX + (i + 0.5) * this.gridParams.stepX;
+          const cellCenterY =
+            j * this.gridParams.stepY + this.gridParams.stepY * 0.5;
           const dx = p.x * this.canvas.width - cellCenterX;
           const dy = (1 - p.y) * this.canvas.height - cellCenterY;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          const weight = Math.max(0, 1 - dist / (this.stepX * 1.5));
+          const weight = Math.max(0, 1 - dist / (this.gridParams.stepX * 1.5));
 
           // Accumulate weighted velocities
           velocityX[idx] += vx * weight;
@@ -174,14 +169,6 @@ class GridRenderModes {
         this.values[i] = Math.sqrt(vx * vx + vy * vy);
       }
     }
-
-    // // Debug output
-    // const nonZero = this.values.filter((v) => v > 0);
-    // console.log("Velocity calculation:", {
-    //   nonZeroCells: nonZero.length,
-    //   maxMagnitude: Math.max(...this.values),
-    //   avgMagnitude: nonZero.reduce((a, b) => a + b, 0) / nonZero.length,
-    // });
 
     return this.values;
   }
@@ -203,20 +190,6 @@ class GridRenderModes {
       }
     }
 
-    // // Debug output
-    // const nonZero = this.values.filter((v) => v > 0);
-    // console.log("Pressure calculation:", {
-    //   nonZeroCells: nonZero.length,
-    //   maxPressure: Math.max(...this.values),
-    //   avgPressure: nonZero.length
-    //     ? nonZero.reduce((a, b) => a + b, 0) / nonZero.length
-    //     : 0,
-    //   densityRange: {
-    //     min: Math.min(...density.filter((d) => d > 0)),
-    //     max: Math.max(...density),
-    //   },
-    // });
-
     return this.values;
   }
 
@@ -233,34 +206,35 @@ class GridRenderModes {
     // Step 1: Accumulate velocity components
     for (const p of particles) {
       const relY = (1 - p.y) * this.canvas.height;
-      const row = Math.floor(relY / this.stepY);
+      const row = Math.floor(relY / this.gridParams.stepY);
       const vx = p.vx || 0;
       const vy = p.vy || 0;
 
       for (
         let j = Math.max(0, row - 2);
-        j < Math.min(this.numY, row + 3);
+        j < Math.min(this.gridParams.rows, row + 3);
         j++
       ) {
-        const rowWidth = this.rowCounts[j] * this.stepX;
+        const rowWidth = this.gridParams.cols * this.gridParams.stepX;
         const rowBaseX = (this.canvas.width - rowWidth) / 2;
         const relX = p.x * this.canvas.width - rowBaseX;
-        const col = Math.floor(relX / this.stepX);
+        const col = Math.floor(relX / this.gridParams.stepX);
 
         for (
           let i = Math.max(0, col - 2);
-          i < Math.min(this.rowCounts[j], col + 3);
+          i < Math.min(this.gridParams.cols, col + 3);
           i++
         ) {
           const idx = this.getCellIndex(i, j);
           if (idx === -1) continue;
 
-          const cellCenterX = rowBaseX + (i + 0.5) * this.stepX;
-          const cellCenterY = j * this.stepY + this.stepY * 0.5;
+          const cellCenterX = rowBaseX + (i + 0.5) * this.gridParams.stepX;
+          const cellCenterY =
+            j * this.gridParams.stepY + this.gridParams.stepY * 0.5;
           const dx = p.x * this.canvas.width - cellCenterX;
           const dy = (1 - p.y) * this.canvas.height - cellCenterY;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          const weight = Math.max(0, 1 - dist / (this.stepX * 1.5));
+          const weight = Math.max(0, 1 - dist / (this.gridParams.stepX * 1.5));
 
           velocityX[idx] += vx * weight;
           velocityY[idx] += vy * weight;
@@ -281,8 +255,8 @@ class GridRenderModes {
     let maxVorticity = 0;
     const vorticityScale = 100.0; // Increase scale to get values in 0.1-1.0 range
 
-    for (let row = 1; row < this.numY - 1; row++) {
-      for (let col = 1; col < this.rowCounts[row] - 1; col++) {
+    for (let row = 1; row < this.gridParams.rows - 1; row++) {
+      for (let col = 1; col < this.gridParams.cols - 1; col++) {
         const idx = this.getCellIndex(col, row);
         if (idx === -1) continue;
 
@@ -295,8 +269,10 @@ class GridRenderModes {
         if (right === -1 || left === -1 || up === -1 || down === -1) continue;
 
         // Calculate partial derivatives
-        const dvx_dy = (velocityX[down] - velocityX[up]) / (2 * this.stepY);
-        const dvy_dx = (velocityY[right] - velocityY[left]) / (2 * this.stepX);
+        const dvx_dy =
+          (velocityX[down] - velocityX[up]) / (2 * this.gridParams.stepY);
+        const dvy_dx =
+          (velocityY[right] - velocityY[left]) / (2 * this.gridParams.stepX);
 
         // Scale vorticity = ∂v_x/∂y - ∂v_y/∂x
         this.values[idx] = Math.abs(dvx_dy - dvy_dx) * vorticityScale;
@@ -309,16 +285,6 @@ class GridRenderModes {
     for (let i = 0; i < this.values.length; i++) {
       this.values[i] *= scale;
     }
-
-    // // Debug output
-    // const nonZero = this.values.filter((v) => v > 0);
-    // console.log("Vorticity calculation:", {
-    //   nonZeroCells: nonZero.length,
-    //   maxVorticity: maxVorticity,
-    //   avgVorticity: nonZero.length
-    //     ? nonZero.reduce((a, b) => a + b, 0) / nonZero.length
-    //     : 0,
-    // });
 
     return this.values;
   }
@@ -344,8 +310,8 @@ class GridRenderModes {
       const x = particles[i];
       const y = particles[i + 1];
       const cellKey = this.getCellIndex(
-        Math.floor((x * this.canvas.width) / this.stepX),
-        Math.floor(((1 - y) * this.canvas.height) / this.stepY)
+        Math.floor((x * this.canvas.width) / this.gridParams.stepX),
+        Math.floor(((1 - y) * this.canvas.height) / this.gridParams.stepY)
       );
 
       if (cellKey !== -1) {
@@ -408,12 +374,12 @@ class GridRenderModes {
   // Helper to convert particle position to grid cell index
   getGridCell(x, y) {
     const relY = (1 - y) * this.canvas.height;
-    const row = Math.floor(relY / this.stepY);
+    const row = Math.floor(relY / this.gridParams.stepY);
 
-    const rowWidth = this.rowCounts[row] * this.stepX;
+    const rowWidth = this.gridParams.cols * this.gridParams.stepX;
     const rowBaseX = (this.canvas.width - rowWidth) / 2;
     const relX = x * this.canvas.width - rowBaseX;
-    const col = Math.floor(relX / this.stepX);
+    const col = Math.floor(relX / this.gridParams.stepX);
 
     return this.getCellIndex(col, row);
   }
