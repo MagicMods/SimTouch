@@ -255,20 +255,20 @@ class UI {
       // // Grid Parameters
       gridParamFolder
         .add(gridRenderer.gridParams, "target", 1, 500, 1)
-        .name("Target Cells")
-        .onChange(() => gridRenderer.generateGrid());
+        .name("Target Cells");
+      // .onChange(() => gridRenderer.generateGrid());
       gridParamFolder
         .add(gridRenderer.gridParams, "gap", 0, 20, 1)
-        .name("Gap (px)")
-        .onChange(() => gridRenderer.generateGrid());
+        .name("Gap (px)");
+      // .onChange(() => gridRenderer.generateGrid());
       gridParamFolder
         .add(gridRenderer.gridParams, "aspectRatio", 0.5, 4, 0.01)
-        .name("Cell Ratio")
-        .onChange(() => gridRenderer.generateGrid());
+        .name("Cell Ratio");
+      // .onChange(() => gridRenderer.generateGrid());
       gridParamFolder
         .add(gridRenderer.gridParams, "scale", 0.1, 1, 0.01)
-        .name("Grid Scale")
-        .onChange(() => gridRenderer.generateGrid());
+        .name("Grid Scale");
+      // .onChange(() => gridRenderer.generateGrid());
       gridParamFolder
         .add(gridRenderer.gridParams, "cols")
         .name("Columns")
