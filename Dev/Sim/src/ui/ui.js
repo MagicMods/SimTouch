@@ -269,38 +269,14 @@ class UI {
         .add(gridRenderer.gridParams, "scale", 0.1, 1, 0.01)
         .name("Grid Scale");
       // .onChange(() => gridRenderer.generateGrid());
-      gridParamFolder
-        .add(gridRenderer.gridParams, "cols")
-        .name("Columns")
-        .listen();
-      gridParamFolder
-        .add(gridRenderer.gridParams, "rows")
-        .name("Rows")
-        .listen();
-      gridParamFolder
-        .add(gridRenderer.gridParams, "width")
-        .name("Rect Width")
-        .listen();
-      gridParamFolder
-        .add(gridRenderer.gridParams, "height")
-        .name("Rect Height")
-        .listen();
     }
 
     // Grid Stats - only add if values exist
     const stats = gridParamFolder.addFolder("Stats");
-    if (gridRenderer.gridState) {
-      // Add stat displays with proper value checking
-      const addStatDisplay = (key, name) => {
-        if (gridRenderer.gridState[key] !== undefined) {
-          stats.add(gridRenderer.gridState, key).name(name).listen().disable();
-        }
-      };
-
-      addStatDisplay("numX", "Columns");
-      addStatDisplay("numY", "Rows");
-      addStatDisplay("totalCells", "Total Cells");
-    }
+    stats.add(gridRenderer.gridParams, "cols").name("Columns").listen();
+    stats.add(gridRenderer.gridParams, "rows").name("Rows").listen();
+    stats.add(gridRenderer.gridParams, "width").name("Rect Width").listen();
+    stats.add(gridRenderer.gridParams, "height").name("Rect Height").listen();
 
     // Density controls
     const densityFolder = gridFolder.addFolder("Density Map");
