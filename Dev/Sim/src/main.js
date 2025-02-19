@@ -54,7 +54,7 @@ class Main {
 
   render() {
     this.frame++;
-    this.gridRenderer.drawGridTest();
+    // this.gridRenderer.drawGridTest();
     this.turbulenceField.update(this.particleSystem.timeStep);
     this.particleSystem.mouseForces.update(this.particleSystem);
     this.particleSystem.step();

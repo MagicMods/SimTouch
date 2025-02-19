@@ -137,47 +137,43 @@ class GridRenderer extends BaseRenderer {
     if (!program || !particleSystem) return;
 
     // Update density field based on particle positions
-    this.density = this.renderModes.getValues(particleSystem); //updateDensityField
+    this.density = this.renderModes.getValues(particleSystem);
 
-    // Draw grid cells with density colors
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.vertexBuffer);
-    this.gl.enableVertexAttribArray(program.attributes.position);
-    this.gl.vertexAttribPointer(
-      program.attributes.position,
-      2,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
+    // Generate rectangles for the grid
+    const rectangles = this.generateRectangles();
 
-    let cellOffset = 0;
-    const gradientValues = this.gradient.getValues();
+    // Calculate density values for each rectangle
+    const totalCells = rectangles.length;
+    const densityValues = new Float32Array(totalCells);
 
-    for (let y = 0; y < this.numY; y++) {
-      for (let x = 0; x < this.rowCounts[y]; x++) {
-        const value = this.density[cellOffset];
-        const normalizedValue = Math.max(
-          0,
-          Math.min(
-            1,
-            (value - this.minDensity) / (this.maxDensity - this.minDensity)
-          )
-        );
+    // Map particle densities to grid cells
+    rectangles.forEach((rect, index) => {
+      // Get center of rectangle
+      const centerX = rect.x + rect.width / 2;
+      const centerY = rect.y + rect.height / 2;
 
-        const gradientIdx = Math.floor(normalizedValue * 255);
-        const color = gradientValues[gradientIdx];
+      // Calculate density for this cell
+      const value = this.density[index];
+      const normalizedValue = Math.max(
+        0,
+        Math.min(
+          1,
+          (value - this.minDensity) / (this.maxDensity - this.minDensity)
+        )
+      );
 
-        this.gl.uniform4fv(program.uniforms.color, [
-          color.r,
-          color.g,
-          color.b,
-          1.0,
-        ]);
-        this.gl.drawArrays(this.gl.TRIANGLES, cellOffset * 6, 6);
-        cellOffset++;
-      }
-    }
+      const gradientIdx = Math.floor(normalizedValue * 255);
+      const gradientValues = this.gradient.getValues();
+      const color = gradientValues[gradientIdx] || { r: 0, g: 0, b: 0 };
+
+      // Ensure color components exist
+      rect.color = [color.r, color.g, color.b, 1.0];
+    });
+
+    // Draw all rectangles
+    rectangles.forEach((rect) => {
+      this.drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color);
+    });
   }
 
   ///////////////////////////////////////////////////
