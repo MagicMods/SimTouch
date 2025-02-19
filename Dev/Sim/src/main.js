@@ -58,11 +58,15 @@ class Main {
     this.particleSystem.mouseForces.update(this.particleSystem);
     this.particleSystem.step();
     this.gridRenderer.draw(this.particleSystem);
-    this.particleRenderer.draw(this.particleSystem.getParticles());
+
+    // Draw boundary using shader manager
     this.particleSystem.boundary.drawCircularBoundary(
       this.gl,
       this.shaderManager
     );
+
+    // Draw particles
+    this.particleRenderer.draw(this.particleSystem.getParticles());
   }
 
   static async create() {
