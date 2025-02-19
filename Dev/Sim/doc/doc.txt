@@ -137,3 +137,80 @@ Density field visualization
 Velocity field streamlines
 Particle pressure maps
 Pattern evolution tracking
+
+
+
+
+
+
+
+
+# Files to analyze:
+- gridRenderer.js
+- gridRenderModes.js
+
+# Focus area:
+- Method: getTotalCells()
+- Related functionality: density calculations
+
+# Please analyze:
+1. Direct method calls
+2. Data dependencies
+3. Initialization requirements
+4. Runtime usage
+
+# Key questions:
+1. Where is this method called?
+2. What data depends on it?
+3. What would break if removed?
+
+
+
+
+
+## IDE-Specific Features
+- Active Document: Current file in VS Code editor
+- Output Pane: Shows running code output
+- Integrated Terminal: Command execution
+- Unit Test Support: Test runner integration
+
+## Response Structure
+1. Use headers with # for sections
+2. Include file paths for code changes
+3. Show existing code context
+4. Indicate language for syntax highlighting
+5. Use windows-specific paths (c:/)
+6. Reference VS Code features when relevant
+
+## Guidelines
+1. One reply per conversation turn
+2. Don't wrap whole response in backticks
+3. Include language identifier
+4. Use ...existing code... for context
+5. Add filepath comments when specific
+6. Consider VS Code environment
+
+Save this as `copilot_formatting.md` for reference.
+## IDE-Specific Features
+- Active Document: Current file in VS Code editor
+- Output Pane: Shows running code output
+- Integrated Terminal: Command execution
+- Unit Test Support: Test runner integration
+
+## Response Structure
+1. Use headers with # for sections
+2. Include file paths for code changes
+3. Show existing code context
+4. Indicate language for syntax highlighting
+5. Use windows-specific paths (c:/)
+6. Reference VS Code features when relevant
+
+## Guidelines
+1. One reply per conversation turn
+2. Don't wrap whole response in backticks
+3. Include language identifier
+4. Use ...existing code... for context
+5. Add filepath comments when specific
+6. Consider VS Code environment
+
+Save this as `copilot_formatting.md` for reference.
