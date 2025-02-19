@@ -203,6 +203,64 @@ class GridRenderer extends BaseRenderer {
     this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
     this.gl.deleteBuffer(buffer);
   }
+
+  drawCircle(cx, cy, radius, color) {
+    const program = this.shaderManager.use("grid");
+    if (!program) return;
+
+    // Convert center and radius from normalized (0-1) to clip space (-1 to 1)
+    const centerX = cx * 2 - 1;
+    const centerY = cy * 2 - 1;
+    const radiusClip = radius * 2;
+
+    // Generate circle vertices
+    const numSegments = 32; // Adjust for quality/performance
+    const vertices = [];
+
+    // Center vertex
+    vertices.push(centerX, centerY);
+
+    // Circumference vertices
+    for (let i = 0; i <= numSegments; i++) {
+      const angle = (i / numSegments) * Math.PI * 2;
+      vertices.push(
+        centerX + radiusClip * Math.cos(angle),
+        centerY + radiusClip * Math.sin(angle)
+      );
+    }
+
+    // Create and bind temporary buffer
+    const buffer = this.gl.createBuffer();
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      new Float32Array(vertices),
+      this.gl.STATIC_DRAW
+    );
+
+    // Set up attributes and uniforms
+    this.gl.vertexAttribPointer(
+      program.attributes.position,
+      2,
+      this.gl.FLOAT,
+      false,
+      0,
+      0
+    );
+    this.gl.enableVertexAttribArray(program.attributes.position);
+    this.gl.uniform4fv(program.uniforms.color, color);
+
+    // Enable blending for transparency
+    this.gl.enable(this.gl.BLEND);
+    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+
+    // Draw using TRIANGLE_FAN
+    this.gl.drawArrays(this.gl.TRIANGLE_FAN, 0, vertices.length / 2);
+
+    // Cleanup
+    this.gl.disable(this.gl.BLEND);
+    this.gl.deleteBuffer(buffer);
+  }
 }
 
 export { GridRenderer };

@@ -175,7 +175,13 @@
         drawCircle(120, 120, 120, [0, 0, 0, 1]);
 
         const rectangles = generateRectangles();
+        // rectangles.forEach((rect) => {
+        //   drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color);
+        // });
         rectangles.forEach((rect) => {
+          console.log(
+            `Rectangle at x: ${rect.x}, y: ${rect.y}, width: ${rect.width}, height: ${rect.height}`
+          );
           drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color);
         });
       }
