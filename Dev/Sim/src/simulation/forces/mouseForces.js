@@ -1,5 +1,5 @@
 class MouseForces {
-  constructor({ impulseRadius = 0.35, impulseMag = 0.009 } = {}) {
+  constructor({ impulseRadius = 0.75, impulseMag = 0.08 } = {}) {
     // Force parameters
     this.impulseRadius = impulseRadius;
     this.impulseMag = impulseMag;

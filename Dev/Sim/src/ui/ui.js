@@ -262,7 +262,7 @@ class UI {
         .name("Gap (px)")
         .onChange(() => gridRenderer.generateGrid());
       gridParamFolder
-        .add(gridRenderer.gridParams, "aspectRatio", 0.5, 4, 0.1)
+        .add(gridRenderer.gridParams, "aspectRatio", 0.5, 4, 0.01)
         .name("Cell Ratio")
         .onChange(() => gridRenderer.generateGrid());
       gridParamFolder
@@ -349,11 +349,11 @@ class UI {
     mouseInputFolder.open(false);
     if (particles.mouseForces) {
       mouseInputFolder
-        .add(particles.mouseForces, "impulseRadius", 0.05, 0.5, 0.01)
+        .add(particles.mouseForces, "impulseRadius", 0.5, 2, 0.01)
         .name("Input Radius");
 
       mouseInputFolder
-        .add(particles.mouseForces, "impulseMag", 0.001, 0.04, 0.001)
+        .add(particles.mouseForces, "impulseMag", 0.01, 0.12, 0.001)
         .name("Impulse Magnitude");
     } else {
       console.warn("Mouse forces not initialized");

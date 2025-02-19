@@ -180,63 +180,7 @@ class GridRenderer extends BaseRenderer {
     }
   }
 
-  drawRectangle(x, y, width, height, color) {
-    const program = this.shaderManager.use("basic");
-    if (!program) return;
-
-    // Convert positions from pixel to clip space
-    const pos = this.pixelToClipSpace(x, y);
-    const size = {
-      width: (width / this.TARGET_WIDTH) * 2,
-      height: (height / this.TARGET_HEIGHT) * 2, // Height will be inverted by pixelToClipSpace
-    };
-
-    // Calculate rectangle corners in clip space
-    const x1 = pos.x;
-    const y1 = pos.y;
-    const x2 = pos.x + size.width;
-    const y2 = pos.y - size.height; // Subtract height since Y is flipped
-
-    const vertices = [
-      x1,
-      y1, // Top-left
-      x2,
-      y1, // Top-right
-      x1,
-      y2, // Bottom-left
-      x1,
-      y2, // Bottom-left
-      x2,
-      y1, // Top-right
-      x2,
-      y2, // Bottom-right
-    ];
-
-    // Use temporary buffer for this single rectangle
-    const buffer = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      new Float32Array(vertices),
-      this.gl.STATIC_DRAW
-    );
-
-    // Set up attributes and uniforms
-    this.gl.vertexAttribPointer(
-      program.attributes.position,
-      2,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
-    this.gl.enableVertexAttribArray(program.attributes.position);
-    this.gl.uniform4fv(program.uniforms.color, color);
-
-    // Draw and cleanup
-    this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
-    this.gl.deleteBuffer(buffer);
-  }
+  ///////////////////////////////////////////////////
 
   drawCircle(x, y, radius, color) {
     const program = this.shaderManager.use("basic");
@@ -309,18 +253,78 @@ class GridRenderer extends BaseRenderer {
     };
   }
 
+  drawRectangle(x, y, width, height, color) {
+    const program = this.shaderManager.use("basic");
+    if (!program) return;
+
+    // Convert positions from pixel to clip space
+    const pos = this.pixelToClipSpace(x, y);
+    const size = {
+      width: (width / this.TARGET_WIDTH) * 2,
+      height: (height / this.TARGET_HEIGHT) * 2, // Height will be inverted by pixelToClipSpace
+    };
+
+    // Calculate rectangle corners in clip space
+    const x1 = pos.x;
+    const y1 = pos.y;
+    const x2 = pos.x + size.width;
+    const y2 = pos.y - size.height; // Subtract height since Y is flipped
+
+    const vertices = [
+      x1,
+      y1, // Top-left
+      x2,
+      y1, // Top-right
+      x1,
+      y2, // Bottom-left
+      x1,
+      y2, // Bottom-left
+      x2,
+      y1, // Top-right
+      x2,
+      y2, // Bottom-right
+    ];
+
+    // Use temporary buffer for this single rectangle
+    const buffer = this.gl.createBuffer();
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      new Float32Array(vertices),
+      this.gl.STATIC_DRAW
+    );
+
+    // Set up attributes and uniforms
+    this.gl.vertexAttribPointer(
+      program.attributes.position,
+      2,
+      this.gl.FLOAT,
+      false,
+      0,
+      0
+    );
+    this.gl.enableVertexAttribArray(program.attributes.position);
+    this.gl.uniform4fv(program.uniforms.color, color);
+
+    // Draw and cleanup
+    this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+    this.gl.deleteBuffer(buffer);
+  }
+
   generateRectangles() {
-    let bestCellSize = 0;
     let bestRects = [];
     const center = 120;
-    const radius = 120 * params.scale;
+    const radius = 120 * this.gridParams.scale;
 
     for (let cellH = 120; cellH >= 1; cellH--) {
-      const scaledH = Math.max(1, Math.round(cellH * params.scale));
-      const scaledW = Math.max(1, Math.round(params.aspectRatio * scaledH));
+      const scaledH = Math.max(1, Math.round(cellH * this.gridParams.scale));
+      const scaledW = Math.max(
+        1,
+        Math.round(this.gridParams.aspectRatio * scaledH)
+      );
 
-      const stepX = scaledW + params.gap;
-      const stepY = scaledH + params.gap;
+      const stepX = scaledW + this.gridParams.gap;
+      const stepY = scaledH + this.gridParams.gap;
 
       let maxCols = 0,
         maxRows = 0;
@@ -331,7 +335,7 @@ class GridRenderer extends BaseRenderer {
       const rows = maxRows * 2 + 1;
       const total = cols * rows;
 
-      if (total < params.target) continue;
+      if (total < this.gridParams.target) continue;
 
       const rectangles = [];
       for (let c = -maxCols; c <= maxCols; c++) {
@@ -350,23 +354,33 @@ class GridRenderer extends BaseRenderer {
         }
       }
 
-      if (rectangles.length >= params.target) {
-        params.cols = cols;
-        params.rows = rows;
-        params.width = scaledW; // Update width
-        params.height = scaledH; // Update height
-        return rectangles.slice(0, params.target);
+      if (rectangles.length >= this.gridParams.target) {
+        this.gridParams.cols = cols;
+        this.gridParams.rows = rows;
+        this.gridParams.width = scaledW; // Update width
+        this.gridParams.height = scaledH; // Update height
+        return rectangles.slice(0, this.gridParams.target);
       }
 
       if (rectangles.length > bestRects.length) {
         bestRects = rectangles;
-        params.cols = cols;
-        params.rows = rows;
-        params.width = scaledW; // Update best width
-        params.height = scaledH; // Update best height
+        this.gridParams.cols = cols;
+        this.gridParams.rows = rows;
+        this.gridParams.width = scaledW; // Update best width
+        this.gridParams.height = scaledH; // Update best height
       }
     }
-    return bestRects.slice(0, params.target);
+    return bestRects.slice(0, this.gridParams.target);
+  }
+
+  drawGridTest() {
+    const rectangles = this.generateRectangles();
+    rectangles.forEach((rect) => {
+      // console.log(
+      //   `Rectangle at x: ${rect.x}, y: ${rect.y}, width: ${rect.width}, height: ${rect.height}`
+      // );
+      this.drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color);
+    });
   }
 }
 
