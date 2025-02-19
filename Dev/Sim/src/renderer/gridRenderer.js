@@ -28,9 +28,21 @@ class GridRenderer extends BaseRenderer {
 
     // Initialize systems
     this.gradient = new Gradient();
+
+    // Generate initial grid
+    this.gridGeometry = this.generateRectangles();
+    this.gridMap = this.createGridMap(this.gridGeometry);
+
+    // Initialize modes with grid data
     this.renderModes = new GridRenderModes({
       gridParams: this.gridParams,
+      gridGeometry: this.gridGeometry,
+      gridMap: this.gridMap,
       canvas: this.gl.canvas,
+      coordTransforms: {
+        pixelToClip: this.pixelToClipSpace.bind(this),
+        clipToPixel: this.clipToPixelSpace.bind(this),
+      },
     });
 
     // Debug output
@@ -41,96 +53,51 @@ class GridRenderer extends BaseRenderer {
     });
   }
 
+  createGridMap(rectangles) {
+    return rectangles.map((rect, index) => ({
+      index,
+      bounds: {
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+      },
+      contains: function (px, py) {
+        return (
+          px >= this.bounds.x &&
+          px < this.bounds.x + this.bounds.width &&
+          py >= this.bounds.y &&
+          py < this.bounds.y + this.bounds.height
+        );
+      },
+    }));
+  }
+
   draw(particleSystem) {
     const program = this.shaderManager.use("basic");
     if (!program || !particleSystem) return;
 
-    // Generate grid rectangles
-    const rectangles = this.generateRectangles();
+    // Use existing grid geometry
+    const rectangles = this.gridGeometry;
 
-    // Debug first few rectangles
-    console.log(
-      "Grid Layout:",
-      rectangles.slice(0, 5).map((rect) => ({
-        pos: `${rect.x},${rect.y}`,
-        size: `${rect.width}x${rect.height}`,
-      }))
-    );
+    // Get field values from modes
+    this.density = this.renderModes.getValues(particleSystem);
 
-    // Get density values from particles
-    this.density = new Float32Array(this.gridParams.target).fill(0);
-    const particles = particleSystem.getParticles();
-
-    // Count particles per cell
-    particles.forEach((particle) => {
-      // Convert normalized coordinates to pixel space
-      const px = particle.x * this.TARGET_WIDTH;
-      const py = (1 - particle.y) * this.TARGET_HEIGHT; // Fix: Invert Y coordinate
-
-      // Find corresponding rectangle
-      rectangles.forEach((rect, index) => {
-        if (
-          px >= rect.x &&
-          px < rect.x + rect.width &&
-          py >= rect.y &&
-          py < rect.y + rect.height
-        ) {
-          this.density[index]++;
-        }
-      });
-    });
-
-    // Debug density values for troubleshooting
-    console.log("Grid Mapping:", {
-      particles: particles.slice(0, 3).map((p) => ({
-        normalizedPos: `${p.x.toFixed(2)},${p.y.toFixed(2)}`,
-        pixelPos: `${(p.x * this.TARGET_WIDTH).toFixed(0)},${(
-          (1 - p.y) *
-          this.TARGET_HEIGHT
-        ).toFixed(0)}`,
-      })),
-      rectangles: rectangles.slice(0, 3).map((r) => ({
-        pos: `${r.x},${r.y}`,
-        size: `${r.width}x${r.height}`,
-      })),
-    });
-
-    // Debug density distribution
-    console.log("Density Stats:", {
-      min: Math.min(...this.density),
-      max: Math.max(...this.density),
-      nonZero: this.density.filter((d) => d > 0).length,
-    });
-
-    // Map densities to colors
+    // Map values to colors
     rectangles.forEach((rect, index) => {
-      const density = this.density[index];
-      const normalizedValue = Math.max(
-        0,
-        Math.min(1, density / this.maxDensity)
-      );
+      const value = this.density[index];
+      const normalizedValue = Math.max(0, Math.min(1, value / this.maxDensity));
 
-      // Get color from gradient
       const gradientIdx = Math.floor(normalizedValue * 255);
       const colorValues = this.gradient.getValues();
       const color = colorValues[gradientIdx];
-
-      // Debug first few mappings
-      if (index < 5) {
-        console.log(`Cell ${index}:`, {
-          density,
-          normalized: normalizedValue,
-          gradientIdx,
-          color: color ? [color.r, color.g, color.b] : null,
-        });
-      }
 
       rect.color = color
         ? [color.r, color.g, color.b, 1.0]
         : [0.2, 0.2, 0.2, 1.0]; // Dark grey for debugging
     });
 
-    // Draw all rectangles
+    // Draw rectangles
     rectangles.forEach((rect) => {
       this.drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color);
     });
