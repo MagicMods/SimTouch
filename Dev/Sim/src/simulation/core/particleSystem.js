@@ -303,13 +303,13 @@ class ParticleSystem {
   getParticles() {
     const particles = [];
     for (let i = 0; i < this.numParticles; i++) {
-      particles.push({
-        x: this.particles[i * 2],
-        y: this.particles[i * 2 + 1],
-        vx: this.velocitiesX[i],
-        vy: this.velocitiesY[i],
-        size: this.particleRadius * this.renderScale, // Scale radius to visible size
-      });
+        particles.push({
+            x: this.particles[i * 2],
+            y: this.particles[i * 2 + 1], // Keep original Y coordinate
+            vx: this.velocitiesX[i],
+            vy: this.velocitiesY[i],
+            size: this.particleRadius * this.renderScale
+        });
     }
     return particles;
   }

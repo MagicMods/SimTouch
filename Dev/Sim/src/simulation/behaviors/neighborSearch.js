@@ -16,7 +16,11 @@ class NeighborSearch {
 
     // Initialize cell mapping
     this.cellMap = new Map();
-    this.debug = false;
+    this.debug = false; // Enable debugging
+    this.debugEnabled = false;
+    this.cellSize = 24; // 10% of TARGET_WIDTH/HEIGHT
+    this.cols = Math.ceil(240 / this.cellSize);
+    this.rows = Math.ceil(240 / this.cellSize);
 
     console.log("NeighborSearch initialized:", {
       resolution: `${this.TARGET_WIDTH}x${this.TARGET_HEIGHT}`,
@@ -28,48 +32,25 @@ class NeighborSearch {
     this.cellMap.clear();
     const particleData = new Map();
 
-    // Map particles to grid cells
     particles.forEach((p, idx) => {
-      // Convert to pixel space
-      const px = p.x * this.TARGET_WIDTH;
-      const py = p.y * this.TARGET_HEIGHT; // Remove Y inversion
+      // Convert to consistent pixel space
+      const px = p.x * 240;
+      const py = p.y * 240;
 
-      // Calculate grid cell
-      const col = Math.floor(
-        px / (this.gridParams.width + this.gridParams.gap)
-      );
-      const row = Math.floor(
-        py / (this.gridParams.height + this.gridParams.gap)
-      );
-
-      if (this.debug && row > this.gridParams.rows / 2) {
-        console.log(
-          "NeighborSearch mapping:",
-          JSON.stringify(
-            {
-              original: { x: p.x, y: p.y },
-              pixel: { x: px, y: py },
-              cell: { col, row },
-            },
-            null,
-            2
-          )
-        );
+      const col = Math.floor(px / this.cellSize);
+      const row = Math.floor(py / this.cellSize);
+      
+      if (this.debugEnabled && p.y > 0.7) {
+        console.log(`Mapping particle at (${px.toFixed(1)}, ${py.toFixed(1)}) to cell [${row}, ${col}]`);
       }
 
-      const cellIndex = row * this.gridParams.cols + col;
-
+      const cellIndex = row * this.cols + col;
       if (this.isValidCell(cellIndex)) {
         this.mapParticleToCell(particleData, idx, p, px, py, cellIndex);
       }
     });
 
-    if (this.debug) {
-      this.logNeighborStats(particles, particleData);
-    }
-
-    // Step 2: Find neighbors within radius
-    return this.findNeighborsInRadius(particleData, radius);
+    return this.findNeighborsInRadius(particleData, radius * 240);
   }
 
   isValidCell(cellIndex) {

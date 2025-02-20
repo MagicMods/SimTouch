@@ -58,10 +58,11 @@ class OrganicBehavior {
 
     // Initialize components
     this.forces = new OrganicForces(this.forceScales);
-    this.neighborSearch = new NeighborSearch({ resolution: 240 });
+    this.neighborSearch = new NeighborSearch({ resolution: 24 });
 
     // Debug settings
     this.debug = false;
+    this.debugEnabled = false;
 
     console.log(
       "OrganicBehavior initialized:",
@@ -82,51 +83,48 @@ class OrganicBehavior {
     const currentParams = this.params[this.currentBehavior];
     if (!currentParams) return;
 
-    // Create particle objects with proper coordinates
-    const particleObjects = [];
+    const particles = [];
     for (let i = 0; i < particleSystem.particles.length; i += 2) {
-      particleObjects.push({
+      const particle = {
         x: particleSystem.particles[i],
-        y: particleSystem.particles[i + 1], // Keep original Y
+        y: particleSystem.particles[i + 1],
         vx: particleSystem.velocitiesX[i / 2],
         vy: particleSystem.velocitiesY[i / 2],
         index: i / 2,
-      });
+      };
+      particles.push(particle);
 
-      // Debug bottom half particles
-      if (particleObjects[particleObjects.length - 1].y > 0.5 && this.debug) {
-        // Only log every 60 frames (about 1 second at 60fps)
-        if (Math.floor(performance.now() / 1000) % 1 === 0) {
-          console.log(
-            "Bottom half particle:",
-            JSON.stringify(particleObjects[particleObjects.length - 1], null, 2)
-          );
-        }
+      // Debug particles in top region
+      if (this.debugEnabled && particle.y > 0.7) {
+        console.log(`Particle ${i / 2} at y=${particle.y.toFixed(3)}`);
       }
     }
 
-    // Calculate forces
     const neighbors = this.neighborSearch.findNeighbors(
-      particleObjects,
+      particles,
       currentParams.radius
     );
+
+    if (this.debugEnabled) {
+      console.log(`Total neighbors found: ${neighbors.size}`);
+    }
+
     const forces = this.forces.calculateForces(
-      particleObjects,
+      particles,
       neighbors,
       currentParams
     );
 
-    // Apply forces to velocities
     forces.forEach((force, idx) => {
-      if (Math.abs(force.x) > 0 || Math.abs(force.y) > 0) {
-        // Scale force by timestep
-        const fx = force.x * dt;
-        const fy = force.y * dt;
-
-        // Apply to velocities
-        particleSystem.velocitiesX[idx] += fx;
-        particleSystem.velocitiesY[idx] += fy;
+      if (this.debugEnabled && particles[idx].y > 0.7) {
+        console.log(
+          `Force at y=${particles[idx].y.toFixed(3)}: (${force.x.toFixed(
+            3
+          )}, ${force.y.toFixed(3)})`
+        );
       }
+      particleSystem.velocitiesX[idx] += force.x * dt;
+      particleSystem.velocitiesY[idx] += force.y * dt;
     });
   }
 

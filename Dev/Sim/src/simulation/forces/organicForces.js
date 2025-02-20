@@ -2,88 +2,84 @@ class OrganicForces {
   constructor(forceScales) {
     this.TARGET_WIDTH = 240;
     this.TARGET_HEIGHT = 240;
-    this.debug = false;
     this.forceScales = forceScales;
-    this.frameCount = 0;
-    this.logInterval = 60; // Log every 60 frames
+    this.debugEnabled = false;
+    // Add force damping to prevent excessive accumulation
+    this.forceDamping = 0.85;
   }
 
   toPixelSpace(p) {
-    // Convert normalized coordinates (0-1) to pixel space (0-240)
     return {
       x: p.x * this.TARGET_WIDTH,
-      y: p.y * this.TARGET_HEIGHT, // Don't invert Y
+      y: p.y * this.TARGET_HEIGHT, // Keep original Y coordinate system
       vx: p.vx * this.TARGET_WIDTH,
       vy: p.vy * this.TARGET_HEIGHT,
-      state: p.state,
+      state: p.state
     };
+  }
+
+  calculateFluidForces(particle, neighbors, force, params) {
+    const pixelParticle = this.toPixelSpace(particle);
+    const maxForce = 0.5; // Limit maximum force magnitude
+    
+    if (this.debugEnabled && particle.y > 0.7) {
+      console.log(`Computing fluid forces for particle at y=${particle.y.toFixed(3)}`);
+      console.log(`Neighbor count: ${neighbors.length}`);
+    }
+
+    neighbors.forEach((n) => {
+      const other = this.toPixelSpace(n.particle);
+      const dx = other.x - pixelParticle.x;
+      const dy = other.y - pixelParticle.y;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist > 0 && dist < params.radius) {
+        // Normalize distance to 0-1 range
+        const t = 1.0 - (dist / params.radius);
+        
+        // Surface tension with distance-based scaling
+        const tensionStrength = t * t * params.surfaceTension;
+        const tensionScale = this.forceScales.Fluid.surfaceTension * 0.1;
+        
+        // Add repulsion at very close distances
+        const repulsion = dist < params.radius * 0.2 ? 1.0 / (dist + 0.1) : 0;
+        
+        // Calculate normalized direction
+        const nx = dx / (dist + 0.0001);
+        const ny = dy / (dist + 0.0001);
+        
+        // Combine attraction and repulsion
+        const fx = (tensionStrength * nx - repulsion * nx) * tensionScale;
+        const fy = (tensionStrength * ny - repulsion * ny) * tensionScale;
+        
+        // Apply viscosity
+        const viscosityScale = this.forceScales.Fluid.viscosity * 0.05;
+        const relVelX = (other.vx - pixelParticle.vx) * params.viscosity * viscosityScale;
+        const relVelY = (other.vy - pixelParticle.vy) * params.viscosity * viscosityScale;
+
+        // Add forces with clamping
+        force.x = Math.max(-maxForce, Math.min(maxForce, force.x + fx + relVelX));
+        force.y = Math.max(-maxForce, Math.min(maxForce, force.y + fy + relVelY));
+
+        if (this.debugEnabled && particle.y > 0.7) {
+          console.log(`Applied force: (${force.x.toFixed(3)}, ${force.y.toFixed(3)})`);
+        }
+      }
+    });
+
+    // Apply damping to prevent force accumulation
+    force.x *= this.forceDamping;
+    force.y *= this.forceDamping;
+
+    return force;
   }
 
   toNormalizedSpace(force) {
     // Convert back from pixel to normalized space
     return {
       x: force.x / this.TARGET_WIDTH,
-      y: force.y / this.TARGET_HEIGHT, // Don't invert Y
+      y: -force.y / this.TARGET_HEIGHT, // Invert Y back
     };
-  }
-
-  calculateFluidForces(particle, neighbors, force, params) {
-    const stats = {
-      input: {
-        particle: { x: particle.x, y: particle.y },
-        pixel: this.toPixelSpace(particle),
-        neighbors: neighbors.length,
-        frame: this.frameCount,
-      },
-    };
-
-    // Increment frame counter
-    this.frameCount = (this.frameCount + 1) % this.logInterval;
-
-    // Log bottom half particles every logInterval frames
-    if (
-      stats.input.pixel.y > this.TARGET_HEIGHT / 2 &&
-      this.frameCount === 0 &&
-      this.debug
-    ) {
-      console.log(
-        "Fluid force calculation (bottom half):",
-        JSON.stringify(stats, null, 2)
-      );
-    }
-
-    if (!params || !params.surfaceTension || !params.viscosity) {
-      console.warn("Invalid fluid parameters:", params);
-      return;
-    }
-
-    neighbors.forEach((n) => {
-      const other = n.particle;
-      const dx = other.x - particle.x;
-      const dy = other.y - particle.y;
-      const dist = Math.hypot(dx, dy);
-
-      if (dist > 0 && dist < params.radius) {
-        // Surface tension
-        const strength = (1 - dist / params.radius) * params.surfaceTension;
-        force.x +=
-          (dx / dist) * strength * this.forceScales.Fluid.surfaceTension;
-        force.y +=
-          (dy / dist) * strength * this.forceScales.Fluid.surfaceTension;
-
-        // Viscosity
-        const relVelX = other.vx - particle.vx;
-        const relVelY = other.vy - particle.vy;
-        force.x +=
-          relVelX * params.viscosity * this.forceScales.Fluid.viscosity;
-        force.y +=
-          relVelY * params.viscosity * this.forceScales.Fluid.viscosity;
-      }
-    });
-
-    // Apply base scale and damping
-    force.x *= this.forceScales.Fluid.base * params.damping;
-    force.y *= this.forceScales.Fluid.base * params.damping;
   }
 
   calculateForces(particles, neighbors, params) {
