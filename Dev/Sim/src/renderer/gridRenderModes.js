@@ -1,11 +1,10 @@
-// Add at the top of the file
 export const GridField = {
   PROXIMITY: "Proximity",
   DENSITY: "Density",
   VELOCITY: "Velocity",
   PRESSURE: "Pressure",
   VORTICITY: "Vorticity",
-  COLLISION: "Collision", // New field
+  COLLISION: "Collision",
 };
 
 class GridRenderModes {
@@ -22,6 +21,16 @@ class GridRenderModes {
 
     // Create value buffer
     this.values = new Float32Array(gridParams.target);
+    this.targetValues = new Float32Array(gridParams.target);
+    this.currentValues = new Float32Array(gridParams.target);
+
+    // Smoothing configuration
+    this.smoothing = {
+      enabled: true,
+      rateIn: 0.15, // Speed to reach target (higher = faster)
+      rateOut: 0.08, // Speed to return to zero (lower = smoother)
+      threshold: 0.001, // Minimum change threshold
+    };
 
     // Modes configuration
     this.modes = GridField;
@@ -36,6 +45,7 @@ class GridRenderModes {
             cols: gridParams.cols,
             rows: gridParams.rows,
           },
+          smoothing: this.smoothing,
         },
         null,
         2
@@ -51,15 +61,76 @@ class GridRenderModes {
     // Resize value buffer if needed
     if (this.values.length !== gridParams.target) {
       this.values = new Float32Array(gridParams.target);
+      this.targetValues = new Float32Array(gridParams.target);
+      this.currentValues = new Float32Array(gridParams.target);
+    }
+  }
+
+  getValues(particleSystem) {
+    // Calculate new target values
+    this.calculateTargetValues(particleSystem);
+
+    // Apply smoothing if enabled
+    if (this.smoothing.enabled) {
+      this.smoothValues();
+      return this.currentValues;
+    }
+
+    // Otherwise return target values directly
+    return this.targetValues;
+  }
+
+  calculateTargetValues(particleSystem) {
+    switch (this.currentMode) {
+      case this.modes.PROXIMITY:
+        this.calculateProximity(particleSystem);
+        break;
+      case this.modes.DENSITY:
+        this.calculateDensity(particleSystem);
+        break;
+      case this.modes.VELOCITY:
+        this.calculateVelocity(particleSystem);
+        break;
+      case this.modes.PRESSURE:
+        this.calculatePressure(particleSystem);
+        break;
+      case this.modes.VORTICITY:
+        this.calculateVorticity(particleSystem);
+        break;
+      case this.modes.COLLISION:
+        this.calculateCollision(particleSystem);
+        break;
+      default:
+        console.warn("Unsupported render mode:", this.currentMode);
+        this.targetValues.fill(0);
+    }
+  }
+
+  smoothValues() {
+    for (let i = 0; i < this.currentValues.length; i++) {
+      const target = this.targetValues[i];
+      const current = this.currentValues[i];
+      const diff = target - current;
+
+      // Choose rate based on whether we're increasing or decreasing
+      const rate =
+        Math.abs(target) > Math.abs(current)
+          ? this.smoothing.rateIn
+          : this.smoothing.rateOut;
+
+      // Apply smoothing only if difference is above threshold
+      if (Math.abs(diff) > this.smoothing.threshold) {
+        this.currentValues[i] += diff * rate;
+      }
     }
   }
 
   calculateProximity(particleSystem) {
-    this.values.fill(0);
-    if (!particleSystem) return this.values;
+    this.targetValues.fill(0);
+    if (!particleSystem) return this.targetValues;
 
     const particles = particleSystem.getParticles();
-    if (!particles?.length) return this.values;
+    if (!particles?.length) return this.targetValues;
 
     // Constants
     const tune = 0.15;
@@ -124,20 +195,20 @@ class GridRenderModes {
           });
         });
 
-        this.values[cell.index] =
+        this.targetValues[cell.index] =
           (totalProximity / particlesInCell.length) * tune;
       }
     });
 
-    return this.values;
+    return this.targetValues;
   }
 
   calculateDensity(particleSystem) {
-    this.values.fill(0);
-    if (!particleSystem) return this.values;
+    this.targetValues.fill(0);
+    if (!particleSystem) return this.targetValues;
 
     const particles = particleSystem.getParticles();
-    if (!particles?.length) return this.values;
+    if (!particles?.length) return this.targetValues;
 
     particles.forEach((particle) => {
       // Convert to pixel space
@@ -147,37 +218,22 @@ class GridRenderModes {
       // Find cell using gridMap
       const cell = this.gridMap.find((cell) => cell.contains(px, py));
       if (cell) {
-        this.values[cell.index]++;
+        this.targetValues[cell.index]++;
       }
     });
 
-    // // Debug output
-    // console.log(
-    //   "Density calculation:",
-    //   JSON.stringify(
-    //     {
-    //       mode: this.currentMode,
-    //       particles: particles.length,
-    //       nonZeroCells: this.values.filter((v) => v > 0).length,
-    //       maxDensity: Math.max(...this.values),
-    //     },
-    //     null,
-    //     2
-    //   )
-    // );
-
-    return this.values;
+    return this.targetValues;
   }
 
   calculateVelocity(particleSystem) {
-    this.values.fill(0);
-    if (!particleSystem) return this.values;
+    this.targetValues.fill(0);
+    if (!particleSystem) return this.targetValues;
     const tune = 50;
     const particles = particleSystem.getParticles();
-    if (!particles?.length) return this.values;
+    if (!particles?.length) return this.targetValues;
 
     // Track particle counts for averaging
-    const counts = new Float32Array(this.values.length).fill(0);
+    const counts = new Float32Array(this.targetValues.length).fill(0);
 
     particles.forEach((particle) => {
       // Convert to pixel space
@@ -193,45 +249,30 @@ class GridRenderModes {
         );
 
         // Accumulate speeds for averaging
-        this.values[cell.index] += speed * tune;
+        this.targetValues[cell.index] += speed * tune;
         counts[cell.index]++;
       }
     });
 
     // Calculate average speeds
-    for (let i = 0; i < this.values.length; i++) {
+    for (let i = 0; i < this.targetValues.length; i++) {
       if (counts[i] > 0) {
-        this.values[i] /= counts[i];
+        this.targetValues[i] /= counts[i];
       }
     }
 
-    // // Debug output
-    // console.log(
-    //   "Velocity calculation:",
-    //   JSON.stringify(
-    //     {
-    //       mode: this.currentMode,
-    //       particles: particles.length,
-    //       nonZeroCells: this.values.filter((v) => v > 0).length,
-    //       maxVelocity: Math.max(...this.values),
-    //       firstFiveValues: Array.from(this.values.slice(0, 5)),
-    //     },
-    //     null,
-    //     2
-    //   )
-    // );
-
-    return this.values;
+    return this.targetValues;
   }
+
   calculatePressure(particleSystem) {
-    this.values.fill(0);
-    if (!particleSystem) return this.values;
+    this.targetValues.fill(0);
+    if (!particleSystem) return this.targetValues;
 
     const particles = particleSystem.getParticles();
-    if (!particles?.length) return this.values;
+    if (!particles?.length) return this.targetValues;
 
     // Track particle counts for pressure calculation
-    const counts = new Float32Array(this.values.length).fill(0);
+    const counts = new Float32Array(this.targetValues.length).fill(0);
     const tune = 0.1; // Pressure sensitivity
 
     particles.forEach((particle) => {
@@ -246,22 +287,22 @@ class GridRenderModes {
 
     // Calculate pressure from particle density
     for (let i = 0; i < counts.length; i++) {
-      this.values[i] = Math.pow(counts[i], 2) * tune;
+      this.targetValues[i] = Math.pow(counts[i], 2) * tune;
     }
 
-    return this.values;
+    return this.targetValues;
   }
 
   calculateVorticity(particleSystem) {
-    this.values.fill(0);
-    if (!particleSystem) return this.values;
+    this.targetValues.fill(0);
+    if (!particleSystem) return this.targetValues;
 
     const particles = particleSystem.getParticles();
-    if (!particles?.length) return this.values;
+    if (!particles?.length) return this.targetValues;
 
     // Track angular velocity components
-    const angularVel = new Float32Array(this.values.length).fill(0);
-    const counts = new Float32Array(this.values.length).fill(0);
+    const angularVel = new Float32Array(this.targetValues.length).fill(0);
+    const counts = new Float32Array(this.targetValues.length).fill(0);
     const tune = 2500.0; // Vorticity sensitivity
 
     particles.forEach((particle) => {
@@ -278,38 +319,18 @@ class GridRenderModes {
     });
 
     // Calculate average vorticity
-    for (let i = 0; i < this.values.length; i++) {
+    for (let i = 0; i < this.targetValues.length; i++) {
       if (counts[i] > 0) {
-        this.values[i] = (angularVel[i] / counts[i]) * tune;
+        this.targetValues[i] = (angularVel[i] / counts[i]) * tune;
       }
     }
 
-    return this.values;
+    return this.targetValues;
   }
 
   calculateCollision(particleSystem) {
-    this.values.fill(0);
-    return this.values;
-  }
-
-  getValues(particleSystem) {
-    switch (this.currentMode) {
-      case this.modes.PROXIMITY:
-        return this.calculateProximity(particleSystem);
-      case this.modes.DENSITY:
-        return this.calculateDensity(particleSystem);
-      case this.modes.VELOCITY:
-        return this.calculateVelocity(particleSystem);
-      case this.modes.PRESSURE:
-        return this.calculatePressure(particleSystem);
-      case this.modes.VORTICITY:
-        return this.calculateVorticity(particleSystem);
-      case this.modes.COLLISION:
-        return this.calculateCollision(particleSystem);
-      default:
-        console.warn("Unsupported render mode:", this.currentMode);
-        return this.values;
-    }
+    this.targetValues.fill(0);
+    return this.targetValues;
   }
 }
 

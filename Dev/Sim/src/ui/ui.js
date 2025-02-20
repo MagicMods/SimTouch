@@ -344,6 +344,14 @@ class UI {
         .name("Color")
         .onChange(() => this.main.gridRenderer.updateGradient());
     });
+
+    // Add smoothing controls
+    const smoothingFolder = gridFolder.addFolder("Smoothing");
+    const smoothing = this.main.gridRenderer.renderModes.smoothing;
+
+    smoothingFolder.add(smoothing, "enabled").name("Enable Smoothing");
+    smoothingFolder.add(smoothing, "rateIn", 0.01, 0.5).name("Fade In Rate");
+    smoothingFolder.add(smoothing, "rateOut", 0.01, 0.5).name("Fade Out Rate");
     //#endregion
 
     //#region Boundary

@@ -41,7 +41,11 @@ class OrganicForces {
     this.frameCount = (this.frameCount + 1) % this.logInterval;
 
     // Log bottom half particles every logInterval frames
-    if (stats.input.pixel.y > this.TARGET_HEIGHT / 2 && this.frameCount === 0) {
+    if (
+      stats.input.pixel.y > this.TARGET_HEIGHT / 2 &&
+      this.frameCount === 0 &&
+      this.debug
+    ) {
       console.log(
         "Fluid force calculation (bottom half):",
         JSON.stringify(stats, null, 2)
