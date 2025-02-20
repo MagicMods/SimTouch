@@ -262,9 +262,93 @@ class UI {
           particles.organicBehavior.currentBehavior = value;
         });
 
-      // Add parameter folders for each behavior
-      this.addBehaviorParameters(organicFolder, particles.organicBehavior);
-      //#endregion
+      const fluidParmaFolder = organicFolder.addFolder("Fluid Parameters");
+      fluidParmaFolder
+        .add(particles.organicBehavior.params[Behaviors.FLUID], "radius", 5, 50)
+        .name("Radius");
+      fluidParmaFolder
+        .add(
+          particles.organicBehavior.params[Behaviors.FLUID],
+          "surfaceTension"
+        )
+        .name("Surface Tension");
+      fluidParmaFolder
+        .add(particles.organicBehavior.params[Behaviors.FLUID], "viscosity")
+        .name("Viscosity");
+      fluidParmaFolder
+        .add(particles.organicBehavior.params[Behaviors.FLUID], "damping")
+        .name("Damping");
+      const swarmParmaFolder = organicFolder.addFolder("Swarm Parameters");
+      swarmParmaFolder
+        .add(particles.organicBehavior.params[Behaviors.SWARM], "radius", 5, 50)
+        .name("Radius");
+      swarmParmaFolder
+        .add(
+          particles.organicBehavior.params[Behaviors.SWARM],
+          "cohesion",
+          0,
+          1
+        )
+        .name("Cohesion");
+      swarmParmaFolder
+        .add(
+          particles.organicBehavior.params[Behaviors.SWARM],
+          "alignment",
+          0,
+          1
+        )
+        .name("Alignment");
+      swarmParmaFolder
+        .add(
+          particles.organicBehavior.params[Behaviors.SWARM],
+          "separation",
+          0,
+          1
+        )
+        .name("Separation");
+      swarmParmaFolder
+        .add(
+          particles.organicBehavior.params[Behaviors.SWARM],
+          "maxSpeed",
+          0,
+          5
+        )
+        .name("Max Speed");
+      const automataParmaFolder = organicFolder.addFolder(
+        "Automata Parameters"
+      );
+      automataParmaFolder
+        .add(
+          particles.organicBehavior.params[Behaviors.AUTOMATA],
+          "radius",
+          5,
+          50
+        )
+        .name("Radius");
+      automataParmaFolder
+        .add(
+          particles.organicBehavior.params[Behaviors.AUTOMATA],
+          "repulsion",
+          0,
+          1
+        )
+        .name("Repulsion");
+      automataParmaFolder
+        .add(
+          particles.organicBehavior.params[Behaviors.AUTOMATA],
+          "attraction",
+          0,
+          1
+        )
+        .name("Attraction");
+      automataParmaFolder
+        .add(
+          particles.organicBehavior.params[Behaviors.AUTOMATA],
+          "threshold",
+          0,
+          1
+        )
+        .name("Threshold");
 
       // In the initGUI method where you setup organic behavior controls
       const debugOrganicFolder = organicFolder.addFolder("Debug");
@@ -345,13 +429,27 @@ class UI {
         .onChange(() => this.main.gridRenderer.updateGradient());
     });
 
-    // Add smoothing controls
-    const smoothingFolder = gridFolder.addFolder("Smoothing");
-    const smoothing = this.main.gridRenderer.renderModes.smoothing;
+    // Add smoothing controls to grid folder
+    if (this.main.gridRenderer.renderModes?.smoothing) {
+      const smoothingFolder = gridFolder.addFolder("Value Smoothing");
+      const smoothing = this.main.gridRenderer.renderModes.smoothing;
 
-    smoothingFolder.add(smoothing, "enabled").name("Enable Smoothing");
-    smoothingFolder.add(smoothing, "rateIn", 0.01, 0.5).name("Fade In Rate");
-    smoothingFolder.add(smoothing, "rateOut", 0.01, 0.5).name("Fade Out Rate");
+      smoothingFolder.add(smoothing, "enabled").name("Enable Smoothing");
+
+      smoothingFolder
+        .add(smoothing, "rateIn", 0.01, 0.5)
+        .name("Fade In Speed")
+        .onChange(() => console.log("Smoothing in:", smoothing.rateIn));
+
+      smoothingFolder
+        .add(smoothing, "rateOut", 0.01, 0.5)
+        .name("Fade Out Speed")
+        .onChange(() => console.log("Smoothing out:", smoothing.rateOut));
+
+      smoothingFolder
+        .add(smoothing, "threshold", 0.0001, 0.01)
+        .name("Change Threshold");
+    }
     //#endregion
 
     //#region Boundary
