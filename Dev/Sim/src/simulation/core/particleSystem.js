@@ -29,7 +29,7 @@ class ParticleSystem {
     this.timeScale = 1.0;
 
     // Debug flags
-    this.debug = true;
+    this.debug = false;
     this.debugShowVelocityField = false;
     this.debugShowPressureField = false;
     this.debugShowBoundaries = false;

@@ -178,7 +178,7 @@ class UI {
     //   .name("Enable Collisions");
 
     collisionFolder
-      .add(particles.collisionSystem, "repulsion", 0, 100.0, 0.05)
+      .add(particles.collisionSystem, "repulsion", 0, 40, 0.01)
       .name("Repulsion");
 
     collisionFolder
@@ -208,7 +208,7 @@ class UI {
 
     // turbulenceFolder.add(turbulence, "enabled").name("Enable");
 
-    turbulenceFolder.add(turbulence, "strength", 0, 4, 0.01).name("Strength");
+    turbulenceFolder.add(turbulence, "strength", 0, 1, 0.01).name("Strength");
 
     turbulenceFolder.add(turbulence, "scale", 1, 10, 0.1).name("Scale");
 
@@ -243,7 +243,7 @@ class UI {
     particleFolder.add(particles, "debug").name("Show Debug");
     //#endregion
 
-    // Organic Behavior Controls
+    //#region Organic Behavior
     if (particles.organicBehavior) {
       const organicFolder = this.gui.addFolder("Organic Behavior");
 
@@ -264,11 +264,14 @@ class UI {
 
       // Add parameter folders for each behavior
       this.addBehaviorParameters(organicFolder, particles.organicBehavior);
+      //#endregion
 
       // In the initGUI method where you setup organic behavior controls
-      const debugFolder = organicFolder.addFolder("Debug");
-      debugFolder.add(particles.organicBehavior, "debug").name("Show Debug");
-      debugFolder
+      const debugOrganicFolder = organicFolder.addFolder("Debug");
+      debugOrganicFolder
+        .add(particles.organicBehavior, "debug")
+        .name("Show Debug");
+      debugOrganicFolder
         .add(
           particles.organicBehavior.forceScales[Behaviors.FLUID],
           "base",

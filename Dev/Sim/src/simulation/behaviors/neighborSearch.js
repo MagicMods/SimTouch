@@ -28,19 +28,35 @@ class NeighborSearch {
     this.cellMap.clear();
     const particleData = new Map();
 
-    // Step 1: Map particles to grid cells using pixel space
+    // Map particles to grid cells
     particles.forEach((p, idx) => {
-      // Convert to pixel space (match GridRenderer)
+      // Convert to pixel space
       const px = p.x * this.TARGET_WIDTH;
-      const py = (1 - p.y) * this.TARGET_HEIGHT; // Note Y inversion
+      const py = p.y * this.TARGET_HEIGHT; // Remove Y inversion
 
-      // Calculate grid position
+      // Calculate grid cell
       const col = Math.floor(
         px / (this.gridParams.width + this.gridParams.gap)
       );
       const row = Math.floor(
         py / (this.gridParams.height + this.gridParams.gap)
       );
+
+      if (this.debug && row > this.gridParams.rows / 2) {
+        console.log(
+          "NeighborSearch mapping:",
+          JSON.stringify(
+            {
+              original: { x: p.x, y: p.y },
+              pixel: { x: px, y: py },
+              cell: { col, row },
+            },
+            null,
+            2
+          )
+        );
+      }
+
       const cellIndex = row * this.gridParams.cols + col;
 
       if (this.isValidCell(cellIndex)) {

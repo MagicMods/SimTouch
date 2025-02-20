@@ -11,78 +11,69 @@ export const Behaviors = {
 class OrganicBehavior {
   constructor() {
     this.enabled = false;
-    this.behaviors = Behaviors;
-    this.currentBehavior = this.behaviors.FLUID;
-    this.debug = false;
+    this.currentBehavior = "Fluid";
 
-    // Initialize subsystems
-    this.neighborSearch = new NeighborSearch();
-    this.forces = new OrganicForces();
-    this.automata = new AutomataRules();
-
-    // Behavior parameters
+    // Default parameters for each behavior
     this.params = {
-      [this.behaviors.FLUID]: {
+      Fluid: {
         radius: 20,
-        surfaceTension: 0.1,
-        viscosity: 0.05,
+        surfaceTension: 0.5,
+        viscosity: 0.2,
         damping: 0.98,
-        mode: this.behaviors.FLUID,
+        mode: "Fluid",
       },
-      [this.behaviors.SWARM]: {
+      Swarm: {
         radius: 30,
         cohesion: 0.4,
-        separation: 0.8,
         alignment: 0.3,
+        separation: 0.5,
         maxSpeed: 2.0,
-        mode: this.behaviors.SWARM,
+        mode: "Swarm",
       },
-      [this.behaviors.AUTOMATA]: {
+      Automata: {
         radius: 15,
-        birthThreshold: 0.3,
-        deathThreshold: 0.7,
-        stateChangeRate: 0.1,
-        mode: this.behaviors.AUTOMATA,
+        repulsion: 0.3,
+        attraction: 0.2,
+        threshold: 0.5,
+        mode: "Automata",
       },
     };
 
-    // Force scaling factors
+    // Force scales
     this.forceScales = {
-      [this.behaviors.FLUID]: {
+      Fluid: {
         base: 0.1,
         surfaceTension: 0.5,
         viscosity: 0.2,
       },
-      [this.behaviors.SWARM]: {
+      Swarm: {
         base: 0.05,
         cohesion: 0.3,
         separation: 0.4,
       },
-      [this.behaviors.AUTOMATA]: {
+      Automata: {
         base: 0.02,
       },
     };
 
+    // Initialize components
+    this.forces = new OrganicForces(this.forceScales);
+    this.neighborSearch = new NeighborSearch({ resolution: 240 });
+
     // Debug settings
     this.debug = false;
-    this.debugForces = true; // Show force calculations
-    this.debugNeighbors = true; // Show neighbor stats
-    this.debugParticles = true; // Show particle updates
 
-    if (this.debug) {
-      console.log(
-        "OrganicBehavior initialized:",
-        JSON.stringify(
-          {
-            currentBehavior: this.currentBehavior,
-            params: this.params,
-            forceScales: this.forceScales,
-          },
-          null,
-          2
-        )
-      );
-    }
+    console.log(
+      "OrganicBehavior initialized:",
+      JSON.stringify(
+        {
+          currentBehavior: this.currentBehavior,
+          params: this.params,
+        },
+        null,
+        2
+      )
+    );
   }
 
   updateParticles(particleSystem, dt) {
@@ -91,16 +82,27 @@ class OrganicBehavior {
     const currentParams = this.params[this.currentBehavior];
     if (!currentParams) return;
 
-    // Create particle objects for force calculation
+    // Create particle objects with proper coordinates
     const particleObjects = [];
     for (let i = 0; i < particleSystem.particles.length; i += 2) {
       particleObjects.push({
         x: particleSystem.particles[i],
-        y: particleSystem.particles[i + 1],
+        y: particleSystem.particles[i + 1], // Keep original Y
         vx: particleSystem.velocitiesX[i / 2],
         vy: particleSystem.velocitiesY[i / 2],
         index: i / 2,
       });
+
+      // Debug bottom half particles
+      if (particleObjects[particleObjects.length - 1].y > 0.5 && this.debug) {
+        // Only log every 60 frames (about 1 second at 60fps)
+        if (Math.floor(performance.now() / 1000) % 1 === 0) {
+          console.log(
+            "Bottom half particle:",
+            JSON.stringify(particleObjects[particleObjects.length - 1], null, 2)
+          );
+        }
+      }
     }
 
     // Calculate forces
@@ -128,17 +130,17 @@ class OrganicBehavior {
     });
   }
 
-  logUpdate(particleSystem, neighbors, forces) {
-    const stats = {
-      behavior: this.currentBehavior,
-      particles: particleSystem.getParticles().length,
-      activeNeighborhoods: neighbors.size,
-      maxForce: Math.max(
-        ...Array.from(forces.values()).map((f) => Math.hypot(f.x, f.y))
-      ),
-    };
-    console.log("Behavior Update:", stats);
-  }
+  // logUpdate(particleSystem, neighbors, forces) {
+  //   const stats = {
+  //     behavior: this.currentBehavior,
+  //     particles: particleSystem.getParticles().length,
+  //     activeNeighborhoods: neighbors.size,
+  //     maxForce: Math.max(
+  //       ...Array.from(forces.values()).map((f) => Math.hypot(f.x, f.y))
+  //     ),
+  //   };
+  //   console.log("Behavior Update:", stats);
+  // }
 }
 
 export { OrganicBehavior };
