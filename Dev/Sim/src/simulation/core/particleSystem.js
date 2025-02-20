@@ -63,12 +63,11 @@ class ParticleSystem {
       boundary: this.boundary,
     });
 
-    this.behavior = new OrganicBehavior();
     // Initialize mouse forces
     this.mouseForces = new MouseForces({});
 
-    // Organic behavior parameters
-    this.organicBehavior = new OrganicBehavior({});
+    // Initialize organic behavior
+    this.organicBehavior = new OrganicBehavior();
 
     this.initializeParticles();
   }
@@ -152,8 +151,15 @@ class ParticleSystem {
     // 2. FLIP/PIC update
     this.updateFLIP(dt);
 
-    // 3. Organic behaviors (before collision resolution)
+    // 3. Organic behaviors
     if (this.organicBehavior.enabled) {
+      if (this.debugEnabled) {
+        console.log("Applying organic behavior:", {
+          mode: this.organicBehavior.currentBehavior,
+          dt: dt,
+          particles: this.numParticles,
+        });
+      }
       this.organicBehavior.updateParticles(this, dt);
     }
 

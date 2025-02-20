@@ -30,6 +30,7 @@ class Main {
       this.canvas,
       this.particleSystem
     );
+    this.paused = false;
   }
 
   async init() {
@@ -47,7 +48,10 @@ class Main {
   animate() {
     this.particleSystem.step();
     this.ui.updateStats();
-    this.render();
+
+    if (!this.paused) {
+      this.render();
+    }
     // Request next frame
     requestAnimationFrame(() => this.animate());
   }

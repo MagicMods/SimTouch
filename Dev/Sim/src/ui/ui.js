@@ -2,6 +2,8 @@ import GUI from "lil-gui";
 import { PresetManager } from "../util/presetManager.js";
 import Stats from "../util/statsModule.js";
 import { GridField } from "../renderer/gridRenderModes.js";
+import { OrganicBehavior } from "../simulation/behaviors/organicBehavior.js";
+import { Behaviors } from "../simulation/behaviors/organicBehavior.js";
 class UI {
   constructor(main) {
     if (!main) throw new Error("Main instance required");
@@ -101,6 +103,12 @@ class UI {
       .name("PIC / FLIP")
       .onChange((value) => {
         console.log(`PIC/FLIP mixing ratio: ${value * 100}% FLIP`);
+      });
+    globalFolder
+      .add(this.main, "paused")
+      .name("Pause")
+      .onChange((value) => {
+        console.log(`Simulation is ${value ? "paused" : "running"}`);
       });
     //#endregion
 
@@ -356,46 +364,73 @@ class UI {
     debugFolder.open(false);
     //#endregion
 
-    //#region Organic Behavior
-    const organicFolder = this.gui.addFolder("Organic Behavior");
+    // // Organic Behavior folder
+    // const organicFolder = this.gui.addFolder("Organic Behavior");
+    // const behavior = particles.organicBehavior;
 
-    // Check if organicBehavior exists before adding controls
+    // organicFolder.add(behavior, "enabled").name("Enable");
+    // organicFolder
+    //   .add(behavior, "currentBehavior", [
+    //     behavior.behaviors.FLUID,
+    //     behavior.behaviors.SWARM,
+    //     behavior.behaviors.AUTOMATA,
+    //   ])
+    //   .name("Behavior Type");
+
+    // // Fluid parameters
+    // const fluidFolder = organicFolder.addFolder("Fluid Parameters");
+    // const fluidParams = behavior.params[behavior.behaviors.FLUID];
+    // fluidFolder.add(fluidParams, "radius", 5, 50).name("Radius");
+    // fluidFolder
+    //   .add(fluidParams, "surfaceTension", 0, 1)
+    //   .name("Surface Tension");
+    // fluidFolder.add(fluidParams, "viscosity", 0, 1).name("Viscosity");
+    // fluidFolder.add(fluidParams, "damping", 0, 1).name("Damping");
+
+    // // Swarm parameters
+    // const swarmFolder = organicFolder.addFolder("Swarm Parameters");
+    // const swarmParams = behavior.params[behavior.behaviors.SWARM];
+    // swarmFolder.add(swarmParams, "radius", 5, 50).name("Radius");
+    // swarmFolder.add(swarmParams, "cohesion", 0, 1).name("Cohesion");
+    // swarmFolder.add(swarmParams, "separation", 0, 1).name("Separation");
+    // swarmFolder.add(swarmParams, "alignment", 0, 1).name("Alignment");
+    // swarmFolder.add(swarmParams, "maxSpeed", 0, 5).name("Max Speed");
+
+    // // Automata parameters
+    // const automataFolder = organicFolder.addFolder("Automata Parameters");
+    // const automataParams = behavior.params[behavior.behaviors.AUTOMATA];
+    // automataFolder.add(automataParams, "radius", 5, 50).name("Radius");
+    // automataFolder
+    //   .add(automataParams, "birthThreshold", 0, 1)
+    //   .name("Birth Threshold");
+    // automataFolder
+    //   .add(automataParams, "deathThreshold", 0, 1)
+    //   .name("Death Threshold");
+    // automataFolder
+    //   .add(automataParams, "stateChangeRate", 0, 1)
+    //   .name("State Change Rate");
+
+    // Organic Behavior Controls
     if (particles.organicBehavior) {
+      const organicFolder = this.gui.addFolder("Organic Behavior");
+
+      // Create behavior control object (like fieldControl)
+      const behaviorControl = {
+        behavior: particles.organicBehavior.currentBehavior,
+      };
+
+      // Add behavior controls
+      organicFolder.add(particles.organicBehavior, "enabled").name("Enable");
+
       organicFolder
-        .add(particles.organicBehavior, "enabled")
-        .name("Enable")
+        .add(behaviorControl, "behavior", Object.values(Behaviors))
+        .name("Behavior Type")
         .onChange((value) => {
-          console.log(`Organic behavior ${value ? "enabled" : "disabled"}`);
+          particles.organicBehavior.currentBehavior = value;
         });
 
-      const fluidFolder = organicFolder.addFolder("Fluid Properties");
-      const fluidParams = particles.organicBehavior.params.fluid;
-      fluidFolder
-        .add(fluidParams, "surfaceTension", 0, 1, 0.05)
-        .name("Surface Tension");
-      fluidFolder.add(fluidParams, "viscosity", 0, 2, 0.1).name("Viscosity");
-      fluidFolder.add(fluidParams, "damping", 0.5, 1, 0.01).name("Damping");
-
-      const swarmFolder = organicFolder.addFolder("Swarm Behavior");
-      const swarmParams = particles.organicBehavior.params.swarm;
-      swarmFolder.add(swarmParams, "cohesion", 0, 1, 0.05).name("Cohesion");
-      swarmFolder.add(swarmParams, "separation", 0, 1, 0.05).name("Separation");
-      swarmFolder.add(swarmParams, "alignment", 0, 1, 0.05).name("Alignment");
-      swarmFolder.add(swarmParams, "maxSpeed", 0.5, 5, 0.1).name("Max Speed");
-
-      const automataFolder = organicFolder.addFolder("Cellular Rules");
-      const automataParams = particles.organicBehavior.params.automata;
-      automataFolder.add(automataParams, "birthMin", 1, 8, 1).name("Birth Min");
-      automataFolder.add(automataParams, "birthMax", 1, 8, 1).name("Birth Max");
-      automataFolder
-        .add(automataParams, "survivalMin", 1, 8, 1)
-        .name("Survival Min");
-      automataFolder
-        .add(automataParams, "survivalMax", 1, 8, 1)
-        .name("Survival Max");
-      automataFolder
-        .add(automataParams, "influence", 0, 1, 0.05)
-        .name("Rule Influence");
+      // Add parameter folders for each behavior
+      this.addBehaviorParameters(organicFolder, particles.organicBehavior);
     }
   }
 
@@ -409,6 +444,41 @@ class UI {
     if (this.gui) {
       this.gui.destroy();
     }
+  }
+
+  addBehaviorParameters(folder, behavior) {
+    // Add parameter folders using same pattern as GridRenderModes
+    Object.entries(behavior.params).forEach(([type, params]) => {
+      const subFolder = folder.addFolder(`${type} Parameters`);
+      Object.entries(params).forEach(([key, value]) => {
+        if (key !== "mode") {
+          // Skip mode parameter
+          const min = key.includes("radius") ? 5 : 0;
+          const max = key.includes("radius")
+            ? 50
+            : key.includes("maxSpeed")
+            ? 5
+            : 1;
+          subFolder
+            .add(params, key, min, max)
+            .name(this.formatParameterName(key));
+        }
+      });
+    });
+  }
+
+  formatParameterName(key) {
+    return (
+      key
+        .split(/(?=[A-Z])/)
+        .join(" ")
+        .charAt(0)
+        .toUpperCase() +
+      key
+        .split(/(?=[A-Z])/)
+        .join(" ")
+        .slice(1)
+    );
   }
 }
 

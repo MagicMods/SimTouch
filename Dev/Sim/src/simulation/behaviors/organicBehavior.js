@@ -2,111 +2,146 @@ import { NeighborSearch } from "./neighborSearch.js";
 import { OrganicForces } from "../forces/organicForces.js";
 import { AutomataRules } from "./automataRules.js";
 
+export const Behaviors = {
+  FLUID: "Fluid",
+  SWARM: "Swarm",
+  AUTOMATA: "Automata",
+};
+
 class OrganicBehavior {
-  constructor({ particleRadius = 0.01, gridSize = 32, enabled = false } = {}) {
+  constructor() {
     this.enabled = false;
-
-    // Core settings
-    this.particleRadius = particleRadius;
-    this.searchRadius = particleRadius * 4;
-    this.gridSize = gridSize;
-
-    // State tracking
-    this.lastUpdateTime = 0;
-    this.automataUpdateInterval = 0.1; // 100ms between rule updates
+    this.behaviors = Behaviors;
+    this.currentBehavior = this.behaviors.FLUID;
+    this.debug = false;
 
     // Initialize subsystems
-    this.neighborSearch = new NeighborSearch(this.searchRadius, this.gridSize);
+    this.neighborSearch = new NeighborSearch();
     this.forces = new OrganicForces();
+    this.automata = new AutomataRules();
 
     // Behavior parameters
     this.params = {
-      fluid: {
-        surfaceTension: 0.4,
-        viscosity: 0.8,
+      [this.behaviors.FLUID]: {
+        radius: 20,
+        surfaceTension: 0.1,
+        viscosity: 0.05,
         damping: 0.98,
+        mode: this.behaviors.FLUID,
       },
-      swarm: {
-        cohesion: 0.5,
-        separation: 0.3,
-        alignment: 0.2,
+      [this.behaviors.SWARM]: {
+        radius: 30,
+        cohesion: 0.4,
+        separation: 0.8,
+        alignment: 0.3,
         maxSpeed: 2.0,
+        mode: this.behaviors.SWARM,
       },
-      automata: {
-        birthMin: 4,
-        birthMax: 6,
-        survivalMin: 3,
-        survivalMax: 7,
-        influence: 0.3,
+      [this.behaviors.AUTOMATA]: {
+        radius: 15,
+        birthThreshold: 0.3,
+        deathThreshold: 0.7,
+        stateChangeRate: 0.1,
+        mode: this.behaviors.AUTOMATA,
       },
     };
 
-    this.automata = new AutomataRules(this.params.automata);
+    if (this.debug) {
+      console.log("OrganicBehavior initialized:", {
+        currentBehavior: this.currentBehavior,
+        params: this.params,
+      });
+    }
   }
 
   updateParticles(particleSystem, dt) {
     if (!this.enabled) return;
 
-    // Update spatial grid
-    this.neighborSearch.updateGrid(particleSystem);
+    // Get current behavior parameters
+    const currentParams = this.params[this.currentBehavior];
+    if (!currentParams) {
+      console.warn("No parameters for behavior:", this.currentBehavior);
+      return;
+    }
 
-    // Apply continuous forces
-    this.applyFluidForces(particleSystem, dt);
-    this.applySwarmForces(particleSystem, dt);
+    // Create particle objects for neighbor search
+    const particleObjects = [];
+    for (let i = 0; i < particleSystem.particles.length; i += 2) {
+      particleObjects.push({
+        x: particleSystem.particles[i],
+        y: particleSystem.particles[i + 1],
+        vx: particleSystem.velocitiesX[i / 2],
+        vy: particleSystem.velocitiesY[i / 2],
+        index: i / 2,
+      });
+    }
 
-    // Apply cellular automata rules periodically
-    this.lastUpdateTime += dt;
-    if (this.lastUpdateTime >= this.automataUpdateInterval) {
-      this.applyAutomataRules(particleSystem);
-      this.lastUpdateTime = 0;
+    // Debug initial state
+    if (this.debug) {
+      console.log("Initial particle state:", {
+        first: particleObjects[0],
+        total: particleObjects.length,
+      });
+    }
+
+    // Find neighbors
+    const neighbors = this.neighborSearch.findNeighbors(
+      particleObjects,
+      currentParams.radius
+    );
+
+    // Debug neighbors
+    if (this.debug) {
+      console.log("Neighbor count:", neighbors.size);
+    }
+
+    // Calculate forces
+    const forces = this.forces.calculateForces(
+      particleObjects,
+      neighbors,
+      currentParams
+    );
+
+    // Debug forces
+    if (this.debug) {
+      console.log("Force calculation:", {
+        totalForces: forces.size,
+        firstForce: Array.from(forces.values())[0],
+      });
+    }
+
+    // Apply forces
+    let maxForce = 0;
+    forces.forEach((force, idx) => {
+      particleSystem.velocitiesX[idx] += force.x * dt;
+      particleSystem.velocitiesY[idx] += force.y * dt;
+
+      maxForce = Math.max(maxForce, Math.hypot(force.x, force.y));
+    });
+
+    // Debug final state
+    if (this.debug) {
+      console.log("Force application:", {
+        maxForce,
+        firstVelocity: {
+          x: particleSystem.velocitiesX[0],
+          y: particleSystem.velocitiesY[0],
+        },
+      });
     }
   }
 
-  applyFluidForces(particleSystem, dt) {
-    const { particles, velocitiesX, velocitiesY } = particleSystem;
-
-    for (let i = 0; i < particles.length; i += 2) {
-      const neighbors = this.neighborSearch.findNeighbors(
-        particleSystem,
-        i / 2
-      );
-
-      // Apply fluid dynamics
-      this.forces.applySurfaceTension(
-        [particles[i], particles[i + 1]],
-        neighbors,
-        this.params.fluid.surfaceTension
-      );
-
-      this.forces.applyViscosity(
-        [velocitiesX[i / 2], velocitiesY[i / 2]],
-        neighbors,
-        this.params.fluid.viscosity
-      );
-    }
-  }
-
-  applySwarmForces(particleSystem, dt) {
-    // Implementation for cohesion/separation/alignment
-  }
-
-  applyAutomataRules(particleSystem) {
-    this.automata.updateStates(particleSystem, this.neighborSearch);
-
-    // Apply state influence to particle behavior
-    const particles = particleSystem.particles;
-    for (let i = 0; i < particles.length; i += 2) {
-      const state = this.automata.particleStates.get(i / 2) || 1.0;
-
-      // Modify particle properties based on state
-      particleSystem.velocitiesX[i / 2] *= state;
-      particleSystem.velocitiesY[i / 2] *= state;
-
-      // Optional: Modify particle appearance
-      if (particleSystem.particleColors) {
-        particleSystem.particleColors[i / 2] = state;
-      }
-    }
+  logUpdate(particleSystem, neighbors, forces) {
+    const stats = {
+      behavior: this.currentBehavior,
+      particles: particleSystem.getParticles().length,
+      activeNeighborhoods: neighbors.size,
+      maxForce: Math.max(
+        ...Array.from(forces.values()).map((f) => Math.hypot(f.x, f.y))
+      ),
+    };
+    console.log("Behavior Update:", stats);
   }
 }
+
 export { OrganicBehavior };
