@@ -25,7 +25,7 @@ class GridRenderModes {
 
     // Modes configuration
     this.modes = GridField;
-    this.currentMode = this.modes.DENSITY; // Start with Density mode
+    this.currentMode = this.modes.PROXIMITY; // Start with Density mode
 
     console.log(
       "GridRenderModes initialized with new params:",
@@ -41,6 +41,17 @@ class GridRenderModes {
         2
       )
     );
+  }
+
+  updateGrid({ gridParams, gridGeometry, gridMap }) {
+    this.gridParams = gridParams;
+    this.gridGeometry = gridGeometry;
+    this.gridMap = gridMap;
+
+    // Resize value buffer if needed
+    if (this.values.length !== gridParams.target) {
+      this.values = new Float32Array(gridParams.target);
+    }
   }
 
   calculateProximity(particleSystem) {

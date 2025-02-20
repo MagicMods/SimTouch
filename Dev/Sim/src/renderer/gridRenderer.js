@@ -296,13 +296,19 @@ class GridRenderer extends BaseRenderer {
     return bestRects.slice(0, this.gridParams.target);
   }
 
-  drawGridTest() {
-    const rectangles = this.generateRectangles();
-    rectangles.forEach((rect) => {
-      // console.log(
-      //   `Rectangle at x: ${rect.x}, y: ${rect.y}, width: ${rect.width}, height: ${rect.height}`
-      // );
-      this.drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color);
+  updateGrid(newParams) {
+    // Update grid parameters
+    Object.assign(this.gridParams, newParams);
+
+    // Regenerate grid
+    this.gridGeometry = this.generateRectangles();
+    this.gridMap = this.createGridMap(this.gridGeometry);
+
+    // Update renderModes with new grid
+    this.renderModes.updateGrid({
+      gridParams: this.gridParams,
+      gridGeometry: this.gridGeometry,
+      gridMap: this.gridMap,
     });
   }
 }

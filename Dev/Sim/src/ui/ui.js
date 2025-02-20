@@ -254,21 +254,21 @@ class UI {
     if (gridRenderer.gridParams) {
       // // Grid Parameters
       gridParamFolder
-        .add(gridRenderer.gridParams, "target", 1, 500, 1)
-        .name("Target Cells");
-      // .onChange(() => gridRenderer.generateGrid());
+        .add(gridRenderer.gridParams, "target", 1, 800, 1)
+        .name("Target Cells")
+        .onChange(() => gridRenderer.updateGrid());
       gridParamFolder
         .add(gridRenderer.gridParams, "gap", 0, 20, 1)
-        .name("Gap (px)");
-      // .onChange(() => gridRenderer.generateGrid());
+        .name("Gap (px)")
+        .onChange(() => gridRenderer.updateGrid());
       gridParamFolder
         .add(gridRenderer.gridParams, "aspectRatio", 0.5, 4, 0.01)
-        .name("Cell Ratio");
-      // .onChange(() => gridRenderer.generateGrid());
+        .name("Cell Ratio")
+        .onChange(() => gridRenderer.updateGrid());
       gridParamFolder
         .add(gridRenderer.gridParams, "scale", 0.1, 1, 0.01)
-        .name("Grid Scale");
-      // .onChange(() => gridRenderer.generateGrid());
+        .name("Grid Scale")
+        .onChange(() => gridRenderer.updateGrid());
     }
 
     // Grid Stats - only add if values exist
