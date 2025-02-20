@@ -269,14 +269,29 @@ class UI {
       fluidParmaFolder
         .add(
           particles.organicBehavior.params[Behaviors.FLUID],
-          "surfaceTension"
+          "surfaceTension",
+          0,
+          1,
+          0.01
         )
         .name("Surface Tension");
       fluidParmaFolder
-        .add(particles.organicBehavior.params[Behaviors.FLUID], "viscosity")
+        .add(
+          particles.organicBehavior.params[Behaviors.FLUID],
+          "viscosity",
+          0,
+          1,
+          0.01
+        )
         .name("Viscosity");
       fluidParmaFolder
-        .add(particles.organicBehavior.params[Behaviors.FLUID], "damping")
+        .add(
+          particles.organicBehavior.params[Behaviors.FLUID],
+          "damping",
+          0,
+          1,
+          0.01
+        )
         .name("Damping");
       const swarmParmaFolder = organicFolder.addFolder("Swarm Parameters");
       swarmParmaFolder
@@ -526,21 +541,32 @@ class UI {
   }
 
   addBehaviorParameters(folder, behavior) {
-    // Add parameter folders using same pattern as GridRenderModes
     Object.entries(behavior.params).forEach(([type, params]) => {
       const subFolder = folder.addFolder(`${type} Parameters`);
+
       Object.entries(params).forEach(([key, value]) => {
         if (key !== "mode") {
-          // Skip mode parameter
-          const min = key.includes("radius") ? 5 : 0;
-          const max = key.includes("radius")
-            ? 50
-            : key.includes("maxSpeed")
-            ? 5
-            : 1;
-          subFolder
-            .add(params, key, min, max)
-            .name(this.formatParameterName(key));
+          switch (key) {
+            case "radius":
+              subFolder
+                .add(params, key, 5, 50)
+                .name(this.formatParameterName(key));
+              break;
+            case "maxSpeed":
+              subFolder
+                .add(params, key, 0, 5)
+                .name(this.formatParameterName(key));
+              break;
+            case "damping":
+              subFolder
+                .add(params, key, 0.5, 1)
+                .name(this.formatParameterName(key));
+              break;
+            default:
+              subFolder
+                .add(params, key, 0, 1)
+                .name(this.formatParameterName(key));
+          }
         }
       });
     });
