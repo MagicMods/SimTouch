@@ -46,25 +46,52 @@ class OrganicBehavior {
       },
     };
 
+    // Force scaling factors
+    this.forceScales = {
+      [this.behaviors.FLUID]: {
+        base: 0.1,
+        surfaceTension: 0.5,
+        viscosity: 0.2,
+      },
+      [this.behaviors.SWARM]: {
+        base: 0.05,
+        cohesion: 0.3,
+        separation: 0.4,
+      },
+      [this.behaviors.AUTOMATA]: {
+        base: 0.02,
+      },
+    };
+
+    // Debug settings
+    this.debug = false;
+    this.debugForces = true; // Show force calculations
+    this.debugNeighbors = true; // Show neighbor stats
+    this.debugParticles = true; // Show particle updates
+
     if (this.debug) {
-      console.log("OrganicBehavior initialized:", {
-        currentBehavior: this.currentBehavior,
-        params: this.params,
-      });
+      console.log(
+        "OrganicBehavior initialized:",
+        JSON.stringify(
+          {
+            currentBehavior: this.currentBehavior,
+            params: this.params,
+            forceScales: this.forceScales,
+          },
+          null,
+          2
+        )
+      );
     }
   }
 
   updateParticles(particleSystem, dt) {
     if (!this.enabled) return;
 
-    // Get current behavior parameters
     const currentParams = this.params[this.currentBehavior];
-    if (!currentParams) {
-      console.warn("No parameters for behavior:", this.currentBehavior);
-      return;
-    }
+    if (!currentParams) return;
 
-    // Create particle objects for neighbor search
+    // Create particle objects for force calculation
     const particleObjects = [];
     for (let i = 0; i < particleSystem.particles.length; i += 2) {
       particleObjects.push({
@@ -76,59 +103,29 @@ class OrganicBehavior {
       });
     }
 
-    // Debug initial state
-    if (this.debug) {
-      console.log("Initial particle state:", {
-        first: particleObjects[0],
-        total: particleObjects.length,
-      });
-    }
-
-    // Find neighbors
+    // Calculate forces
     const neighbors = this.neighborSearch.findNeighbors(
       particleObjects,
       currentParams.radius
     );
-
-    // Debug neighbors
-    if (this.debug) {
-      console.log("Neighbor count:", neighbors.size);
-    }
-
-    // Calculate forces
     const forces = this.forces.calculateForces(
       particleObjects,
       neighbors,
       currentParams
     );
 
-    // Debug forces
-    if (this.debug) {
-      console.log("Force calculation:", {
-        totalForces: forces.size,
-        firstForce: Array.from(forces.values())[0],
-      });
-    }
-
-    // Apply forces
-    let maxForce = 0;
+    // Apply forces to velocities
     forces.forEach((force, idx) => {
-      particleSystem.velocitiesX[idx] += force.x * dt;
-      particleSystem.velocitiesY[idx] += force.y * dt;
+      if (Math.abs(force.x) > 0 || Math.abs(force.y) > 0) {
+        // Scale force by timestep
+        const fx = force.x * dt;
+        const fy = force.y * dt;
 
-      maxForce = Math.max(maxForce, Math.hypot(force.x, force.y));
+        // Apply to velocities
+        particleSystem.velocitiesX[idx] += fx;
+        particleSystem.velocitiesY[idx] += fy;
+      }
     });
-
-    // Debug final state
-    if (this.debug) {
-      console.log("Force application:", {
-        maxForce,
-        firstVelocity: {
-          x: particleSystem.velocitiesX[0],
-          y: particleSystem.velocitiesY[0],
-        },
-      });
-    }
   }
 
   logUpdate(particleSystem, neighbors, forces) {

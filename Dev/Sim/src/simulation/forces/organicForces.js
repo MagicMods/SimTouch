@@ -1,55 +1,39 @@
 class OrganicForces {
   constructor() {
-    // Match GridRenderer's configuration
     this.TARGET_WIDTH = 240;
     this.TARGET_HEIGHT = 240;
     this.debug = false;
 
-    // Add force scaling factors
-    this.forceScales = {
-      Fluid: 0.001,
-      Swarm: 0.0005,
-      Automata: 0.0002,
+    // Force multipliers
+    this.forceMultiplier = {
+      surfaceTension: 0.5,
+      viscosity: 0.2,
+      damping: 0.98,
+      base: 0.1,
     };
   }
 
   calculateForces(particles, neighbors, params) {
-    if (!particles?.length) return new Map();
-
     const forces = new Map();
+
     particles.forEach((particle, idx) => {
       const force = { x: 0, y: 0 };
       const neighborList = neighbors.get(idx) || [];
 
-      // Convert to pixel space
-      const pxPos = this.toPixelSpace(particle);
-
       switch (params.mode) {
         case "Fluid":
-          this.calculateFluidForces(pxPos, neighborList, force, params);
+          this.calculateFluidForces(particle, neighborList, force, params);
           break;
         case "Swarm":
-          this.calculateSwarmForces(pxPos, neighborList, force, params);
+          this.calculateSwarmForces(particle, neighborList, force, params);
           break;
         case "Automata":
-          this.calculateAutomataForces(pxPos, neighborList, force, params);
+          this.calculateAutomataForces(particle, neighborList, force, params);
           break;
       }
 
-      // Convert back and store
-      forces.set(idx, this.toNormalizedSpace(force));
+      forces.set(idx, force);
     });
-
-    // Apply force scaling before returning
-    const scale = this.forceScales[params.mode] || 1.0;
-    forces.forEach((force, idx) => {
-      force.x *= scale;
-      force.y *= scale;
-    });
-
-    if (this.debug) {
-      this.logForces(forces);
-    }
 
     return forces;
   }
@@ -72,31 +56,64 @@ class OrganicForces {
   }
 
   calculateFluidForces(particle, neighbors, force, params) {
+    const stats = {
+      particle: {
+        x: particle.x,
+        y: particle.y,
+        vx: particle.vx,
+        vy: particle.vy,
+      },
+      neighbors: neighbors.length,
+      params: params,
+      forces: { surface: 0, viscosity: 0 },
+    };
+
     neighbors.forEach((n) => {
-      const other = this.toPixelSpace(n.particle);
+      const other = n.particle;
       const dx = other.x - particle.x;
       const dy = other.y - particle.y;
       const dist = Math.hypot(dx, dy);
 
       if (dist > 0 && dist < params.radius) {
         // Surface tension
-        const normalized = { x: dx / dist, y: dy / dist };
+        const normalized = {
+          x: dx / dist,
+          y: dy / dist,
+        };
         const strength = (1 - dist / params.radius) * params.surfaceTension;
-        force.x += normalized.x * strength;
-        force.y += normalized.y * strength;
+
+        force.x +=
+          normalized.x * strength * this.forceMultiplier.surfaceTension;
+        force.y +=
+          normalized.y * strength * this.forceMultiplier.surfaceTension;
+        stats.forces.surface += strength;
 
         // Viscosity
         const relVelX = other.vx - particle.vx;
         const relVelY = other.vy - particle.vy;
-        force.x += relVelX * params.viscosity;
-        force.y += relVelY * params.viscosity;
+
+        force.x += relVelX * params.viscosity * this.forceMultiplier.viscosity;
+        force.y += relVelY * params.viscosity * this.forceMultiplier.viscosity;
+        stats.forces.viscosity +=
+          Math.hypot(relVelX, relVelY) * params.viscosity;
       }
     });
 
-    force.x *= params.damping;
-    force.y *= params.damping;
+    // Scale and damp
+    force.x *= this.forceMultiplier.base;
+    force.y *= this.forceMultiplier.base;
+    force.x *= this.forceMultiplier.damping;
+    force.y *= this.forceMultiplier.damping;
 
-    if (this.debug) this.logForceCalculation("Fluid", force, neighbors.length);
+    stats.finalForce = {
+      x: force.x,
+      y: force.y,
+      magnitude: Math.hypot(force.x, force.y),
+    };
+
+    if (this.debug && stats.forces.surface > 0) {
+      console.log("FluidForces calculation:", JSON.stringify(stats, null, 2));
+    }
   }
 
   calculateSwarmForces(particle, neighbors, force, params) {

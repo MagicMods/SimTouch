@@ -29,7 +29,7 @@ class ParticleSystem {
     this.timeScale = 1.0;
 
     // Debug flags
-    this.debugEnabled = true;
+    this.debug = true;
     this.debugShowVelocityField = false;
     this.debugShowPressureField = false;
     this.debugShowBoundaries = false;
@@ -145,22 +145,44 @@ class ParticleSystem {
   step() {
     const dt = this.timeStep * this.timeScale;
 
-    // 1. External forces
+    if (this.debugEnabled) {
+      console.log(
+        "ParticleSystem step:",
+        JSON.stringify(
+          {
+            frame: {
+              dt: dt,
+              particles: this.numParticles,
+            },
+            behaviors: {
+              turbulence: this.turbulence?.enabled,
+              organic: this.organicBehavior?.enabled,
+              mode: this.organicBehavior?.currentBehavior,
+            },
+            sample: {
+              pos: [this.particles[0], this.particles[1]],
+              vel: [this.velocitiesX[0], this.velocitiesY[0]],
+            },
+          },
+          null,
+          2
+        )
+      );
+    }
+
+    // 1. Apply external forces (including turbulence)
     this.applyExternalForces(dt);
 
-    // 2. FLIP/PIC update
-    this.updateFLIP(dt);
-
-    // 3. Organic behaviors
+    // 2. Apply organic behavior forces
     if (this.organicBehavior.enabled) {
-      if (this.debugEnabled) {
-        console.log("Applying organic behavior:", {
-          mode: this.organicBehavior.currentBehavior,
-          dt: dt,
-          particles: this.numParticles,
-        });
-      }
       this.organicBehavior.updateParticles(this, dt);
+    }
+
+    // 3. Update positions based on combined velocities
+    for (let i = 0; i < this.particles.length; i += 2) {
+      const idx = i / 2;
+      this.particles[i] += this.velocitiesX[idx] * dt;
+      this.particles[i + 1] += this.velocitiesY[idx] * dt;
     }
 
     // 4. Position and boundary update
@@ -168,6 +190,12 @@ class ParticleSystem {
   }
 
   applyExternalForces(dt) {
+    const stats = {
+      before: {
+        vel: [this.velocitiesX[0], this.velocitiesY[0]],
+      },
+    };
+
     // Apply gravity with FLIP scaling
     const scaledGravity = this.gravity * (this.picFlipRatio > 0 ? 0.5 : 1.0);
     for (let i = 0; i < this.numParticles; i++) {
@@ -182,6 +210,17 @@ class ParticleSystem {
         [this.velocitiesX[i], this.velocitiesY[i]] =
           this.turbulence.applyTurbulence(pos, vel, dt);
       }
+    }
+
+    if (this.debug) {
+      stats.after = {
+        vel: [this.velocitiesX[0], this.velocitiesY[0]],
+        delta: [
+          this.velocitiesX[0] - stats.before.vel[0],
+          this.velocitiesY[0] - stats.before.vel[1],
+        ],
+      };
+      console.log("External forces applied:", JSON.stringify(stats, null, 2));
     }
   }
 

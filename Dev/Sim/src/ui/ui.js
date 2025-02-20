@@ -110,6 +110,19 @@ class UI {
       .onChange((value) => {
         console.log(`Simulation is ${value ? "paused" : "running"}`);
       });
+    // Field selection
+    if (this.main.gridRenderer.renderModes) {
+      const fieldControl = {
+        field: this.main.gridRenderer.renderModes.currentMode,
+      };
+
+      globalFolder
+        .add(fieldControl, "field", Object.values(GridField))
+        .name("Field Type")
+        .onChange((value) => {
+          this.main.gridRenderer.renderModes.currentMode = value;
+        });
+    }
     //#endregion
 
     //#region Particles
@@ -226,31 +239,47 @@ class UI {
       .name("Pressure Iterations");
 
     flipFolder.open();
+
+    particleFolder.add(particles, "debug").name("Show Debug");
     //#endregion
 
-    //#region Boundary
-    const boundaryFolder = particlesFolder.addFolder("Boundary");
-    boundaryFolder.open(false);
-    boundaryFolder
-      .add(particles.boundary, "radius", 0.3, 0.55, 0.005)
-      .name("Size")
-      .onChange((value) => {
-        particles.boundary.update({ radius: value }, [
-          (boundary) => this.main.baseRenderer.drawCircularBoundary(boundary),
-        ]);
-      });
+    // Organic Behavior Controls
+    if (particles.organicBehavior) {
+      const organicFolder = this.gui.addFolder("Organic Behavior");
 
-    // Wall friction: 0 = no friction, 1 = maximum friction
-    boundaryFolder
-      .add(particles, "boundaryDamping", 0.0, 1.0, 0.01)
-      .name("Wall Friction")
-      .onChange((value) => (particles.boundaryDamping = value)); // Invert for damping
+      // Create behavior control object (like fieldControl)
+      const behaviorControl = {
+        behavior: particles.organicBehavior.currentBehavior,
+      };
 
-    boundaryFolder
-      .add(particles.boundary, "cBoundaryRestitution", 0.0, 1.0, 0.05)
-      .name("Bounce");
+      // Add behavior controls
+      organicFolder.add(particles.organicBehavior, "enabled").name("Enable");
 
-    //#endregion
+      organicFolder
+        .add(behaviorControl, "behavior", Object.values(Behaviors))
+        .name("Behavior Type")
+        .onChange((value) => {
+          particles.organicBehavior.currentBehavior = value;
+        });
+
+      // Add parameter folders for each behavior
+      this.addBehaviorParameters(organicFolder, particles.organicBehavior);
+
+      // In the initGUI method where you setup organic behavior controls
+      const debugFolder = organicFolder.addFolder("Debug");
+      debugFolder.add(particles.organicBehavior, "debug").name("Show Debug");
+      debugFolder
+        .add(
+          particles.organicBehavior.forceScales[Behaviors.FLUID],
+          "base",
+          0,
+          1
+        )
+        .name("Force Scale")
+        .onChange(() => {
+          console.log("Force scale updated");
+        });
+    }
 
     //#region Grid
     const gridFolder = this.gui.addFolder("Grid");
@@ -312,20 +341,30 @@ class UI {
         .name("Color")
         .onChange(() => this.main.gridRenderer.updateGradient());
     });
+    //#endregion
 
-    // Field selection
-    if (this.main.gridRenderer.renderModes) {
-      const fieldControl = {
-        field: this.main.gridRenderer.renderModes.currentMode,
-      };
+    //#region Boundary
+    const boundaryFolder = particlesFolder.addFolder("Boundary");
+    boundaryFolder.open(false);
+    boundaryFolder
+      .add(particles.boundary, "radius", 0.3, 0.55, 0.005)
+      .name("Size")
+      .onChange((value) => {
+        particles.boundary.update({ radius: value }, [
+          (boundary) => this.main.baseRenderer.drawCircularBoundary(boundary),
+        ]);
+      });
 
-      gridFolder
-        .add(fieldControl, "field", Object.values(GridField))
-        .name("Field Type")
-        .onChange((value) => {
-          this.main.gridRenderer.renderModes.currentMode = value;
-        });
-    }
+    // Wall friction: 0 = no friction, 1 = maximum friction
+    boundaryFolder
+      .add(particles, "boundaryDamping", 0.0, 1.0, 0.01)
+      .name("Wall Friction")
+      .onChange((value) => (particles.boundaryDamping = value)); // Invert for damping
+
+    boundaryFolder
+      .add(particles.boundary, "cBoundaryRestitution", 0.0, 1.0, 0.05)
+      .name("Bounce");
+
     //#endregion
 
     //#region Mouse Input
@@ -346,7 +385,7 @@ class UI {
 
     //#region Debug
     const debugFolder = this.gui.addFolder("Debug");
-    debugFolder.add(particles, "debugEnabled").name("Show Debug Overlay");
+    debugFolder.add(particles, "debug").name("Show Debug Overlay");
     debugFolder
       .add(particles, "debugShowVelocityField")
       .name("Show Velocity Field");
@@ -363,75 +402,6 @@ class UI {
       .name("Noise Field Resolution");
     debugFolder.open(false);
     //#endregion
-
-    // // Organic Behavior folder
-    // const organicFolder = this.gui.addFolder("Organic Behavior");
-    // const behavior = particles.organicBehavior;
-
-    // organicFolder.add(behavior, "enabled").name("Enable");
-    // organicFolder
-    //   .add(behavior, "currentBehavior", [
-    //     behavior.behaviors.FLUID,
-    //     behavior.behaviors.SWARM,
-    //     behavior.behaviors.AUTOMATA,
-    //   ])
-    //   .name("Behavior Type");
-
-    // // Fluid parameters
-    // const fluidFolder = organicFolder.addFolder("Fluid Parameters");
-    // const fluidParams = behavior.params[behavior.behaviors.FLUID];
-    // fluidFolder.add(fluidParams, "radius", 5, 50).name("Radius");
-    // fluidFolder
-    //   .add(fluidParams, "surfaceTension", 0, 1)
-    //   .name("Surface Tension");
-    // fluidFolder.add(fluidParams, "viscosity", 0, 1).name("Viscosity");
-    // fluidFolder.add(fluidParams, "damping", 0, 1).name("Damping");
-
-    // // Swarm parameters
-    // const swarmFolder = organicFolder.addFolder("Swarm Parameters");
-    // const swarmParams = behavior.params[behavior.behaviors.SWARM];
-    // swarmFolder.add(swarmParams, "radius", 5, 50).name("Radius");
-    // swarmFolder.add(swarmParams, "cohesion", 0, 1).name("Cohesion");
-    // swarmFolder.add(swarmParams, "separation", 0, 1).name("Separation");
-    // swarmFolder.add(swarmParams, "alignment", 0, 1).name("Alignment");
-    // swarmFolder.add(swarmParams, "maxSpeed", 0, 5).name("Max Speed");
-
-    // // Automata parameters
-    // const automataFolder = organicFolder.addFolder("Automata Parameters");
-    // const automataParams = behavior.params[behavior.behaviors.AUTOMATA];
-    // automataFolder.add(automataParams, "radius", 5, 50).name("Radius");
-    // automataFolder
-    //   .add(automataParams, "birthThreshold", 0, 1)
-    //   .name("Birth Threshold");
-    // automataFolder
-    //   .add(automataParams, "deathThreshold", 0, 1)
-    //   .name("Death Threshold");
-    // automataFolder
-    //   .add(automataParams, "stateChangeRate", 0, 1)
-    //   .name("State Change Rate");
-
-    // Organic Behavior Controls
-    if (particles.organicBehavior) {
-      const organicFolder = this.gui.addFolder("Organic Behavior");
-
-      // Create behavior control object (like fieldControl)
-      const behaviorControl = {
-        behavior: particles.organicBehavior.currentBehavior,
-      };
-
-      // Add behavior controls
-      organicFolder.add(particles.organicBehavior, "enabled").name("Enable");
-
-      organicFolder
-        .add(behaviorControl, "behavior", Object.values(Behaviors))
-        .name("Behavior Type")
-        .onChange((value) => {
-          particles.organicBehavior.currentBehavior = value;
-        });
-
-      // Add parameter folders for each behavior
-      this.addBehaviorParameters(organicFolder, particles.organicBehavior);
-    }
   }
 
   updatePresetDropdown() {
