@@ -163,7 +163,7 @@ class UI {
     //#region Physics
     const physicsFolder = particlesFolder.addFolder("Physics");
     physicsFolder.open();
-    physicsFolder.add(particles, "gravity", 0, 9.89, 0.1).name("Gravity");
+    physicsFolder.add(particles, "gravity", 0, 1, 0.01).name("Gravity");
 
     physicsFolder
       .add(particles, "velocityDamping", 0.8, 1.0, 0.01)
@@ -203,32 +203,107 @@ class UI {
     //#endregion
 
     //#region Turbulence
-    // const turbulenceFolder = physicsFolder.addFolder("Turbulence");
-    // const turbulence = this.main.turbulenceField; // Get reference to turbulence field
+    const turbulenceFolder = this.gui.addFolder("Turbulence");
+    turbulenceFolder.add(this.main.turbulenceField, "enabled").name("Enable");
 
-    // // turbulenceFolder.add(turbulence, "enabled").name("Enable");
+    turbulenceFolder
+      .add(this.main.turbulenceField, "strength", 0, 2)
+      .name("Strength");
+    turbulenceFolder
+      .add(this.main.turbulenceField, "scale", 0.1, 10)
+      .name("Scale");
+    turbulenceFolder
+      .add(this.main.turbulenceField, "speed", 0, 5)
+      .name("Speed");
 
-    // turbulenceFolder.add(turbulence, "strength", 0, 1, 0.01).name("Strength");
+    // Advanced parameters
+    const advancedFolder = turbulenceFolder.addFolder("Advanced");
+    advancedFolder
+      .add(this.main.turbulenceField, "octaves", 1, 8, 1)
+      .name("Octaves");
+    advancedFolder
+      .add(this.main.turbulenceField, "persistence", 0, 1)
+      .name("Persistence");
+    advancedFolder
+      .add(this.main.turbulenceField, "rotation", 0, Math.PI * 2)
+      .name("Rotation");
+    advancedFolder
+      .add(this.main.turbulenceField, "inwardFactor", 0, 5)
+      .name("Inward Pull");
+    advancedFolder
+      .add(this.main.turbulenceField, "decayRate", 0.9, 1)
+      .name("Decay Rate");
 
-    // turbulenceFolder.add(turbulence, "scale", 1, 10, 0.1).name("Scale");
+    // Direction Bias
+    const biasFolder = turbulenceFolder.addFolder("Direction Bias");
+    biasFolder
+      .add(this.main.turbulenceField.directionBias, "0", -1, 1)
+      .name("X Bias");
+    biasFolder
+      .add(this.main.turbulenceField.directionBias, "1", -1, 1)
+      .name("Y Bias");
 
-    // turbulenceFolder.add(turbulence, "speed", 0, 5, 0.1).name("Speed");
+    // Add presets
+    const presets = {
+      "Gentle Breeze": {
+        strength: 0.3,
+        scale: 2.0,
+        speed: 0.5,
+        octaves: 2,
+        persistence: 0.5,
+        rotation: 0,
+        inwardFactor: 0.5,
+        decayRate: 0.99,
+        directionBias: [0.1, 0],
+      },
+      Vortex: {
+        strength: 1.2,
+        scale: 4.0,
+        speed: 2.0,
+        octaves: 3,
+        persistence: 0.7,
+        rotation: Math.PI / 2,
+        inwardFactor: 2.0,
+        decayRate: 0.98,
+        directionBias: [0, 0],
+      },
+      Chaos: {
+        strength: 1.8,
+        scale: 8.0,
+        speed: 3.0,
+        octaves: 5,
+        persistence: 0.8,
+        rotation: Math.PI / 4,
+        inwardFactor: 0.2,
+        decayRate: 0.95,
+        directionBias: [-0.2, 0.2],
+      },
+    };
 
-    // turbulenceFolder.add(turbulence, "octaves", 1, 5, 1).name("Complexity");
+    // Add preset selector
+    turbulenceFolder
+      .add({ preset: "Default" }, "preset", [
+        "Default",
+        ...Object.keys(presets),
+      ])
+      .onChange((value) => {
+        if (value === "Default") return;
+        const preset = presets[value];
+        this.main.turbulenceField.setParameters(preset);
+        // Update GUI
+        for (const ctrl of turbulenceFolder.controllers) {
+          ctrl.updateDisplay();
+        }
+        for (const ctrl of advancedFolder.controllers) {
+          ctrl.updateDisplay();
+        }
+        for (const ctrl of biasFolder.controllers) {
+          ctrl.updateDisplay();
+        }
+      });
 
-    // turbulenceFolder
-    //   .add(turbulence, "persistence", 0, 1, 0.1)
-    //   .name("Roughness");
+    turbulenceFolder.open();
 
-    // turbulenceFolder
-    //   .add(turbulence, "rotation", 0, Math.PI * 2, 0.1)
-    //   .name("Rotation");
-
-    // turbulenceFolder
-    //   .add(turbulence, "inwardFactor", -2, 2, 0.1)
-    //   .name("Inward Push");
-
-    // turbulenceFolder.open();
     //#endregion
 
     //#region FLIP
@@ -279,6 +354,7 @@ class UI {
           console.log("Force scale updated");
         });
     }
+    //#endregion
 
     //#region Grid
     const gridFolder = this.gui.addFolder("Grid");
@@ -433,111 +509,6 @@ class UI {
       .name("Noise Field Resolution");
     debugFolder.open(false);
     //#endregion
-
-    // Add Turbulence folder
-    const turbulenceFolder = this.gui.addFolder("Turbulence");
-
-    // Enable/disable toggle
-    turbulenceFolder.add(this.main.turbulenceField, "enabled").name("Enable");
-
-    // Basic parameters
-    turbulenceFolder
-      .add(this.main.turbulenceField, "strength", 0, 2)
-      .name("Strength");
-    turbulenceFolder
-      .add(this.main.turbulenceField, "scale", 0.1, 10)
-      .name("Scale");
-    turbulenceFolder
-      .add(this.main.turbulenceField, "speed", 0, 5)
-      .name("Speed");
-
-    // Advanced parameters
-    const advancedFolder = turbulenceFolder.addFolder("Advanced");
-    advancedFolder
-      .add(this.main.turbulenceField, "octaves", 1, 8, 1)
-      .name("Octaves");
-    advancedFolder
-      .add(this.main.turbulenceField, "persistence", 0, 1)
-      .name("Persistence");
-    advancedFolder
-      .add(this.main.turbulenceField, "rotation", 0, Math.PI * 2)
-      .name("Rotation");
-    advancedFolder
-      .add(this.main.turbulenceField, "inwardFactor", 0, 5)
-      .name("Inward Pull");
-    advancedFolder
-      .add(this.main.turbulenceField, "decayRate", 0.9, 1)
-      .name("Decay Rate");
-
-    // Direction Bias
-    const biasFolder = turbulenceFolder.addFolder("Direction Bias");
-    biasFolder
-      .add(this.main.turbulenceField.directionBias, "0", -1, 1)
-      .name("X Bias");
-    biasFolder
-      .add(this.main.turbulenceField.directionBias, "1", -1, 1)
-      .name("Y Bias");
-
-    // Add presets
-    const presets = {
-      "Gentle Breeze": {
-        strength: 0.3,
-        scale: 2.0,
-        speed: 0.5,
-        octaves: 2,
-        persistence: 0.5,
-        rotation: 0,
-        inwardFactor: 0.5,
-        decayRate: 0.99,
-        directionBias: [0.1, 0],
-      },
-      Vortex: {
-        strength: 1.2,
-        scale: 4.0,
-        speed: 2.0,
-        octaves: 3,
-        persistence: 0.7,
-        rotation: Math.PI / 2,
-        inwardFactor: 2.0,
-        decayRate: 0.98,
-        directionBias: [0, 0],
-      },
-      Chaos: {
-        strength: 1.8,
-        scale: 8.0,
-        speed: 3.0,
-        octaves: 5,
-        persistence: 0.8,
-        rotation: Math.PI / 4,
-        inwardFactor: 0.2,
-        decayRate: 0.95,
-        directionBias: [-0.2, 0.2],
-      },
-    };
-
-    // Add preset selector
-    turbulenceFolder
-      .add({ preset: "Default" }, "preset", [
-        "Default",
-        ...Object.keys(presets),
-      ])
-      .onChange((value) => {
-        if (value === "Default") return;
-        const preset = presets[value];
-        this.main.turbulenceField.setParameters(preset);
-        // Update GUI
-        for (const ctrl of turbulenceFolder.controllers) {
-          ctrl.updateDisplay();
-        }
-        for (const ctrl of advancedFolder.controllers) {
-          ctrl.updateDisplay();
-        }
-        for (const ctrl of biasFolder.controllers) {
-          ctrl.updateDisplay();
-        }
-      });
-
-    turbulenceFolder.open();
   }
 
   updatePresetDropdown() {

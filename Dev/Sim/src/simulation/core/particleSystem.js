@@ -11,12 +11,12 @@ class ParticleSystem {
     gravity = 0,
     picFlipRatio = 1,
     turbulence = null, // Keep turbulence as optional parameter
-    boundaryMode = 'BOUNCE' // Add boundary mode parameter
+    boundaryMode = "BOUNCE", // Add boundary mode parameter
   } = {}) {
     // Particle properties
     this.numParticles = particleCount;
     this.timeStep = timeStep;
-    this.gravity = gravity * 0.1;
+    this.gravity = gravity;
     this.particleRadius = 0.01;
     this.renderScale = 2000;
 
@@ -55,7 +55,7 @@ class ParticleSystem {
 
     // Create boundary with specified mode
     this.boundary = new CircularBoundary({
-      mode: boundaryMode
+      mode: boundaryMode,
     });
 
     // Then create FLIP system with boundary reference
@@ -306,13 +306,13 @@ class ParticleSystem {
   getParticles() {
     const particles = [];
     for (let i = 0; i < this.numParticles; i++) {
-        particles.push({
-            x: this.particles[i * 2],
-            y: this.particles[i * 2 + 1], // Keep original Y coordinate
-            vx: this.velocitiesX[i],
-            vy: this.velocitiesY[i],
-            size: this.particleRadius * this.renderScale
-        });
+      particles.push({
+        x: this.particles[i * 2],
+        y: this.particles[i * 2 + 1], // Keep original Y coordinate
+        vx: this.velocitiesX[i],
+        vy: this.velocitiesY[i],
+        size: this.particleRadius * this.renderScale,
+      });
     }
     return particles;
   }
