@@ -110,50 +110,100 @@ class OrganicForces {
   calculateSwarmForces(particle, neighbors, force, params) {
     if (!neighbors.length) return;
 
+    const pixelParticle = this.toPixelSpace(particle);
+    const maxForce = params.maxSpeed;
     let [centerX, centerY] = [0, 0];
     let [avgVelX, avgVelY] = [0, 0];
     let [sepX, sepY] = [0, 0];
+    let count = 0;
 
+    // First pass: collect data
     neighbors.forEach((n) => {
       const other = this.toPixelSpace(n.particle);
-
-      // Cohesion
-      centerX += other.x;
-      centerY += other.y;
-
-      // Alignment
-      avgVelX += other.vx;
-      avgVelY += other.vy;
-
-      // Separation
-      const dx = other.x - particle.x;
-      const dy = other.y - particle.y;
+      const dx = other.x - pixelParticle.x;
+      const dy = other.y - pixelParticle.y;
       const dist = Math.hypot(dx, dy);
-      if (dist > 0) {
-        sepX -= (dx / dist) * (1 - dist / params.radius);
-        sepY -= (dy / dist) * (1 - dist / params.radius);
+
+      if (dist > 0 && dist < params.radius) {
+        count++;
+        const weight = 1.0 - (dist / params.radius);
+
+        // Separation (inversely proportional to distance)
+        const repulsion = 1.0 / (dist + 1);
+        sepX -= (dx / dist) * repulsion;
+        sepY -= (dy / dist) * repulsion;
+
+        // Cohesion (average position)
+        centerX += other.x;
+        centerY += other.y;
+
+        // Alignment (average velocity)
+        avgVelX += other.vx;
+        avgVelY += other.vy;
       }
     });
 
-    const count = neighbors.length;
-    force.x +=
-      (centerX / count - particle.x) * params.cohesion +
-      (avgVelX / count) * params.alignment +
-      sepX * params.separation;
-    force.y +=
-      (centerY / count - particle.y) * params.cohesion +
-      (avgVelY / count) * params.alignment +
-      sepY * params.separation;
+    if (count > 0) {
+      // Normalize vectors
+      centerX = centerX / count - pixelParticle.x;
+      centerY = centerY / count - pixelParticle.y;
+      const centerDist = Math.hypot(centerX, centerY);
+      if (centerDist > 0) {
+        centerX /= centerDist;
+        centerY /= centerDist;
+      }
 
-    // Limit force
-    const mag = Math.hypot(force.x, force.y);
-    if (mag > params.maxSpeed) {
-      const scale = params.maxSpeed / mag;
-      force.x *= scale;
-      force.y *= scale;
+      avgVelX /= count;
+      avgVelY /= count;
+      const velDist = Math.hypot(avgVelX, avgVelY);
+      if (velDist > 0) {
+        avgVelX /= velDist;
+        avgVelY /= velDist;
+      }
+
+      const sepDist = Math.hypot(sepX, sepY);
+      if (sepDist > 0) {
+        sepX /= sepDist;
+        sepY /= sepDist;
+      }
+
+      // Apply behavior weights
+      const cohesionForce = params.cohesion * 0.05;
+      const alignmentForce = params.alignment * 0.05;
+      const separationForce = params.separation * 0.05;
+
+      // Combine forces
+      force.x = (centerX * cohesionForce) + 
+                (avgVelX * alignmentForce) + 
+                (sepX * separationForce);
+      force.y = (centerY * cohesionForce) + 
+                (avgVelY * alignmentForce) + 
+                (sepY * separationForce);
+
+      // Clamp force magnitude
+      const magnitude = Math.hypot(force.x, force.y);
+      if (magnitude > maxForce) {
+        const scale = maxForce / magnitude;
+        force.x *= scale;
+        force.y *= scale;
+      }
+
+      // Apply damping
+      force.x *= this.forceDamping;
+      force.y *= this.forceDamping;
     }
 
-    if (this.debug) this.logForceCalculation("Swarm", force, neighbors.length);
+    if (this.debugEnabled) {
+      console.log(`Swarm force for particle at (${particle.x.toFixed(2)}, ${particle.y.toFixed(2)}):`, {
+        force: `(${force.x.toFixed(3)}, ${force.y.toFixed(3)})`,
+        neighbors: count,
+        params: {
+          cohesion: params.cohesion,
+          alignment: params.alignment,
+          separation: params.separation
+        }
+      });
+    }
   }
 
   calculateAutomataForces(particle, neighbors, force, params) {

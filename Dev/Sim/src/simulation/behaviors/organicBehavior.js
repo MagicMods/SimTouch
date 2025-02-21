@@ -23,11 +23,11 @@ class OrganicBehavior {
         mode: "Fluid",
       },
       Swarm: {
-        radius: 30,
-        cohesion: 0.4,
-        alignment: 0.3,
-        separation: 0.5,
-        maxSpeed: 2.0,
+        radius: 30,          // Reduced interaction radius
+        cohesion: 1.0,       // Pull to center of neighbors
+        alignment: 0.7,      // Match neighbor velocities
+        separation: 1.2,     // Push away from neighbors
+        maxSpeed: 0.5,       // Lower maximum speed
         mode: "Swarm",
       },
       Automata: {
@@ -47,9 +47,9 @@ class OrganicBehavior {
         viscosity: 0.2,
       },
       Swarm: {
-        base: 0.05,
-        cohesion: 0.3,
-        separation: 0.4,
+        base: 0.01,          // Lower base force
+        cohesion: 0.1,
+        separation: 0.15,
       },
       Automata: {
         base: 0.02,
