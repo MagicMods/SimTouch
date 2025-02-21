@@ -23,18 +23,18 @@ class OrganicBehavior {
         mode: "Fluid",
       },
       Swarm: {
-        radius: 30,          // Reduced interaction radius
-        cohesion: 1.0,       // Pull to center of neighbors
-        alignment: 0.7,      // Match neighbor velocities
-        separation: 1.2,     // Push away from neighbors
-        maxSpeed: 0.5,       // Lower maximum speed
+        radius: 30,
+        cohesion: 1.0,
+        alignment: 0.7,
+        separation: 1.2,
+        maxSpeed: 0.5,
         mode: "Swarm",
       },
       Automata: {
-        radius: 30,           // Increased interaction radius
-        repulsion: 0.8,       // Stronger repulsion
-        attraction: 0.5,      // Moderate attraction
-        threshold: 0.2,       // More sensitive state difference detection
+        radius: 30,
+        repulsion: 0.8,
+        attraction: 0.5,
+        threshold: 0.2,
         mode: "Automata",
       },
     };
@@ -47,12 +47,12 @@ class OrganicBehavior {
         viscosity: 0.2,
       },
       Swarm: {
-        base: 0.01,          // Lower base force
+        base: 0.01, // Lower base force
         cohesion: 0.1,
         separation: 0.15,
       },
       Automata: {
-        base: 0.1,           // Increased base force
+        base: 0.1, // Increased base force
       },
     };
 
@@ -92,8 +92,10 @@ class OrganicBehavior {
         vx: particleSystem.velocitiesX[i / 2],
         vy: particleSystem.velocitiesY[i / 2],
         index: i / 2,
-        state: this.currentBehavior === "Automata" ? 
-          this.automataRules.getParticleState(i / 2) : 0.5
+        state:
+          this.currentBehavior === "Automata"
+            ? this.automataRules.getParticleState(i / 2)
+            : 0.5,
       };
       particles.push(particle);
 
@@ -131,8 +133,10 @@ class OrganicBehavior {
       console.log(`${this.currentBehavior} update:`, {
         particles: particles.length,
         neighbors: neighbors.size,
-        states: this.currentBehavior === "Automata" ? 
-          this.automataRules.particleStates.size : 'N/A'
+        states:
+          this.currentBehavior === "Automata"
+            ? this.automataRules.particleStates.size
+            : "N/A",
       });
     }
 

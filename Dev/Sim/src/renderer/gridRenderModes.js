@@ -98,6 +98,7 @@ class GridRenderModes {
         this.calculateVorticity(particleSystem);
         break;
       case this.modes.COLLISION:
+        // console.log("Calculating collision values");
         this.calculateCollision(particleSystem);
         break;
       default:
@@ -330,6 +331,82 @@ class GridRenderModes {
 
   calculateCollision(particleSystem) {
     this.targetValues.fill(0);
+    if (!particleSystem?.collisionSystem) return this.targetValues;
+
+    const collisionSystem = particleSystem.collisionSystem;
+    const particles = particleSystem.particles;
+    const velocitiesX = particleSystem.velocitiesX;
+    const velocitiesY = particleSystem.velocitiesY;
+
+    // Constants
+    const tune = 2.0;
+    const collisionGridSize = collisionSystem.gridSize;
+    const cellRadius = (this.TARGET_WIDTH / collisionGridSize) * 0.8; // Reduced radius
+
+    for (let y = 0; y < collisionGridSize; y++) {
+      for (let x = 0; x < collisionGridSize; x++) {
+        const cellIndex = y * collisionGridSize + x;
+        const collisionCell = collisionSystem.grid[cellIndex];
+
+        if (collisionCell.length < 2) continue;
+
+        const normalizedX = (x + 0.5) / collisionGridSize;
+        const normalizedY = (y + 0.5) / collisionGridSize;
+        const renderX = normalizedX * this.TARGET_WIDTH;
+        const renderY = (1 - normalizedY) * this.TARGET_HEIGHT;
+
+        // Calculate base intensity for this collision cell
+        let baseIntensity = 0;
+        for (let i = 0; i < collisionCell.length; i++) {
+          const p1 = collisionCell[i];
+          for (let j = i + 1; j < collisionCell.length; j++) {
+            const p2 = collisionCell[j];
+
+            const dvx = velocitiesX[p2] - velocitiesX[p1];
+            const dvy = velocitiesY[p2] - velocitiesY[p1];
+            const relativeSpeed = Math.sqrt(dvx * dvx + dvy * dvy);
+
+            const dx = particles[p2 * 2] - particles[p1 * 2];
+            const dy = particles[p2 * 2 + 1] - particles[p1 * 2 + 1];
+            const dist = Math.sqrt(dx * dx + dy * dy);
+
+            if (dist < collisionSystem.particleRadius * 2) {
+              baseIntensity +=
+                (1 - dist / (collisionSystem.particleRadius * 2)) *
+                relativeSpeed;
+            }
+          }
+        }
+
+        // Normalize base intensity
+        const normalizedIntensity = Math.min(
+          1,
+          (baseIntensity / collisionCell.length) * tune
+        );
+
+        // Find and apply to affected cells with falloff
+        this.gridMap.forEach((cell) => {
+          const dx = cell.bounds.x + cell.bounds.width / 2 - renderX;
+          const dy = cell.bounds.y + cell.bounds.height / 2 - renderY;
+          const distToCenter = Math.sqrt(dx * dx + dy * dy);
+
+          if (distToCenter < cellRadius) {
+            // Calculate falloff factor (1.0 at center, 0.5 at edges)
+            const falloff =
+              distToCenter === 0
+                ? 1.0 // Center cell
+                : 0.5 + 0.5 * (1 - distToCenter / cellRadius); // Surrounding cells
+
+            // Apply intensity with falloff
+            this.targetValues[cell.index] = Math.max(
+              this.targetValues[cell.index],
+              normalizedIntensity * falloff
+            );
+          }
+        });
+      }
+    }
+
     return this.targetValues;
   }
 }
