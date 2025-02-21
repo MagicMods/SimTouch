@@ -11,6 +11,7 @@ class ParticleSystem {
     gravity = 0,
     picFlipRatio = 1,
     turbulence = null, // Keep turbulence as optional parameter
+    boundaryMode = 'BOUNCE' // Add boundary mode parameter
   } = {}) {
     // Particle properties
     this.numParticles = particleCount;
@@ -52,8 +53,10 @@ class ParticleSystem {
     // Create collision system with particle-specific restitution
     this.collisionSystem = new CollisionSystem();
 
-    // Create boundary with its own restitution
-    this.boundary = new CircularBoundary();
+    // Create boundary with specified mode
+    this.boundary = new CircularBoundary({
+      mode: boundaryMode
+    });
 
     // Then create FLIP system with boundary reference
     this.fluid = new FluidFLIP({
@@ -332,6 +335,11 @@ class ParticleSystem {
     }
 
     renderer.draw(gridLines, [0.2, 0.2, 0.2, 0.5]);
+  }
+
+  // Add method to change boundary mode
+  setBoundaryMode(mode) {
+    this.boundary.setBoundaryMode(mode);
   }
 }
 

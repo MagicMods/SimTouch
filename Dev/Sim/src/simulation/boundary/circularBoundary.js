@@ -6,6 +6,7 @@ class CircularBoundary {
     cBoundaryRestitution = 0.8, // Renamed to be specific
     damping = 0.95,
     segments = 64, // Higher segment count for smoother circle
+    mode = 'BOUNCE' // Add boundary mode
   } = {}) {
     // Core parameters
     this.centerX = centerX;
@@ -26,6 +27,13 @@ class CircularBoundary {
 
     // Notify systems that need updating
     this.updateCallbacks = new Set();
+
+    // Add boundary mode
+    this.BOUNDARY_MODES = {
+      BOUNCE: 'BOUNCE',
+      WARP: 'WARP'
+    };
+    this.mode = mode;
   }
 
   drawCircularBoundary(gl, shaderManager) {
@@ -80,19 +88,27 @@ class CircularBoundary {
       const nx = dx / dist;
       const ny = dy / dist;
 
-      // Reflect velocity using boundary-specific restitution
-      const dot = velocity[0] * nx + velocity[1] * ny;
-      if (dot > 0) {
-        velocity[0] -= (1 + this.cBoundaryRestitution) * dot * nx; // Updated
-        velocity[1] -= (1 + this.cBoundaryRestitution) * dot * ny; // Updated
-        velocity[0] *= this.damping;
-        velocity[1] *= this.damping;
+      if (this.mode === this.BOUNDARY_MODES.WARP) {
+        // Warp to opposite side
+        const angle = Math.atan2(dy, dx);
+        position[0] = this.centerX - nx * (this.radius * 0.95); // Slightly inside
+        position[1] = this.centerY - ny * (this.radius * 0.95);
+        
+        // Retain velocity
+        return false; // Don't modify velocity
+      } else {
+        // Original bounce behavior
+        const dot = velocity[0] * nx + velocity[1] * ny;
+        if (dot > 0) {
+          velocity[0] -= (1 + this.cBoundaryRestitution) * dot * nx; // Updated
+          velocity[1] -= (1 + this.cBoundaryRestitution) * dot * ny; // Updated
+          velocity[0] *= this.damping;
+          velocity[1] *= this.damping;
+        }
+        position[0] = this.centerX + nx * this.radius;
+        position[1] = this.centerY + ny * this.radius;
+        return true;
       }
-
-      // Move back inside boundary - exact radius
-      position[0] = this.centerX + nx * this.radius;
-      position[1] = this.centerY + ny * this.radius;
-      return true;
     }
     return false;
   }
@@ -148,6 +164,15 @@ class CircularBoundary {
 
   getRadius() {
     return this.radius;
+  }
+
+  // Add method to change boundary mode
+  setBoundaryMode(mode) {
+    if (this.BOUNDARY_MODES[mode]) {
+      this.mode = mode;
+      // Notify any systems that need updating
+      this.updateCallbacks.forEach(callback => callback(this));
+    }
   }
 }
 

@@ -247,14 +247,14 @@ class UI {
     if (particles.organicBehavior) {
       const organicFolder = this.gui.addFolder("Organic Behavior");
 
-      // Create behavior control object (like fieldControl)
-      const behaviorControl = {
-        behavior: particles.organicBehavior.currentBehavior,
-      };
 
       // Add behavior controls
       organicFolder.add(particles.organicBehavior, "enabled").name("Enable");
 
+            
+    const behaviorControl = {
+        behavior: particles.organicBehavior.currentBehavior,
+      };
       organicFolder
         .add(behaviorControl, "behavior", Object.values(Behaviors))
         .name("Behavior Type")
@@ -262,93 +262,11 @@ class UI {
           particles.organicBehavior.currentBehavior = value;
         });
 
-      const fluidParmaFolder = organicFolder.addFolder("Fluid Parameters");
-      fluidParmaFolder
-        .add(particles.organicBehavior.params[Behaviors.FLUID], "radius", 5, 50)
-        .name("Radius");
-      fluidParmaFolder
-        .add(
-          particles.organicBehavior.params[Behaviors.FLUID],
-          "surfaceTension"
-        )
-        .name("Surface Tension");
-      fluidParmaFolder
-        .add(particles.organicBehavior.params[Behaviors.FLUID], "viscosity")
-        .name("Viscosity");
-      fluidParmaFolder
-        .add(particles.organicBehavior.params[Behaviors.FLUID], "damping")
-        .name("Damping");
-      const swarmParmaFolder = organicFolder.addFolder("Swarm Parameters");
-      swarmParmaFolder
-        .add(particles.organicBehavior.params[Behaviors.SWARM], "radius", 5, 50)
-        .name("Radius");
-      swarmParmaFolder
-        .add(
-          particles.organicBehavior.params[Behaviors.SWARM],
-          "cohesion",
-          0,
-          1
-        )
-        .name("Cohesion");
-      swarmParmaFolder
-        .add(
-          particles.organicBehavior.params[Behaviors.SWARM],
-          "alignment",
-          0,
-          1
-        )
-        .name("Alignment");
-      swarmParmaFolder
-        .add(
-          particles.organicBehavior.params[Behaviors.SWARM],
-          "separation",
-          0,
-          1
-        )
-        .name("Separation");
-      swarmParmaFolder
-        .add(
-          particles.organicBehavior.params[Behaviors.SWARM],
-          "maxSpeed",
-          0,
-          5
-        )
-        .name("Max Speed");
-      const automataParmaFolder = organicFolder.addFolder(
-        "Automata Parameters"
-      );
-      automataParmaFolder
-        .add(
-          particles.organicBehavior.params[Behaviors.AUTOMATA],
-          "radius",
-          5,
-          50
-        )
-        .name("Radius");
-      automataParmaFolder
-        .add(
-          particles.organicBehavior.params[Behaviors.AUTOMATA],
-          "repulsion",
-          0,
-          1
-        )
-        .name("Repulsion");
-      automataParmaFolder
-        .add(
-          particles.organicBehavior.params[Behaviors.AUTOMATA],
-          "attraction",
-          0,
-          1
-        )
-        .name("Attraction");
-      automataParmaFolder
-        .add(
-          particles.organicBehavior.params[Behaviors.AUTOMATA],
-          "threshold",
-          0,
-          1
-        )
-        .name("Threshold");
+
+
+this.addBehaviorParameters(organicFolder, particles.organicBehavior);
+      
+      
 
       // In the initGUI method where you setup organic behavior controls
       const debugOrganicFolder = organicFolder.addFolder("Debug");
@@ -474,6 +392,13 @@ class UI {
       .add(particles.boundary, "cBoundaryRestitution", 0.0, 1.0, 0.05)
       .name("Bounce");
 
+    // Add boundary mode control
+    boundaryFolder.add(this.main.particleSystem.boundary, 'mode', {
+      'Bounce': 'BOUNCE',
+      'Warp': 'WARP'
+    }).name('Mode').onChange(value => {
+      this.main.particleSystem.setBoundaryMode(value);
+    });
     //#endregion
 
     //#region Mouse Input
