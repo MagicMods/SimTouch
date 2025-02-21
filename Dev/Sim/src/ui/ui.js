@@ -64,7 +64,7 @@ class UI {
           .name("Load Preset")
           .onChange((value) => {
             // Prevent recursion by checking if preset is already loaded
-            if (value === this.presetManager.currentPreset) return;
+            // if (value === this.presetManager.currentPreset) return;
 
             if (this.presetManager.presets[value]) {
               // Update current preset before loading

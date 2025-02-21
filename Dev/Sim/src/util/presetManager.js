@@ -3,6 +3,7 @@ class PresetManager {
     this.gui = gui;
     this.presets = {};
     this.defaultPreset = null;
+    this.currentPreset = null;
   }
 
   async loadPresets() {
@@ -11,8 +12,6 @@ class PresetManager {
       if (!response.ok) throw new Error("Could not load preset index");
 
       const { presetFiles } = await response.json();
-
-      // Reset presets
       this.presets = {};
 
       // Load each preset
@@ -23,10 +22,11 @@ class PresetManager {
         }
       }
 
-      // Set first preset as default
+      // Set and load first preset as default
       const presetNames = this.getPresetNames();
       if (presetNames.length > 0) {
         this.defaultPreset = presetNames[0];
+        await this.loadPreset(this.defaultPreset);
       }
 
       console.log(`Loaded ${presetNames.length} presets:`, presetNames);
@@ -37,8 +37,30 @@ class PresetManager {
     }
   }
 
+  async loadPreset(presetName) {
+    if (!this.presets[presetName]) {
+      console.error(`Preset '${presetName}' not found`);
+      return false;
+    }
+
+    try {
+      // Load preset values into GUI
+      this.gui.load(this.presets[presetName]);
+      this.currentPreset = presetName;
+      console.log(`Loaded preset: ${presetName}`);
+      return true;
+    } catch (error) {
+      console.error(`Error loading preset '${presetName}':`, error);
+      return false;
+    }
+  }
+
   getPresetNames() {
     return Object.keys(this.presets);
+  }
+
+  getCurrentPreset() {
+    return this.currentPreset;
   }
 
   exportCurrentState() {
@@ -46,4 +68,5 @@ class PresetManager {
     return state;
   }
 }
+
 export { PresetManager };
