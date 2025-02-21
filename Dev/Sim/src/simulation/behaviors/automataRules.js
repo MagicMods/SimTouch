@@ -1,35 +1,49 @@
 class AutomataRules {
-  constructor(params) {
-    this.params = params;
-    this.particleStates = new Map(); // Track particle states
+  constructor() {
+    this.particleStates = new Map();
+    this.stateColors = new Map();
+    this.debugEnabled = false;
   }
 
-  updateStates(particleSystem, neighborSearch) {
+  initializeStates(particles) {
+    particles.forEach((p, idx) => {
+      // Random initial states between 0 and 1
+      this.particleStates.set(idx, Math.random());
+    });
+  }
+
+  updateStates(particles, neighbors, params) {
     const newStates = new Map();
-    const particles = particleSystem.particles;
 
-    for (let i = 0; i < particles.length; i += 2) {
-      const neighbors = neighborSearch.findNeighbors(particleSystem, i / 2);
-      const currentState = this.particleStates.get(i / 2) || 1.0;
-      const neighborCount = neighbors.length;
+    particles.forEach((particle, idx) => {
+      const currentState = this.particleStates.get(idx) || 0.5;
+      const neighborList = neighbors.get(idx) || [];
+      
+      // Calculate average neighbor state
+      let avgState = 0;
+      neighborList.forEach(n => {
+        avgState += this.particleStates.get(n.index) || 0.5;
+      });
+      avgState = neighborList.length > 0 ? avgState / neighborList.length : currentState;
 
-      // Apply Conway-like rules with continuous states
+      // Apply rules based on neighbor states
       let newState = currentState;
-      if (neighborCount < this.params.survivalMin) {
-        newState *= 0.8; // Gradual death
-      } else if (neighborCount > this.params.survivalMax) {
-        newState *= 0.9; // Overcrowding
-      } else if (
-        neighborCount >= this.params.birthMin &&
-        neighborCount <= this.params.birthMax
-      ) {
-        newState = Math.min(1.0, newState * 1.2); // Growth
+      if (Math.abs(avgState - currentState) > params.threshold) {
+        // State transition
+        newState += (avgState - currentState) * 0.1;
       }
 
-      newStates.set(i / 2, newState);
-    }
+      // Clamp state between 0 and 1
+      newState = Math.max(0, Math.min(1, newState));
+      newStates.set(idx, newState);
+    });
 
     this.particleStates = newStates;
+    return this.particleStates;
+  }
+
+  getParticleState(idx) {
+    return this.particleStates.get(idx) || 0.5;
   }
 }
 export { AutomataRules };

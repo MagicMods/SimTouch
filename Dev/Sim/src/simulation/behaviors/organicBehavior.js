@@ -31,10 +31,10 @@ class OrganicBehavior {
         mode: "Swarm",
       },
       Automata: {
-        radius: 15,
-        repulsion: 0.3,
-        attraction: 0.2,
-        threshold: 0.5,
+        radius: 30,           // Increased interaction radius
+        repulsion: 0.8,       // Stronger repulsion
+        attraction: 0.5,      // Moderate attraction
+        threshold: 0.2,       // More sensitive state difference detection
         mode: "Automata",
       },
     };
@@ -52,13 +52,14 @@ class OrganicBehavior {
         separation: 0.15,
       },
       Automata: {
-        base: 0.02,
+        base: 0.1,           // Increased base force
       },
     };
 
     // Initialize components
     this.forces = new OrganicForces(this.forceScales);
     this.neighborSearch = new NeighborSearch({ resolution: 24 });
+    this.automataRules = new AutomataRules();
 
     // Debug settings
     this.debug = false;
@@ -91,6 +92,8 @@ class OrganicBehavior {
         vx: particleSystem.velocitiesX[i / 2],
         vy: particleSystem.velocitiesY[i / 2],
         index: i / 2,
+        state: this.currentBehavior === "Automata" ? 
+          this.automataRules.getParticleState(i / 2) : 0.5
       };
       particles.push(particle);
 
@@ -109,11 +112,29 @@ class OrganicBehavior {
       console.log(`Total neighbors found: ${neighbors.size}`);
     }
 
+    // Handle Automata state updates
+    if (this.currentBehavior === "Automata") {
+      if (!this.automataRules.particleStates.size) {
+        this.automataRules.initializeStates(particles);
+      }
+      this.automataRules.updateStates(particles, neighbors, currentParams);
+    }
+
     const forces = this.forces.calculateForces(
       particles,
       neighbors,
       currentParams
     );
+
+    // Debug output
+    if (this.debugEnabled) {
+      console.log(`${this.currentBehavior} update:`, {
+        particles: particles.length,
+        neighbors: neighbors.size,
+        states: this.currentBehavior === "Automata" ? 
+          this.automataRules.particleStates.size : 'N/A'
+      });
+    }
 
     forces.forEach((force, idx) => {
       if (this.debugEnabled && particles[idx].y > 0.7) {

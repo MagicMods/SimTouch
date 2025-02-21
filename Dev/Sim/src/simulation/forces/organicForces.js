@@ -207,20 +207,63 @@ class OrganicForces {
   }
 
   calculateAutomataForces(particle, neighbors, force, params) {
-    // Simple repulsion/attraction based on states
+    const pixelParticle = this.toPixelSpace(particle);
+    const maxForce = 0.5;
+    let totalForce = { x: 0, y: 0 };
+
+    if (this.debugEnabled) {
+      console.log(`Automata force calculation for particle ${particle.index}:`, {
+        state: particle.state,
+        neighbors: neighbors.length
+      });
+    }
+
     neighbors.forEach((n) => {
       const other = this.toPixelSpace(n.particle);
-      const dx = other.x - particle.x;
-      const dy = other.y - particle.y;
+      const dx = other.x - pixelParticle.x;
+      const dy = other.y - pixelParticle.y;
       const dist = Math.hypot(dx, dy);
 
       if (dist > 0 && dist < params.radius) {
-        const stateDiff = n.particle.state - particle.state;
-        const strength = (1 - dist / params.radius) * stateDiff * 0.1;
-        force.x += (dx / dist) * strength;
-        force.y += (dy / dist) * strength;
+        // Normalize direction
+        const nx = dx / (dist + 0.0001);
+        const ny = dy / (dist + 0.0001);
+
+        // Calculate state difference (-1 to 1 range)
+        const stateDiff = Math.abs(n.particle.state - particle.state);
+        
+        // Force calculation based on states
+        let magnitude;
+        if (stateDiff < params.threshold) {
+          // Similar states attract
+          magnitude = params.attraction * (1 - dist/params.radius);
+        } else {
+          // Different states repel
+          magnitude = -params.repulsion * (1 - dist/params.radius);
+        }
+
+        // Apply force with distance falloff
+        totalForce.x += nx * magnitude;
+        totalForce.y += ny * magnitude;
       }
     });
+
+    // Apply forces with clamping
+    force.x = Math.max(-maxForce, Math.min(maxForce, totalForce.x));
+    force.y = Math.max(-maxForce, Math.min(maxForce, totalForce.y));
+
+    // Scale with base force
+    const baseScale = this.forceScales.Automata.base;
+    force.x *= baseScale;
+    force.y *= baseScale;
+
+    // Apply damping
+    force.x *= this.forceDamping;
+    force.y *= this.forceDamping;
+
+    if (this.debugEnabled) {
+      console.log(`Applied automata force: (${force.x.toFixed(3)}, ${force.y.toFixed(3)})`);
+    }
   }
 
   logForceCalculation(type, force, neighborCount) {
