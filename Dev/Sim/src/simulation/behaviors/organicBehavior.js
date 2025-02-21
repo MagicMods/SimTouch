@@ -3,6 +3,7 @@ import { OrganicForces } from "../forces/organicForces.js";
 import { AutomataRules } from "./automataRules.js";
 
 export const Behaviors = {
+  NONE: "None",
   FLUID: "Fluid",
   SWARM: "Swarm",
   AUTOMATA: "Automata",
@@ -10,8 +11,7 @@ export const Behaviors = {
 
 class OrganicBehavior {
   constructor() {
-    this.enabled = false;
-    this.currentBehavior = "Fluid";
+    this.currentBehavior = "None";
 
     // Default parameters for each behavior
     this.params = {
@@ -79,7 +79,7 @@ class OrganicBehavior {
   }
 
   updateParticles(particleSystem, dt) {
-    if (!this.enabled) return;
+    if (this.currentBehavior === "None") return;
 
     const currentParams = this.params[this.currentBehavior];
     if (!currentParams) return;

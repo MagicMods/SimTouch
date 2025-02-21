@@ -1,6 +1,5 @@
 class TurbulenceField {
   constructor({
-    enabled = true,
     strength = 0.5,
     scale = 4.0,
     speed = 1.0,
@@ -12,12 +11,18 @@ class TurbulenceField {
     directionBias = [0, 0], // New: directional bias
     decayRate = 0.99, // New: decay over time
   } = {}) {
-    if (!boundary || typeof boundary.centerX !== "number" || typeof boundary.centerY !== "number" || typeof boundary.getRadius !== "function") {
-      throw new Error("TurbulenceField requires a valid CircularBoundary with centerX, centerY, and getRadius()");
+    if (
+      !boundary ||
+      typeof boundary.centerX !== "number" ||
+      typeof boundary.centerY !== "number" ||
+      typeof boundary.getRadius !== "function"
+    ) {
+      throw new Error(
+        "TurbulenceField requires a valid CircularBoundary with centerX, centerY, and getRadius()"
+      );
     }
-    
+
     this.boundary = boundary;
-    this.enabled = enabled;
     this.strength = strength;
     this.scale = scale;
     this.speed = speed;
@@ -42,7 +47,10 @@ class TurbulenceField {
     let maxValue = 0;
 
     for (let i = 0; i < this.octaves; i++) {
-      noise += amplitude * (Math.sin(rx * frequency + this.time * this.speed) * Math.cos(ry * frequency));
+      noise +=
+        amplitude *
+        (Math.sin(rx * frequency + this.time * this.speed) *
+          Math.cos(ry * frequency));
       maxValue += amplitude;
       amplitude *= this.persistence;
       frequency *= 2;
@@ -52,8 +60,8 @@ class TurbulenceField {
   }
 
   applyTurbulence(position, velocity, dt) {
-    if (!this.enabled) return velocity;
-
+    // if (this.strength == 0) return velocity;
+    // console.log("applyTurbulence", this.strength, position, velocity, dt);
     const [x, y] = position;
     const [vx, vy] = velocity;
 
@@ -67,16 +75,20 @@ class TurbulenceField {
     const dy = y - this.boundary.centerY;
     const dist = Math.sqrt(dx * dx + dy * dy);
     const threshold = 0.8 * this.boundary.getRadius();
-    
+
     if (dist > threshold) {
-      const excess = (dist - threshold) / (this.boundary.getRadius() - threshold);
+      const excess =
+        (dist - threshold) / (this.boundary.getRadius() - threshold);
       const inwardX = (-dx / dist) * excess * this.strength * this.inwardFactor;
       const inwardY = (-dy / dist) * excess * this.strength * this.inwardFactor;
       forceX += inwardX;
       forceY += inwardY;
     }
 
-    return [vx * this.decayRate + forceX * dt, vy * this.decayRate + forceY * dt];
+    return [
+      vx * this.decayRate + forceX * dt,
+      vy * this.decayRate + forceY * dt,
+    ];
   }
 
   update(dt) {

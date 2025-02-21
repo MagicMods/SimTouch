@@ -10,7 +10,9 @@
     "Global": {
       "controllers": {
         "Speed": 1,
-        "PIC / FLIP": 1
+        "PIC / FLIP": 1,
+        "Pause": false,
+        "Field Type": "Velocity"
       },
       "folders": {}
     },
@@ -19,24 +21,25 @@
       "folders": {
         "Properties": {
           "controllers": {
-            "Count": 680,
-            "Size": 0.01,
-            "Opacity": 0.1,
-            "Color": "#ffffff"
+            "Count": 730,
+            "Size": 0.008,
+            "Opacity": 0.07,
+            "Color": "#ffffff",
+            "Show Debug": false
           },
           "folders": {}
         },
         "Physics": {
           "controllers": {
             "Gravity": 0,
-            "Air Friction": 0.98
+            "Velocity Damping": 1
           },
           "folders": {
             "Collision": {
               "controllers": {
-                "Repulsion": 2,
-                "Bounce": 0.6,
-                "Collision Damping": 0.98
+                "Repulsion": 40,
+                "Bounce": 0,
+                "Collision Damping": 0.59
               },
               "folders": {}
             },
@@ -44,18 +47,6 @@
               "controllers": {
                 "Min Speed": 0.001,
                 "Min Move": 0.0001
-              },
-              "folders": {}
-            },
-            "Turbulence": {
-              "controllers": {
-                "Strength": 0.5,
-                "Scale": 4,
-                "Speed": 1,
-                "Complexity": 3,
-                "Roughness": 0.5,
-                "Rotation": 0,
-                "Inward Push": 1
               },
               "folders": {}
             }
@@ -69,9 +60,79 @@
         },
         "Boundary": {
           "controllers": {
-            "Size": 0.475,
+            "Size": 0.5,
             "Wall Friction": 0.95,
-            "Bounce": 0.8
+            "Bounce": 0.8,
+            "Mode": "WARP"
+          },
+          "folders": {}
+        }
+      }
+    },
+    "Turbulence": {
+      "controllers": {
+        "Strength": 0.546,
+        "Scale": 4,
+        "Speed": 1,
+        "preset": "Default"
+      },
+      "folders": {
+        "Advanced": {
+          "controllers": {
+            "Octaves": 3,
+            "Persistence": 0.5,
+            "Rotation": 0,
+            "Inward Pull": 1,
+            "Decay Rate": 0.99
+          },
+          "folders": {}
+        },
+        "Direction Bias": {
+          "controllers": {
+            "X Bias": 0,
+            "Y Bias": 0
+          },
+          "folders": {}
+        }
+      }
+    },
+    "Organic Behavior": {
+      "controllers": {
+        "Behavior Type": "Fluid"
+      },
+      "folders": {
+        "Fluid Parameters": {
+          "controllers": {
+            "Radius": 20,
+            "Surface Tension": 0.5,
+            "Viscosity": 0.2,
+            "Damping": 0.98
+          },
+          "folders": {}
+        },
+        "Swarm Parameters": {
+          "controllers": {
+            "Radius": 20.16,
+            "Cohesion": 0.821,
+            "Alignment": 0,
+            "Separation": 0,
+            "Max Speed": 5
+          },
+          "folders": {}
+        },
+        "Automata Parameters": {
+          "controllers": {
+            "Radius": 30,
+            "Repulsion": 0.8,
+            "Attraction": 0.5,
+            "Threshold": 0.2
+          },
+          "folders": {}
+        },
+        "Debug": {
+          "controllers": {
+            "Show Debug": false,
+            "Force Scale": 0.1
           },
           "folders": {}
         }
@@ -80,6 +141,25 @@
     "Grid": {
       "controllers": {},
       "folders": {
+        "Parameters": {
+          "controllers": {
+            "Target Cells": 341,
+            "Gap (px)": 0,
+            "Cell Ratio": 1,
+            "Grid Scale": 0.95
+          },
+          "folders": {
+            "Stats": {
+              "controllers": {
+                "Columns": 23,
+                "Rows": 23,
+                "Rect Width": 11,
+                "Rect Height": 11
+              },
+              "folders": {}
+            }
+          }
+        },
         "Density Map": {
           "controllers": {
             "Min Density": 0,
@@ -126,20 +206,28 @@
               "folders": {}
             }
           }
+        },
+        "Value Smoothing": {
+          "controllers": {
+            "Enable Smoothing": true,
+            "Fade In Speed": 0.15,
+            "Fade Out Speed": 0.08,
+            "Change Threshold": 0.001
+          },
+          "folders": {}
         }
       }
     },
     "Mouse Input": {
       "controllers": {
-        "Attractor Mode": false,
-        "Input Radius": 0.3,
-        "Input Strength": 0.022
+        "Input Radius": 0.75,
+        "Impulse Magnitude": 0.08
       },
       "folders": {}
     },
     "Debug": {
       "controllers": {
-        "Show Debug Overlay": true,
+        "Show Debug Overlay": false,
         "Show Velocity Field": false,
         "Show Pressure Field": false,
         "Show Boundaries": false,

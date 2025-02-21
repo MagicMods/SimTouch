@@ -204,7 +204,6 @@ class UI {
 
     //#region Turbulence
     const turbulenceFolder = this.gui.addFolder("Turbulence");
-    turbulenceFolder.add(this.main.turbulenceField, "enabled").name("Enable");
 
     turbulenceFolder
       .add(this.main.turbulenceField, "strength", 0, 2)
@@ -322,9 +321,6 @@ class UI {
     if (particles.organicBehavior) {
       const organicFolder = this.gui.addFolder("Organic Behavior");
 
-      // Add behavior controls
-      organicFolder.add(particles.organicBehavior, "enabled").name("Enable");
-
       const behaviorControl = {
         behavior: particles.organicBehavior.currentBehavior,
       };
@@ -421,22 +417,15 @@ class UI {
     if (this.main.gridRenderer.renderModes?.smoothing) {
       const smoothingFolder = gridFolder.addFolder("Value Smoothing");
       const smoothing = this.main.gridRenderer.renderModes.smoothing;
-
-      smoothingFolder.add(smoothing, "enabled").name("Enable Smoothing");
-
       smoothingFolder
         .add(smoothing, "rateIn", 0.01, 0.5)
         .name("Fade In Speed")
-        .onChange(() => console.log("Smoothing in:", smoothing.rateIn));
+        .onFinishChange(() => console.log("Smoothing in:", smoothing.rateIn));
 
       smoothingFolder
         .add(smoothing, "rateOut", 0.01, 0.5)
         .name("Fade Out Speed")
-        .onChange(() => console.log("Smoothing out:", smoothing.rateOut));
-
-      smoothingFolder
-        .add(smoothing, "threshold", 0.0001, 0.01)
-        .name("Change Threshold");
+        .onFinishChange(() => console.log("Smoothing out:", smoothing.rateOut));
     }
     //#endregion
 

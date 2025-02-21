@@ -177,7 +177,7 @@ class ParticleSystem {
     this.applyExternalForces(dt);
 
     // 2. Apply organic behavior forces
-    if (this.organicBehavior.enabled) {
+    if (this.organicBehavior.currentBehavior !== "None") {
       this.organicBehavior.updateParticles(this, dt);
     }
 
@@ -206,7 +206,7 @@ class ParticleSystem {
     }
 
     // Apply turbulence if enabled
-    if (this.turbulence?.enabled) {
+    if (this.turbulence?.strength > 0) {
       for (let i = 0; i < this.numParticles; i++) {
         const pos = [this.particles[i * 2], this.particles[i * 2 + 1]];
         const vel = [this.velocitiesX[i], this.velocitiesY[i]];

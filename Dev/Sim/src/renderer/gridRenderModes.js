@@ -22,14 +22,12 @@ class GridRenderModes {
     // Create value buffer
     this.values = new Float32Array(gridParams.target);
     this.targetValues = new Float32Array(gridParams.target);
-    this.currentValues = new Float32Array(gridParams.target);
+    this.currentValues = new Float32Array(gridParams.target).fill(0);
 
-    // Smoothing configuration
+    // Smoothing configuration - simplified
     this.smoothing = {
-      enabled: true,
       rateIn: 0.15, // Speed to reach target (higher = faster)
       rateOut: 0.08, // Speed to return to zero (lower = smoother)
-      threshold: 0.001, // Minimum change threshold
     };
 
     // Modes configuration
@@ -62,7 +60,7 @@ class GridRenderModes {
     if (this.values.length !== gridParams.target) {
       this.values = new Float32Array(gridParams.target);
       this.targetValues = new Float32Array(gridParams.target);
-      this.currentValues = new Float32Array(gridParams.target);
+      this.currentValues = new Float32Array(gridParams.target).fill(0);
     }
   }
 
@@ -70,14 +68,11 @@ class GridRenderModes {
     // Calculate new target values
     this.calculateTargetValues(particleSystem);
 
-    // Apply smoothing if enabled
-    if (this.smoothing.enabled) {
-      this.smoothValues();
-      return this.currentValues;
-    }
+    // Apply smoothing
+    this.smoothValues();
 
-    // Otherwise return target values directly
-    return this.targetValues;
+    // Return the smoothed current values instead of target values
+    return this.currentValues;
   }
 
   calculateTargetValues(particleSystem) {
@@ -113,16 +108,14 @@ class GridRenderModes {
       const current = this.currentValues[i];
       const diff = target - current;
 
-      // Choose rate based on whether we're increasing or decreasing
+      // Choose smoothing rate based on whether we're increasing or decreasing
       const rate =
         Math.abs(target) > Math.abs(current)
           ? this.smoothing.rateIn
           : this.smoothing.rateOut;
 
-      // Apply smoothing only if difference is above threshold
-      if (Math.abs(diff) > this.smoothing.threshold) {
-        this.currentValues[i] += diff * rate;
-      }
+      // Apply smoothing with rate
+      this.currentValues[i] += diff * rate;
     }
   }
 
@@ -339,7 +332,7 @@ class GridRenderModes {
     const velocitiesY = particleSystem.velocitiesY;
 
     // Constants
-    const tune = 2.0;
+    const tune = 100.0;
     const collisionGridSize = collisionSystem.gridSize;
     const cellRadius = (this.TARGET_WIDTH / collisionGridSize) * 0.8; // Reduced radius
 
@@ -380,7 +373,7 @@ class GridRenderModes {
 
         // Normalize base intensity
         const normalizedIntensity = Math.min(
-          1,
+          10,
           (baseIntensity / collisionCell.length) * tune
         );
 
