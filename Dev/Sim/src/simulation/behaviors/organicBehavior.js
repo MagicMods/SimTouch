@@ -23,18 +23,18 @@ class OrganicBehavior {
         mode: "Fluid",
       },
       Swarm: {
-        radius: 30,
-        cohesion: 0.4,
-        alignment: 0.3,
-        separation: 0.5,
-        maxSpeed: 2.0,
+        radius: 30,          // Reduced interaction radius
+        cohesion: 1.0,       // Pull to center of neighbors
+        alignment: 0.7,      // Match neighbor velocities
+        separation: 1.2,     // Push away from neighbors
+        maxSpeed: 0.5,       // Lower maximum speed
         mode: "Swarm",
       },
       Automata: {
-        radius: 15,
-        repulsion: 0.3,
-        attraction: 0.2,
-        threshold: 0.5,
+        radius: 30,           // Increased interaction radius
+        repulsion: 0.8,       // Stronger repulsion
+        attraction: 0.5,      // Moderate attraction
+        threshold: 0.2,       // More sensitive state difference detection
         mode: "Automata",
       },
     };
@@ -47,21 +47,23 @@ class OrganicBehavior {
         viscosity: 0.2,
       },
       Swarm: {
-        base: 0.05,
-        cohesion: 0.3,
-        separation: 0.4,
+        base: 0.01,          // Lower base force
+        cohesion: 0.1,
+        separation: 0.15,
       },
       Automata: {
-        base: 0.02,
+        base: 0.1,           // Increased base force
       },
     };
 
     // Initialize components
     this.forces = new OrganicForces(this.forceScales);
-    this.neighborSearch = new NeighborSearch({ resolution: 240 });
+    this.neighborSearch = new NeighborSearch({ resolution: 24 });
+    this.automataRules = new AutomataRules();
 
     // Debug settings
     this.debug = false;
+    this.debugEnabled = false;
 
     console.log(
       "OrganicBehavior initialized:",
@@ -82,51 +84,68 @@ class OrganicBehavior {
     const currentParams = this.params[this.currentBehavior];
     if (!currentParams) return;
 
-    // Create particle objects with proper coordinates
-    const particleObjects = [];
+    const particles = [];
     for (let i = 0; i < particleSystem.particles.length; i += 2) {
-      particleObjects.push({
+      const particle = {
         x: particleSystem.particles[i],
-        y: particleSystem.particles[i + 1], // Keep original Y
+        y: particleSystem.particles[i + 1],
         vx: particleSystem.velocitiesX[i / 2],
         vy: particleSystem.velocitiesY[i / 2],
         index: i / 2,
-      });
+        state: this.currentBehavior === "Automata" ? 
+          this.automataRules.getParticleState(i / 2) : 0.5
+      };
+      particles.push(particle);
 
-      // Debug bottom half particles
-      if (particleObjects[particleObjects.length - 1].y > 0.5 && this.debug) {
-        // Only log every 60 frames (about 1 second at 60fps)
-        if (Math.floor(performance.now() / 1000) % 1 === 0) {
-          console.log(
-            "Bottom half particle:",
-            JSON.stringify(particleObjects[particleObjects.length - 1], null, 2)
-          );
-        }
+      // Debug particles in top region
+      if (this.debugEnabled && particle.y > 0.7) {
+        console.log(`Particle ${i / 2} at y=${particle.y.toFixed(3)}`);
       }
     }
 
-    // Calculate forces
     const neighbors = this.neighborSearch.findNeighbors(
-      particleObjects,
+      particles,
       currentParams.radius
     );
+
+    if (this.debugEnabled) {
+      console.log(`Total neighbors found: ${neighbors.size}`);
+    }
+
+    // Handle Automata state updates
+    if (this.currentBehavior === "Automata") {
+      if (!this.automataRules.particleStates.size) {
+        this.automataRules.initializeStates(particles);
+      }
+      this.automataRules.updateStates(particles, neighbors, currentParams);
+    }
+
     const forces = this.forces.calculateForces(
-      particleObjects,
+      particles,
       neighbors,
       currentParams
     );
 
-    // Apply forces to velocities
-    forces.forEach((force, idx) => {
-      if (Math.abs(force.x) > 0 || Math.abs(force.y) > 0) {
-        // Scale force by timestep
-        const fx = force.x * dt;
-        const fy = force.y * dt;
+    // Debug output
+    if (this.debugEnabled) {
+      console.log(`${this.currentBehavior} update:`, {
+        particles: particles.length,
+        neighbors: neighbors.size,
+        states: this.currentBehavior === "Automata" ? 
+          this.automataRules.particleStates.size : 'N/A'
+      });
+    }
 
-        // Apply to velocities
-        particleSystem.velocitiesX[idx] += fx;
-        particleSystem.velocitiesY[idx] += fy;
+    forces.forEach((force, idx) => {
+      if (this.debugEnabled && particles[idx].y > 0.7) {
+        console.log(
+          `Force at y=${particles[idx].y.toFixed(3)}: (${force.x.toFixed(
+            3
+          )}, ${force.y.toFixed(3)})`
+        );
       }
+      particleSystem.velocitiesX[idx] += force.x * dt;
+      particleSystem.velocitiesY[idx] += force.y * dt;
     });
   }
 
