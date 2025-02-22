@@ -1,0 +1,12 @@
+{
+    "strength": 0.3,
+    "scale": 2.0,
+    "speed": 0.5,
+    "octaves": 2,
+    "persistence": 0.5,
+    "rotation": 0,
+    "inwardFactor": 0.5,
+    "decayRate": 0.99,
+    "0": 0.1,
+    "1": 0
+}

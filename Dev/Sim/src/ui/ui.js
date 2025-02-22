@@ -9,17 +9,35 @@ class UI {
   constructor(main) {
     if (!main) throw new Error("Main instance required");
     this.main = main;
-    this.gui = new GUI();
-    this.presetManager = new PresetManager(this.gui);
+    this.leftGui = new GUI({ container: this.createContainer("left") });
+    this.rightGui = new GUI({ container: this.createContainer("right") });
+    this.presetManager = new PresetManager(this.leftGui);
     this.stats = new Stats();
     this.initStats();
     this.initGUI();
+    this.controls = {
+      fieldType: null,
+      boundary: null,
+      mainPreset: null,
+    };
+  }
+
+  // Add method to create containers
+  createContainer(position) {
+    const container = document.createElement("div");
+    container.style.cssText = `
+        position: absolute;
+        top: 0;
+        ${position === "left" ? "left: 0" : "right: 0"};
+      `;
+    document.body.appendChild(container);
+    return container;
   }
 
   initStats() {
     // Create stats container
     const statsContainer = document.createElement("div");
-    statsContainer.style.cssText = "position:absolute;top:0;left:0;";
+    statsContainer.style.cssText = "position:absolute;bottom:1;left:0;";
     statsContainer.appendChild(this.stats.dom);
     document.body.appendChild(statsContainer);
   }
@@ -30,11 +48,22 @@ class UI {
     }
   }
 
-  initGUI() {
+  async initGUI() {
     const particles = this.main.particleSystem;
+    const gridRenderer = this.main.gridRenderer;
 
-    // Add Presets folder at the top
-    const presetFolder = this.gui.addFolder("Presets");
+    // Left panel folders
+    const presetFolder = this.leftGui.addFolder("Presets");
+    const globalFolder = this.leftGui.addFolder("Global");
+    const particlesFolder = this.leftGui.addFolder("Particles");
+    const physicsFolder = particlesFolder.addFolder("Physics");
+
+    // Right panel folders
+    const turbulenceFolder = this.rightGui.addFolder("Turbulence");
+    const organicFolder = this.rightGui.addFolder("Organic Behavior");
+    const gridFolder = this.rightGui.addFolder("Grid");
+    const mouseInputFolder = this.rightGui.addFolder("Mouse Input");
+    const debugFolder = this.rightGui.addFolder("Debug");
     presetFolder.open();
 
     // Export button only
@@ -42,86 +71,64 @@ class UI {
       .add(
         {
           export: () => {
-            const state = this.gui.save();
+            const leftState = this.leftGui.save();
+            const rightState = this.rightGui.save();
+            const completeState = {
+              left: leftState,
+              right: rightState,
+            };
             console.log("Current configuration:");
-            console.log(JSON.stringify(state, null, 2));
+            console.log(JSON.stringify(completeState, null, 2));
           },
         },
         "export"
       )
       .name("Export to Console");
 
-    // Load presets from files
-    this.presetManager.loadPresets().then(() => {
-      const presetNames = this.presetManager.getPresetNames();
-      if (presetNames.length > 0) {
-        const presetControl = {
-          current: this.presetManager.defaultPreset,
-        };
+    // Main preset selector
+    const mainPresetControl = {
+      preset: "Default",
+    };
 
-        // Add preset selection dropdown
-        presetFolder
-          .add(presetControl, "current", presetNames)
-          .name("Load Preset")
-          .onChange((value) => {
-            // Prevent recursion by checking if preset is already loaded
-            // if (value === this.presetManager.currentPreset) return;
+    await this.presetManager.loadMainPresets();
+    const mainPresets = this.presetManager.getPresetNames("main");
+    if (mainPresets.length > 0) {
+      mainPresetControl.preset = mainPresets[0];
+      this.controls.mainPreset = presetFolder
+        .add(mainPresetControl, "preset", ["Default", ...mainPresets])
+        .name("Main Preset")
+        .onChange(async (value) => {
+          if (value === "Default") {
+            // Reset to default values
+            this.main.particleSystem.reset();
+          } else {
+            await this.presetManager.loadPreset(value);
+          }
+        });
+    }
 
-            if (this.presetManager.presets[value]) {
-              // Update current preset before loading
-              this.presetManager.currentPreset = value;
-
-              // Load preset without triggering onChange
-              this.gui.load(this.presetManager.presets[value]);
-
-              // Update all controllers manually
-              Object.values(this.gui.folders).forEach((folder) => {
-                folder.controllers.forEach((controller) => {
-                  if (controller !== this.presetDropdown) {
-                    controller.updateDisplay();
-                  }
-                });
-              });
-
-              // Update particle system if needed
-              this.main.particleSystem.reinitializeParticles();
-            }
-          });
-      }
-    });
-
-    //#region Animation
-    const globalFolder = this.gui.addFolder("Global");
-    globalFolder.open();
-    globalFolder
-      .add(particles, "timeScale", 0, 2, 0.1)
-      .name("Speed")
-      .onChange((value) => {
-        console.log(`Animation speed: ${value}x`);
-      });
-    globalFolder
-      .add(particles, "picFlipRatio", 0, 1, 0.01)
-      .name("PIC / FLIP")
-      .onChange((value) => {
-        console.log(`PIC/FLIP mixing ratio: ${value * 100}% FLIP`);
-      });
-    globalFolder
+    presetFolder
       .add(this.main, "paused")
       .name("Pause")
-      .onChange((value) => {
+      .onFinishChange((value) => {
         console.log(`Simulation is ${value ? "paused" : "running"}`);
       });
+
+    //#region Global
+    globalFolder.open();
+
     // Field selection
     if (this.main.gridRenderer.renderModes) {
       const fieldControl = {
         field: this.main.gridRenderer.renderModes.currentMode,
       };
 
-      globalFolder
+      this.controls.fieldType = globalFolder
         .add(fieldControl, "field", Object.values(GridField))
         .name("Field Type")
         .onChange((value) => {
           this.main.gridRenderer.renderModes.currentMode = value;
+          this.controls.fieldType.updateDisplay();
         });
       globalFolder
         .add(this.main.particleSystem.boundary, "mode", {
@@ -131,17 +138,58 @@ class UI {
         .name("Boundary")
         .onChange((value) => {
           this.main.particleSystem.setBoundaryMode(value);
-          // this.boundaryFolder.updateDisplay();
-          // this.globalFolder.updateDisplay();
         });
     }
+    // Add behavior type selector
+    if (particles.organicBehavior) {
+      const behaviorControl = {
+        behavior: particles.organicBehavior.currentBehavior,
+      };
+      globalFolder
+        .add(behaviorControl, "behavior", Object.values(Behaviors))
+        .name("Behavior")
+        .onChange((value) => {
+          particles.organicBehavior.currentBehavior = value;
+        });
+    }
+    globalFolder
+      .add(particles, "timeScale", 0, 2, 0.1)
+      .name("Speed")
+      .onFinishChange((value) => {
+        console.log(`Animation speed: ${value}x`);
+      });
+    globalFolder
+      .add(particles, "picFlipRatio", 0, 1, 0.01)
+      .name("PIC / FLIP")
+      .onFinishChange((value) => {
+        console.log(`PIC/FLIP mixing ratio: ${value * 100}% FLIP`);
+      });
+
+    // Add smoothing controls to grid folder
+    if (this.main.gridRenderer.renderModes?.smoothing) {
+      // const smoothingFolder = globalFolder.addFolder("Value Smoothing");
+      const smoothing = this.main.gridRenderer.renderModes.smoothing;
+      globalFolder
+        .add(smoothing, "rateIn", 0.01, 0.5)
+        .name("Fade In Speed")
+        .onFinishChange(() => console.log("Smoothing in:", smoothing.rateIn));
+
+      globalFolder
+        .add(smoothing, "rateOut", 0.01, 0.5)
+        .name("Fade Out Speed")
+        .onFinishChange(() => console.log("Smoothing out:", smoothing.rateOut));
+    }
+    // Density controls
+    globalFolder
+      .add(gridRenderer, "maxDensity", 0.1, 10, 0.1)
+      .name("Max Density");
 
     // Create both controls with the same options
 
     //#endregion
 
     //#region Particles
-    const particlesFolder = this.gui.addFolder("Particles");
+
     const particleFolder = particlesFolder.addFolder("Properties");
     particlesFolder.open();
     particleFolder.open();
@@ -178,7 +226,7 @@ class UI {
     //#endregion
 
     //#region Physics
-    const physicsFolder = particlesFolder.addFolder("Physics");
+
     physicsFolder.open();
     physicsFolder.add(particles, "gravity", 0, 1, 0.01).name("Gravity");
 
@@ -253,7 +301,35 @@ class UI {
     //#endregion
 
     //#region Turbulence
-    const turbulenceFolder = this.gui.addFolder("Turbulence");
+
+    const turbulenceControl = {
+      preset: "None",
+    };
+
+    await this.presetManager.loadSubPresets("turbulence");
+    turbulenceFolder
+      .add(
+        turbulenceControl,
+        "preset",
+        this.presetManager.getPresetNames("turbulence")
+      )
+      .name("Preset")
+      .onChange((value) => {
+        const preset = this.presetManager.applySubPreset("turbulence", value);
+        if (preset) {
+          this.main.turbulenceField.setParameters(preset);
+        }
+        // Update GUI
+        for (const ctrl of turbulenceFolder.controllers) {
+          ctrl.updateDisplay();
+        }
+        for (const ctrl of advancedFolder.controllers) {
+          ctrl.updateDisplay();
+        }
+        for (const ctrl of biasFolder.controllers) {
+          ctrl.updateDisplay();
+        }
+      });
 
     turbulenceFolder
       .add(this.main.turbulenceField, "strength", 0, 2)
@@ -292,72 +368,13 @@ class UI {
       .add(this.main.turbulenceField.directionBias, "1", -1, 1)
       .name("Y Bias");
 
-    // Add presets
-    const presets = {
-      "Gentle Breeze": {
-        strength: 0.3,
-        scale: 2.0,
-        speed: 0.5,
-        octaves: 2,
-        persistence: 0.5,
-        rotation: 0,
-        inwardFactor: 0.5,
-        decayRate: 0.99,
-        directionBias: [0.1, 0],
-      },
-      Vortex: {
-        strength: 1.2,
-        scale: 4.0,
-        speed: 2.0,
-        octaves: 3,
-        persistence: 0.7,
-        rotation: Math.PI / 2,
-        inwardFactor: 2.0,
-        decayRate: 0.98,
-        directionBias: [0, 0],
-      },
-      Chaos: {
-        strength: 1.8,
-        scale: 8.0,
-        speed: 3.0,
-        octaves: 5,
-        persistence: 0.8,
-        rotation: Math.PI / 4,
-        inwardFactor: 0.2,
-        decayRate: 0.95,
-        directionBias: [-0.2, 0.2],
-      },
-    };
-
-    // Add preset selector
-    turbulenceFolder
-      .add({ preset: "Default" }, "preset", [
-        "Default",
-        ...Object.keys(presets),
-      ])
-      .onChange((value) => {
-        if (value === "Default") return;
-        const preset = presets[value];
-        this.main.turbulenceField.setParameters(preset);
-        // Update GUI
-        for (const ctrl of turbulenceFolder.controllers) {
-          ctrl.updateDisplay();
-        }
-        for (const ctrl of advancedFolder.controllers) {
-          ctrl.updateDisplay();
-        }
-        for (const ctrl of biasFolder.controllers) {
-          ctrl.updateDisplay();
-        }
-      });
-
     turbulenceFolder.open();
 
     //#endregion
 
     //#region Organic Behavior
     if (particles.organicBehavior) {
-      const organicFolder = this.gui.addFolder("Organic Behavior");
+      // const organicFolder = this.rightGui.addFolder("Organic Behavior");
 
       const behaviorControl = {
         behavior: particles.organicBehavior.currentBehavior,
@@ -384,27 +401,33 @@ class UI {
           1
         )
         .name("Force Scale")
-        .onChange(() => {
+        .onFinishChange(() => {
           console.log("Force scale updated");
         });
     }
     //#endregion
 
     //#region Grid
-    const gridFolder = this.gui.addFolder("Grid");
+
     gridFolder.open();
 
     const gridParamFolder = gridFolder.addFolder("Parameters");
-    const gridRenderer = this.main.gridRenderer;
 
+    // In the Grid section, fix the Field Type control
     if (gridRenderer.gridParams) {
-      gridFolder
-        .add(gridRenderer, "field", Object.values(GridField))
+      const fieldControl = {
+        field: this.main.gridRenderer.renderModes.currentMode,
+      };
+
+      const fieldTypeControl = gridFolder
+        .add(fieldControl, "field", Object.values(GridField))
         .name("Field Type")
         .onChange((value) => {
           this.main.gridRenderer.renderModes.currentMode = value;
-          this.updateDisplay();
+          fieldControl.field = value; // Update the control object
+          fieldTypeControl.updateDisplay();
         });
+
       gridParamFolder
         .add(gridRenderer.gridParams, "target", 1, 800, 1)
         .name("Target Cells")
@@ -430,15 +453,6 @@ class UI {
     stats.add(gridRenderer.gridParams, "width").name("Rect Width").listen();
     stats.add(gridRenderer.gridParams, "height").name("Rect Height").listen();
 
-    // Density controls
-    const densityFolder = gridFolder.addFolder("Density Map");
-    densityFolder
-      .add(gridRenderer, "minDensity", 0, 10, 0.1)
-      .name("Min Density");
-    densityFolder
-      .add(gridRenderer, "maxDensity", 0.1, 10, 0.1)
-      .name("Max Density");
-
     // Gradient controls
     const gradientFolder = gridFolder.addFolder("Gradient");
     gradientFolder.open(false);
@@ -457,24 +471,10 @@ class UI {
         .onChange(() => this.main.gridRenderer.gradient.update());
     });
 
-    // Add smoothing controls to grid folder
-    if (this.main.gridRenderer.renderModes?.smoothing) {
-      const smoothingFolder = gridFolder.addFolder("Value Smoothing");
-      const smoothing = this.main.gridRenderer.renderModes.smoothing;
-      smoothingFolder
-        .add(smoothing, "rateIn", 0.01, 0.5)
-        .name("Fade In Speed")
-        .onFinishChange(() => console.log("Smoothing in:", smoothing.rateIn));
-
-      smoothingFolder
-        .add(smoothing, "rateOut", 0.01, 0.5)
-        .name("Fade Out Speed")
-        .onFinishChange(() => console.log("Smoothing out:", smoothing.rateOut));
-    }
     //#endregion
 
     //#region Mouse Input
-    const mouseInputFolder = this.gui.addFolder("Mouse Input");
+
     mouseInputFolder.open(false);
     if (particles.mouseForces) {
       mouseInputFolder
@@ -490,7 +490,7 @@ class UI {
     //#endregion
 
     //#region Debug
-    const debugFolder = this.gui.addFolder("Debug");
+
     debugFolder.add(particles, "debug").name("Show Debug Overlay");
     debugFolder
       .add(particles, "debugShowVelocityField")
@@ -511,8 +511,11 @@ class UI {
   }
 
   dispose() {
-    if (this.gui) {
-      this.gui.destroy();
+    if (this.leftGui) this.leftGui.destroy();
+    if (this.rightGui) this.rightGui.destroy();
+    if (this.stats) {
+      this.stats.dom.remove();
+      this.stats = null;
     }
   }
 

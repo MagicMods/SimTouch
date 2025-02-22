@@ -1,0 +1,8 @@
+{
+  "radius": 30,
+  "cohesion": 1,
+  "alignment": 0.7,
+  "separation": 1.2,
+  "maxSpeed": 0.5,
+  "mode": "Swarm"
+}
