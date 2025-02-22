@@ -16,7 +16,7 @@ class PresetManager {
 
       // Load each preset
       for (const name of presetFiles) {
-        const response = await fetch(`./presets/${name}.json`);
+        const response = await fetch(`./presets/main/${name}.json`);
         if (response.ok) {
           this.presets[name] = await response.json();
         }

@@ -4,6 +4,7 @@ import Stats from "../util/statsModule.js";
 import { GridField } from "../renderer/gridRenderModes.js";
 import { OrganicBehavior } from "../simulation/behaviors/organicBehavior.js";
 import { Behaviors } from "../simulation/behaviors/organicBehavior.js";
+
 class UI {
   constructor(main) {
     if (!main) throw new Error("Main instance required");
@@ -122,7 +123,21 @@ class UI {
         .onChange((value) => {
           this.main.gridRenderer.renderModes.currentMode = value;
         });
+      globalFolder
+        .add(this.main.particleSystem.boundary, "mode", {
+          Bounce: "BOUNCE",
+          Warp: "WARP",
+        })
+        .name("Boundary")
+        .onChange((value) => {
+          this.main.particleSystem.setBoundaryMode(value);
+          // this.boundaryFolder.updateDisplay();
+          // this.globalFolder.updateDisplay();
+        });
     }
+
+    // Create both controls with the same options
+
     //#endregion
 
     //#region Particles
@@ -158,6 +173,8 @@ class UI {
     particleFolder
       .addColor(this.main.particleRenderer.config, "color")
       .name("Color");
+
+    particleFolder.add(particles, "debug").name("Show Debug");
     //#endregion
 
     //#region Physics
@@ -168,6 +185,39 @@ class UI {
     physicsFolder
       .add(particles, "velocityDamping", 0.8, 1.0, 0.01)
       .name("Velocity Damping");
+    //#region Boundary
+    const boundaryFolder = particlesFolder.addFolder("Boundary");
+    boundaryFolder.open(false);
+    boundaryFolder
+      .add(particles.boundary, "radius", 0.3, 0.55, 0.005)
+      .name("Size")
+      .onChange((value) => {
+        particles.boundary.update({ radius: value }, [
+          (boundary) => this.main.baseRenderer.drawCircularBoundary(boundary),
+        ]);
+      });
+
+    // Wall friction: 0 = no friction, 1 = maximum friction
+    boundaryFolder
+      .add(particles, "boundaryDamping", 0.0, 1.0, 0.01)
+      .name("Wall Friction")
+      .onChange((value) => (particles.boundaryDamping = value)); // Invert for damping
+
+    boundaryFolder
+      .add(particles.boundary, "cBoundaryRestitution", 0.0, 1.0, 0.05)
+      .name("Bounce");
+
+    // Add boundary mode control
+    boundaryFolder
+      .add(this.main.particleSystem.boundary, "mode", {
+        Bounce: "BOUNCE",
+        Warp: "WARP",
+      })
+      .name("Mode")
+      .onChange((value) => {
+        this.main.particleSystem.setBoundaryMode(value);
+      });
+    //#endregion
     //#endregion
 
     //#region Collision
@@ -305,18 +355,6 @@ class UI {
 
     //#endregion
 
-    //#region FLIP
-    const flipFolder = particlesFolder.addFolder("FLIP");
-
-    flipFolder
-      .add(particles, "flipIterations", 1, 40, 1)
-      .name("Pressure Iterations");
-
-    flipFolder.open();
-
-    particleFolder.add(particles, "debug").name("Show Debug");
-    //#endregion
-
     //#region Organic Behavior
     if (particles.organicBehavior) {
       const organicFolder = this.gui.addFolder("Organic Behavior");
@@ -360,7 +398,13 @@ class UI {
     const gridRenderer = this.main.gridRenderer;
 
     if (gridRenderer.gridParams) {
-      // // Grid Parameters
+      gridFolder
+        .add(gridRenderer, "field", Object.values(GridField))
+        .name("Field Type")
+        .onChange((value) => {
+          this.main.gridRenderer.renderModes.currentMode = value;
+          this.updateDisplay();
+        });
       gridParamFolder
         .add(gridRenderer.gridParams, "target", 1, 800, 1)
         .name("Target Cells")
@@ -406,11 +450,11 @@ class UI {
       pointFolder
         .add(point, "pos", 0, 100, 1)
         .name("Position")
-        .onChange(() => this.main.gridRenderer.updateGradient());
+        .onChange(() => this.main.gridRenderer.gradient.update());
       pointFolder
         .addColor(point, "color")
         .name("Color")
-        .onChange(() => this.main.gridRenderer.updateGradient());
+        .onChange(() => this.main.gridRenderer.gradient.update());
     });
 
     // Add smoothing controls to grid folder
@@ -427,40 +471,6 @@ class UI {
         .name("Fade Out Speed")
         .onFinishChange(() => console.log("Smoothing out:", smoothing.rateOut));
     }
-    //#endregion
-
-    //#region Boundary
-    const boundaryFolder = particlesFolder.addFolder("Boundary");
-    boundaryFolder.open(false);
-    boundaryFolder
-      .add(particles.boundary, "radius", 0.3, 0.55, 0.005)
-      .name("Size")
-      .onChange((value) => {
-        particles.boundary.update({ radius: value }, [
-          (boundary) => this.main.baseRenderer.drawCircularBoundary(boundary),
-        ]);
-      });
-
-    // Wall friction: 0 = no friction, 1 = maximum friction
-    boundaryFolder
-      .add(particles, "boundaryDamping", 0.0, 1.0, 0.01)
-      .name("Wall Friction")
-      .onChange((value) => (particles.boundaryDamping = value)); // Invert for damping
-
-    boundaryFolder
-      .add(particles.boundary, "cBoundaryRestitution", 0.0, 1.0, 0.05)
-      .name("Bounce");
-
-    // Add boundary mode control
-    boundaryFolder
-      .add(this.main.particleSystem.boundary, "mode", {
-        Bounce: "BOUNCE",
-        Warp: "WARP",
-      })
-      .name("Mode")
-      .onChange((value) => {
-        this.main.particleSystem.setBoundaryMode(value);
-      });
     //#endregion
 
     //#region Mouse Input
@@ -498,12 +508,6 @@ class UI {
       .name("Noise Field Resolution");
     debugFolder.open(false);
     //#endregion
-  }
-
-  updatePresetDropdown() {
-    const presets = ["none", ...this.presetManager.getPresetNames()];
-    this.presetDropdown.options = presets;
-    this.presetDropdown.updateDisplay();
   }
 
   dispose() {
