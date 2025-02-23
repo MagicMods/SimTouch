@@ -70,6 +70,7 @@ class UI {
     // Right panel folders
     const turbulenceFolder = this.rightGui.addFolder("Turbulence");
     const organicFolder = this.rightGui.addFolder("Organic Behavior");
+    const organicForceFolder = organicFolder.addFolder("Force");
     const gridFolder = this.rightGui.addFolder("Grid");
 
     //#region Presets
@@ -207,16 +208,6 @@ class UI {
         .onFinishChange((value) => {
           console.log(`PIC/FLIP mixing ratio: ${value * 100}% FLIP`);
         });
-
-      globalFolder
-        .add(this.main.particleSystem.boundary, "mode", {
-          Bounce: "BOUNCE",
-          Warp: "WARP",
-        })
-        .name("Boundary")
-        .onChange((value) => {
-          this.main.particleSystem.setBoundaryMode(value);
-        });
     }
 
     //#endregion
@@ -277,6 +268,16 @@ class UI {
     collisionFolder
       .add(particles.collisionSystem, "damping", 0.5, 1.0, 0.01)
       .name("Collision Damping");
+
+    collisionFolder
+      .add(this.main.particleSystem.boundary, "mode", {
+        Bounce: "BOUNCE",
+        Warp: "WARP",
+      })
+      .name("Boundary")
+      .onChange((value) => {
+        this.main.particleSystem.setBoundaryMode(value);
+      });
     //#endregion
 
     //#region Boundary
@@ -409,8 +410,10 @@ class UI {
 
     //#region Debug
 
-    debugFolder.add(particles, "debug").name("Show Debug Overlay");
     debugFolder.add(particles, "debug").name("Show Debug Particles");
+    debugFolder
+      .add(particles.organicBehavior, "debug")
+      .name("Debug Organic Behavior");
     debugFolder
       .add(particles, "debugShowVelocityField")
       .name("Show Velocity Field");
@@ -512,14 +515,55 @@ class UI {
 
     //#region Organic Behavior
     if (particles.organicBehavior) {
-      this.addBehaviorParameters(organicFolder, particles.organicBehavior);
+      // Fluid behavior
+      const fluidFolder = organicFolder.addFolder("Fluid Parameters");
+      fluidFolder
+        .add(particles.organicBehavior.params.Fluid, "radius", 5, 50)
+        .name("Radius");
+      fluidFolder
+        .add(particles.organicBehavior.params.Fluid, "surfaceTension", 0, 1)
+        .name("Surface Tension");
+      fluidFolder
+        .add(particles.organicBehavior.params.Fluid, "viscosity", 0, 1)
+        .name("Viscosity");
+      fluidFolder
+        .add(particles.organicBehavior.params.Fluid, "damping", 0.5, 1)
+        .name("Damping");
 
-      // In the initGUI method where you setup organic behavior controls
-      const debugOrganicFolder = organicFolder.addFolder("Debug");
-      debugOrganicFolder
-        .add(particles.organicBehavior, "debug")
-        .name("Show Debug");
-      debugOrganicFolder
+      // Swarm behavior
+      const swarmFolder = organicFolder.addFolder("Swarm Parameters");
+      swarmFolder
+        .add(particles.organicBehavior.params.Swarm, "radius", 5, 50)
+        .name("Radius");
+      swarmFolder
+        .add(particles.organicBehavior.params.Swarm, "cohesion", 0, 1)
+        .name("Cohesion");
+      swarmFolder
+        .add(particles.organicBehavior.params.Swarm, "alignment", 0, 1)
+        .name("Alignment");
+      swarmFolder
+        .add(particles.organicBehavior.params.Swarm, "separation", 0, 1)
+        .name("Separation");
+      swarmFolder
+        .add(particles.organicBehavior.params.Swarm, "maxSpeed", 0, 5)
+        .name("Max Speed");
+
+      // Automata behavior
+      const automataFolder = organicFolder.addFolder("Automata Parameters");
+      automataFolder
+        .add(particles.organicBehavior.params.Automata, "radius", 5, 50)
+        .name("Radius");
+      automataFolder
+        .add(particles.organicBehavior.params.Automata, "repulsion", 0, 1)
+        .name("Repulsion");
+      automataFolder
+        .add(particles.organicBehavior.params.Automata, "attraction", 0, 1)
+        .name("Attraction");
+      automataFolder
+        .add(particles.organicBehavior.params.Automata, "threshold", 0, 1)
+        .name("Threshold");
+
+      organicForceFolder
         .add(
           particles.organicBehavior.forceScales[Behaviors.FLUID],
           "base",
@@ -597,51 +641,19 @@ class UI {
     }
   }
 
-  addBehaviorParameters(folder, behavior) {
-    Object.entries(behavior.params).forEach(([type, params]) => {
-      const subFolder = folder.addFolder(`${type} Parameters`);
-
-      Object.entries(params).forEach(([key, value]) => {
-        if (key !== "mode") {
-          switch (key) {
-            case "radius":
-              subFolder
-                .add(params, key, 5, 50)
-                .name(this.formatParameterName(key));
-              break;
-            case "maxSpeed":
-              subFolder
-                .add(params, key, 0, 5)
-                .name(this.formatParameterName(key));
-              break;
-            case "damping":
-              subFolder
-                .add(params, key, 0.5, 1)
-                .name(this.formatParameterName(key));
-              break;
-            default:
-              subFolder
-                .add(params, key, 0, 1)
-                .name(this.formatParameterName(key));
-          }
-        }
-      });
-    });
-  }
-
-  formatParameterName(key) {
-    return (
-      key
-        .split(/(?=[A-Z])/)
-        .join(" ")
-        .charAt(0)
-        .toUpperCase() +
-      key
-        .split(/(?=[A-Z])/)
-        .join(" ")
-        .slice(1)
-    );
-  }
+  // formatParameterName(key) {
+  //   return (
+  //     key
+  //       .split(/(?=[A-Z])/)
+  //       .join(" ")
+  //       .charAt(0)
+  //       .toUpperCase() +
+  //     key
+  //       .split(/(?=[A-Z])/)
+  //       .join(" ")
+  //       .slice(1)
+  //   );
+  // }
 }
 
 export { UI };

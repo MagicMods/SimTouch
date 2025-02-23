@@ -4,68 +4,55 @@
     "folders": {
       "Global": {
         "controllers": {
-          "Field Type": "Collision",
-          "Boundary": "BOUNCE",
-          "Behavior": "None",
+          "Mode": "Collision",
+          "Max Density": 3.3,
+          "Fade In Speed": 0.06615,
+          "Fade Out Speed": 0.03626,
+          "Organic Behavior": "None",
           "Speed": 0.7,
-          "PIC / FLIP": 1,
-          "Fade In Speed": 0.15,
-          "Fade Out Speed": 0.08,
-          "Max Density": 7
+          "PIC / FLIP": 1
         },
         "folders": {}
       },
       "Particles": {
-        "controllers": {},
-        "folders": {
-          "Properties": {
-            "controllers": {
-              "Count": 410,
-              "Size": 0.022,
-              "Opacity": 0.08
-            },
-            "folders": {}
-          },
-          "Other": {
-            "controllers": {
-              "Color": "#ffffff",
-              "Show Debug": false
-            },
-            "folders": {}
-          },
-          "Physics": {
-            "controllers": {
-              "Gravity": 0,
-              "Velocity Damping": 0.98
-            },
-            "folders": {
-              "Collision": {
-                "controllers": {
-                  "Repulsion": 40,
-                  "Bounce": 0,
-                  "Collision Damping": 0.5
-                },
-                "folders": {}
-              },
-              "Rest State": {
-                "controllers": {
-                  "Min Speed": 0.001,
-                  "Min Move": 0.0001
-                },
-                "folders": {}
-              }
-            }
-          },
-          "Boundary": {
-            "controllers": {
-              "Size": 0.5,
-              "Wall Friction": 0.95,
-              "Bounce": 0.8,
-              "Mode": "BOUNCE"
-            },
-            "folders": {}
-          }
-        }
+        "controllers": {
+          "Count": 300,
+          "Size": 0.026,
+          "Opacity": 0.1,
+          "Color": "#ffffff"
+        },
+        "folders": {}
+      },
+      "Physics": {
+        "controllers": {
+          "Gravity": 0,
+          "Velocity Damping": 0.98
+        },
+        "folders": {}
+      },
+      "Collision": {
+        "controllers": {
+          "Repulsion": 2,
+          "Bounce": 0.8,
+          "Collision Damping": 0.98,
+          "Boundary": "WARP"
+        },
+        "folders": {}
+      },
+      "Boundary": {
+        "controllers": {
+          "Size": 0.5,
+          "Wall Friction": 0.95,
+          "Bounce": 0.8
+        },
+        "folders": {}
+      },
+      "Rest State": {
+        "controllers": {
+          "Min Speed": 0.001,
+          "Min Move": 0.0001
+        },
+        "folders": {}
       },
       "Mouse Input": {
         "controllers": {
@@ -81,18 +68,18 @@
     "folders": {
       "Turbulence": {
         "controllers": {
-          "Strength": 0.27,
+          "Strength": 0.344,
           "Scale": 4,
-          "Speed": 1
+          "Speed": 2.765
         },
         "folders": {
           "Advanced": {
             "controllers": {
               "Octaves": 3,
               "Persistence": 0.5,
-              "Rotation": 0,
-              "Inward Pull": 1,
-              "Decay Rate": 0.99
+              "Rotation": 5.67999951769035,
+              "Inward Pull": 5,
+              "Decay Rate": 1
             },
             "folders": {}
           },
@@ -106,10 +93,14 @@
         }
       },
       "Organic Behavior": {
-        "controllers": {
-          "Behavior Type": "Automata"
-        },
+        "controllers": {},
         "folders": {
+          "Force": {
+            "controllers": {
+              "Force Scale": 0.1
+            },
+            "folders": {}
+          },
           "Fluid Parameters": {
             "controllers": {
               "Radius": 20,
@@ -137,20 +128,11 @@
               "Threshold": 0
             },
             "folders": {}
-          },
-          "Debug": {
-            "controllers": {
-              "Show Debug": false,
-              "Force Scale": 0.267
-            },
-            "folders": {}
           }
         }
       },
       "Grid": {
-        "controllers": {
-          "Field Type": "Proximity"
-        },
+        "controllers": {},
         "folders": {
           "Gradient": {
             "controllers": {},
