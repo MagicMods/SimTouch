@@ -3,95 +3,68 @@ class PresetManager {
     this.leftGui = leftGui;
     this.presets = {
       main: {},
-      turbulence: {},
-      behaviors: {},
+      turbulences: {}, // Keep original folder name
     };
     this.defaultPreset = null;
     this.currentPreset = null;
+    this._debug = false;
   }
 
-  // Only load main presets at startup
-  async loadMainPresets() {
+  async scanPresetFolder(type) {
     try {
-      // Fix: correct path to index.json
-      const response = await fetch("./presets/index.json");
-      if (!response.ok) throw new Error("Could not load preset index");
+      const response = await fetch(`./presets/${type}/`);
+      const html = await response.text();
 
-      const { presetFiles } = await response.json();
-      for (const name of presetFiles) {
-        const response = await fetch(`./presets/main/${name}.json`);
-        if (response.ok) {
-          this.presets.main[name] = await response.json();
-        }
+      // Extract .json files from directory listing
+      const fileNames = html.match(/href="([^"]+\.json)"/g) || [];
+      const presetNames = fileNames
+        .map((href) => href.match(/([^\/]+)\.json/)[1])
+        .filter((name) => name);
+
+      // Try to load default.json first
+      if (presetNames.includes("default")) {
+        presetNames.splice(presetNames.indexOf("default"), 1);
+        presetNames.unshift("default");
       }
 
-      // Set first preset as default if available
-      const presetNames = Object.keys(this.presets.main);
-      if (presetNames.length > 0) {
-        this.defaultPreset = presetNames[0];
-        await this.loadPreset(this.defaultPreset);
+      // Load each preset
+      for (const name of presetNames) {
+        await this.loadPreset(name, type);
       }
 
-      console.log("Main presets loaded:", presetNames);
+      if (this._debug) {
+        console.log(`Found ${type} presets:`, presetNames);
+      }
+
       return presetNames;
     } catch (error) {
-      console.error("Error loading main presets:", error);
+      console.error(`Error scanning ${type} presets:`, error);
       return [];
     }
   }
 
-  async loadPreset(presetName) {
-    if (!this.presets.main[presetName]) {
-      console.error(`Main preset '${presetName}' not found`);
-      return false;
-    }
-
+  async loadPreset(name, type = "main") {
     try {
-      this.leftGui.load(this.presets.main[presetName]);
-      this.currentPreset = presetName;
-      console.log(`Loaded main preset: ${presetName}`);
-      return true;
-    } catch (error) {
-      console.error(`Error loading main preset '${presetName}':`, error);
-      return false;
-    }
-  }
+      const response = await fetch(`./presets/${type}/${name}.json`);
+      if (!response.ok) throw new Error(`Preset ${name} not found`);
 
-  // Load sub-presets on demand
-  async loadSubPresets(type) {
-    try {
-      const files = await this.getPresetList(type);
-      for (const name of files) {
-        const response = await fetch(`./presets/${type}/${name}.json`);
-        if (response.ok) {
-          this.presets[type][name] = await response.json();
-        }
+      const preset = await response.json();
+      this.presets[type][name] = preset;
+
+      // For main presets, apply to leftGui
+      if (type === "main") {
+        this.leftGui.load(preset);
+        this.currentPreset = name;
       }
-      console.log(`${type} presets loaded:`, Object.keys(this.presets[type]));
-      return Object.keys(this.presets[type]);
+
+      if (this._debug) {
+        console.log(`Loaded ${type} preset: ${name}`);
+      }
+      return preset;
     } catch (error) {
-      console.error(`Error loading ${type} presets:`, error);
-      return [];
+      console.error(`Error loading preset ${name}:`, error);
+      return null;
     }
-  }
-
-  getPresetList(type) {
-    switch (type) {
-      case "turbulence":
-        return ["None", "Chaos", "GentleBreeze", "Vortex"];
-      case "behaviors":
-        return ["Automata", "Fluid", "Swarm"];
-      default:
-        return [];
-    }
-  }
-
-  applySubPreset(type, name) {
-    return this.presets[type][name] || null;
-  }
-
-  getPresetNames(type = "main") {
-    return Object.keys(this.presets[type] || {});
   }
 
   getCurrentPreset() {

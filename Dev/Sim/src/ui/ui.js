@@ -66,21 +66,17 @@ class UI {
     const organicFolder = this.rightGui.addFolder("Organic Behavior");
     const gridFolder = this.rightGui.addFolder("Grid");
 
+    //#region Presets
     presetFolder.open();
 
-    // Export button only
+    // Export button
     presetFolder
       .add(
         {
           export: () => {
-            const leftState = this.leftGui.save();
-            const rightState = this.rightGui.save();
-            const completeState = {
-              left: leftState,
-              right: rightState,
-            };
+            const state = this.leftGui.save();
             console.log("Current configuration:");
-            console.log(JSON.stringify(completeState, null, 2));
+            console.log(JSON.stringify(state, null, 2));
           },
         },
         "export"
@@ -88,12 +84,9 @@ class UI {
       .name("Export to Console");
 
     // Main preset selector
-    const mainPresetControl = {
-      preset: "Default",
-    };
+    const mainPresetControl = { preset: "Default" };
+    const mainPresets = await this.presetManager.scanPresetFolder("main");
 
-    await this.presetManager.loadMainPresets();
-    const mainPresets = this.presetManager.getPresetNames("main");
     if (mainPresets.length > 0) {
       mainPresetControl.preset = mainPresets[0];
       this.controls.mainPreset = presetFolder
@@ -101,13 +94,13 @@ class UI {
         .name("Main Preset")
         .onChange(async (value) => {
           if (value === "Default") {
-            // Reset to default values
             this.main.particleSystem.reset();
           } else {
             await this.presetManager.loadPreset(value);
           }
         });
     }
+    //#endregion
 
     presetFolder
       .add(this.main, "paused")
@@ -425,33 +418,40 @@ class UI {
 
     //#region Turbulence
 
-    const turbulenceControl = {
-      preset: "None",
-    };
+    const turbulenceControl = { preset: "none" };
+    const turbulencePresets = await this.presetManager.scanPresetFolder(
+      "turbulences"
+    );
 
-    await this.presetManager.loadSubPresets("turbulence");
+    // Filter out 'none.json' from presets since we handle it separately
+    const filteredPresets = turbulencePresets.filter((name) => name !== "none");
+
     turbulenceFolder
-      .add(
-        turbulenceControl,
-        "preset",
-        this.presetManager.getPresetNames("turbulence")
-      )
+      .add(turbulenceControl, "preset", ["none", ...filteredPresets])
       .name("Preset")
-      .onChange((value) => {
-        const preset = this.presetManager.applySubPreset("turbulence", value);
-        if (preset) {
-          this.main.turbulenceField.setParameters(preset);
+      .onChange(async (value) => {
+        if (value === "none") {
+          // Use none.json preset instead of reset()
+          const nonePreset = await this.presetManager.loadPreset(
+            "none",
+            "turbulences"
+          );
+          if (nonePreset) {
+            this.main.turbulenceField.setParameters(nonePreset);
+          }
+        } else {
+          const preset = await this.presetManager.loadPreset(
+            value,
+            "turbulences"
+          );
+          if (preset) {
+            this.main.turbulenceField.setParameters(preset);
+          }
         }
-        // Update GUI
-        for (const ctrl of turbulenceFolder.controllers) {
-          ctrl.updateDisplay();
-        }
-        for (const ctrl of advancedFolder.controllers) {
-          ctrl.updateDisplay();
-        }
-        for (const ctrl of biasFolder.controllers) {
-          ctrl.updateDisplay();
-        }
+        // Update displays
+        turbulenceFolder.controllers.forEach((c) => c.updateDisplay());
+        advancedFolder.controllers.forEach((c) => c.updateDisplay());
+        biasFolder.controllers.forEach((c) => c.updateDisplay());
       });
 
     turbulenceFolder
@@ -534,8 +534,6 @@ class UI {
 
     gridFolder.open();
 
-    const gridParamFolder = gridFolder.addFolder("Parameters");
-
     // In the Grid section, fix the Field Type control
     if (gridRenderer.gridParams) {
       const fieldControl = {
@@ -551,6 +549,7 @@ class UI {
           fieldTypeControl.updateDisplay();
         });
 
+      const gridParamFolder = gridFolder.addFolder("Parameters");
       gridParamFolder
         .add(gridRenderer.gridParams, "target", 1, 800, 1)
         .name("Target Cells")
@@ -567,14 +566,14 @@ class UI {
         .add(gridRenderer.gridParams, "scale", 0.1, 1, 0.01)
         .name("Grid Scale")
         .onChange(() => gridRenderer.updateGrid());
-    }
 
-    // Grid Stats - only add if values exist
-    const stats = gridParamFolder.addFolder("Stats");
-    stats.add(gridRenderer.gridParams, "cols").name("Columns").listen();
-    stats.add(gridRenderer.gridParams, "rows").name("Rows").listen();
-    stats.add(gridRenderer.gridParams, "width").name("Rect Width").listen();
-    stats.add(gridRenderer.gridParams, "height").name("Rect Height").listen();
+      // Grid Stats - only add if values exist
+      const stats = gridParamFolder.addFolder("Stats");
+      stats.add(gridRenderer.gridParams, "cols").name("Columns").listen();
+      stats.add(gridRenderer.gridParams, "rows").name("Rows").listen();
+      stats.add(gridRenderer.gridParams, "width").name("Rect Width").listen();
+      stats.add(gridRenderer.gridParams, "height").name("Rect Height").listen();
+    }
 
     // Gradient controls
     const gradientFolder = gridFolder.addFolder("Gradient");

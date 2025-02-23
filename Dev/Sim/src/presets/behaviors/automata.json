@@ -1,7 +1,0 @@
-{
-  "radius": 30,
-  "repulsion": 0.8,
-  "attraction": 0.5,
-  "threshold": 0.2,
-  "mode": "Automata"
-}

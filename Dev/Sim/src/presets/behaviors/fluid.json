@@ -1,7 +1,0 @@
-{
-  "radius": 20,
-  "surfaceTension": 0.5,
-  "viscosity": 0.2,
-  "damping": 0.98,
-  "mode": "Fluid"
-}
