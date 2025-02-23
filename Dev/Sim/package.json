@@ -5,15 +5,23 @@
   "main": "src/main.js",
   "scripts": {
     "start": "live-server src",
+    "dev": "nodemon src/Network/server/server.js",
     "build": "webpack --mode production"
   },
   "dependencies": {
-    "gl-matrix": "^2.4.0"
+    "gl-matrix": "^3.4.3",
+    "ws": "^8.16.0"
   },
   "devDependencies": {
-    "webpack": "^5.0.0",
-    "webpack-cli": "^4.0.0",
-    "live-server": "^1.2.1"
+    "live-server": "^1.2.2",
+    "webpack": "^5.90.1",
+    "webpack-cli": "^5.1.4",
+    "nodemon": "^3.0.3"
+  },
+  "overrides": {
+    "chokidar": "^3.5.3",
+    "braces": "^3.0.2",
+    "micromatch": "^4.0.5"
   },
   "author": "MagicMods",
   "license": "MIT"

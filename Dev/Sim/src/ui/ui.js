@@ -57,13 +57,15 @@ class UI {
     const globalFolder = this.leftGui.addFolder("Global");
     const particlesFolder = this.leftGui.addFolder("Particles");
     const physicsFolder = particlesFolder.addFolder("Physics");
+    const udpFolder = this.leftGui.addFolder("UDP Network");
+    const mouseInputFolder = this.leftGui.addFolder("Mouse Input");
+    const debugFolder = this.leftGui.addFolder("Debug");
 
     // Right panel folders
     const turbulenceFolder = this.rightGui.addFolder("Turbulence");
     const organicFolder = this.rightGui.addFolder("Organic Behavior");
     const gridFolder = this.rightGui.addFolder("Grid");
-    const mouseInputFolder = this.rightGui.addFolder("Mouse Input");
-    const debugFolder = this.rightGui.addFolder("Debug");
+
     presetFolder.open();
 
     // Export button only
@@ -300,6 +302,127 @@ class UI {
       .name("Min Move");
     //#endregion
 
+    //#region UDP Network
+    console.log("UDP Network status:", this.main.udpNetwork?.getStatus());
+
+    const networkStatus = {
+      connected: false,
+      lastSent: "No data sent",
+    };
+
+    // Add UDP configuration
+    const udpConfig = this.main.udpNetwork?.config || {
+      wsPort: 8080,
+      udpPort: 3000,
+      udpHost: "localhost",
+    };
+
+    if (this.main.udpNetwork) {
+      // Basic controls
+      udpFolder.add(this.main.udpNetwork, "enable").name("Enable Network");
+
+      // Status displays
+      udpFolder
+        .add(networkStatus, "connected")
+        .name("Connected")
+        .listen()
+        .disable();
+
+      udpFolder
+        .add(networkStatus, "lastSent")
+        .name("Last Sent")
+        .listen()
+        .disable();
+
+      // Data source display
+      udpFolder
+        .add(this.main.gridRenderer.renderModes, "currentMode")
+        .name("Data Source")
+        .disable();
+
+      // Configuration subfolder
+      const configFolder = udpFolder.addFolder("Configuration");
+      configFolder
+        .add(udpConfig, "wsPort", 1024, 65535, 1)
+        .name("WebSocket Port");
+      configFolder.add(udpConfig, "udpPort", 1024, 65535, 1).name("UDP Port");
+      configFolder.add(udpConfig, "udpHost").name("UDP Host");
+
+      // Reconnect button
+      udpFolder
+        .add(
+          {
+            reconnect: () => {
+              this.main.udpNetwork.close();
+              const success = this.main.udpNetwork.init(udpConfig);
+              if (!success) {
+                networkStatus.connected = false;
+                console.warn("Failed to reconnect UDP network");
+              }
+            },
+          },
+          "reconnect"
+        )
+        .name("Reconnect");
+
+      // Update status when data is sent
+      const originalSendUDPMessage = this.main.udpNetwork.sendUDPMessage;
+      this.main.udpNetwork.sendUDPMessage = function (data) {
+        const result = originalSendUDPMessage.call(this, data);
+        if (result) {
+          networkStatus.lastSent = new Date().toLocaleTimeString();
+          networkStatus.connected = this.isConnected;
+        }
+        return result;
+      };
+
+      udpFolder.add(this.main.udpNetwork, "debug").name("Show Debug");
+    } else {
+      console.warn("UDP Network not initialized");
+    }
+
+    udpFolder.open();
+    //#endregion
+
+    //#region Mouse Input
+
+    mouseInputFolder.open(true);
+    if (particles.mouseForces) {
+      mouseInputFolder
+        .add(particles.mouseForces, "impulseRadius", 0.5, 2, 0.01)
+        .name("Input Radius");
+
+      mouseInputFolder
+        .add(particles.mouseForces, "impulseMag", 0.01, 0.12, 0.001)
+        .name("Impulse Magnitude");
+    } else {
+      console.warn("Mouse forces not initialized");
+    }
+    //#endregion
+
+    //#region Debug
+
+    debugFolder.add(particles, "debug").name("Show Debug Overlay");
+    debugFolder
+      .add(particles, "debugShowVelocityField")
+      .name("Show Velocity Field");
+    debugFolder
+      .add(particles, "debugShowPressureField")
+      .name("Show Pressure Field");
+    debugFolder.add(particles, "debugShowBoundaries").name("Show Boundaries");
+    // NEW: Toggle for FLIP grid visualization
+    debugFolder.add(particles, "debugShowFlipGrid").name("Show FLIP Grid");
+    debugFolder.add(particles, "debugShowNoiseField").name("Show Noise Field");
+    // NEW: Control noise field resolution
+    debugFolder
+      .add(particles, "noiseFieldResolution", 5, 50, 1)
+      .name("Noise Field Resolution");
+    debugFolder.open(true);
+    //#endregion
+
+    //////////////////////////////////////////
+    //////////////////////////////////////////
+
     //#region Turbulence
 
     const turbulenceControl = {
@@ -471,42 +594,6 @@ class UI {
         .onChange(() => this.main.gridRenderer.gradient.update());
     });
 
-    //#endregion
-
-    //#region Mouse Input
-
-    mouseInputFolder.open(false);
-    if (particles.mouseForces) {
-      mouseInputFolder
-        .add(particles.mouseForces, "impulseRadius", 0.5, 2, 0.01)
-        .name("Input Radius");
-
-      mouseInputFolder
-        .add(particles.mouseForces, "impulseMag", 0.01, 0.12, 0.001)
-        .name("Impulse Magnitude");
-    } else {
-      console.warn("Mouse forces not initialized");
-    }
-    //#endregion
-
-    //#region Debug
-
-    debugFolder.add(particles, "debug").name("Show Debug Overlay");
-    debugFolder
-      .add(particles, "debugShowVelocityField")
-      .name("Show Velocity Field");
-    debugFolder
-      .add(particles, "debugShowPressureField")
-      .name("Show Pressure Field");
-    debugFolder.add(particles, "debugShowBoundaries").name("Show Boundaries");
-    // NEW: Toggle for FLIP grid visualization
-    debugFolder.add(particles, "debugShowFlipGrid").name("Show FLIP Grid");
-    debugFolder.add(particles, "debugShowNoiseField").name("Show Noise Field");
-    // NEW: Control noise field resolution
-    debugFolder
-      .add(particles, "noiseFieldResolution", 5, 50, 1)
-      .name("Noise Field Resolution");
-    debugFolder.open(false);
     //#endregion
   }
 

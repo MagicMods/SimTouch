@@ -6,6 +6,7 @@ import { GridRenderer } from "./renderer/gridRenderer.js"; // Import GridRendere
 import { DebugRenderer } from "./renderer/debugRenderer.js"; // Import DebugRenderer
 import { TurbulenceField } from "./simulation/forces/turbulenceField.js";
 import { CircularBoundary } from "./simulation/boundary/circularBoundary.js";
+import { udpNetwork } from "./Network/udp.js";
 
 class Main {
   constructor() {
@@ -31,6 +32,14 @@ class Main {
       this.particleSystem
     );
     this.paused = false;
+
+    // Initialize UDP network first with custom config
+    this.udpNetwork = udpNetwork;
+    this.udpNetwork.init({
+      wsPort: 8080,
+      udpPort: 3000,
+      udpHost: "localhost",
+    });
   }
 
   async init() {
@@ -59,21 +68,30 @@ class Main {
   render() {
     this.frame++;
     // this.gridRenderer.drawGridTest();
-    this.turbulenceField.update(this.particleSystem.timeStep);
     this.particleSystem.mouseForces.update(this.particleSystem);
+    this.turbulenceField.update(this.particleSystem.timeStep);
+
     this.particleSystem.step();
     this.gridRenderer.draw(this.particleSystem);
 
-    // Draw boundary using shader manager
-    this.particleSystem.boundary.drawCircularBoundary(
-      this.gl,
-      this.shaderManager
-    );
-    // this.gridRenderer.drawRectangle(120, 120, 90, 20, [1.0, 1.0, 1.0, 0.5]);
-    // this.gridRenderer.drawCircle(120, 120, 120, [0.5, 0.5, 0.5, 0.5]);
-
     // Draw particles
     this.particleRenderer.draw(this.particleSystem.getParticles());
+
+    // Example: Send particle data over UDP
+    const particles = this.particleSystem.getParticles();
+    const positionData = new Float32Array(particles.length * 2);
+    particles.forEach((particle, i) => {
+      positionData[i * 2] = particle.x;
+      positionData[i * 2 + 1] = particle.y;
+    });
+
+    udpNetwork.sendUDPMessage(positionData);
+  }
+
+  // Clean up when destroying
+  destroy() {
+    udpNetwork.close();
+    // ...other cleanup code...
   }
 
   static async create() {

@@ -1,6 +1,7 @@
 import { BaseRenderer } from "./baseRenderer.js";
 import { GridRenderModes } from "./gridRenderModes.js";
 import { Gradient } from "../shaders/gradients.js";
+import { udpNetwork } from "../Network/udp.js";
 
 class GridRenderer extends BaseRenderer {
   constructor(gl, shaderManager) {
@@ -80,8 +81,33 @@ class GridRenderer extends BaseRenderer {
     // Use existing grid geometry
     const rectangles = this.gridGeometry;
 
-    // Get field values from modes
+    // Get density values
     this.density = this.renderModes.getValues(particleSystem);
+
+    // Create byte array for UDP transmission
+    const byteArray = new Uint8Array(this.density.length);
+
+    // Map values from [0,maxDensity] to [0,100]
+    for (let i = 0; i < this.density.length; i++) {
+      const normalizedValue = Math.max(
+        0,
+        Math.min(1, this.density[i] / this.maxDensity)
+      );
+      byteArray[i] = Math.round(normalizedValue * 100);
+    }
+
+    // Only log if UDP debug is enabled
+    if (udpNetwork.debug) {
+      console.log(
+        "First 10 density bytes:",
+        Array.from(byteArray.slice(0, 10))
+      );
+    }
+
+    // Only send if UDP is enabled
+    if (udpNetwork.enable && udpNetwork.isConnected) {
+      udpNetwork.sendUDPMessage(byteArray);
+    }
 
     // Map values to colors
     rectangles.forEach((rect, index) => {
