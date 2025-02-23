@@ -2,11 +2,12 @@
   "name": "roundtouchsim",
   "version": "1.0.0",
   "description": "FLIP Fluid Simulation",
+  "type": "module",
   "main": "src/main.js",
   "scripts": {
     "start": "live-server src",
-    "dev": "nodemon src/Network/server/server.js",
-    "build": "webpack --mode production"
+    "server": "node src/network/server/server.js",
+    "dev": "node src/network/server/server.js"
   },
   "dependencies": {
     "gl-matrix": "^3.4.3",
@@ -14,14 +15,7 @@
   },
   "devDependencies": {
     "live-server": "^1.2.2",
-    "webpack": "^5.90.1",
-    "webpack-cli": "^5.1.4",
     "nodemon": "^3.0.3"
-  },
-  "overrides": {
-    "chokidar": "^3.5.3",
-    "braces": "^3.0.2",
-    "micromatch": "^4.0.5"
   },
   "author": "MagicMods",
   "license": "MIT"

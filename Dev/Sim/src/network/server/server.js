@@ -1,5 +1,5 @@
-const WebSocket = require("ws");
-const dgram = require("dgram");
+import WebSocket from "ws";
+import dgram from "dgram";
 
 const WS_PORT = 8080;
 const UDP_PORT = 3000;
