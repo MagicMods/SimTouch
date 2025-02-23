@@ -1,17 +1,17 @@
 {
+  "left": {
     "controllers": {},
     "folders": {
-      "Presets": {
-        "controllers": {},
-        "folders": {}
-      },
       "Global": {
         "controllers": {
+          "Field Type": "Proximity",
+          "Boundary": "BOUNCE",
+          "Behavior": "None",
           "Speed": 1,
           "PIC / FLIP": 1,
-          "Pause": false,
-          "Field Type": "Collision",
-          "Boundary": "WARP"
+          "Fade In Speed": 0.15,
+          "Fade Out Speed": 0.08,
+          "Max Density": 7
         },
         "folders": {}
       },
@@ -20,9 +20,14 @@
         "folders": {
           "Properties": {
             "controllers": {
-              "Count": 730,
+              "Count": 500,
               "Size": 0.01,
-              "Opacity": 0.1,
+              "Opacity": 0.1
+            },
+            "folders": {}
+          },
+          "Other": {
+            "controllers": {
               "Color": "#ffffff",
               "Show Debug": false
             },
@@ -31,13 +36,13 @@
           "Physics": {
             "controllers": {
               "Gravity": 0,
-              "Velocity Damping": 0.95
+              "Velocity Damping": 0.98
             },
             "folders": {
               "Collision": {
                 "controllers": {
-                  "Repulsion": 28.95,
-                  "Bounce": 0,
+                  "Repulsion": 2,
+                  "Bounce": 0.8,
                   "Collision Damping": 0.98
                 },
                 "folders": {}
@@ -56,18 +61,29 @@
               "Size": 0.5,
               "Wall Friction": 0.95,
               "Bounce": 0.8,
-              "Mode": "WARP"
+              "Mode": "BOUNCE"
             },
             "folders": {}
           }
         }
       },
+      "Mouse Input": {
+        "controllers": {
+          "Input Radius": 0.75,
+          "Impulse Magnitude": 0.08
+        },
+        "folders": {}
+      }
+    }
+  },
+  "right": {
+    "controllers": {},
+    "folders": {
       "Turbulence": {
         "controllers": {
-          "Strength": 0.344,
-          "Scale": 9.4545,
-          "Speed": 1,
-          "preset": "Default"
+          "Strength": 2,
+          "Scale": 4,
+          "Speed": 1
         },
         "folders": {
           "Advanced": {
@@ -132,34 +148,10 @@
         }
       },
       "Grid": {
-        "controllers": {},
+        "controllers": {
+          "Field Type": "Proximity"
+        },
         "folders": {
-          "Parameters": {
-            "controllers": {
-              "Target Cells": 341,
-              "Gap (px)": 1,
-              "Cell Ratio": 1,
-              "Grid Scale": 0.95
-            },
-            "folders": {
-              "Stats": {
-                "controllers": {
-                  "Columns": 23,
-                  "Rows": 23,
-                  "Rect Width": 10,
-                  "Rect Height": 10
-                },
-                "folders": {}
-              }
-            }
-          },
-          "Density Map": {
-            "controllers": {
-              "Min Density": 0,
-              "Max Density": 7
-            },
-            "folders": {}
-          },
           "Gradient": {
             "controllers": {},
             "folders": {
@@ -199,34 +191,9 @@
                 "folders": {}
               }
             }
-          },
-          "Value Smoothing": {
-            "controllers": {
-              "Fade In Speed": 0.15,
-              "Fade Out Speed": 0.08
-            },
-            "folders": {}
           }
         }
-      },
-      "Mouse Input": {
-        "controllers": {
-          "Input Radius": 0.75,
-          "Impulse Magnitude": 0.08
-        },
-        "folders": {}
-      },
-      "Debug": {
-        "controllers": {
-          "Show Debug Overlay": false,
-          "Show Velocity Field": false,
-          "Show Pressure Field": false,
-          "Show Boundaries": false,
-          "Show FLIP Grid": false,
-          "Show Noise Field": false,
-          "Noise Field Resolution": 20
-        },
-        "folders": {}
       }
     }
   }
+}
