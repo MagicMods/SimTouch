@@ -63,7 +63,6 @@ class UI {
     const boundaryFolder = this.leftGui.addFolder("Boundary");
     const restFolder = this.leftGui.addFolder("Rest State");
     const udpFolder = this.leftGui.addFolder("UDP Network");
-    const configFolder = udpFolder.addFolder("Configuration");
     const mouseInputFolder = this.leftGui.addFolder("Mouse Input");
     const debugFolder = this.leftGui.addFolder("Debug");
 
@@ -324,11 +323,10 @@ class UI {
       lastSent: "No data sent",
     };
 
-    // Add UDP configuration
+    // Add UDP configuration with broadcast only
     const udpConfig = this.main.udpNetwork?.config || {
-      wsPort: 8080,
+      wsPort: 5501,
       udpPort: 3000,
-      udpHost: "localhost",
     };
 
     if (this.main.udpNetwork) {
@@ -342,19 +340,22 @@ class UI {
         .listen()
         .disable();
 
-      udpFolder
-        .add(networkStatus, "lastSent")
-        .name("Last Sent")
-        .listen()
-        .disable();
+      // udpFolder
+      //   .add(networkStatus, "lastSent")
+      //   .name("Last Sent")
+      //   .listen()
+      //   .disable();
 
       // Configuration subfolder
-
-      configFolder
-        .add(udpConfig, "wsPort", 1024, 65535, 1)
-        .name("WebSocket Port");
-      configFolder.add(udpConfig, "udpPort", 1024, 65535, 1).name("UDP Port");
-      configFolder.add(udpConfig, "udpHost").name("UDP Host");
+      udpFolder
+        .add(udpConfig, "udpPort")
+        .min(1024)
+        .max(65535)
+        .step(1)
+        .name("UDP Port")
+        .onChange((value) => {
+          console.log(`UDP broadcast port: ${value}`);
+        });
 
       // Reconnect button
       udpFolder
@@ -383,8 +384,6 @@ class UI {
         }
         return result;
       };
-
-      udpFolder.add(this.main.udpNetwork, "debug").name("Show Debug");
     } else {
       console.warn("UDP Network not initialized");
     }
@@ -421,13 +420,9 @@ class UI {
       .add(particles, "debugShowPressureField")
       .name("Show Pressure Field");
     debugFolder.add(particles, "debugShowBoundaries").name("Show Boundaries");
-    // NEW: Toggle for FLIP grid visualization
     debugFolder.add(particles, "debugShowFlipGrid").name("Show FLIP Grid");
     debugFolder.add(particles, "debugShowNoiseField").name("Show Noise Field");
-    // NEW: Control noise field resolution
-    debugFolder
-      .add(particles, "noiseFieldResolution", 5, 50, 1)
-      .name("Noise Field Resolution");
+    debugFolder.add(this.main.udpNetwork, "debug").name("Show Debug Network");
     debugFolder.open(true);
     //#endregion
 

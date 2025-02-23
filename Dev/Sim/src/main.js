@@ -84,8 +84,6 @@ class Main {
       positionData[i * 2] = particle.x;
       positionData[i * 2 + 1] = particle.y;
     });
-
-    udpNetwork.sendUDPMessage(positionData);
   }
 
   // Clean up when destroying

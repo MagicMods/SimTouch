@@ -98,6 +98,9 @@ console.log(`WebSocket server listening on port ${WS_PORT}`);
 const udpSocket = dgram.createSocket("udp4");
 console.log(`Forwarding to UDP localhost:${UDP_PORT}`);
 
+// Enable broadcast
+udpSocket.setBroadcast(true);
+
 wss.on("connection", (ws) => {
   console.log("Client connected");
 
@@ -112,8 +115,14 @@ wss.on("connection", (ws) => {
           .join(", ")
       );
 
-      udpSocket.send(data, UDP_PORT, "localhost", (err) => {
-        if (err) console.error("UDP send error:", err);
+      udpSocket.send(data, UDP_PORT, "255.255.255.255", (err) => {
+        if (err) {
+          console.error("UDP broadcast error:", err);
+        } else if (process.env.DEBUG) {
+          console.log(
+            `Broadcasted ${data.length} bytes to UDP port ${UDP_PORT}`
+          );
+        }
       });
     }
   });
@@ -128,3 +137,5 @@ process.on("SIGINT", () => {
   wss.close();
   process.exit();
 });
+
+console.log(`Broadcasting UDP to port ${UDP_PORT}`);

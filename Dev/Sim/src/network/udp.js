@@ -1,8 +1,8 @@
 class UDPNetwork {
   constructor(config = {}) {
     this.config = {
-      wsPort: config.wsPort || 5501, // Changed from 8080 to avoid conflict
-      udpPort: config.udpPort || 3000,
+      wsPort: config.wsPort || 5501,
+      udpPort: config.udpPort || 3000, // This will be our broadcast port
       udpHost: config.udpHost || "localhost",
       ...config,
     };
@@ -39,14 +39,15 @@ class UDPNetwork {
 
   init() {
     try {
-      this.websocket = new WebSocket(
-        `ws://${this.config.udpHost}:${this.config.wsPort}`
-      );
+      // Connect to WebSocket server using localhost only
+      this.websocket = new WebSocket(`ws://localhost:${this.config.wsPort}`);
 
       this.websocket.onopen = () => {
         this.isConnected = true;
         if (this._debug && this._enable) {
-          console.log("WebSocket connected");
+          console.log(
+            `WebSocket connected, broadcasting to UDP port ${this.config.udpPort}`
+          );
         }
       };
 
@@ -74,26 +75,17 @@ class UDPNetwork {
   }
 
   sendUDPMessage(data) {
-    if (!this._enable) {
-      return false;
-    }
-
-    if (!this.websocket || this.websocket.readyState !== WebSocket.OPEN) {
-      if (this._debug && this._enable) {
-        console.error("WebSocket not connected");
-      }
-      return false;
-    }
+    if (!this._enable || !this.websocket || !this.isConnected) return false;
 
     try {
       this.websocket.send(data);
-      if (this._debug && this._enable) {
-        console.log("UDP message sent:", data.byteLength, "bytes");
+      if (this._debug) {
+        console.log(`UDP message sent: ${data.length} bytes`);
       }
       return true;
     } catch (error) {
-      if (this._debug && this._enable) {
-        console.error("Error sending message:", error);
+      if (this._debug) {
+        console.error("Failed to send UDP message:", error);
       }
       return false;
     }

@@ -84,23 +84,26 @@ class GridRenderer extends BaseRenderer {
     // Get density values
     this.density = this.renderModes.getValues(particleSystem);
 
-    // Create byte array for UDP transmission
-    const byteArray = new Uint8Array(this.density.length);
+    const byteArray = new Uint8Array(this.density.length + 1);
 
-    // Map values from [0,maxDensity] to [0,100]
+    // Set identifier byte (0) at the start
+    byteArray[0] = 0;
+
+    // Map values from [0,maxDensity] to [0,100], offset by 1 for identifier
     for (let i = 0; i < this.density.length; i++) {
       const normalizedValue = Math.max(
         0,
         Math.min(1, this.density[i] / this.maxDensity)
       );
-      byteArray[i] = Math.round(normalizedValue * 100);
+      byteArray[i + 1] = Math.round(normalizedValue * 100);
     }
 
     // Only log if UDP debug is enabled
     if (udpNetwork.debug) {
       console.log(
-        "First 10 density bytes:",
-        Array.from(byteArray.slice(0, 10))
+        "Grid data:",
+        `Type: ${byteArray[0]}, First 10 values:`,
+        Array.from(byteArray.slice(1, 11))
       );
     }
 
