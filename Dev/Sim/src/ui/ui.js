@@ -56,6 +56,8 @@ class UI {
     const presetFolder = this.leftGui.addFolder("Presets");
     const globalFolder = this.leftGui.addFolder("Global");
     const particlesFolder = this.leftGui.addFolder("Particles");
+    const particlePropertyFolder = particlesFolder.addFolder("Properties");
+    const particleOtherFolder = particlesFolder.addFolder("Other");
     const physicsFolder = particlesFolder.addFolder("Physics");
     const udpFolder = this.leftGui.addFolder("UDP Network");
     const mouseInputFolder = this.leftGui.addFolder("Mouse Input");
@@ -179,17 +181,14 @@ class UI {
       .add(gridRenderer, "maxDensity", 0.1, 10, 0.1)
       .name("Max Density");
 
-    // Create both controls with the same options
-
     //#endregion
 
     //#region Particles
 
-    const particleFolder = particlesFolder.addFolder("Properties");
     particlesFolder.open();
-    particleFolder.open();
+    particlePropertyFolder.open();
     let previousNumParticles = particles.numParticles;
-    particleFolder
+    particlePropertyFolder
       .add(particles, "numParticles", 1, 2000, 10)
       .name("Count")
       .onFinishChange((value) => {
@@ -199,7 +198,7 @@ class UI {
         // previousNumParticles = value;
       });
 
-    particleFolder
+    particlePropertyFolder
       .add(particles, "particleRadius", 0.005, 0.03, 0.001)
       .name("Size")
       .onChange((value) => {
@@ -208,16 +207,17 @@ class UI {
       });
 
     // Add opacity control after size control
-    particleFolder
+    particlePropertyFolder
       .add(this.main.particleRenderer, "particleOpacity", 0.0, 1.0, 0.01)
       .name("Opacity");
 
     // Add after opacity control
-    particleFolder
+    particleOtherFolder
       .addColor(this.main.particleRenderer.config, "color")
       .name("Color");
 
-    particleFolder.add(particles, "debug").name("Show Debug");
+    particleOtherFolder.add(particles, "debug").name("Show Debug");
+    particleOtherFolder.open(false);
     //#endregion
 
     //#region Physics
