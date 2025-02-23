@@ -25,11 +25,7 @@ class UI {
   // Add method to create containers
   createContainer(position) {
     const container = document.createElement("div");
-    container.style.cssText = `
-        position: absolute;
-        top: 0;
-        ${position === "left" ? "left: 0" : "right: 0"};
-      `;
+    container.className = `gui-container-${position}`;
     document.body.appendChild(container);
     return container;
   }
@@ -37,7 +33,7 @@ class UI {
   initStats() {
     // Create stats container
     const statsContainer = document.createElement("div");
-    statsContainer.style.cssText = "position:absolute;bottom:1;left:0;";
+    statsContainer.className = "stats-container";
     statsContainer.appendChild(this.stats.dom);
     document.body.appendChild(statsContainer);
   }
@@ -71,19 +67,54 @@ class UI {
     //#region Presets
     presetFolder.open();
 
-    // Export button
-    presetFolder
-      .add(
-        {
-          export: () => {
-            const state = this.leftGui.save();
-            console.log("Current configuration:");
-            console.log(JSON.stringify(state, null, 2));
-          },
-        },
-        "export"
-      )
-      .name("Export to Console");
+    // Add save controls
+    const saveControls = {
+      name: "my_preset",
+      save: async () => {
+        // Create overlay with input dialog
+        const overlay = document.createElement("div");
+        overlay.className = "preset-overlay";
+
+        const dialog = document.createElement("div");
+        dialog.className = "preset-dialog";
+
+        const input = document.createElement("input");
+        input.className = "preset-input";
+        input.value = saveControls.name;
+
+        const buttons = document.createElement("div");
+        buttons.className = "preset-buttons";
+
+        const saveBtn = document.createElement("button");
+        saveBtn.textContent = "Save";
+        saveBtn.onclick = async () => {
+          const filename = await this.presetManager.savePreset(input.value);
+          overlay.remove();
+          if (filename) {
+            const msg = document.createElement("div");
+            msg.className = "notification";
+            msg.textContent = `Saved to ${filename}`;
+            document.body.appendChild(msg);
+            setTimeout(() => msg.remove(), 3000);
+          }
+        };
+
+        const cancelBtn = document.createElement("button");
+        cancelBtn.textContent = "Cancel";
+        cancelBtn.onclick = () => overlay.remove();
+
+        buttons.appendChild(cancelBtn);
+        buttons.appendChild(saveBtn);
+        dialog.appendChild(input);
+        dialog.appendChild(buttons);
+        overlay.appendChild(dialog);
+        document.body.appendChild(overlay);
+        input.focus();
+        input.select();
+      },
+    };
+
+    presetFolder.add(saveControls, "save").name("Save Preset");
 
     // Main preset selector
     const mainPresetControl = { preset: "Default" };

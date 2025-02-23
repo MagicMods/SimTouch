@@ -74,6 +74,56 @@ class PresetManager {
   exportCurrentState() {
     return this.leftGui.save();
   }
+
+  async exportToFile(type = "main") {
+    try {
+      const state = this.leftGui.save();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const filename = `preset_${timestamp}.json`;
+
+      // Create blob and download
+      const blob = new Blob([JSON.stringify(state, null, 2)], {
+        type: "application/json",
+      });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+
+      if (this._debug) {
+        console.log(`Exported preset to ${filename}`);
+      }
+      return filename;
+    } catch (error) {
+      console.error("Error exporting preset:", error);
+      return null;
+    }
+  }
+
+  async savePreset(name, type = "main") {
+    try {
+      const state = this.leftGui.save();
+      const filename = `${name}.json`;
+
+      const blob = new Blob([JSON.stringify(state, null, 2)], {
+        type: "application/json",
+      });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(a.href);
+
+      if (this._debug) {
+        console.log(`Saved preset: ${filename}`);
+      }
+      return filename;
+    } catch (error) {
+      console.error("Error saving preset:", error);
+      return null;
+    }
+  }
 }
 
 export { PresetManager };
