@@ -1,7 +1,7 @@
 class UDPNetwork {
   constructor(config = {}) {
     this.config = {
-      wsPort: config.wsPort || 8080,
+      wsPort: config.wsPort || 5501, // Changed from 8080 to avoid conflict
       udpPort: config.udpPort || 3000,
       udpHost: config.udpHost || "localhost",
       ...config,

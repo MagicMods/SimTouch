@@ -5,17 +5,18 @@
   "type": "module",
   "main": "src/main.js",
   "scripts": {
-    "start": "live-server src",
+    "start": "concurrently \"live-server src\" \"node src/network/server/server.js\"",
     "server": "node src/network/server/server.js",
-    "dev": "node src/network/server/server.js"
+    "dev": "npm run start"
   },
   "dependencies": {
-    "gl-matrix": "^3.4.3",
-    "ws": "^8.16.0"
+    "gl-matrix": "3.4.3",
+    "ws": "8.16.0"
   },
   "devDependencies": {
-    "live-server": "^1.2.2",
-    "nodemon": "^3.0.3"
+    "concurrently": "^8.2.2",
+    "live-server": "1.2.2",
+    "nodemon": "3.0.3"
   },
   "author": "MagicMods",
   "license": "MIT"
