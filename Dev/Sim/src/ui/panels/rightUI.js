@@ -4,22 +4,32 @@ import { Behaviors } from "../../simulation/behaviors/organicBehavior.js";
 class RightUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
+    this.presetManager = null;
     this.initFolders();
   }
 
-  initFolders() {
+  async initFolders() {
+    // Create folders first
     this.turbulenceFolder = this.createFolder("Turbulence");
     this.organicFolder = this.createFolder("Organic Behavior");
     this.gridFolder = this.createFolder("Grid");
 
-    this.initTurbulenceControls();
+    // Initialize controls immediately
+    this.initTurbulenceControls(); // Remove async/await and presetManager dependency
     this.initOrganicControls();
     this.initGridControls();
+
+    // Set default states
+    this.turbulenceFolder.open();
+    this.organicFolder.open();
+    this.gridFolder.open(false);
   }
 
   initTurbulenceControls() {
     const turbulence = this.main.turbulenceField;
+    if (!turbulence) return;
 
+    // Main controls first
     this.turbulenceFolder.add(turbulence, "strength", 0, 2).name("Strength");
     this.turbulenceFolder.add(turbulence, "scale", 0.1, 10).name("Scale");
     this.turbulenceFolder.add(turbulence, "speed", 0, 5).name("Speed");
@@ -143,15 +153,34 @@ class RightUi extends BaseUi {
 
     // Grid parameters
     if (gridRenderer.gridParams) {
-      const paramFolder = this.gridFolder.addFolder("Parameters");
-      paramFolder
+      const gridParamFolder = this.gridFolder.addFolder("Parameters");
+
+      gridParamFolder
         .add(gridRenderer.gridParams, "target", 1, 800, 1)
         .name("Target Cells")
         .onChange(() => gridRenderer.updateGrid());
-      paramFolder
+
+      gridParamFolder
         .add(gridRenderer.gridParams, "gap", 0, 20, 1)
         .name("Gap (px)")
         .onChange(() => gridRenderer.updateGrid());
+
+      gridParamFolder
+        .add(gridRenderer.gridParams, "aspectRatio", 0.5, 4, 0.01)
+        .name("Cell Ratio")
+        .onChange(() => gridRenderer.updateGrid());
+
+      gridParamFolder
+        .add(gridRenderer.gridParams, "scale", 0.1, 1, 0.01)
+        .name("Grid Scale")
+        .onChange(() => gridRenderer.updateGrid());
+
+      // Grid Stats
+      const stats = gridParamFolder.addFolder("Stats");
+      stats.add(gridRenderer.gridParams, "cols").name("Columns").listen();
+      stats.add(gridRenderer.gridParams, "rows").name("Rows").listen();
+      stats.add(gridRenderer.gridParams, "width").name("Rect Width").listen();
+      stats.add(gridRenderer.gridParams, "height").name("Rect Height").listen();
     }
 
     // Gradient controls
@@ -160,11 +189,18 @@ class RightUi extends BaseUi {
     const gradientPoints = this.main.gridRenderer.gradient.points;
 
     gradientPoints.forEach((point, index) => {
-      gradientFolder.addColor(point, "color").name(`Color ${index + 1}`);
-      if (index > 0) {
-        gradientFolder.add(point, "pos", 0, 1).name(`Position ${index + 1}`);
-      }
+      const pointFolder = gradientFolder.addFolder(`Point ${index + 1}`);
+      pointFolder
+        .add(point, "pos", 0, 100, 1)
+        .name("Position")
+        .onChange(() => this.main.gridRenderer.gradient.update());
+      pointFolder
+        .addColor(point, "color")
+        .name("Color")
+        .onChange(() => this.main.gridRenderer.gradient.update());
     });
+
+    this.gridFolder.open(false);
   }
 }
 export { RightUi };

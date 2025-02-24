@@ -311,13 +311,26 @@ export class LeftUi extends BaseUi {
   }
 
   initBoundaryControls() {
-    const boundary = this.main.boundary;
-    if (!boundary) return;
+    const particles = this.main.particleSystem;
+    if (!particles) return;
 
     this.boundaryFolder
-      .add(boundary, "radius", 50, 200)
-      .name("Radius")
-      .onChange(() => boundary.updateBoundary());
+      .add(particles.boundary, "radius", 0.3, 0.55, 0.005)
+      .name("Size")
+      .onChange((value) => {
+        particles.boundary.update({ radius: value }, [
+          (boundary) => this.main.baseRenderer.drawCircularBoundary(boundary),
+        ]);
+      });
+
+    this.boundaryFolder
+      .add(particles, "boundaryDamping", 0.0, 1.0, 0.01)
+      .name("Wall Friction")
+      .onChange((value) => (particles.boundaryDamping = value));
+
+    this.boundaryFolder
+      .add(particles.boundary, "cBoundaryRestitution", 0.0, 1.0, 0.05)
+      .name("Bounce");
   }
 
   initRestStateControls() {
@@ -353,26 +366,16 @@ export class LeftUi extends BaseUi {
   }
 
   initMouseControls() {
-    const mouseForces = this.main.particleSystem.mouseForces;
-    if (!mouseForces) return;
+    const particles = this.main.particleSystem;
+    if (!particles?.mouseForces) return;
 
-    // Create control object with proper property names
-    const controls = {
-      radius: mouseForces.impulseRadius || 0.75,
-      strength: mouseForces.impulseMag || 0.08,
-    };
-
-    // Add mouse force radius control
     this.mouseInputFolder
-      .add(controls, "radius", 0.1, 2.0)
-      .name("Force Radius")
-      .onChange((value) => (mouseForces.impulseRadius = value));
+      .add(particles.mouseForces, "impulseRadius", 0.5, 2, 0.01)
+      .name("Input Radius");
 
-    // Add mouse force strength control
     this.mouseInputFolder
-      .add(controls, "strength", 0, 0.2)
-      .name("Force Strength")
-      .onChange((value) => (mouseForces.impulseMag = value));
+      .add(particles.mouseForces, "impulseMag", 0.01, 0.12, 0.001)
+      .name("Impulse Magnitude");
   }
 
   showSavePresetDialog(defaultName) {

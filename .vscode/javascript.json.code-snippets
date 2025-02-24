@@ -1,0 +1,17 @@
+{
+    "Class Declaration with Export": {
+        "prefix": "class",
+        "body": [
+            "class ${1:ClassName} ${2:extends BaseClass} {",
+            "\tconstructor(${3:params}) {",
+            "\t\t${4:// constructor body}",
+            "\t}",
+            "\t",
+            "\t${5:// class methods}",
+            "}",
+            "",
+            "export { ${1:ClassName} };"
+        ],
+        "description": "Creates a class with separate export statement"
+    }
+}
