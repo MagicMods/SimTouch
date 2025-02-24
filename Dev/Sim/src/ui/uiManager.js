@@ -13,14 +13,14 @@ export class UiManager {
     this.rightContainer = this.createContainer("right");
 
     // Initialize UI panels first
-    this.leftUI = new LeftUi(main, this.leftContainer);
-    this.rightUI = new RightUi(main, this.rightContainer);
+    this.leftUi = new LeftUi(main, this.leftContainer);
+    this.rightUi = new RightUi(main, this.rightContainer);
 
     // Initialize PresetManager with GUI instances
-    this.presetManager = new PresetManager(this.leftUI.gui, this.rightUI.gui);
+    this.presetManager = new PresetManager(this.leftUi.gui, this.rightUi.gui);
 
     // Pass presetManager to leftUI after initialization
-    this.leftUI.setPresetManager(this.presetManager);
+    this.leftUi.setPresetManager(this.presetManager);
 
     // Initialize stats
     this.stats = new Stats();
@@ -46,8 +46,8 @@ export class UiManager {
   }
 
   dispose() {
-    this.leftUI.dispose();
-    this.rightUI.dispose();
+    this.leftUi.dispose();
+    this.rightUi.dispose();
     if (this.stats) {
       this.stats.dom.remove();
       this.stats = null;

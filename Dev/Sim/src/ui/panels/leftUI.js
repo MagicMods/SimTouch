@@ -201,7 +201,9 @@ export class LeftUi extends BaseUi {
         .add(fieldControl, "field", Object.values(GridField))
         .name("Mode")
         .onChange((value) => {
+          // Set new mode
           this.main.gridRenderer.renderModes.currentMode = value;
+          // Update display
           this.controls.fieldType.updateDisplay();
         });
 
@@ -222,11 +224,18 @@ export class LeftUi extends BaseUi {
       const behaviorControl = {
         behavior: particles.organicBehavior.currentBehavior,
       };
-      this.globalFolder
+
+      this.controls.behaviorType = this.globalFolder
         .add(behaviorControl, "behavior", Object.values(Behaviors))
         .name("Organic Behavior")
         .onChange((value) => {
+          console.log("Behavior changed to:", value);
           particles.organicBehavior.currentBehavior = value;
+          // Use stored uiManager reference
+
+          this.main.ui.rightUi.updateOrganicFolders(value);
+
+          this.controls.behaviorType.updateDisplay();
         });
 
       this.globalFolder
@@ -242,6 +251,21 @@ export class LeftUi extends BaseUi {
         .onFinishChange((value) => {
           console.log(`PIC/FLIP mixing ratio: ${value * 100}% FLIP`);
         });
+    }
+  }
+
+  // Add new method to handle display updates
+  updateDisplays(currentMode) {
+    // Update all relevant controls
+    Object.values(this.controls).forEach((control) => {
+      if (control && control.updateDisplay) {
+        control.updateDisplay();
+      }
+    });
+
+    // Notify other UI components about mode change
+    if (this.main.uiManager && this.main.uiManager.rightUi) {
+      this.main.uiManager.rightUi.onModeChange(currentMode);
     }
   }
 

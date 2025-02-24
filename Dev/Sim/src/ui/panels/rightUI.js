@@ -50,98 +50,108 @@ class RightUi extends BaseUi {
     const particles = this.main.particleSystem;
     if (!particles.organicBehavior) return;
 
-    // Fluid behavior
-    const fluidFolder = this.organicFolder.addFolder("Fluid Parameters");
-    fluidFolder
+    // Store folder references for later use
+    this.fluidFolder = this.organicFolder.addFolder("Fluid Parameters");
+    this.swarmFolder = this.organicFolder.addFolder("Swarm Parameters");
+    this.automataFolder = this.organicFolder.addFolder("Automata Parameters");
+
+    // Add parameters with their respective force controls
+    this.initFluidControls(this.fluidFolder, particles);
+    this.initSwarmControls(this.swarmFolder, particles);
+    this.initAutomataControls(this.automataFolder, particles);
+
+    // Initial state
+    this.updateOrganicFolders(this.main.gridRenderer.renderModes.currentMode);
+  }
+
+  updateOrganicFolders(mode) {
+    const fluidEnabled = mode === "Fluid";
+    const swarmEnabled = mode === "Swarm";
+    const automataEnabled = mode === "Automata";
+    console.log("updateOrganicFolders");
+
+    // Enable/disable each folder based on current mode
+    this.fluidFolder?.controllers.forEach((controller) =>
+      controller.enable(fluidEnabled)
+    );
+    this.swarmFolder?.controllers.forEach((controller) =>
+      controller.enable(swarmEnabled)
+    );
+    this.automataFolder?.controllers.forEach((controller) =>
+      controller.enable(automataEnabled)
+    );
+    // Force controls are always enabled
+    this.forceFolder?.controllers.forEach((controller) =>
+      controller.enable(true)
+    );
+  }
+
+  initFluidControls(folder, particles) {
+    // Add fluid parameters
+    folder
       .add(particles.organicBehavior.params.Fluid, "radius", 5, 50)
       .name("Radius");
-    fluidFolder
+    folder
       .add(particles.organicBehavior.params.Fluid, "surfaceTension", 0, 1)
       .name("Surface Tension");
-    fluidFolder
+    folder
       .add(particles.organicBehavior.params.Fluid, "viscosity", 0, 1)
       .name("Viscosity");
-    fluidFolder
-      .add(particles.organicBehavior.params.Fluid, "damping", 0.5, 1)
+    folder
+      .add(particles.organicBehavior.params.Fluid, "damping", 0, 1)
       .name("Damping");
 
-    // Swarm behavior
-    const swarmFolder = this.organicFolder.addFolder("Swarm Parameters");
-    this.initSwarmControls(swarmFolder, particles);
-
-    // Automata behavior
-    const automataFolder = this.organicFolder.addFolder("Automata Parameters");
-    this.initAutomataControls(automataFolder, particles);
-
-    // Force scales
-    const forceFolder = this.organicFolder.addFolder("Force");
-    this.initForceControls(forceFolder, particles);
+    this.addForceControl(folder, particles.organicBehavior, "Fluid");
   }
 
-  initSwarmControls(swarmFolder, particles) {
-    swarmFolder
+  initSwarmControls(folder, particles) {
+    // Add swarm parameters
+    folder
       .add(particles.organicBehavior.params.Swarm, "radius", 5, 50)
       .name("Radius");
-    swarmFolder
+    folder
       .add(particles.organicBehavior.params.Swarm, "cohesion", 0, 2)
       .name("Cohesion");
-    swarmFolder
+    folder
       .add(particles.organicBehavior.params.Swarm, "alignment", 0, 2)
       .name("Alignment");
-    swarmFolder
+    folder
       .add(particles.organicBehavior.params.Swarm, "separation", 0, 2)
       .name("Separation");
-    swarmFolder
-      .add(particles.organicBehavior.params.Swarm, "maxSpeed", 0, 2)
+    folder
+      .add(particles.organicBehavior.params.Swarm, "maxSpeed", 0, 1)
       .name("Max Speed");
+
+    this.addForceControl(folder, particles.organicBehavior, "Swarm");
   }
 
-  initAutomataControls(automataFolder, particles) {
-    automataFolder
+  initAutomataControls(folder, particles) {
+    // Add automata parameters
+    folder
       .add(particles.organicBehavior.params.Automata, "radius", 5, 50)
       .name("Radius");
-    automataFolder
+    folder
       .add(particles.organicBehavior.params.Automata, "repulsion", 0, 2)
       .name("Repulsion");
-    automataFolder
+    folder
       .add(particles.organicBehavior.params.Automata, "attraction", 0, 2)
       .name("Attraction");
-    automataFolder
+    folder
       .add(particles.organicBehavior.params.Automata, "threshold", 0, 1)
       .name("Threshold");
+
+    this.addForceControl(folder, particles.organicBehavior, "Automata");
   }
 
-  initForceControls(forceFolder, particles) {
-    const behavior = particles.organicBehavior;
-    if (!behavior || !behavior.forceScales) return;
+  addForceControl(folder, behavior, type) {
+    if (!behavior?.forceScales?.[type]) return;
 
-    // Access force scales base values
-    const controls = {
-      fluid: behavior.forceScales.Fluid?.base || 1.0,
-      swarm: behavior.forceScales.Swarm?.base || 1.0,
-      automata: behavior.forceScales.Automata?.base || 1.0,
-    };
-
-    forceFolder
-      .add(controls, "fluid", 0, 2)
-      .name("Fluid Force")
+    const control = { force: behavior.forceScales[type].base || 1.0 };
+    folder
+      .add(control, "force", 0, 2)
+      .name(`${type} Force`)
       .onChange((value) => {
-        if (behavior.forceScales.Fluid) behavior.forceScales.Fluid.base = value;
-      });
-
-    forceFolder
-      .add(controls, "swarm", 0, 2)
-      .name("Swarm Force")
-      .onChange((value) => {
-        if (behavior.forceScales.Swarm) behavior.forceScales.Swarm.base = value;
-      });
-
-    forceFolder
-      .add(controls, "automata", 0, 2)
-      .name("Automata Force")
-      .onChange((value) => {
-        if (behavior.forceScales.Automata)
-          behavior.forceScales.Automata.base = value;
+        behavior.forceScales[type].base = value;
       });
   }
 
