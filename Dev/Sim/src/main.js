@@ -1,6 +1,6 @@
 import { ShaderManager } from "./shaders/shaderManager.js";
 import { ParticleSystem } from "./simulation/core/particleSystem.js";
-import { UI } from "./ui/ui.js";
+import { UiManager } from "./ui/uiManager.js"; // Replace UI import
 import { ParticleRenderer } from "./renderer/particleRenderer.js";
 import { GridRenderer } from "./renderer/gridRenderer.js"; // Import GridRenderer
 import { DebugRenderer } from "./renderer/debugRenderer.js"; // Import DebugRenderer
@@ -45,7 +45,7 @@ class Main {
   async init() {
     try {
       await this.shaderManager.init();
-      this.ui = new UI(this);
+      this.ui = new UiManager(this); // Use UiManager instead of UI
       this.animate();
       return true;
     } catch (error) {

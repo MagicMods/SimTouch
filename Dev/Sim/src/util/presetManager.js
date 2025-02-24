@@ -1,4 +1,4 @@
-class PresetManager {
+export class PresetManager {
   constructor(leftGui, rightGui) {
     if (!leftGui || !rightGui) {
       throw new Error("Both GUI instances required");
@@ -14,6 +14,52 @@ class PresetManager {
     this.currentPreset = null;
     this._debug = true; // Enable debug logging
     this.serverUrl = "http://localhost:5502"; // Updated server URL
+    this.initLocalStorage();
+  }
+
+  getPresetList() {
+    return Object.keys(this.presets?.main || {});
+  }
+
+  getTurbulencePresetList() {
+    return Object.keys(this.presets?.turbulences || {});
+  }
+
+  initLocalStorage() {
+    const savedPresets = localStorage.getItem("flipsim_presets");
+    if (savedPresets) {
+      try {
+        this.presets = JSON.parse(savedPresets);
+      } catch (e) {
+        console.warn("Failed to load presets from localStorage:", e);
+        this.resetToDefaults();
+      }
+    } else {
+      this.resetToDefaults();
+    }
+  }
+
+  resetToDefaults() {
+    this.presets = {
+      main: {
+        Default: {
+          // Default preset values
+          particles: { count: 500, radius: 0.01 },
+          physics: { damping: 0.98, stiffness: 0.3 },
+          turbulence: { strength: 0, scale: 1 },
+        },
+      },
+      turbulences: {},
+    };
+    this.saveToLocalStorage();
+  }
+
+  saveToLocalStorage() {
+    try {
+      localStorage.setItem("flipsim_presets", JSON.stringify(this.presets));
+    } catch (e) {
+      console.warn("Failed to save presets to localStorage:", e);
+    }
   }
 
   async scanPresetFolder(type) {
@@ -237,5 +283,3 @@ class PresetManager {
     }
   }
 }
-
-export { PresetManager };
