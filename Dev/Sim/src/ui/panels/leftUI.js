@@ -2,18 +2,18 @@ import { BaseUi } from "./baseUi.js";
 import { GridField } from "../../renderer/gridRenderModes.js";
 import { Behaviors } from "../../simulation/behaviors/organicBehavior.js";
 import { PresetManager } from "../../util/presetManager.js";
+
 export class LeftUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-    this.presetManager = new PresetManager(this.gui);
+    this.presetManager = null;
     this.controls = {};
     this.initFolders();
   }
 
   setPresetManager(presetManager) {
     this.presetManager = presetManager;
-    // Initialize preset controls now that we have the manager
-    this.initPresetControls();
+    this.initPresetControls(); // Move initialization here
   }
 
   initFolders() {
@@ -55,38 +55,21 @@ export class LeftUi extends BaseUi {
   initPresetControls() {
     this.presetControls = this.presetControls || {};
 
-    // Create custom select element
     const presetSelect = document.createElement("select");
-    presetSelect.classList.add("preset-select");
+    presetSelect.style.width = "100%";
+    presetSelect.style.marginBottom = "5px";
 
-    // Populate options
     this.updatePresetDropdown(presetSelect);
 
-    // Handle selection change
     presetSelect.addEventListener("change", (e) => {
       const value = e.target.value;
       console.log("Preset selector changed to:", value);
       this.presetManager.loadPreset(value);
     });
 
-    // // Insert at the top of preset folder DOM
-    // this.presetFolder.domElement.insertBefore(
-    //   presetSelect,
-    //   this.presetFolder.domElement.firstChild
-    // );
+    this.presetControls.selector = presetSelect;
 
-    this.presetFolder.domElement.appendChild(presetSelect);
-    this.presetControls.selector = presetSelect; // Store for updates
-
-    // Clear existing controllers if they exist
-    if (this.presetFolder.controllers) {
-      this.presetFolder.controllers.forEach((controller) =>
-        controller.destroy()
-      );
-    }
-
-    // Save button (lil-gui)
-    this.presetControls.save = this.presetFolder
+    this.presetFolder
       .add(
         {
           save: () => {
@@ -102,8 +85,7 @@ export class LeftUi extends BaseUi {
       )
       .name("Save");
 
-    // Delete button (lil-gui)
-    this.presetControls.delete = this.presetFolder
+    this.presetFolder
       .add(
         {
           delete: () => {
@@ -120,7 +102,23 @@ export class LeftUi extends BaseUi {
       )
       .name("Delete");
 
+    this.presetFolder.domElement.appendChild(presetSelect);
     console.log("Controllers after init:", this.presetFolder.controllers);
+  }
+
+  updatePresetDropdown(selectElement) {
+    const options = this.presetManager.getPresetOptions();
+    console.log("Updating preset dropdown with options:", options);
+
+    selectElement.innerHTML = "";
+    options.forEach((preset) => {
+      const option = document.createElement("option");
+      option.value = preset;
+      option.textContent = preset;
+      selectElement.appendChild(option);
+    });
+
+    selectElement.value = this.presetManager.getSelectedPreset();
   }
 
   updatePresetDropdown(selectElement) {
@@ -142,112 +140,6 @@ export class LeftUi extends BaseUi {
     selectElement.value = this.presetManager.getSelectedPreset();
   }
 
-  initUDPControls() {
-    const udpNetwork = this.main.udpNetwork;
-    if (!udpNetwork) return;
-
-    // Create local control object
-    const controls = {
-      enabled: udpNetwork._enable,
-      debug: udpNetwork._debug,
-    };
-
-    // Add enable toggle
-    this.udpFolder
-      .add(controls, "enabled")
-      .name("Enable UDP")
-      .onChange((value) => {
-        udpNetwork.enable = value;
-      });
-
-    // Add debug toggle
-    this.udpFolder
-      .add(controls, "debug")
-      .name("Debug Mode")
-      .onChange((value) => {
-        udpNetwork.debug = value;
-      });
-
-    // Add status display
-    const status = { connection: "Disconnected" };
-    const statusController = this.udpFolder
-      .add(status, "connection")
-      .name("Status")
-      .disable();
-
-    // Update status periodically
-    setInterval(() => {
-      const networkStatus = udpNetwork.getStatus();
-      status.connection = networkStatus.connected
-        ? "Connected"
-        : "Disconnected";
-      statusController.updateDisplay();
-    }, 1000);
-
-    // Add port configuration
-    this.udpFolder
-      .add(udpNetwork.config, "wsPort", 1024, 65535, 1)
-      .name("WebSocket Port");
-
-    this.udpFolder
-      .add(udpNetwork.config, "udpPort", 1024, 65535, 1)
-      .name("UDP Port");
-  }
-
-  initDebugControls() {
-    const particles = this.main.particleSystem;
-    if (!particles) return;
-
-    // Grid visibility
-    if (this.main.gridRenderer) {
-      const gridControl = { showGrid: false };
-      this.debugFolder
-        .add(gridControl, "showGrid")
-        .name("Grid")
-        .onChange((value) => {
-          if (this.main.gridRenderer?.visible !== undefined) {
-            this.main.gridRenderer.visible = value;
-          }
-        });
-    }
-
-    // Boundary visibility
-    if (this.main.boundary) {
-      this.debugFolder
-        .add({ showBoundary: true }, "showBoundary")
-        .name("Boundary");
-      // .onChange((value) => this.main.boundary.setVisible(value));
-    }
-
-    // Particle visibility
-    if (this.main.particleRenderer) {
-      this.debugFolder
-        .add({ showParticles: true }, "showParticles")
-        .name("Particles");
-      // .onChange((value) => this.main.particleRenderer.setVisible(value));
-    }
-
-    // Debug renderer controls
-    if (this.main.debugRenderer) {
-      this.debugFolder
-        .add({ showVelocities: false }, "showVelocities")
-        .name("Velocities");
-      // .onChange((value) => this.main.debugRenderer.setShowVelocities(value));
-
-      this.debugFolder
-        .add({ showNeighbors: false }, "showNeighbors")
-        .name("Neighbors");
-      // .onChange((value) => this.main.debugRenderer.setShowNeighbors(value));
-    }
-
-    // UDP debug visibility
-    if (this.main.udpNetwork) {
-      this.debugFolder
-        .add({ showUdp: false }, "showUdp")
-        .name("UDP")
-        .onChange((value) => (this.main.udpNetwork._debug = value));
-    }
-  }
   initGlobalControls() {
     const particles = this.main.particleSystem;
     if (!particles) return;
@@ -319,21 +211,6 @@ export class LeftUi extends BaseUi {
         .onFinishChange((value) => {
           console.log(`PIC/FLIP mixing ratio: ${value * 100}% FLIP`);
         });
-    }
-  }
-
-  // Add new method to handle display updates
-  updateDisplays(currentMode) {
-    // Update all relevant controls
-    Object.values(this.controls).forEach((control) => {
-      if (control && control.updateDisplay) {
-        control.updateDisplay();
-      }
-    });
-
-    // Notify other UI components about mode change
-    if (this.main.uiManager && this.main.uiManager.rightUi) {
-      this.main.uiManager.rightUi.onModeChange(currentMode);
     }
   }
 
@@ -468,5 +345,112 @@ export class LeftUi extends BaseUi {
     this.mouseInputFolder
       .add(particles.mouseForces, "impulseMag", 0.01, 0.12, 0.001)
       .name("Impulse Magnitude");
+  }
+
+  initUDPControls() {
+    const udpNetwork = this.main.udpNetwork;
+    if (!udpNetwork) return;
+
+    // Create local control object
+    const controls = {
+      enabled: udpNetwork._enable,
+      debug: udpNetwork._debug,
+    };
+
+    // Add enable toggle
+    this.udpFolder
+      .add(controls, "enabled")
+      .name("Enable UDP")
+      .onChange((value) => {
+        udpNetwork.enable = value;
+      });
+
+    // Add debug toggle
+    this.udpFolder
+      .add(controls, "debug")
+      .name("Debug Mode")
+      .onChange((value) => {
+        udpNetwork.debug = value;
+      });
+
+    // Add status display
+    const status = { connection: "Disconnected" };
+    const statusController = this.udpFolder
+      .add(status, "connection")
+      .name("Status")
+      .disable();
+
+    // Update status periodically
+    setInterval(() => {
+      const networkStatus = udpNetwork.getStatus();
+      status.connection = networkStatus.connected
+        ? "Connected"
+        : "Disconnected";
+      statusController.updateDisplay();
+    }, 1000);
+
+    // Add port configuration
+    this.udpFolder
+      .add(udpNetwork.config, "wsPort", 1024, 65535, 1)
+      .name("WebSocket Port");
+
+    this.udpFolder
+      .add(udpNetwork.config, "udpPort", 1024, 65535, 1)
+      .name("UDP Port");
+  }
+
+  initDebugControls() {
+    const particles = this.main.particleSystem;
+    if (!particles) return;
+
+    // Grid visibility
+    if (this.main.gridRenderer) {
+      const gridControl = { showGrid: false };
+      this.debugFolder
+        .add(gridControl, "showGrid")
+        .name("Grid")
+        .onChange((value) => {
+          if (this.main.gridRenderer?.visible !== undefined) {
+            this.main.gridRenderer.visible = value;
+          }
+        });
+    }
+
+    // Boundary visibility
+    if (this.main.boundary) {
+      this.debugFolder
+        .add({ showBoundary: true }, "showBoundary")
+        .name("Boundary");
+      // .onChange((value) => this.main.boundary.setVisible(value));
+    }
+
+    // Particle visibility
+    if (this.main.particleRenderer) {
+      this.debugFolder
+        .add({ showParticles: true }, "showParticles")
+        .name("Particles");
+      // .onChange((value) => this.main.particleRenderer.setVisible(value));
+    }
+
+    // Debug renderer controls
+    if (this.main.debugRenderer) {
+      this.debugFolder
+        .add({ showVelocities: false }, "showVelocities")
+        .name("Velocities");
+      // .onChange((value) => this.main.debugRenderer.setShowVelocities(value));
+
+      this.debugFolder
+        .add({ showNeighbors: false }, "showNeighbors")
+        .name("Neighbors");
+      // .onChange((value) => this.main.debugRenderer.setShowNeighbors(value));
+    }
+
+    // UDP debug visibility
+    if (this.main.udpNetwork) {
+      this.debugFolder
+        .add({ showUdp: false }, "showUdp")
+        .name("UDP")
+        .onChange((value) => (this.main.udpNetwork._debug = value));
+    }
   }
 }

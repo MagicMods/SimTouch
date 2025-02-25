@@ -16,11 +16,12 @@ export class UiManager {
     this.leftUi = new LeftUi(main, this.leftContainer);
     this.rightUi = new RightUi(main, this.rightContainer);
 
-    // Initialize PresetManager with GUI instances
+    // Initialize PresetManager with both GUI instances
     this.presetManager = new PresetManager(this.leftUi.gui, this.rightUi.gui);
 
-    // Pass presetManager to leftUI after initialization
+    // Pass PresetManager to panels
     this.leftUi.setPresetManager(this.presetManager);
+    this.rightUi.setPresetManager(this.presetManager);
 
     // Initialize stats
     this.stats = new Stats();

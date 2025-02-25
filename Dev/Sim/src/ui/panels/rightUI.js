@@ -8,18 +8,20 @@ class RightUi extends BaseUi {
     this.initFolders();
   }
 
+  setPresetManager(presetManager) {
+    this.presetManager = presetManager;
+    this.initTurbulencePresetControls(); // Move here
+  }
+
   async initFolders() {
-    // Create folders first
     this.turbulenceFolder = this.createFolder("Turbulence");
     this.organicFolder = this.createFolder("Organic Behavior");
     this.gridFolder = this.createFolder("Grid");
 
-    // Initialize controls immediately
-    this.initTurbulenceControls(); // Remove async/await and presetManager dependency
+    this.initTurbulenceControls();
     this.initOrganicControls();
     this.initGridControls();
 
-    // Set default states
     this.turbulenceFolder.open();
     this.organicFolder.open();
     this.gridFolder.open(false);
@@ -29,7 +31,7 @@ class RightUi extends BaseUi {
     const turbulence = this.main.turbulenceField;
     if (!turbulence) return;
 
-    // Main controls first
+    // Defer preset controls to setPresetManager
     this.turbulenceFolder.add(turbulence, "strength", 0, 2).name("Strength");
     this.turbulenceFolder.add(turbulence, "scale", 0.1, 10).name("Scale");
     this.turbulenceFolder.add(turbulence, "speed", 0, 5).name("Speed");
@@ -46,6 +48,75 @@ class RightUi extends BaseUi {
     biasFolder.add(turbulence.directionBias, "1", -1, 1).name("Y Bias");
   }
 
+  initTurbulencePresetControls() {
+    const presetSelect = document.createElement("select");
+    presetSelect.classList.add("turb-preset-select");
+    presetSelect.style.width = "100%";
+    presetSelect.style.marginBottom = "5px";
+
+    this.updateTurbPresetDropdown(presetSelect);
+
+    presetSelect.addEventListener("change", (e) => {
+      const value = e.target.value;
+      console.log("Turbulence preset selector changed to:", value);
+      this.presetManager.loadTurbPreset(value, this.gui);
+    });
+
+    this.turbPresetControls = { selector: presetSelect };
+
+    this.turbulenceFolder
+      .add(
+        {
+          save: () => {
+            const presetName = prompt("Enter turbulence preset name:");
+            if (this.presetManager.saveTurbPreset(presetName, this.gui)) {
+              this.updateTurbPresetDropdown(presetSelect);
+              presetSelect.value = this.presetManager.getSelectedTurbPreset();
+              alert(`Turbulence preset "${presetName}" saved.`);
+            }
+          },
+        },
+        "save"
+      )
+      .name("Save Preset");
+
+    this.turbulenceFolder
+      .add(
+        {
+          delete: () => {
+            const current = this.presetManager.getSelectedTurbPreset();
+            console.log("Attempting to delete turbulence preset:", current);
+            if (this.presetManager.deleteTurbPreset(current)) {
+              this.updateTurbPresetDropdown(presetSelect);
+              presetSelect.value = this.presetManager.getSelectedTurbPreset();
+              alert(`Turbulence preset "${current}" deleted.`);
+            }
+          },
+        },
+        "delete"
+      )
+      .name("Delete Preset");
+
+    this.turbulenceFolder.domElement.insertBefore(
+      presetSelect,
+      this.turbulenceFolder.domElement.querySelector(".children")
+    );
+  }
+
+  updateTurbPresetDropdown(selectElement) {
+    const options = this.presetManager.getTurbPresetOptions();
+    console.log("Updating turbulence preset dropdown with options:", options);
+
+    selectElement.innerHTML = "";
+    options.forEach((preset) => {
+      const option = document.createElement("option");
+      option.value = preset;
+      option.textContent = preset;
+      selectElement.appendChild(option);
+    });
+
+    selectElement.value = this.presetManager.getSelectedTurbPreset();
+  }
   initOrganicControls() {
     const particles = this.main.particleSystem;
     if (!particles.organicBehavior) return;
