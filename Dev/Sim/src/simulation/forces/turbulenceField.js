@@ -33,6 +33,11 @@ class TurbulenceField {
     this.time = 0;
     this.directionBias = directionBias;
     this.decayRate = decayRate;
+
+    this.scaleField = false; // Field-based velocity scaling
+    this.affectPosition = true;
+    this.affectScale = true; // Particle radius scaling
+    this.scaleStrength = 0.2; // Strength for particle radius scaling
   }
 
   noise2D(x, y) {
@@ -59,36 +64,40 @@ class TurbulenceField {
     return (noise / maxValue + 1) * 0.5;
   }
 
-  applyTurbulence(position, velocity, dt) {
-    // if (this.strength == 0) return velocity;
-    // console.log("applyTurbulence", this.strength, position, velocity, dt);
+  applyTurbulence(position, velocity, dt, particleIndex, system) {
     const [x, y] = position;
     const [vx, vy] = velocity;
 
+    // Calculate noise at particle position
     const n1 = this.noise2D(x * this.scale, y * this.scale);
     const n2 = this.noise2D(y * this.scale + 1.234, x * this.scale + 5.678);
 
-    let forceX = (n1 - 0.5) * this.strength + this.directionBias[0];
-    let forceY = (n2 - 0.5) * this.strength + this.directionBias[1];
+    // Initialize with current velocities
+    let newVx = vx * this.decayRate;
+    let newVy = vy * this.decayRate;
 
-    const dx = x - this.boundary.centerX;
-    const dy = y - this.boundary.centerY;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    const threshold = 0.8 * this.boundary.getRadius();
-
-    if (dist > threshold) {
-      const excess =
-        (dist - threshold) / (this.boundary.getRadius() - threshold);
-      const inwardX = (-dx / dist) * excess * this.strength * this.inwardFactor;
-      const inwardY = (-dy / dist) * excess * this.strength * this.inwardFactor;
-      forceX += inwardX;
-      forceY += inwardY;
+    // Apply position forces only if enabled
+    if (this.affectPosition) {
+      const forceX = (n1 - 0.5) * this.strength + this.directionBias[0];
+      const forceY = (n2 - 0.5) * this.strength + this.directionBias[1];
+      newVx += forceX * dt;
+      newVy += forceY * dt;
     }
 
-    return [
-      vx * this.decayRate + forceX * dt,
-      vy * this.decayRate + forceY * dt,
-    ];
+    // Apply velocity scaling if enabled
+    if (this.scaleField) {
+      const scaleFactor = 1.0 + (n1 - 0.5) * this.strength * 0.5;
+      newVx *= scaleFactor;
+      newVy *= scaleFactor;
+    }
+
+    // Apply particle radius scaling if enabled
+    if (this.affectScale && system?.particleRadii) {
+      const scaleFactor = 1.0 + (n1 - 0.5) * this.scaleStrength;
+      system.particleRadii[particleIndex] = system.particleRadius * scaleFactor;
+    }
+
+    return [newVx, newVy];
   }
 
   update(dt) {

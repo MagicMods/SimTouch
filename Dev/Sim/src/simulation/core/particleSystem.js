@@ -20,6 +20,11 @@ class ParticleSystem {
     this.particleRadius = 0.01;
     this.renderScale = 2000;
 
+    // Add radius array to track individual particle sizes
+    this.particleRadii = new Float32Array(particleCount).fill(
+      this.particleRadius
+    );
+
     // Physics parameters
     this.velocityDamping = 0.98;
     this.boundaryDamping = 0.95;
@@ -52,6 +57,9 @@ class ParticleSystem {
 
     // Create collision system with particle-specific restitution
     this.collisionSystem = new CollisionSystem();
+
+    // Store reference to collision system in particle system
+    this.collisionSystem.particleSystem = this;
 
     // Create boundary with specified mode
     this.boundary = new CircularBoundary({
@@ -148,31 +156,6 @@ class ParticleSystem {
   step() {
     const dt = this.timeStep * this.timeScale;
 
-    if (this.debugEnabled) {
-      console.log(
-        "ParticleSystem step:",
-        JSON.stringify(
-          {
-            frame: {
-              dt: dt,
-              particles: this.numParticles,
-            },
-            behaviors: {
-              turbulence: this.turbulence?.enabled,
-              organic: this.organicBehavior?.enabled,
-              mode: this.organicBehavior?.currentBehavior,
-            },
-            sample: {
-              pos: [this.particles[0], this.particles[1]],
-              vel: [this.velocitiesX[0], this.velocitiesY[0]],
-            },
-          },
-          null,
-          2
-        )
-      );
-    }
-
     // 1. Apply external forces (including turbulence)
     this.applyExternalForces(dt);
 
@@ -181,49 +164,56 @@ class ParticleSystem {
       this.organicBehavior.updateParticles(this, dt);
     }
 
-    // 3. Update positions based on combined velocities
-    for (let i = 0; i < this.particles.length; i += 2) {
-      const idx = i / 2;
-      this.particles[i] += this.velocitiesX[idx] * dt;
-      this.particles[i + 1] += this.velocitiesY[idx] * dt;
-    }
-
-    // 4. Position and boundary update
+    // 3. Update positions and handle collisions
+    this.collisionSystem.update(
+      this.particles,
+      this.velocitiesX,
+      this.velocitiesY
+    );
     this.updateParticles(dt);
   }
 
   applyExternalForces(dt) {
-    const stats = {
-      before: {
-        vel: [this.velocitiesX[0], this.velocitiesY[0]],
-      },
-    };
+    // Track if organic behavior is active
+    this.organicBehaviorActive =
+      this.fluidBehavior?.enabled ||
+      this.swarmBehavior?.enabled ||
+      this.automataBehavior?.enabled;
 
-    // Apply gravity with FLIP scaling
-    const scaledGravity = this.gravity * (this.picFlipRatio > 0 ? 0.5 : 1.0);
-    for (let i = 0; i < this.numParticles; i++) {
-      this.velocitiesY[i] += -scaledGravity * dt;
+    // Apply organic behaviors first
+    if (this.fluidBehavior?.enabled) {
+      this.fluidBehavior.apply(
+        this.particles,
+        this.velocitiesX,
+        this.velocitiesY,
+        dt
+      );
+    }
+    if (this.swarmBehavior?.enabled) {
+      this.swarmBehavior.apply(
+        this.particles,
+        this.velocitiesX,
+        this.velocitiesY,
+        dt
+      );
+    }
+    if (this.automataBehavior?.enabled) {
+      this.automataBehavior.apply(
+        this.particles,
+        this.velocitiesX,
+        this.velocitiesY,
+        dt
+      );
     }
 
-    // Apply turbulence if enabled
+    // Apply turbulence only if no organic behavior is active
     if (this.turbulence?.strength > 0) {
       for (let i = 0; i < this.numParticles; i++) {
         const pos = [this.particles[i * 2], this.particles[i * 2 + 1]];
         const vel = [this.velocitiesX[i], this.velocitiesY[i]];
         [this.velocitiesX[i], this.velocitiesY[i]] =
-          this.turbulence.applyTurbulence(pos, vel, dt);
+          this.turbulence.applyTurbulence(pos, vel, dt, i, this);
       }
-    }
-
-    if (this.debug) {
-      stats.after = {
-        vel: [this.velocitiesX[0], this.velocitiesY[0]],
-        delta: [
-          this.velocitiesX[0] - stats.before.vel[0],
-          this.velocitiesY[0] - stats.before.vel[1],
-        ],
-      };
-      console.log("External forces applied:", JSON.stringify(stats, null, 2));
     }
   }
 
@@ -308,10 +298,10 @@ class ParticleSystem {
     for (let i = 0; i < this.numParticles; i++) {
       particles.push({
         x: this.particles[i * 2],
-        y: this.particles[i * 2 + 1], // Keep original Y coordinate
+        y: this.particles[i * 2 + 1],
         vx: this.velocitiesX[i],
         vy: this.velocitiesY[i],
-        size: this.particleRadius * this.renderScale,
+        size: this.particleRadii[i] * this.renderScale, // Use actual radius
       });
     }
     return particles;

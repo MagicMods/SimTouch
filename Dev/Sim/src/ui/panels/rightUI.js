@@ -27,14 +27,22 @@ class RightUi extends BaseUi {
     this.gridFolder.open(false);
   }
 
+  //#region Turbulence
   initTurbulenceControls() {
     const turbulence = this.main.turbulenceField;
     if (!turbulence) return;
 
     // Defer preset controls to setPresetManager
-    this.turbulenceFolder.add(turbulence, "strength", 0, 2).name("Strength");
+    this.turbulenceFolder.add(turbulence, "strength", 0, 10).name("Strength");
     this.turbulenceFolder.add(turbulence, "scale", 0.1, 10).name("Scale");
-    this.turbulenceFolder.add(turbulence, "speed", 0, 5).name("Speed");
+    this.turbulenceFolder.add(turbulence, "speed", 0, 20).name("Speed");
+
+    const affectFolder = this.turbulenceFolder.addFolder("Affect");
+
+    affectFolder.add(turbulence, "scaleStrength", 0, 10).name("Scale Strength");
+    affectFolder.add(turbulence, "affectPosition").name("Affect Position");
+    affectFolder.add(turbulence, "scaleField").name("Affect Scale Field");
+    affectFolder.add(turbulence, "affectScale").name("Affect Scale Particles");
 
     const advancedFolder = this.turbulenceFolder.addFolder("Advanced");
     advancedFolder.add(turbulence, "octaves", 1, 8, 1).name("Octaves");
@@ -47,6 +55,7 @@ class RightUi extends BaseUi {
     biasFolder.add(turbulence.directionBias, "0", -1, 1).name("X Bias");
     biasFolder.add(turbulence.directionBias, "1", -1, 1).name("Y Bias");
   }
+  //#endregion
 
   initTurbulencePresetControls() {
     const presetSelect = document.createElement("select");
@@ -117,6 +126,8 @@ class RightUi extends BaseUi {
 
     selectElement.value = this.presetManager.getSelectedTurbPreset();
   }
+
+  //#region Organic Behavior
   initOrganicControls() {
     const particles = this.main.particleSystem;
     if (!particles.organicBehavior) return;
@@ -156,7 +167,9 @@ class RightUi extends BaseUi {
       controller.enable(true)
     );
   }
+  //#endregion
 
+  //#region Fluid
   initFluidControls(folder, particles) {
     // Add fluid parameters
     folder
@@ -225,6 +238,9 @@ class RightUi extends BaseUi {
         behavior.forceScales[type].base = value;
       });
   }
+  //#endregion
+
+  //#region Grid
 
   initGridControls() {
     const gridRenderer = this.main.gridRenderer;
@@ -282,6 +298,6 @@ class RightUi extends BaseUi {
     });
 
     this.gridFolder.open(false);
-  }
+  } //#endregion
 }
 export { RightUi };

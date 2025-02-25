@@ -166,8 +166,7 @@ export class LeftUi extends BaseUi {
           this.main.gridRenderer.renderModes.currentMode = value;
           // Update display
           this.controls.fieldType.updateDisplay();
-        })
-        .domElement.classList.add("turb-preset-select");
+        });
 
       const smoothing = this.main.gridRenderer.renderModes.smoothing;
       this.globalFolder
@@ -198,8 +197,7 @@ export class LeftUi extends BaseUi {
           this.main.ui.rightUi.updateOrganicFolders(value);
 
           this.controls.behaviorType.updateDisplay();
-        })
-        .domElement.classList.add("turb-preset-select");
+        });
 
       this.globalFolder
         .add(particles, "timeScale", 0, 2, 0.1)
@@ -223,8 +221,7 @@ export class LeftUi extends BaseUi {
         .name("Boundary")
         .onChange((value) => {
           this.main.particleSystem.setBoundaryMode(value);
-        })
-        .domElement.classList.add("turb-preset-select");
+        });
     }
   }
   //#endregion
@@ -246,6 +243,8 @@ export class LeftUi extends BaseUi {
       .name("Size")
       .onChange((value) => {
         particles.collisionSystem.particleRadius = value * 2;
+        // Reset all particles to new base radius before turbulence affects them
+        particles.particleRadii.fill(value);
       });
 
     this.particleFolder
@@ -277,7 +276,7 @@ export class LeftUi extends BaseUi {
     if (!particles) return;
 
     this.collisionFolder
-      .add(particles.collisionSystem, "repulsion", 0, 40, 0.01)
+      .add(particles.collisionSystem, "repulsion", 0, 10, 0.01)
       .name("Repulsion");
 
     this.collisionFolder
