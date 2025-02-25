@@ -34,9 +34,18 @@ canvas {
 /* Stats container */
 .stats-container {
     position: absolute;
-    bottom: 1px;
-    left: 0;
+    bottom: 0;
+    right: 0;
+    /* width: 200px; */
 }
+
+/* .stats-innercontainer {
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 200px;
+} */
+
 
 /* Preset save dialog */
 .preset-overlay {
@@ -89,14 +98,13 @@ canvas {
 }
 
 .preset-select {
-    background: #2a2a2a;
-    border: 1px solid #3a3a3a;
+    background: #333333;
+    border: 2px solid #7a7a7a;
     color: white;
-    padding: 8px;
+    padding: 10px;
     border-radius: 4px;
     width: 100%;
-    display: flex;
-    justify-content: flex-end;
+    text-align: center;
 }
 
 /* Notification message */

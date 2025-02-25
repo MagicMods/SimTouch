@@ -58,8 +58,6 @@ export class LeftUi extends BaseUi {
     // Create custom select element
     const presetSelect = document.createElement("select");
     presetSelect.classList.add("preset-select");
-    // presetSelect.style.width = "100%"; // Match lil-gui style
-    // presetSelect.style.marginBottom = "5px";
 
     // Populate options
     this.updatePresetDropdown(presetSelect);
@@ -71,48 +69,57 @@ export class LeftUi extends BaseUi {
       this.presetManager.loadPreset(value);
     });
 
-    // Add to preset folder DOM
+    // // Insert at the top of preset folder DOM
+    // this.presetFolder.domElement.insertBefore(
+    //   presetSelect,
+    //   this.presetFolder.domElement.firstChild
+    // );
+
     this.presetFolder.domElement.appendChild(presetSelect);
     this.presetControls.selector = presetSelect; // Store for updates
 
-    // Save button (lil-gui)
-    if (!this.presetControls.save) {
-      this.presetControls.save = this.presetFolder
-        .add(
-          {
-            save: () => {
-              const presetName = prompt("Enter preset name:");
-              if (this.presetManager.savePreset(presetName)) {
-                this.updatePresetDropdown(presetSelect);
-                presetSelect.value = this.presetManager.getSelectedPreset();
-                alert(`Preset "${presetName}" saved.`);
-              }
-            },
-          },
-          "save"
-        )
-        .name("Save");
+    // Clear existing controllers if they exist
+    if (this.presetFolder.controllers) {
+      this.presetFolder.controllers.forEach((controller) =>
+        controller.destroy()
+      );
     }
 
-    // Delete button (lil-gui)
-    if (!this.presetControls.delete) {
-      this.presetControls.delete = this.presetFolder
-        .add(
-          {
-            delete: () => {
-              const current = this.presetManager.getSelectedPreset();
-              console.log("Attempting to delete preset:", current);
-              if (this.presetManager.deletePreset(current)) {
-                this.updatePresetDropdown(presetSelect);
-                presetSelect.value = this.presetManager.getSelectedPreset();
-                alert(`Preset "${current}" deleted.`);
-              }
-            },
+    // Save button (lil-gui)
+    this.presetControls.save = this.presetFolder
+      .add(
+        {
+          save: () => {
+            const presetName = prompt("Enter preset name:");
+            if (this.presetManager.savePreset(presetName)) {
+              this.updatePresetDropdown(presetSelect);
+              presetSelect.value = this.presetManager.getSelectedPreset();
+              alert(`Preset "${presetName}" saved.`);
+            }
           },
-          "delete"
-        )
-        .name("Delete");
-    }
+        },
+        "save"
+      )
+      .name("Save");
+
+    // Delete button (lil-gui)
+    this.presetControls.delete = this.presetFolder
+      .add(
+        {
+          delete: () => {
+            const current = this.presetManager.getSelectedPreset();
+            console.log("Attempting to delete preset:", current);
+            if (this.presetManager.deletePreset(current)) {
+              this.updatePresetDropdown(presetSelect);
+              presetSelect.value = this.presetManager.getSelectedPreset();
+              alert(`Preset "${current}" deleted.`);
+            }
+          },
+        },
+        "delete"
+      )
+      .name("Delete");
+
     console.log("Controllers after init:", this.presetFolder.controllers);
   }
 
