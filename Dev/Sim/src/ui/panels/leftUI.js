@@ -1,7 +1,8 @@
 import { BaseUi } from "./baseUi.js";
 import { GridField } from "../../renderer/gridRenderModes.js";
 import { Behaviors } from "../../simulation/behaviors/organicBehavior.js";
-import { PresetManager } from "../../util/presetManager.js";
+import { socketManager } from "../../network/socketManager.js";
+import { NetworkConfig } from "../../network/networkConfig.js";
 
 export class LeftUi extends BaseUi {
   constructor(main, container) {
@@ -347,22 +348,26 @@ export class LeftUi extends BaseUi {
       .name("Impulse Magnitude");
   }
 
+  // Replace initUDPControls() with this new version
   initUDPControls() {
-    const udpNetwork = this.main.udpNetwork;
-    if (!udpNetwork) return;
+    const socket = socketManager;
+    if (!socket) return;
 
     // Create local control object
     const controls = {
-      enabled: udpNetwork._enable,
-      debug: udpNetwork._debug,
+      enabled: socket.enable,
+      debug: socket.debug,
     };
 
     // Add enable toggle
     this.udpFolder
       .add(controls, "enabled")
-      .name("Enable UDP")
+      .name("Enable Network")
       .onChange((value) => {
-        udpNetwork.enable = value;
+        socket.enable = value;
+        if (value && !socket.isConnected) {
+          socket.connect();
+        }
       });
 
     // Add debug toggle
@@ -370,7 +375,7 @@ export class LeftUi extends BaseUi {
       .add(controls, "debug")
       .name("Debug Mode")
       .onChange((value) => {
-        udpNetwork.debug = value;
+        socket.debug = value;
       });
 
     // Add status display
@@ -382,21 +387,31 @@ export class LeftUi extends BaseUi {
 
     // Update status periodically
     setInterval(() => {
-      const networkStatus = udpNetwork.getStatus();
-      status.connection = networkStatus.connected
-        ? "Connected"
-        : "Disconnected";
+      status.connection = socket.isConnected ? "Connected" : "Disconnected";
       statusController.updateDisplay();
     }, 1000);
 
     // Add port configuration
     this.udpFolder
-      .add(udpNetwork.config, "wsPort", 1024, 65535, 1)
-      .name("WebSocket Port");
+      .add({ port: NetworkConfig.WEBSOCKET_PORT }, "port", 1024, 65535, 1)
+      .name("WebSocket Port")
+      .onChange((value) => {
+        if (socket.isConnected) {
+          socket.reconnect(value);
+        }
+      });
 
+    // Add connection controls
     this.udpFolder
-      .add(udpNetwork.config, "udpPort", 1024, 65535, 1)
-      .name("UDP Port");
+      .add(
+        {
+          reconnect: () => {
+            socket.reconnect();
+          },
+        },
+        "reconnect"
+      )
+      .name("Reconnect");
   }
 
   initDebugControls() {
@@ -445,12 +460,43 @@ export class LeftUi extends BaseUi {
       // .onChange((value) => this.main.debugRenderer.setShowNeighbors(value));
     }
 
-    // UDP debug visibility
-    if (this.main.udpNetwork) {
+    const socket = socketManager;
+    if (socket) {
+      const debugNetworkControl = {
+        showNetwork: socket.debug,
+      };
+
       this.debugFolder
-        .add({ showUdp: false }, "showUdp")
-        .name("UDP")
-        .onChange((value) => (this.main.udpNetwork._debug = value));
+        .add(debugNetworkControl, "showNetwork")
+        .name("Network Debug")
+        .onChange((value) => {
+          socket.debug = value;
+        });
+
+      // Add network stats if enabled
+      if (socket.debug) {
+        const stats = {
+          bytesSent: 0,
+          lastSent: "N/A",
+        };
+
+        const statsFolder = this.debugFolder.addFolder("Network Stats");
+
+        statsFolder.add(stats, "bytesSent").name("Bytes Sent").disable();
+
+        statsFolder.add(stats, "lastSent").name("Last Sent").disable();
+
+        // Update stats periodically
+        setInterval(() => {
+          if (socket.debug && socket.isConnected) {
+            stats.bytesSent = socket.bytesSent || 0;
+            stats.lastSent = socket.lastSentTime
+              ? new Date(socket.lastSentTime).toLocaleTimeString()
+              : "N/A";
+            statsFolder.controllers.forEach((c) => c.updateDisplay());
+          }
+        }, 1000);
+      }
     }
   }
 }

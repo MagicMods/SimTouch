@@ -1,7 +1,7 @@
 import { BaseRenderer } from "./baseRenderer.js";
 import { GridRenderModes } from "./gridRenderModes.js";
 import { Gradient } from "../shaders/gradients.js";
-import { udpNetwork } from "../Network/udp.js";
+import { socketManager } from "../network/socketManager.js";
 
 class GridRenderer extends BaseRenderer {
   constructor(gl, shaderManager) {
@@ -13,14 +13,14 @@ class GridRenderer extends BaseRenderer {
 
     // Grid parameters (all in pixels)
     this.gridParams = {
-      target: 341, // Total cells
-      gap: 1, // Gap between cells
-      aspectRatio: 1, // Important for circular layout
-      scale: 0.95, // Circle coverage
-      width: 10, // Cell width in pixels
-      height: 10, // Cell height in pixels
-      cols: 23, // Fixed grid dimensions
-      rows: 23, // Fixed grid dimensions
+      target: 341,
+      gap: 1,
+      aspectRatio: 1,
+      scale: 0.95,
+      width: 10,
+      height: 10,
+      cols: 23,
+      rows: 23,
     };
 
     // Density parameters
@@ -46,12 +46,21 @@ class GridRenderer extends BaseRenderer {
       },
     });
 
+    this.socket = socketManager;
+    this.socket.connect();
+
     // Debug output
     console.log("GridRenderer initialized:", {
       resolution: `${this.TARGET_WIDTH}x${this.TARGET_HEIGHT}`,
       cellSize: `${this.gridParams.width}x${this.gridParams.height}`,
       totalCells: this.gridParams.target,
     });
+  }
+  sendGridData(byteArray) {
+    if (this.socket.isConnected) {
+      return this.socket.send(byteArray);
+    }
+    return false;
   }
 
   createGridMap(rectangles) {
@@ -99,18 +108,19 @@ class GridRenderer extends BaseRenderer {
     }
 
     // Only log if UDP debug is enabled
-    if (udpNetwork.debug) {
-      console.log(
-        "Grid data:",
-        `Type: ${byteArray[0]}, First 10 values:`,
-        Array.from(byteArray.slice(1, 11))
-      );
-    }
+    // if (udpNetwork.debug) {
+    //   console.log(
+    //     "Grid data:",
+    //     `Type: ${byteArray[0]}, First 10 values:`,
+    //     Array.from(byteArray.slice(1, 11))
+    //   );
+    // }
 
     // Only send if UDP is enabled
-    if (udpNetwork.enable && udpNetwork.isConnected) {
-      udpNetwork.sendUDPMessage(byteArray);
-    }
+    // if (udpNetwork.enable && udpNetwork.isConnected) {
+    // udpNetwork.sendUDPMessage(byteArray);
+    this.sendGridData(byteArray);
+    // }
 
     // Map values to colors
     rectangles.forEach((rect, index) => {

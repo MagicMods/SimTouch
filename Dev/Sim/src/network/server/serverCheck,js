@@ -1,0 +1,8 @@
+export const checkServer = async (port) => {
+  try {
+    const response = await fetch(`http://localhost:${port}/health`);
+    return response.ok;
+  } catch (err) {
+    return false;
+  }
+};

@@ -6,7 +6,6 @@ import { GridRenderer } from "./renderer/gridRenderer.js"; // Import GridRendere
 import { DebugRenderer } from "./renderer/debugRenderer.js"; // Import DebugRenderer
 import { TurbulenceField } from "./simulation/forces/turbulenceField.js";
 import { CircularBoundary } from "./simulation/boundary/circularBoundary.js";
-import { udpNetwork } from "./Network/udp.js";
 
 class Main {
   constructor() {
@@ -32,14 +31,6 @@ class Main {
       this.particleSystem
     );
     this.paused = false;
-
-    // Initialize UDP network first with custom config
-    this.udpNetwork = udpNetwork;
-    this.udpNetwork.init({
-      wsPort: 8080,
-      udpPort: 3000,
-      udpHost: "localhost",
-    });
   }
 
   async init() {
@@ -55,7 +46,7 @@ class Main {
   }
 
   animate() {
-    this.particleSystem.step();
+    // this.particleSystem.step();
     this.ui.updateStats();
 
     if (!this.paused) {
