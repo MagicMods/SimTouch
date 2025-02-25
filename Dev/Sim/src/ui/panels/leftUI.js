@@ -276,7 +276,7 @@ export class LeftUi extends BaseUi {
     if (!particles) return;
 
     this.collisionFolder
-      .add(particles.collisionSystem, "repulsion", 0, 10, 0.01)
+      .add(particles.collisionSystem, "repulsion", 0, 5, 0.01)
       .name("Repulsion");
 
     this.collisionFolder

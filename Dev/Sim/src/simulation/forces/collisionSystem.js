@@ -139,35 +139,45 @@ class CollisionSystem {
       const nx = dx / dist;
       const ny = dy / dist;
 
-      // Calculate overlap and normalize it
-      const overlap = (minDist - dist) / minDist; // Normalize by total radius
+      // Calculate overlap
+      const overlap = minDist - dist;
 
-      // Apply strong position correction
-      const correction = overlap * this.repulsion;
-      particles[i * 2] -= nx * correction * radiusI;
-      particles[i * 2 + 1] -= ny * correction * radiusI;
-      particles[j * 2] += nx * correction * radiusJ;
-      particles[j * 2 + 1] += ny * correction * radiusJ;
+      // Convert repulsion into a smooth force
+      const repulsionForce = Math.pow(overlap / minDist, 1.5) * this.repulsion;
 
-      // Handle velocity response
+      // Apply repulsion as velocity change instead of position correction
+      const repulsionX = nx * repulsionForce;
+      const repulsionY = ny * repulsionForce;
+
+      // Apply smoother velocity changes
+      velocitiesX[i] -= repulsionX;
+      velocitiesY[i] -= repulsionY;
+      velocitiesX[j] += repulsionX;
+      velocitiesY[j] += repulsionY;
+
+      // Handle collision response only for significant relative velocity
       const vx = velocitiesX[j] - velocitiesX[i];
       const vy = velocitiesY[j] - velocitiesY[i];
       const vn = vx * nx + vy * ny;
 
       if (vn < 0) {
-        const restitution = this.particleRestitution * (1.0 - overlap); // Less bounce when deep overlap
-        const j_impulse = -(1 + restitution) * vn;
-        velocitiesX[i] -= nx * j_impulse * 0.5;
-        velocitiesY[i] -= ny * j_impulse * 0.5;
-        velocitiesX[j] += nx * j_impulse * 0.5;
-        velocitiesY[j] += ny * j_impulse * 0.5;
+        // Softer restitution based on overlap
+        const restitution =
+          this.particleRestitution * (1.0 - overlap / minDist);
+        const impulse = -(1 + restitution) * vn * 0.5;
+
+        velocitiesX[i] -= nx * impulse;
+        velocitiesY[i] -= ny * impulse;
+        velocitiesX[j] += nx * impulse;
+        velocitiesY[j] += ny * impulse;
       }
 
-      // Apply damping to prevent jittering
-      velocitiesX[i] *= this.damping;
-      velocitiesY[i] *= this.damping;
-      velocitiesX[j] *= this.damping;
-      velocitiesY[j] *= this.damping;
+      // Apply minimal position correction to prevent extreme overlap
+      const correction = Math.max(0, overlap - minDist * 0.1) * 0.5;
+      particles[i * 2] -= nx * correction;
+      particles[i * 2 + 1] -= ny * correction;
+      particles[j * 2] += nx * correction;
+      particles[j * 2 + 1] += ny * correction;
     }
   }
 
