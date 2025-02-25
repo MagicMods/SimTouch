@@ -1,11 +1,11 @@
 import { BaseUi } from "./baseUi.js";
 import { GridField } from "../../renderer/gridRenderModes.js";
 import { Behaviors } from "../../simulation/behaviors/organicBehavior.js";
-
+import { PresetManager } from "../../util/presetManager.js";
 export class LeftUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-    this.presetManager = null; // Will be set later
+    this.presetManager = new PresetManager(this.gui);
     this.controls = {};
     this.initFolders();
   }
@@ -32,7 +32,6 @@ export class LeftUi extends BaseUi {
     this.debugFolder = this.createFolder("Debug", true); // Non-persistent folders
 
     // Initialize all controls
-    this.initPresetControls();
     this.initUDPControls();
     this.initDebugControls();
     this.initGlobalControls();
@@ -54,29 +53,86 @@ export class LeftUi extends BaseUi {
   }
 
   initPresetControls() {
-    if (!this.presetManager) return;
+    this.presetControls = this.presetControls || {};
 
-    const presets = this.presetManager.getPresetList();
-    const presetControl = { current: presets[0] || "" };
+    // Create custom select element
+    const presetSelect = document.createElement("select");
+    presetSelect.classList.add("preset-select");
+    // presetSelect.style.width = "100%"; // Match lil-gui style
+    // presetSelect.style.marginBottom = "5px";
 
-    this.presetFolder
-      .add(presetControl, "current", presets)
-      .name("Load Preset")
-      .onChange((value) => {
-        if (value) this.presetManager.loadPreset(value);
-      });
+    // Populate options
+    this.updatePresetDropdown(presetSelect);
 
-    const saveControl = {
-      name: "my_preset",
-      save: () => {
-        // Save logic will be implemented later
-        console.log("Save preset:", saveControl.name);
-      },
-    };
+    // Handle selection change
+    presetSelect.addEventListener("change", (e) => {
+      const value = e.target.value;
+      console.log("Preset selector changed to:", value);
+      this.presetManager.loadPreset(value);
+    });
 
-    this.presetFolder.add(saveControl, "name").name("Preset Name");
+    // Add to preset folder DOM
+    this.presetFolder.domElement.appendChild(presetSelect);
+    this.presetControls.selector = presetSelect; // Store for updates
 
-    this.presetFolder.add(saveControl, "save").name("Save Preset");
+    // Save button (lil-gui)
+    if (!this.presetControls.save) {
+      this.presetControls.save = this.presetFolder
+        .add(
+          {
+            save: () => {
+              const presetName = prompt("Enter preset name:");
+              if (this.presetManager.savePreset(presetName)) {
+                this.updatePresetDropdown(presetSelect);
+                presetSelect.value = this.presetManager.getSelectedPreset();
+                alert(`Preset "${presetName}" saved.`);
+              }
+            },
+          },
+          "save"
+        )
+        .name("Save");
+    }
+
+    // Delete button (lil-gui)
+    if (!this.presetControls.delete) {
+      this.presetControls.delete = this.presetFolder
+        .add(
+          {
+            delete: () => {
+              const current = this.presetManager.getSelectedPreset();
+              console.log("Attempting to delete preset:", current);
+              if (this.presetManager.deletePreset(current)) {
+                this.updatePresetDropdown(presetSelect);
+                presetSelect.value = this.presetManager.getSelectedPreset();
+                alert(`Preset "${current}" deleted.`);
+              }
+            },
+          },
+          "delete"
+        )
+        .name("Delete");
+    }
+    console.log("Controllers after init:", this.presetFolder.controllers);
+  }
+
+  updatePresetDropdown(selectElement) {
+    const options = this.presetManager.getPresetOptions();
+    console.log("Updating preset dropdown with options:", options);
+
+    // Clear existing options
+    selectElement.innerHTML = "";
+
+    // Add new options
+    options.forEach((preset) => {
+      const option = document.createElement("option");
+      option.value = preset;
+      option.textContent = preset;
+      selectElement.appendChild(option);
+    });
+
+    // Set current value
+    selectElement.value = this.presetManager.getSelectedPreset();
   }
 
   initUDPControls() {
@@ -137,39 +193,44 @@ export class LeftUi extends BaseUi {
 
     // Grid visibility
     if (this.main.gridRenderer) {
+      const gridControl = { showGrid: false };
       this.debugFolder
-        .add({ showGrid: false }, "showGrid")
+        .add(gridControl, "showGrid")
         .name("Grid")
-        .onChange((value) => this.main.gridRenderer.setVisible(value));
+        .onChange((value) => {
+          if (this.main.gridRenderer?.visible !== undefined) {
+            this.main.gridRenderer.visible = value;
+          }
+        });
     }
 
     // Boundary visibility
     if (this.main.boundary) {
       this.debugFolder
         .add({ showBoundary: true }, "showBoundary")
-        .name("Boundary")
-        .onChange((value) => this.main.boundary.setVisible(value));
+        .name("Boundary");
+      // .onChange((value) => this.main.boundary.setVisible(value));
     }
 
     // Particle visibility
     if (this.main.particleRenderer) {
       this.debugFolder
         .add({ showParticles: true }, "showParticles")
-        .name("Particles")
-        .onChange((value) => this.main.particleRenderer.setVisible(value));
+        .name("Particles");
+      // .onChange((value) => this.main.particleRenderer.setVisible(value));
     }
 
     // Debug renderer controls
     if (this.main.debugRenderer) {
       this.debugFolder
         .add({ showVelocities: false }, "showVelocities")
-        .name("Velocities")
-        .onChange((value) => this.main.debugRenderer.setShowVelocities(value));
+        .name("Velocities");
+      // .onChange((value) => this.main.debugRenderer.setShowVelocities(value));
 
       this.debugFolder
         .add({ showNeighbors: false }, "showNeighbors")
-        .name("Neighbors")
-        .onChange((value) => this.main.debugRenderer.setShowNeighbors(value));
+        .name("Neighbors");
+      // .onChange((value) => this.main.debugRenderer.setShowNeighbors(value));
     }
 
     // UDP debug visibility
@@ -343,7 +404,7 @@ export class LeftUi extends BaseUi {
       .name("Size")
       .onChange((value) => {
         particles.boundary.update({ radius: value }, [
-          (boundary) => this.main.baseRenderer.drawCircularBoundary(boundary),
+          // (boundary) => this.main.baseRenderer.drawCircularBoundary(boundary),
         ]);
       });
 
@@ -400,33 +461,5 @@ export class LeftUi extends BaseUi {
     this.mouseInputFolder
       .add(particles.mouseForces, "impulseMag", 0.01, 0.12, 0.001)
       .name("Impulse Magnitude");
-  }
-
-  showSavePresetDialog(defaultName) {
-    const overlay = document.createElement("div");
-    overlay.className = "preset-overlay";
-    // ... implementation of save dialog ...
-  }
-
-  addFileControls() {
-    const fileControls = {
-      export: () => this.main.presetManager.saveToFile("preset"),
-      import: () => {
-        const input = document.createElement("input");
-        input.type = "file";
-        input.accept = ".json";
-        input.onchange = async (e) => {
-          const file = e.target.files[0];
-          await this.main.presetManager.loadFromFile(file);
-          // Update preset list
-          const presets = this.main.presetManager.getPresetList();
-          this.controls.mainPreset?.options(presets);
-        };
-        input.click();
-      },
-    };
-
-    this.presetFolder.add(fileControls, "export").name("Export to File");
-    this.presetFolder.add(fileControls, "import").name("Import from File");
   }
 }

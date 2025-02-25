@@ -6,7 +6,7 @@ class CircularBoundary {
     cBoundaryRestitution = 0.8, // Renamed to be specific
     damping = 0.95,
     segments = 64, // Higher segment count for smoother circle
-    mode = 'BOUNCE' // Add boundary mode
+    mode = "BOUNCE", // Add boundary mode
   } = {}) {
     // Core parameters
     this.centerX = centerX;
@@ -30,8 +30,8 @@ class CircularBoundary {
 
     // Add boundary mode
     this.BOUNDARY_MODES = {
-      BOUNCE: 'BOUNCE',
-      WARP: 'WARP'
+      BOUNCE: "BOUNCE",
+      WARP: "WARP",
     };
     this.mode = mode;
   }
@@ -93,7 +93,7 @@ class CircularBoundary {
         const angle = Math.atan2(dy, dx);
         position[0] = this.centerX - nx * (this.radius * 0.95); // Slightly inside
         position[1] = this.centerY - ny * (this.radius * 0.95);
-        
+
         // Retain velocity
         return false; // Don't modify velocity
       } else {
@@ -149,7 +149,6 @@ class CircularBoundary {
       changed = true;
     }
     if (changed) {
-      this.generateBoundaryPoints();
       this.updateCallbacks.forEach((callback) => callback(this));
     }
   }
@@ -171,7 +170,7 @@ class CircularBoundary {
     if (this.BOUNDARY_MODES[mode]) {
       this.mode = mode;
       // Notify any systems that need updating
-      this.updateCallbacks.forEach(callback => callback(this));
+      this.updateCallbacks.forEach((callback) => callback(this));
     }
   }
 }

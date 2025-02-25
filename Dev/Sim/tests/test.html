@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>lil-gui Preset Management</title>
+    <script src="https://cdn.jsdelivr.net/npm/lil-gui@0.18"></script>
+  </head>
+  <body>
+    <script>
+      const gui = new lil.GUI();
+
+      // Preset Storage
+      let presets = { Default: { value: 42 } }; // Default preset
+
+      const presetData = {
+        selectedPreset: "Default",
+      };
+
+      function updateDropdown() {
+        const presetNames = Object.keys(presets);
+        presetDropdown.options(presetNames);
+      }
+
+      function savePreset() {
+        const presetName = prompt("Enter a name for the new preset:");
+        if (presetName && !presets[presetName]) {
+          presets[presetName] = { value: Math.random() * 100 }; // Example random data
+          updateDropdown();
+          presetData.selectedPreset = presetName;
+          presetDropdown.setValue(presetName);
+        } else {
+          alert("Invalid or duplicate preset name!");
+        }
+      }
+
+      function deletePreset() {
+        if (presetData.selectedPreset === "Default") {
+          alert("Cannot delete the default preset!");
+          return;
+        }
+
+        if (
+          confirm(
+            `Are you sure you want to delete "${presetData.selectedPreset}"?`
+          )
+        ) {
+          delete presets[presetData.selectedPreset];
+          presetData.selectedPreset = "Default";
+          updateDropdown();
+          presetDropdown.setValue("Default");
+        }
+      }
+
+      const presetDropdown = gui
+        .add(presetData, "selectedPreset", Object.keys(presets))
+        .name("Presets");
+      gui.add({ savePreset }, "savePreset").name("Save Preset");
+      gui.add({ deletePreset }, "deletePreset").name("Delete Preset");
+    </script>
+  </body>
+</html>

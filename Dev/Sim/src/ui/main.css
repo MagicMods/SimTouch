@@ -88,6 +88,17 @@ canvas {
     background: #4a4a4a;
 }
 
+.preset-select {
+    background: #2a2a2a;
+    border: 1px solid #3a3a3a;
+    color: white;
+    padding: 8px;
+    border-radius: 4px;
+    width: 100%;
+    display: flex;
+    justify-content: flex-end;
+}
+
 /* Notification message */
 .notification {
     position: fixed;

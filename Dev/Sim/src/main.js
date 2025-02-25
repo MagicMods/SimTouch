@@ -76,20 +76,6 @@ class Main {
 
     // Draw particles
     this.particleRenderer.draw(this.particleSystem.getParticles());
-
-    // Example: Send particle data over UDP
-    const particles = this.particleSystem.getParticles();
-    const positionData = new Float32Array(particles.length * 2);
-    particles.forEach((particle, i) => {
-      positionData[i * 2] = particle.x;
-      positionData[i * 2 + 1] = particle.y;
-    });
-  }
-
-  // Clean up when destroying
-  destroy() {
-    udpNetwork.close();
-    // ...other cleanup code...
   }
 
   static async create() {
