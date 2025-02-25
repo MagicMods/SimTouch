@@ -110,9 +110,14 @@ class SocketManager {
 
   reconnect() {
     if (this.ws) {
-      this.ws.close();
+      this.disconnect();
     }
     this.connect(this.port);
+  }
+
+  disconnect() {
+    console.log("Closing WebSocket connection");
+    this.ws.close();
   }
 }
 

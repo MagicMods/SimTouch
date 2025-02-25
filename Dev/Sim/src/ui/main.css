@@ -138,3 +138,16 @@ canvas {
   font-size: 10px;
   color: white;
 }
+
+/* Override lil-gui colors */
+.lil-gui {
+    --background-color: #1a1a1a;
+    --text-color: #e9e9e9;
+    --title-background-color: #2a2a2a;
+    --title-text-color: #ffffff;
+    --widget-color: #3a3a3a;
+    --hover-color: #4a4a4a;
+    --focus-color: #5a5a5a;
+    --number-color: #ffc21a;
+    --string-color: #1bd1f1;
+}

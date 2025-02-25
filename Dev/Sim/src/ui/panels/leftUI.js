@@ -57,8 +57,7 @@ export class LeftUi extends BaseUi {
     this.presetControls = this.presetControls || {};
 
     const presetSelect = document.createElement("select");
-    presetSelect.style.width = "100%";
-    presetSelect.style.marginBottom = "5px";
+    presetSelect.classList = "preset-select";
 
     this.updatePresetDropdown(presetSelect);
 
@@ -141,6 +140,7 @@ export class LeftUi extends BaseUi {
     selectElement.value = this.presetManager.getSelectedPreset();
   }
 
+  //#region Control
   initGlobalControls() {
     const particles = this.main.particleSystem;
     if (!particles) return;
@@ -166,7 +166,8 @@ export class LeftUi extends BaseUi {
           this.main.gridRenderer.renderModes.currentMode = value;
           // Update display
           this.controls.fieldType.updateDisplay();
-        });
+        })
+        .domElement.classList.add("turb-preset-select");
 
       const smoothing = this.main.gridRenderer.renderModes.smoothing;
       this.globalFolder
@@ -197,7 +198,8 @@ export class LeftUi extends BaseUi {
           this.main.ui.rightUi.updateOrganicFolders(value);
 
           this.controls.behaviorType.updateDisplay();
-        });
+        })
+        .domElement.classList.add("turb-preset-select");
 
       this.globalFolder
         .add(particles, "timeScale", 0, 2, 0.1)
@@ -212,9 +214,22 @@ export class LeftUi extends BaseUi {
         .onFinishChange((value) => {
           console.log(`PIC/FLIP mixing ratio: ${value * 100}% FLIP`);
         });
+
+      this.globalFolder
+        .add(this.main.particleSystem.boundary, "mode", {
+          Bounce: "BOUNCE",
+          Warp: "WARP",
+        })
+        .name("Boundary")
+        .onChange((value) => {
+          this.main.particleSystem.setBoundaryMode(value);
+        })
+        .domElement.classList.add("turb-preset-select");
     }
   }
+  //#endregion
 
+  //#region Particle
   initParticleControls() {
     const particles = this.main.particleSystem;
     if (!particles) return;
@@ -241,7 +256,9 @@ export class LeftUi extends BaseUi {
       .addColor(this.main.particleRenderer.config, "color")
       .name("Color");
   }
+  //#endregion
 
+  //#region Physics
   initPhysicsControls() {
     const particles = this.main.particleSystem;
     if (!particles) return;
@@ -252,7 +269,9 @@ export class LeftUi extends BaseUi {
       .add(particles, "velocityDamping", 0.8, 1.0, 0.01)
       .name("Velocity Damping");
   }
+  //#endregion
 
+  //#region Collision
   initCollisionControls() {
     const particles = this.main.particleSystem;
     if (!particles) return;
@@ -268,18 +287,10 @@ export class LeftUi extends BaseUi {
     this.collisionFolder
       .add(particles.collisionSystem, "damping", 0.5, 1.0, 0.01)
       .name("Collision Damping");
-
-    this.collisionFolder
-      .add(this.main.particleSystem.boundary, "mode", {
-        Bounce: "BOUNCE",
-        Warp: "WARP",
-      })
-      .name("Boundary")
-      .onChange((value) => {
-        this.main.particleSystem.setBoundaryMode(value);
-      });
   }
+  //#endregion
 
+  //#region Boundary
   initBoundaryControls() {
     const particles = this.main.particleSystem;
     if (!particles) return;
@@ -302,7 +313,9 @@ export class LeftUi extends BaseUi {
       .add(particles.boundary, "cBoundaryRestitution", 0.0, 1.0, 0.05)
       .name("Bounce");
   }
+  //#endregion
 
+  //#region Rest State
   initRestStateControls() {
     const particles = this.main.particleSystem;
     if (!particles) return;
@@ -334,7 +347,9 @@ export class LeftUi extends BaseUi {
       .name("Position Threshold")
       .onChange((value) => (particles.positionThreshold = value));
   }
+  //#endregion
 
+  //#region Mouse Input
   initMouseControls() {
     const particles = this.main.particleSystem;
     if (!particles?.mouseForces) return;
@@ -347,8 +362,9 @@ export class LeftUi extends BaseUi {
       .add(particles.mouseForces, "impulseMag", 0.01, 0.12, 0.001)
       .name("Impulse Magnitude");
   }
+  //#endregion
 
-  // Replace initUDPControls() with this new version
+  //#region UDP
   initUDPControls() {
     const socket = socketManager;
     if (!socket) return;
@@ -367,15 +383,9 @@ export class LeftUi extends BaseUi {
         socket.enable = value;
         if (value && !socket.isConnected) {
           socket.connect();
+        } else if (!value && socket.isConnected) {
+          socket.disconnect();
         }
-      });
-
-    // Add debug toggle
-    this.udpFolder
-      .add(controls, "debug")
-      .name("Debug Mode")
-      .onChange((value) => {
-        socket.debug = value;
       });
 
     // Add status display
@@ -393,6 +403,22 @@ export class LeftUi extends BaseUi {
 
     // Add port configuration
     this.udpFolder
+      .add({ host: NetworkConfig.UDP_HOST }, "host")
+      .name("UDP Host")
+      .onChange((value) => {
+        if (socket.isConnected) {
+          socket.reconnect(undefined, value);
+        }
+      });
+    this.udpFolder
+      .add({ port: NetworkConfig.UDP_PORT }, "port", 1024, 65535, 1)
+      .name("UDP Port")
+      .onChange((value) => {
+        if (socket.isConnected) {
+          socket.reconnect(value);
+        }
+      });
+    this.udpFolder
       .add({ port: NetworkConfig.WEBSOCKET_PORT }, "port", 1024, 65535, 1)
       .name("WebSocket Port")
       .onChange((value) => {
@@ -401,19 +427,20 @@ export class LeftUi extends BaseUi {
         }
       });
 
-    // Add connection controls
-    this.udpFolder
-      .add(
-        {
-          reconnect: () => {
-            socket.reconnect();
-          },
-        },
-        "reconnect"
-      )
-      .name("Reconnect");
+    // // Add connection controls
+    // this.udpFolder
+    //   .add(
+    //     {
+    //       reconnect: () => {
+    //         socket.reconnect();
+    //       },
+    //     },
+    //     "reconnect"
+    //   )
+    //   .name("Reconnect");
   }
-
+  //#endregion
+  //#region Debug
   initDebugControls() {
     const particles = this.main.particleSystem;
     if (!particles) return;
@@ -498,5 +525,5 @@ export class LeftUi extends BaseUi {
         }, 1000);
       }
     }
-  }
+  } //#endregion
 }
