@@ -67,6 +67,7 @@ class Main {
 
     // Draw particles
     this.particleRenderer.draw(this.particleSystem.getParticles());
+    // this.gridRenderer.drawDebugIndexes();
   }
 
   static async create() {

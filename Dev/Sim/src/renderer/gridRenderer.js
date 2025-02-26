@@ -350,6 +350,66 @@ class GridRenderer extends BaseRenderer {
       gridMap: this.gridMap,
     });
   }
+
+  drawDebugIndexes() {
+    const program = this.shaderManager.use("basic");
+    if (!program) return;
+
+    // Use existing grid geometry
+    const rectangles = this.gridGeometry;
+
+    // Fill each cell with a color based on its index
+    rectangles.forEach((rect, index) => {
+      // Rainbow color based on index
+      const hue = (index / this.gridParams.target) * 360;
+      const color = this.hueToRgb(hue);
+
+      // Draw rectangle with index color
+      this.drawRectangle(rect.x, rect.y, rect.width, rect.height, color);
+
+      // For additional clarity, add index numbers
+      // This would require text rendering capabilities which might not be available
+    });
+
+    // Save a reference image to compare with the microcontroller output
+    console.log("Debug index visualization complete");
+  }
+
+  // Helper function to convert hue to RGB
+  hueToRgb(hue) {
+    const h = hue / 60;
+    const c = 1;
+    const x = c * (1 - Math.abs((h % 2) - 1));
+
+    let r, g, b;
+    if (h >= 0 && h < 1) {
+      r = c;
+      g = x;
+      b = 0;
+    } else if (h >= 1 && h < 2) {
+      r = x;
+      g = c;
+      b = 0;
+    } else if (h >= 2 && h < 3) {
+      r = 0;
+      g = c;
+      b = x;
+    } else if (h >= 3 && h < 4) {
+      r = 0;
+      g = x;
+      b = c;
+    } else if (h >= 4 && h < 5) {
+      r = x;
+      g = 0;
+      b = c;
+    } else {
+      r = c;
+      g = 0;
+      b = x;
+    }
+
+    return [r, g, b, 1.0];
+  }
 }
 
 export { GridRenderer };
