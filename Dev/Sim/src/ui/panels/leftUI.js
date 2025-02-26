@@ -50,7 +50,7 @@ export class LeftUi extends BaseUi {
     this.physicsFolder.open();
     this.collisionFolder.open();
     this.mouseInputFolder.open(true);
-    this.debugFolder.open(true);
+    this.debugFolder.open(false);
   }
 
   initPresetControls() {

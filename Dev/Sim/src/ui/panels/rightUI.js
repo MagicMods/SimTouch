@@ -27,7 +27,7 @@ class RightUi extends BaseUi {
 
     this.turbulenceFolder.open();
     this.voronoiFolder.open();
-    this.organicFolder.open();
+    this.organicFolder.open(true);
     this.gridFolder.open(false);
   }
 
@@ -256,6 +256,9 @@ class RightUi extends BaseUi {
 
     // Initial state
     this.updateOrganicFolders(this.main.gridRenderer.renderModes.currentMode);
+    this.fluidFolder.open(false);
+    this.swarmFolder.open(false);
+    this.automataFolder.open(false);
   }
 
   updateOrganicFolders(mode) {
@@ -278,6 +281,26 @@ class RightUi extends BaseUi {
     this.forceFolder?.controllers.forEach((controller) =>
       controller.enable(true)
     );
+    if (fluidEnabled) {
+      this.fluidFolder.open();
+      this.swarmFolder.close();
+      this.automataFolder.close();
+    }
+    if (swarmEnabled) {
+      this.fluidFolder.close();
+      this.swarmFolder.open();
+      this.automataFolder.close();
+    }
+    if (automataEnabled) {
+      this.fluidFolder.close();
+      this.swarmFolder.close();
+      this.automataFolder.open();
+    }
+    if (mode == "None") {
+      this.fluidFolder.close();
+      this.swarmFolder.close();
+      this.automataFolder;
+    }
   }
   //#endregion
 
