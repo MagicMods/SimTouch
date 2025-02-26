@@ -138,16 +138,35 @@ class ParticleSystem {
   reinitializeParticles(newCount = null) {
     // If no new count provided, use current count
     if (newCount !== null) {
+      // Validate new count
+      newCount = Math.max(1, Math.min(newCount, 2000));
       this.numParticles = newCount;
     }
 
-    // Ensure arrays match current particle count
+    // Resize all particle-related arrays
     this.particles = new Float32Array(this.numParticles * 2);
     this.velocitiesX = new Float32Array(this.numParticles);
     this.velocitiesY = new Float32Array(this.numParticles);
+    this.particleRadii = new Float32Array(this.numParticles).fill(
+      this.particleRadius
+    );
 
-    // Clear collision grid
+    // Reset subsystems
     this.collisionSystem.reset();
+
+    // Reset FLIP system if active
+    if (this.fluid) {
+      this.fluid.reset();
+    }
+
+    // Reset any active behaviors
+    if (this.organicBehavior) {
+      this.organicBehavior.reset();
+    }
+
+    console.log(
+      `Reinitializing particle system with ${this.numParticles} particles`
+    );
 
     // Reinitialize particle positions
     this.initializeParticles();

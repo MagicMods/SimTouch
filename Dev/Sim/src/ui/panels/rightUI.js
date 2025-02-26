@@ -39,10 +39,15 @@ class RightUi extends BaseUi {
 
     const affectFolder = this.turbulenceFolder.addFolder("Affect");
 
-    affectFolder.add(turbulence, "scaleStrength", 0, 10).name("Scale Strength");
+    affectFolder.add(turbulence, "scaleStrength", 0, 1).name("Scale Strength");
     affectFolder.add(turbulence, "affectPosition").name("Affect Position");
     affectFolder.add(turbulence, "scaleField").name("Affect Scale Field");
     affectFolder.add(turbulence, "affectScale").name("Affect Scale Particles");
+
+    // Add min/max scale controls
+    const scaleRangeFolder = affectFolder.addFolder("Scale Range");
+    scaleRangeFolder.add(turbulence, "minScale", 0.1, 1.0).name("Min Scale");
+    scaleRangeFolder.add(turbulence, "maxScale", 1.0, 4.0).name("Max Scale");
 
     const advancedFolder = this.turbulenceFolder.addFolder("Advanced");
     advancedFolder.add(turbulence, "octaves", 1, 8, 1).name("Octaves");
@@ -212,7 +217,7 @@ class RightUi extends BaseUi {
   initAutomataControls(folder, particles) {
     // Add automata parameters
     folder
-      .add(particles.organicBehavior.params.Automata, "radius", 5, 50)
+      .add(particles.organicBehavior.params.Automata, "radius", 5, 100)
       .name("Radius");
     folder
       .add(particles.organicBehavior.params.Automata, "repulsion", 0, 2)

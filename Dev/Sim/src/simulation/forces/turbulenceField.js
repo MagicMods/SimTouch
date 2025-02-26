@@ -38,6 +38,10 @@ class TurbulenceField {
     this.affectPosition = true;
     this.affectScale = true; // Particle radius scaling
     this.scaleStrength = 0.2; // Strength for particle radius scaling
+
+    // Add min/max scale parameters
+    this.minScale = 0.5; // 50% of base size
+    this.maxScale = 2.0; // 200% of base size
   }
 
   noise2D(x, y) {
@@ -86,15 +90,19 @@ class TurbulenceField {
 
     // Apply velocity scaling if enabled
     if (this.scaleField) {
-      const scaleFactor = 1.0 + (n1 - 0.5) * this.strength * 0.5;
-      newVx *= scaleFactor;
-      newVy *= scaleFactor;
+      const scaleFactorField = 1.0 + (n1 - 0.5) * this.strength * 0.1;
+      newVx *= scaleFactorField;
+      newVy *= scaleFactorField;
     }
 
     // Apply particle radius scaling if enabled
     if (this.affectScale && system?.particleRadii) {
-      const scaleFactor = 1.0 + (n1 - 0.5) * this.scaleStrength;
-      system.particleRadii[particleIndex] = system.particleRadius * scaleFactor;
+      const noiseValue = n1 * this.scaleStrength; // Use same noise as forces for consistency
+      // Map noise [0,1] to [minScale,maxScale]
+      const scalePartFactor =
+        this.minScale + noiseValue * (this.maxScale - this.minScale);
+      system.particleRadii[particleIndex] =
+        system.particleRadius * scalePartFactor;
     }
 
     return [newVx, newVy];

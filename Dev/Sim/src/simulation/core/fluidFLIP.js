@@ -500,6 +500,12 @@ class FluidFLIP {
       }
     }
   }
+
+  reset() {
+    // Reset grid and pressure fields
+    this.velocityField = new Float32Array(this.gridSize * this.gridSize * 2);
+    this.pressureField = new Float32Array(this.gridSize * this.gridSize);
+  }
 }
 
 export { FluidFLIP };

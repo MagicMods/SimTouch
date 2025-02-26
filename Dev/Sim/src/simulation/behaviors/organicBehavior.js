@@ -164,6 +164,11 @@ class OrganicBehavior {
   //   };
   //   console.log("Behavior Update:", stats);
   // }
+
+  reset() {
+    // Reset any stored particle state
+    this.currentBehavior = "None";
+  }
 }
 
 export { OrganicBehavior };
