@@ -155,11 +155,15 @@ class ShaderManager {
     particles: {
       vert: `
           attribute vec2 position;
-          uniform float pointSize;
+          attribute float size; // Add per-particle size attribute
+          uniform float pointSize; // Keep uniform for backward compatibility
+          
           void main() {
-              vec2 clipSpace = (position * 2.0) - 1.0;
-              gl_Position = vec4(clipSpace, 0.0, 1.0);
-              gl_PointSize = pointSize;
+            vec2 clipSpace = (position * 2.0) - 1.0;
+            gl_Position = vec4(clipSpace, 0.0, 1.0);
+            
+            // Use attribute size if available, fallback to uniform pointSize
+            gl_PointSize = size > 0.0 ? size : pointSize;
           }
         `,
       frag: `

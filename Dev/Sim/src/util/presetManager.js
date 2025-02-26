@@ -7,8 +7,10 @@ class PresetManager {
     this.rightGui = rightGui;
     this.presets = this.loadPresetsFromStorage();
     this.turbPresets = this.loadTurbPresetsFromStorage();
+    this.voronoiPresets = this.loadVoronoiPresetsFromStorage(); // Add voronoi presets
     this.selectedPreset = "Default";
     this.selectedTurbPreset = "None";
+    this.selectedVoronoiPreset = "None"; // Add selected voronoi preset
   }
 
   loadPresetsFromStorage() {
@@ -177,6 +179,137 @@ class PresetManager {
 
   getSelectedTurbPreset() {
     return this.selectedTurbPreset;
+  }
+
+  // Voronoi preset methods - following the pattern of turbulence presets
+  loadVoronoiPresetsFromStorage() {
+    const storedPresets = localStorage.getItem("savedVoronoiPresets");
+    const defaults = {
+      None: { voronoi: { controllers: [{ property: "strength", value: 0 }] } },
+      Default: {
+        voronoi: {
+          controllers: [
+            { property: "strength", value: 1.0 },
+            { property: "edgeWidth", value: 10 },
+            { property: "attractionFactor", value: 1.0 },
+            { property: "cellCount", value: 10 },
+            { property: "cellMovementSpeed", value: 0.2 },
+            { property: "decayRate", value: 0.99 },
+            { property: "affectPosition", value: true },
+            { property: "affectScale", value: true },
+            { property: "minScale", value: 0.4 },
+            { property: "maxScale", value: 1.5 },
+          ],
+        },
+      },
+    };
+    return storedPresets
+      ? { ...defaults, ...JSON.parse(storedPresets) }
+      : defaults;
+  }
+
+  saveVoronoiPresetsToStorage() {
+    localStorage.setItem(
+      "savedVoronoiPresets",
+      JSON.stringify(this.voronoiPresets)
+    );
+    console.log("Saved voronoi presets to storage:", this.voronoiPresets);
+  }
+
+  getVoronoiPresetOptions() {
+    return Object.keys(this.voronoiPresets);
+  }
+
+  saveVoronoiPreset(presetName, voronoiGui) {
+    if (!presetName || presetName.trim() === "") {
+      alert("Preset name cannot be empty!");
+      return false;
+    }
+    if (this.voronoiPresets[presetName]) {
+      alert("Voronoi preset name already exists!");
+      return false;
+    }
+    const fullState = voronoiGui.save();
+    console.log("Full voronoi GUI state:", fullState);
+    this.voronoiPresets[presetName] = { voronoi: fullState };
+    this.selectedVoronoiPreset = presetName;
+    this.saveVoronoiPresetsToStorage();
+    return true;
+  }
+
+  deleteVoronoiPreset(presetName) {
+    if (presetName === "None" || presetName === "Default") {
+      alert(`Cannot delete the ${presetName} voronoi preset!`);
+      return false;
+    }
+    if (!this.voronoiPresets[presetName]) {
+      console.warn("Voronoi preset not found:", presetName);
+      return false;
+    }
+    delete this.voronoiPresets[presetName];
+    this.selectedVoronoiPreset = "Default";
+    this.saveVoronoiPresetsToStorage();
+    return true;
+  }
+
+  loadVoronoiPreset(presetName, voronoiGui) {
+    const preset = this.voronoiPresets[presetName];
+    if (preset && preset.voronoi) {
+      console.log("Loading voronoi preset state:", preset.voronoi);
+      try {
+        voronoiGui.load(preset.voronoi);
+      } catch (e) {
+        console.error("Failed to load voronoi preset via lil-gui load:", e);
+        const applyControllers = (controllers, gui) => {
+          controllers.forEach((c) => {
+            const controller = gui
+              .controllersRecursive()
+              .find((ctrl) => ctrl.property === c.property);
+            if (controller) controller.setValue(c.value);
+          });
+        };
+        const traverseFolders = (state, gui) => {
+          if (state.controllers) applyControllers(state.controllers, gui);
+          if (state.folders) {
+            Object.entries(state.folders).forEach(([key, folderState]) => {
+              const folder = gui.folders.find((f) => f._title === key);
+              if (folder) traverseFolders(folderState, folder);
+            });
+          }
+        };
+        traverseFolders(preset.voronoi, voronoiGui);
+      }
+
+      // Always enforce strength = 0 for "None"
+      if (presetName === "None") {
+        const strengthController = voronoiGui
+          .controllersRecursive()
+          .find((c) => c.property === "strength");
+        if (strengthController) {
+          strengthController.setValue(0);
+          console.log("Manually set voronoi strength to 0 for 'None'");
+        } else {
+          console.warn(
+            "Strength controller not found in Voronoi GUI controllersRecursive"
+          );
+        }
+      }
+
+      // Trigger cell regeneration if cellCount changed
+      const voronoiField = this.rightGui.main.voronoiField;
+      if (voronoiField) {
+        voronoiField.regenerateCells();
+      }
+
+      this.selectedVoronoiPreset = presetName;
+      console.log(`Loaded voronoi preset "${presetName}":`, preset);
+      return true;
+    }
+    return false;
+  }
+
+  getSelectedVoronoiPreset() {
+    return this.selectedVoronoiPreset;
   }
 }
 

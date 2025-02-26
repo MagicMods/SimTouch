@@ -10,19 +10,23 @@ class RightUi extends BaseUi {
 
   setPresetManager(presetManager) {
     this.presetManager = presetManager;
-    this.initTurbulencePresetControls(); // Move here
+    this.initTurbulencePresetControls();
+    this.initVoronoiPresetControls(); // Add voronoi presets
   }
 
   async initFolders() {
     this.turbulenceFolder = this.createFolder("Turbulence");
+    this.voronoiFolder = this.createFolder("Voronoi Field"); // Add voronoi folder
     this.organicFolder = this.createFolder("Organic Behavior");
     this.gridFolder = this.createFolder("Grid");
 
     this.initTurbulenceControls();
+    this.initVoronoiControls(); // Initialize voronoi controls
     this.initOrganicControls();
     this.initGridControls();
 
     this.turbulenceFolder.open();
+    this.voronoiFolder.open();
     this.organicFolder.open();
     this.gridFolder.open(false);
   }
@@ -131,6 +135,109 @@ class RightUi extends BaseUi {
 
     selectElement.value = this.presetManager.getSelectedTurbPreset();
   }
+
+  //#region Voronoi
+  initVoronoiControls() {
+    const voronoi = this.main.voronoiField;
+    if (!voronoi) return;
+
+    // Basic voronoi controls
+    this.voronoiFolder.add(voronoi, "strength", 0, 10).name("Strength");
+    this.voronoiFolder.add(voronoi, "edgeWidth", 0.1, 50).name("Edge Width");
+    this.voronoiFolder
+      .add(voronoi, "attractionFactor", 0, 5)
+      .name("Attraction");
+    this.voronoiFolder
+      .add(voronoi, "cellCount", 3, 50, 1)
+      .name("Cell Count")
+      .onChange(() => voronoi.regenerateCells());
+    this.voronoiFolder
+      .add(voronoi, "cellMovementSpeed", 0, 1)
+      .name("Cell Speed");
+
+    const affectFolder = this.voronoiFolder.addFolder("Affect");
+    affectFolder.add(voronoi, "affectPosition").name("Affect Position");
+    affectFolder.add(voronoi, "affectScale").name("Affect Scale Particles");
+    affectFolder.add(voronoi, "decayRate", 0.9, 1).name("Decay Rate");
+
+    // Add min/max scale controls
+    const scaleRangeFolder = affectFolder.addFolder("Scale Range");
+    scaleRangeFolder.add(voronoi, "minScale", 0.1, 1.0).name("Min Scale");
+    scaleRangeFolder.add(voronoi, "maxScale", 1.0, 4.0).name("Max Scale");
+  }
+
+  initVoronoiPresetControls() {
+    if (!this.presetManager) return;
+
+    const presetSelect = document.createElement("select");
+    presetSelect.classList.add("voronoi-preset-select");
+    presetSelect.style.width = "100%";
+    presetSelect.style.marginBottom = "5px";
+
+    this.updateVoronoiPresetDropdown(presetSelect);
+
+    presetSelect.addEventListener("change", (e) => {
+      const value = e.target.value;
+      console.log("Voronoi preset selector changed to:", value);
+      this.presetManager.loadVoronoiPreset(value, this.voronoiFolder);
+    });
+
+    this.voronoiPresetControls = { selector: presetSelect };
+
+    const saveButton = this.voronoiFolder.add(
+      {
+        save: () => {
+          const presetName = prompt("Enter voronoi preset name:");
+          if (
+            this.presetManager.saveVoronoiPreset(presetName, this.voronoiFolder)
+          ) {
+            this.updateVoronoiPresetDropdown(presetSelect);
+            presetSelect.value = this.presetManager.getSelectedVoronoiPreset();
+            alert(`Voronoi preset "${presetName}" saved.`);
+          }
+        },
+      },
+      "save"
+    );
+    saveButton.name("Save Preset");
+
+    const deleteButton = this.voronoiFolder.add(
+      {
+        delete: () => {
+          const current = this.presetManager.getSelectedVoronoiPreset();
+          console.log("Attempting to delete voronoi preset:", current);
+          if (this.presetManager.deleteVoronoiPreset(current)) {
+            this.updateVoronoiPresetDropdown(presetSelect);
+            presetSelect.value = this.presetManager.getSelectedVoronoiPreset();
+            alert(`Voronoi preset "${current}" deleted.`);
+          }
+        },
+      },
+      "delete"
+    );
+    deleteButton.name("Delete Preset");
+
+    this.voronoiFolder.domElement.insertBefore(
+      presetSelect,
+      this.voronoiFolder.domElement.querySelector(".children")
+    );
+  }
+
+  updateVoronoiPresetDropdown(selectElement) {
+    const options = this.presetManager.getVoronoiPresetOptions();
+    console.log("Updating voronoi preset dropdown with options:", options);
+
+    selectElement.innerHTML = "";
+    options.forEach((preset) => {
+      const option = document.createElement("option");
+      option.value = preset;
+      option.textContent = preset;
+      selectElement.appendChild(option);
+    });
+
+    selectElement.value = this.presetManager.getSelectedVoronoiPreset();
+  }
+  //#endregion
 
   //#region Organic Behavior
   initOrganicControls() {

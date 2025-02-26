@@ -5,6 +5,7 @@ import { ParticleRenderer } from "./renderer/particleRenderer.js";
 import { GridRenderer } from "./renderer/gridRenderer.js"; // Import GridRenderer
 import { DebugRenderer } from "./renderer/debugRenderer.js"; // Import DebugRenderer
 import { TurbulenceField } from "./simulation/forces/turbulenceField.js";
+import { VoronoiField } from "./simulation/forces/voronoiField.js"; // Import VoronoiField
 import { CircularBoundary } from "./simulation/boundary/circularBoundary.js";
 
 class Main {
@@ -19,8 +20,10 @@ class Main {
     this.shaderManager = new ShaderManager(this.gl);
     this.boundary = new CircularBoundary();
     this.turbulenceField = new TurbulenceField({ boundary: this.boundary });
+    this.voronoiField = new VoronoiField({ boundary: this.boundary }); // Create VoronoiField instance
     this.particleSystem = new ParticleSystem({
       turbulence: this.turbulenceField,
+      voronoi: this.voronoiField, // Add voronoi to particleSystem
     });
     this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager);
     this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
@@ -61,6 +64,7 @@ class Main {
     // this.gridRenderer.drawGridTest();
     this.particleSystem.mouseForces.update(this.particleSystem);
     this.turbulenceField.update(this.particleSystem.timeStep);
+    this.voronoiField.update(this.particleSystem.timeStep); // Update voronoiField
 
     this.particleSystem.step();
     this.gridRenderer.draw(this.particleSystem);

@@ -10,6 +10,9 @@ class TurbulenceField {
     boundary = null,
     directionBias = [0, 0], // New: directional bias
     decayRate = 0.99, // New: decay over time
+    timeOffset = Math.random() * 1000, // Random time start
+    noiseSeed = Math.random() * 10000, // Random seed
+    domainWarp = 0.3, // Domain warping strength
   } = {}) {
     if (
       !boundary ||
@@ -42,27 +45,53 @@ class TurbulenceField {
     // Add min/max scale parameters
     this.minScale = 0.5; // 50% of base size
     this.maxScale = 2.0; // 200% of base size
+
+    this.timeOffset = timeOffset;
+    this.noiseSeed = noiseSeed;
+    this.domainWarp = domainWarp;
+    this.time = 0;
+
+    // Pre-calculate some values for improved noise
+    this.noiseBases = [];
+    for (let i = 0; i < this.octaves; i++) {
+      this.noiseBases.push({
+        freqX: Math.random() * 0.1 + 0.95,
+        freqY: Math.random() * 0.1 + 0.95,
+        phaseX: Math.random() * 6.28,
+        phaseY: Math.random() * 6.28,
+      });
+    }
   }
 
+  // Improved noise function with domain warping
   noise2D(x, y) {
     const cos = Math.cos(this.rotation);
     const sin = Math.sin(this.rotation);
-    const rx = x * cos - y * sin;
-    const ry = x * sin + y * cos;
+
+    // Apply domain warping
+    const warpX = this.domainWarp * Math.sin(y * 0.1 + this.time * 0.05);
+    const warpY = this.domainWarp * Math.sin(x * 0.1 + this.time * 0.07);
+
+    let rx = (x + warpX) * cos - (y + warpY) * sin;
+    let ry = (x + warpX) * sin + (y + warpY) * cos;
 
     let noise = 0;
     let amplitude = 1;
-    let frequency = 1;
     let maxValue = 0;
 
     for (let i = 0; i < this.octaves; i++) {
-      noise +=
-        amplitude *
-        (Math.sin(rx * frequency + this.time * this.speed) *
-          Math.cos(ry * frequency));
+      const base = this.noiseBases[i];
+      const frequencyX = Math.pow(2, i) * base.freqX;
+      const frequencyY = Math.pow(2, i) * base.freqY;
+
+      // Use varied phases and frequencies per octave
+      const val =
+        Math.sin(rx * frequencyX + this.time * this.speed + base.phaseX) *
+        Math.cos(ry * frequencyY + this.time * this.speed * 0.7 + base.phaseY);
+
+      noise += amplitude * val;
       maxValue += amplitude;
       amplitude *= this.persistence;
-      frequency *= 2;
     }
 
     return (noise / maxValue + 1) * 0.5;
@@ -110,14 +139,32 @@ class TurbulenceField {
 
   update(dt) {
     this.time += dt;
+
+    // Occasionally shift phase values for more variation
+    if (Math.random() < 0.001) {
+      for (let i = 0; i < this.octaves; i++) {
+        this.noiseBases[i].phaseX += (Math.random() - 0.5) * 0.1;
+        this.noiseBases[i].phaseY += (Math.random() - 0.5) * 0.1;
+      }
+    }
   }
 
-  setParameters({ strength, scale, speed, directionBias, decayRate }) {
+  setParameters({
+    strength,
+    scale,
+    speed,
+    directionBias,
+    decayRate,
+    domainWarp,
+    timeOffset,
+  }) {
     if (strength !== undefined) this.strength = strength;
     if (scale !== undefined) this.scale = scale;
     if (speed !== undefined) this.speed = speed;
     if (directionBias !== undefined) this.directionBias = directionBias;
     if (decayRate !== undefined) this.decayRate = decayRate;
+    if (domainWarp !== undefined) this.domainWarp = domainWarp;
+    if (timeOffset !== undefined) this.timeOffset = timeOffset;
   }
 }
 

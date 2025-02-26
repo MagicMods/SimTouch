@@ -11,6 +11,7 @@ class ParticleSystem {
     gravity = 0,
     picFlipRatio = 1,
     turbulence = null, // Keep turbulence as optional parameter
+    voronoi = null, // Add voronoi as optional parameter
     boundaryMode = "BOUNCE", // Add boundary mode parameter
   } = {}) {
     // Particle properties
@@ -50,6 +51,7 @@ class ParticleSystem {
 
     // External forces
     this.turbulence = turbulence; // Store turbulence reference
+    this.voronoi = voronoi; // Store voronoi reference
 
     // FLIP system
     this.picFlipRatio = picFlipRatio;
@@ -136,40 +138,28 @@ class ParticleSystem {
   }
 
   reinitializeParticles(newCount = null) {
-    // If no new count provided, use current count
     if (newCount !== null) {
-      // Validate new count
-      newCount = Math.max(1, Math.min(newCount, 2000));
+      console.log(`Reinitializing particle system with ${newCount} particles`);
       this.numParticles = newCount;
+
+      // Recreate arrays with new size
+      this.particles = new Float32Array(newCount * 2);
+      this.velocitiesX = new Float32Array(newCount);
+      this.velocitiesY = new Float32Array(newCount);
+      this.particleRadii = new Float32Array(newCount).fill(this.particleRadius);
+    } else {
+      // Just reset the particle radii if count hasn't changed
+      this.particleRadii = new Float32Array(this.numParticles).fill(
+        this.particleRadius
+      );
     }
 
-    // Resize all particle-related arrays
-    this.particles = new Float32Array(this.numParticles * 2);
-    this.velocitiesX = new Float32Array(this.numParticles);
-    this.velocitiesY = new Float32Array(this.numParticles);
-    this.particleRadii = new Float32Array(this.numParticles).fill(
-      this.particleRadius
-    );
-
-    // Reset subsystems
-    this.collisionSystem.reset();
-
-    // Reset FLIP system if active
-    if (this.fluid) {
-      this.fluid.reset();
-    }
-
-    // Reset any active behaviors
-    if (this.organicBehavior) {
-      this.organicBehavior.reset();
-    }
-
-    console.log(
-      `Reinitializing particle system with ${this.numParticles} particles`
-    );
-
-    // Reinitialize particle positions
     this.initializeParticles();
+
+    // Make sure voronoi field regenerates cells when particle count changes
+    if (this.voronoi) {
+      this.voronoi.regenerateCells();
+    }
   }
 
   step() {
@@ -232,6 +222,22 @@ class ParticleSystem {
         const vel = [this.velocitiesX[i], this.velocitiesY[i]];
         [this.velocitiesX[i], this.velocitiesY[i]] =
           this.turbulence.applyTurbulence(pos, vel, dt, i, this);
+      }
+    }
+
+    // Apply voronoi field if enabled
+    if (this.voronoi && this.voronoi.strength > 0) {
+      try {
+        for (let i = 0; i < this.numParticles; i++) {
+          const pos = [this.particles[i * 2], this.particles[i * 2 + 1]];
+          const vel = [this.velocitiesX[i], this.velocitiesY[i]];
+          [this.velocitiesX[i], this.velocitiesY[i]] =
+            this.voronoi.applyTurbulence(pos, vel, dt, i, this);
+        }
+      } catch (error) {
+        console.error("Error applying voronoi field:", error);
+        // Reset the voronoi field to recover from error
+        this.voronoi.regenerateCells();
       }
     }
   }
@@ -313,17 +319,15 @@ class ParticleSystem {
 
   // No coordinate conversion needed - already in [0,1] space
   getParticles() {
-    const particles = [];
-    for (let i = 0; i < this.numParticles; i++) {
-      particles.push({
-        x: this.particles[i * 2],
-        y: this.particles[i * 2 + 1],
-        vx: this.velocitiesX[i],
-        vy: this.velocitiesY[i],
-        size: this.particleRadii[i] * this.renderScale, // Use actual radius
-      });
-    }
-    return particles;
+    // Return flat array of objects with x, y properties
+    // This format is what ParticleRenderer expects
+    return Array.from({ length: this.numParticles }, (_, i) => ({
+      x: this.particles[i * 2],
+      y: this.particles[i * 2 + 1],
+      vx: this.velocitiesX[i],
+      vy: this.velocitiesY[i],
+      size: this.particleRadii[i] * this.renderScale,
+    }));
   }
 
   drawDebugGrid(renderer) {
