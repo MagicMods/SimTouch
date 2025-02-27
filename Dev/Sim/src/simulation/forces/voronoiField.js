@@ -28,8 +28,6 @@ class VoronoiField {
     this.timeOffset = timeOffset;
 
     this.time = 0;
-    this.affectPosition = true;
-    this.affectScale = true;
     this.scaleStrength = 0.3;
     this.minScale = 0.2; // Very small at edges
     this.maxScale = 2.5; // Larger in centers
@@ -277,49 +275,66 @@ class VoronoiField {
 
       const { distance, gradient, isOnEdge } = edgeInfo;
 
-      // Initialize with current velocities
-      let newVx = vx * this.decayRate;
-      let newVy = vy * this.decayRate;
+      // Calculate edge proximity factor - stronger effect very close to edges
+      // Use sharper falloff for more defined filaments
+      const edgeFactor = Math.max(
+        0,
+        1.0 - Math.pow(distance / this.edgeWidth, 1.5)
+      );
+
+      // Initialize with velocity decay - CRITICAL CHANGE: more decay near edges
+      // This makes particles slow down significantly when they reach an edge
+      const edgeDecay =
+        isOnEdge || edgeFactor > 0.7
+          ? this.decayRate * 0.7 // Strong damping on edges
+          : this.decayRate; // Normal decay elsewhere
+
+      let newVx = vx * edgeDecay;
+      let newVy = vy * edgeDecay;
 
       // Apply position forces only if enabled
-      if (this.affectPosition && this.strength > 0) {
-        // More precise edge factor calculation - stronger effect very close to edges
-        // Use a sigmoid-like function for smoother transition
-        const edgeFactor =
-          1.0 / (1.0 + Math.pow(distance / (this.edgeWidth * 0.3), 2));
+      if (this.strength > 0) {
+        // Calculate force magnitude - stronger attraction to edges
+        const forceMagnitude =
+          edgeFactor * this.strength * this.attractionFactor;
 
-        // If we're already on an edge, reduce the force to prevent oscillation
-        const forceMagnitude = isOnEdge
-          ? edgeFactor * this.strength * this.attractionFactor * 0.5
-          : edgeFactor * this.strength * this.attractionFactor;
-
-        // Apply force toward edge (gradient direction)
+        // Get gradient direction (points toward edge)
         const [gx, gy] = gradient;
-        newVx += gx * forceMagnitude * dt;
-        newVy += gy * forceMagnitude * dt;
+
+        // CRITICAL CHANGE: Check if we're already moving toward the edge
+        // This prevents overshooting and ping-ponging across edges
+        const movingTowardEdge = vx * gx + vy * gy < 0;
+
+        if (movingTowardEdge || !isOnEdge) {
+          // Apply full force if not on edge or moving toward it
+          newVx += gx * forceMagnitude * dt;
+          newVy += gy * forceMagnitude * dt;
+        } else {
+          // Apply reduced force if already on edge - just enough to stay on it
+          // This creates the "sticking" to edges effect
+          newVx += gx * forceMagnitude * 0.1 * dt;
+          newVy += gy * forceMagnitude * 0.1 * dt;
+
+          // IMPORTANT: Apply force perpendicular to edge to create filaments
+          // This creates movement along the edge rather than across it
+          const edgeDirection = [-gy, gx]; // Perpendicular to gradient
+
+          // Align velocity more with the edge direction
+          const edgeAlignment = 0.05 * forceMagnitude; // Small nudge along edge
+          newVx += edgeDirection[0] * edgeAlignment * dt;
+          newVy += edgeDirection[1] * edgeAlignment * dt;
+        }
+
+        // Add velocity limit for edge particles to ensure they stay slow
+        if (isOnEdge || edgeFactor > 0.7) {
+          const maxEdgeSpeed = 0.1 * this.strength;
+          const speed = Math.sqrt(newVx * newVx + newVy * newVy);
+          if (speed > maxEdgeSpeed) {
+            newVx = (newVx / speed) * maxEdgeSpeed;
+            newVy = (newVy / speed) * maxEdgeSpeed;
+          }
+        }
       }
-
-      // Apply particle radius scaling if enabled
-      if (
-        this.affectScale &&
-        system &&
-        Array.isArray(system.particleRadii) &&
-        particleIndex >= 0 &&
-        particleIndex < system.particleRadii.length
-      ) {
-        // Enhanced scaling: particles are MUCH smaller near edges for better edge definition
-        // More dramatic effect with stronger contrast
-        // Use exponential function for sharper transition
-        const normalizedDist = Math.min(distance / this.edgeWidth, 1.0);
-        const scaleFactor = Math.pow(normalizedDist, 2.0); // Sharper transition
-
-        const scalePartFactor =
-          this.minScale + scaleFactor * (this.maxScale - this.minScale);
-
-        system.particleRadii[particleIndex] =
-          system.particleRadius * scalePartFactor;
-      }
-
       return [newVx, newVy];
     } catch (err) {
       console.error("Error in voronoi applyTurbulence:", err);

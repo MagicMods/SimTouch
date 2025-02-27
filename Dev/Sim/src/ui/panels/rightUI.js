@@ -36,20 +36,26 @@ class RightUi extends BaseUi {
     const turbulence = this.main.turbulenceField;
     if (!turbulence) return;
 
+    this.turbulenceFolder
+      .add(turbulence, "affectPosition")
+      .name("Affect Position");
+    this.turbulenceFolder
+      .add(turbulence, "scaleField")
+      .name("Affect Scale Field");
+    this.turbulenceFolder
+      .add(turbulence, "affectScale")
+      .name("Affect Scale Particles");
+
     // Defer preset controls to setPresetManager
     this.turbulenceFolder.add(turbulence, "strength", 0, 10).name("Strength");
     this.turbulenceFolder.add(turbulence, "scale", 0.1, 10).name("Scale");
     this.turbulenceFolder.add(turbulence, "speed", 0, 20).name("Speed");
 
-    const affectFolder = this.turbulenceFolder.addFolder("Affect");
-
-    affectFolder.add(turbulence, "scaleStrength", 0, 1).name("Scale Strength");
-    affectFolder.add(turbulence, "affectPosition").name("Affect Position");
-    affectFolder.add(turbulence, "scaleField").name("Affect Scale Field");
-    affectFolder.add(turbulence, "affectScale").name("Affect Scale Particles");
-
     // Add min/max scale controls
-    const scaleRangeFolder = affectFolder.addFolder("Scale Range");
+    const scaleRangeFolder = this.turbulenceFolder.addFolder("Scale Range");
+    scaleRangeFolder
+      .add(turbulence, "scaleStrength", 0, 1)
+      .name("Scale Strength");
     scaleRangeFolder.add(turbulence, "minScale", 0.1, 1.0).name("Min Scale");
     scaleRangeFolder.add(turbulence, "maxScale", 1.0, 4.0).name("Max Scale");
 
@@ -69,8 +75,6 @@ class RightUi extends BaseUi {
   initTurbulencePresetControls() {
     const presetSelect = document.createElement("select");
     presetSelect.classList.add("turb-preset-select");
-    presetSelect.style.width = "100%";
-    presetSelect.style.marginBottom = "5px";
 
     this.updateTurbPresetDropdown(presetSelect);
 
@@ -154,25 +158,14 @@ class RightUi extends BaseUi {
     this.voronoiFolder
       .add(voronoi, "cellMovementSpeed", 0, 1)
       .name("Cell Speed");
-
-    const affectFolder = this.voronoiFolder.addFolder("Affect");
-    affectFolder.add(voronoi, "affectPosition").name("Affect Position");
-    affectFolder.add(voronoi, "affectScale").name("Affect Scale Particles");
-    affectFolder.add(voronoi, "decayRate", 0.9, 1).name("Decay Rate");
-
-    // Add min/max scale controls
-    const scaleRangeFolder = affectFolder.addFolder("Scale Range");
-    scaleRangeFolder.add(voronoi, "minScale", 0.1, 1.0).name("Min Scale");
-    scaleRangeFolder.add(voronoi, "maxScale", 1.0, 4.0).name("Max Scale");
+    this.voronoiFolder.add(voronoi, "decayRate", 0.9, 1).name("Decay Rate");
   }
 
   initVoronoiPresetControls() {
     if (!this.presetManager) return;
 
     const presetSelect = document.createElement("select");
-    presetSelect.classList.add("voronoi-preset-select");
-    presetSelect.style.width = "100%";
-    presetSelect.style.marginBottom = "5px";
+    presetSelect.classList.add("turb-preset-select");
 
     this.updateVoronoiPresetDropdown(presetSelect);
 
@@ -347,13 +340,13 @@ class RightUi extends BaseUi {
   initAutomataControls(folder, particles) {
     // Add automata parameters
     folder
-      .add(particles.organicBehavior.params.Automata, "radius", 5, 100)
+      .add(particles.organicBehavior.params.Automata, "radius", 5, 200)
       .name("Radius");
     folder
       .add(particles.organicBehavior.params.Automata, "repulsion", 0, 2)
       .name("Repulsion");
     folder
-      .add(particles.organicBehavior.params.Automata, "attraction", 0, 2)
+      .add(particles.organicBehavior.params.Automata, "attraction", 0, 10)
       .name("Attraction");
     folder
       .add(particles.organicBehavior.params.Automata, "threshold", 0, 1)
@@ -367,7 +360,7 @@ class RightUi extends BaseUi {
 
     const control = { force: behavior.forceScales[type].base || 1.0 };
     folder
-      .add(control, "force", 0, 2)
+      .add(control, "force", 0, 5)
       .name(`${type} Force`)
       .onChange((value) => {
         behavior.forceScales[type].base = value;
