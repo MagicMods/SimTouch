@@ -1,6 +1,6 @@
 class TurbulenceField {
   constructor({
-    strength = 0.5,
+    strength = 0,
     scale = 4.0,
     speed = 1.0,
     octaves = 3,
@@ -40,7 +40,7 @@ class TurbulenceField {
     this.scaleField = false; // Field-based velocity scaling
     this.affectPosition = true;
     this.affectScale = true; // Particle radius scaling
-    this.scaleStrength = 0.2; // Strength for particle radius scaling
+    this.scaleStrength = 0; // Strength for particle radius scaling
 
     // Add min/max scale parameters
     this.minScale = 0.5; // 50% of base size

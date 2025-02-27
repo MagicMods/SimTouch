@@ -1,6 +1,6 @@
 class VoronoiField {
   constructor({
-    strength = 1.0,
+    strength = 0,
     cellCount = 10,
     cellMovementSpeed = 0.2,
     edgeWidth = 0.3,
@@ -28,7 +28,7 @@ class VoronoiField {
     this.timeOffset = timeOffset;
 
     this.time = 0;
-    this.scaleStrength = 0.3;
+    this.scaleStrength = 0;
     this.minScale = 0.2; // Very small at edges
     this.maxScale = 2.5; // Larger in centers
 

@@ -153,6 +153,18 @@ export class LeftUi extends BaseUi {
         console.log(`Simulation is ${value ? "paused" : "running"}`);
       });
 
+    // Update the render mode dropdown to include the new "Overlap" option
+    if (this.main.gridRenderer.renderModes) {
+      const gridFields = Object.values(
+        this.main.gridRenderer.renderModes.modes
+      );
+      // Make sure "Overlap" is included in gridFields from the updated GridField enum
+      // this.globalFolder
+      //   .add(this.main.gridRenderer.renderModes, "currentMode", gridFields)
+      //   .name("Grid Field")
+      //   .onChange(() => this.main.gridRenderer.resetColors());
+    }
+
     if (this.main.gridRenderer.renderModes) {
       const fieldControl = {
         field: this.main.gridRenderer.renderModes.currentMode,
