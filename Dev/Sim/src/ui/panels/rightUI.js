@@ -149,14 +149,14 @@ class RightUi extends BaseUi {
     this.voronoiFolder.add(voronoi, "strength", 0, 10).name("Strength");
     this.voronoiFolder.add(voronoi, "edgeWidth", 0.1, 50).name("Edge Width");
     this.voronoiFolder
-      .add(voronoi, "attractionFactor", 0, 5)
+      .add(voronoi, "attractionFactor", 0, 8)
       .name("Attraction");
     this.voronoiFolder
-      .add(voronoi, "cellCount", 3, 50, 1)
+      .add(voronoi, "cellCount", 1, 50, 1)
       .name("Cell Count")
       .onChange(() => voronoi.regenerateCells());
     this.voronoiFolder
-      .add(voronoi, "cellMovementSpeed", 0, 1)
+      .add(voronoi, "cellMovementSpeed", 0, 4)
       .name("Cell Speed");
     this.voronoiFolder.add(voronoi, "decayRate", 0.9, 1).name("Decay Rate");
   }

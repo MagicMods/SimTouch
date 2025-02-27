@@ -29,7 +29,7 @@ class TurbulenceField {
     this.strength = strength;
     this.scale = scale;
     this.speed = speed;
-    this.octaves = octaves;
+    this._octaves = octaves; // Use private property for octaves
     this.persistence = persistence;
     this.rotation = rotation;
     this.inwardFactor = inwardFactor;
@@ -51,9 +51,26 @@ class TurbulenceField {
     this.domainWarp = domainWarp;
     this.time = 0;
 
-    // Pre-calculate some values for improved noise
+    // Initialize noise bases
     this.noiseBases = [];
-    for (let i = 0; i < this.octaves; i++) {
+    this.regenerateNoiseBases();
+  }
+
+  // Add getter and setter for octaves
+  get octaves() {
+    return this._octaves;
+  }
+
+  set octaves(value) {
+    this._octaves = value;
+    this.regenerateNoiseBases();
+  }
+
+  // Method to regenerate noise bases when octaves change
+  regenerateNoiseBases() {
+    // Clear existing bases and regenerate
+    this.noiseBases = [];
+    for (let i = 0; i < this._octaves; i++) {
       this.noiseBases.push({
         freqX: Math.random() * 0.1 + 0.95,
         freqY: Math.random() * 0.1 + 0.95,
@@ -61,6 +78,7 @@ class TurbulenceField {
         phaseY: Math.random() * 6.28,
       });
     }
+    console.log(`Regenerated noise bases for ${this._octaves} octaves`);
   }
 
   // Improved noise function with domain warping
@@ -79,7 +97,21 @@ class TurbulenceField {
     let amplitude = 1;
     let maxValue = 0;
 
-    for (let i = 0; i < this.octaves; i++) {
+    // Safety check: ensure we have enough noise bases
+    const actualOctaves = Math.min(this._octaves, this.noiseBases.length);
+
+    // Safety check: regenerate if needed
+    if (this.noiseBases.length < this._octaves) {
+      this.regenerateNoiseBases();
+    }
+
+    for (let i = 0; i < actualOctaves; i++) {
+      // Check if base exists
+      if (!this.noiseBases[i]) {
+        console.warn(`Missing noise base for octave ${i}`);
+        continue;
+      }
+
       const base = this.noiseBases[i];
       const frequencyX = Math.pow(2, i) * base.freqX;
       const frequencyY = Math.pow(2, i) * base.freqY;
@@ -153,6 +185,9 @@ class TurbulenceField {
     strength,
     scale,
     speed,
+    octaves, // Add octaves parameter
+    persistence, // Add persistence parameter
+    rotation, // Add rotation parameter
     directionBias,
     decayRate,
     domainWarp,
@@ -161,6 +196,9 @@ class TurbulenceField {
     if (strength !== undefined) this.strength = strength;
     if (scale !== undefined) this.scale = scale;
     if (speed !== undefined) this.speed = speed;
+    if (octaves !== undefined) this.octaves = octaves; // This will trigger regeneration
+    if (persistence !== undefined) this.persistence = persistence;
+    if (rotation !== undefined) this.rotation = rotation;
     if (directionBias !== undefined) this.directionBias = directionBias;
     if (decayRate !== undefined) this.decayRate = decayRate;
     if (domainWarp !== undefined) this.domainWarp = domainWarp;

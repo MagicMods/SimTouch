@@ -93,34 +93,35 @@ class GridRenderer extends BaseRenderer {
     // Get density values
     this.density = this.renderModes.getValues(particleSystem);
 
-    const byteArray = new Uint8Array(this.density.length + 1);
+    if (this.socket.isConnected) {
+      const byteArray = new Uint8Array(this.density.length + 1);
 
-    // Set identifier byte (0) at the start
-    byteArray[0] = 0;
+      // Set identifier byte (0) at the start
+      byteArray[0] = 0;
 
-    // Map values from [0,maxDensity] to [0,100], offset by 1 for identifier
-    for (let i = 0; i < this.density.length; i++) {
-      const normalizedValue = Math.max(
-        0,
-        Math.min(1, this.density[i] / this.maxDensity)
-      );
-      byteArray[i + 1] = Math.round(normalizedValue * 100);
+      // Map values from [0,maxDensity] to [0,100], offset by 1 for identifier
+      for (let i = 0; i < this.density.length; i++) {
+        const normalizedValue = Math.max(
+          0,
+          Math.min(1, this.density[i] / this.maxDensity)
+        );
+        byteArray[i + 1] = Math.round(normalizedValue * 100);
+      }
+
+      // Only log if UDP debug is enabled
+      // if (udpNetwork.debug) {
+      //   console.log(
+      //     "Grid data:",
+      //     `Type: ${byteArray[0]}, First 10 values:`,
+      //     Array.from(byteArray.slice(1, 11))
+      //   );
+      // }
+
+      // Only send if UDP is enabled
+      // if (udpNetwork.enable && udpNetwork.isConnected) {
+      // udpNetwork.sendUDPMessage(byteArray);
+      this.sendGridData(byteArray);
     }
-
-    // Only log if UDP debug is enabled
-    // if (udpNetwork.debug) {
-    //   console.log(
-    //     "Grid data:",
-    //     `Type: ${byteArray[0]}, First 10 values:`,
-    //     Array.from(byteArray.slice(1, 11))
-    //   );
-    // }
-
-    // Only send if UDP is enabled
-    // if (udpNetwork.enable && udpNetwork.isConnected) {
-    // udpNetwork.sendUDPMessage(byteArray);
-    this.sendGridData(byteArray);
-    // }
 
     // Map values to colors
     rectangles.forEach((rect, index) => {

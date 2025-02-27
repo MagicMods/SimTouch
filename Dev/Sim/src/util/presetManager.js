@@ -38,12 +38,36 @@ class PresetManager {
       alert("Preset name already exists!");
       return false;
     }
+
+    // Save the complete GUI state
+    const leftGuiState = this.leftGui.save();
+    const rightGuiState = this.rightGui.save();
+
+    // Filter out non-persistent folders (Debug and UDP) from leftGuiState
+    if (leftGuiState.folders) {
+      // Remove Debug folder if it exists
+      if (leftGuiState.folders.Debug) {
+        delete leftGuiState.folders.Debug;
+      }
+
+      // Remove UDP Network folder if it exists
+      if (leftGuiState.folders["UDP Network"]) {
+        delete leftGuiState.folders["UDP Network"];
+      }
+    }
+
+    // Save the filtered state
     this.presets[presetName] = {
-      left: this.leftGui.save(),
-      right: this.rightGui.save(),
+      left: leftGuiState,
+      right: rightGuiState,
     };
+
     this.selectedPreset = presetName;
     this.savePresetsToStorage();
+    console.log(
+      "Saved preset with non-persistent folders excluded:",
+      this.presets[presetName]
+    );
     return true;
   }
 
@@ -65,10 +89,34 @@ class PresetManager {
   loadPreset(presetName) {
     const preset = this.presets[presetName];
     if (preset) {
-      if (preset.left) this.leftGui.load(preset.left);
+      if (preset.left) {
+        // Create a deep copy to avoid modifying the original preset
+        const leftState = JSON.parse(JSON.stringify(preset.left));
+
+        // If the debug or UDP settings were somehow saved in an older preset, remove them
+        if (leftState.folders) {
+          // Ensure Debug folder is not loaded if present
+          if (leftState.folders.Debug) {
+            delete leftState.folders.Debug;
+          }
+
+          // Ensure UDP Network folder is not loaded if present
+          if (leftState.folders["UDP Network"]) {
+            delete leftState.folders["UDP Network"];
+          }
+        }
+
+        // Load the filtered state
+        this.leftGui.load(leftState);
+      }
+
       if (preset.right) this.rightGui.load(preset.right);
+
       this.selectedPreset = presetName;
-      console.log(`Loaded preset "${presetName}":`, preset);
+      console.log(
+        `Loaded preset "${presetName}" (excluding non-persistent folders):`,
+        preset
+      );
       return true;
     }
     return false;
