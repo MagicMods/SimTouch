@@ -359,6 +359,86 @@ class PresetManager {
   getSelectedVoronoiPreset() {
     return this.selectedVoronoiPreset;
   }
+
+  // Export all presets (main, turbulence, voronoi) to a JSON file
+  exportPresets() {
+    const allPresets = {
+      presets: this.presets,
+      turbPresets: this.turbPresets,
+      voronoiPresets: this.voronoiPresets,
+    };
+
+    const dataStr = JSON.stringify(allPresets, null, 2);
+    const dataUri =
+      "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
+
+    const exportFileName = `svibe-presets-${new Date()
+      .toISOString()
+      .slice(0, 10)}.json`;
+
+    const linkElement = document.createElement("a");
+    linkElement.setAttribute("href", dataUri);
+    linkElement.setAttribute("download", exportFileName);
+    linkElement.style.display = "none";
+    document.body.appendChild(linkElement);
+    linkElement.click();
+    document.body.removeChild(linkElement);
+
+    console.log("Exported presets to file:", exportFileName);
+    return true;
+  }
+
+  // Import presets from a JSON file
+  importPresets(jsonData) {
+    try {
+      const importedData = JSON.parse(jsonData);
+      let importCount = 0;
+
+      // Import main presets
+      if (importedData.presets) {
+        Object.entries(importedData.presets).forEach(([name, preset]) => {
+          // Skip Default preset to avoid overriding core settings
+          if (name !== "Default") {
+            this.presets[name] = preset;
+            importCount++;
+          }
+        });
+        this.savePresetsToStorage();
+      }
+
+      // Import turbulence presets
+      if (importedData.turbPresets) {
+        Object.entries(importedData.turbPresets).forEach(([name, preset]) => {
+          // Skip None preset
+          if (name !== "None") {
+            this.turbPresets[name] = preset;
+            importCount++;
+          }
+        });
+        this.saveTurbPresetsToStorage();
+      }
+
+      // Import voronoi presets
+      if (importedData.voronoiPresets) {
+        Object.entries(importedData.voronoiPresets).forEach(
+          ([name, preset]) => {
+            // Skip None and Default presets
+            if (name !== "None" && name !== "Default") {
+              this.voronoiPresets[name] = preset;
+              importCount++;
+            }
+          }
+        );
+        this.saveVoronoiPresetsToStorage();
+      }
+
+      console.log(`Successfully imported ${importCount} presets`);
+      return importCount;
+    } catch (error) {
+      console.error("Failed to import presets:", error);
+      return false;
+    }
+  }
 }
 
 export { PresetManager };

@@ -102,6 +102,64 @@ export class LeftUi extends BaseUi {
       )
       .name("Delete");
 
+    // Add export button
+    this.presetFolder
+      .add(
+        {
+          export: () => {
+            this.presetManager.exportPresets();
+          },
+        },
+        "export"
+      )
+      .name("Export All");
+
+    // Add import button
+    this.presetFolder
+      .add(
+        {
+          import: () => {
+            // Create hidden file input element
+            const fileInput = document.createElement("input");
+            fileInput.type = "file";
+            fileInput.accept = ".json";
+            fileInput.style.display = "none";
+            document.body.appendChild(fileInput);
+
+            // Set up file input handling
+            fileInput.addEventListener("change", (event) => {
+              const file = event.target.files[0];
+              if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                  const result = this.presetManager.importPresets(
+                    e.target.result
+                  );
+                  if (result) {
+                    // Update the preset dropdown
+                    this.updatePresetDropdown(this.presetControls.selector);
+                    alert(
+                      `Successfully imported presets. Added or updated ${result} presets.`
+                    );
+                  } else {
+                    alert(
+                      "Failed to import presets. Check console for details."
+                    );
+                  }
+                };
+                reader.readAsText(file);
+              }
+              document.body.removeChild(fileInput);
+            });
+
+            // Trigger file input
+            fileInput.click();
+          },
+        },
+        "import"
+      )
+      .name("Import");
+
     this.presetFolder.domElement.appendChild(presetSelect);
     console.log("Controllers after init:", this.presetFolder.controllers);
   }
