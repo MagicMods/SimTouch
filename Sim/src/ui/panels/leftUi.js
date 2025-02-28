@@ -585,6 +585,12 @@ export class LeftUi extends BaseUi {
       debugReceive: socket.debugReceive,
     };
 
+    // Add status display
+    const status = {
+      connection: "Disconnected",
+      lastMessage: "None",
+      messageCount: 0,
+    };
     // Add enable toggle
     this.udpFolder
       .add(controls, "enabled")
@@ -598,58 +604,29 @@ export class LeftUi extends BaseUi {
         }
       });
 
-    // Add debug receive toggle
-    this.udpFolder
-      .add(controls, "debugReceive")
-      .name("Debug Mouse Input")
-      .onChange((value) => {
-        socket.debugReceive = value;
-      });
-
-    // Add debug send toggle
-    this.udpFolder
-      .add(controls, "debugSend")
-      .name("Debug Outgoing Data")
-      .onChange((value) => {
-        socket.debugSend = value;
-      });
-
-    // Add status display
-    const status = {
-      connection: "Disconnected",
-      lastMessage: "None",
-      messageCount: 0,
-    };
-
     const statusController = this.udpFolder
       .add(status, "connection")
       .name("Status")
       .disable();
 
-    const lastMessageController = this.udpFolder
-      .add(status, "lastMessage")
-      .name("Last Input")
-      .disable();
-
-    const msgCountController = this.udpFolder
-      .add(status, "messageCount")
-      .name("Message Count")
-      .disable();
-
-    // Track message count
-    socket.addMouseHandler((x, y) => {
-      status.messageCount++;
-      status.lastMessage = `X: ${x}, Y: ${y}`;
-      lastMessageController.updateDisplay();
-      msgCountController.updateDisplay();
-    });
-
-    // Update status periodically
     setInterval(() => {
       status.connection = socket.isConnected ? "Connected" : "Disconnected";
       statusController.updateDisplay();
     }, 1000);
 
+    this.udpFolder
+      .add({ host: NetworkConfig.UDP_HOST }, "host")
+      .name("UDP Host")
+      .onChange((value) => {
+        console.log(`Note: UDP host changes require server restart`);
+      });
+
+    this.udpFolder
+      .add({ port: NetworkConfig.UDP_PORT }, "port", 1024, 65535, 1)
+      .name("UDP Output Port")
+      .onChange((value) => {
+        console.log(`Note: UDP input port changes require server restart`);
+      });
     // Add port configuration
     this.udpFolder
       .add({ port: NetworkConfig.UDP_INPUT_PORT }, "port", 1024, 65535, 1)
@@ -657,6 +634,38 @@ export class LeftUi extends BaseUi {
       .onChange((value) => {
         console.log(`Note: UDP input port changes require server restart`);
       });
+
+    // // Add debug receive toggle
+    // this.udpFolder
+    //   .add(controls, "debugReceive")
+    //   .name("Debug Mouse Input")
+    //   .onChange((value) => {
+    //     socket.debugReceive = value;
+    //   });
+
+    // const lastMessageController = this.udpFolder
+    //   .add(status, "lastMessage")
+    //   .name("Last Input")
+    //   .disable();
+
+    // const msgCountController = this.udpFolder
+    //   .add(status, "messageCount")
+    //   .name("Message Count")
+    //   .disable();
+
+    // // Track message count
+    // socket.addMouseHandler((x, y) => {
+    //   status.messageCount++;
+    //   status.lastMessage = `X: ${x}, Y: ${y}`;
+    //   lastMessageController.updateDisplay();
+    //   msgCountController.updateDisplay();
+    // });
+
+    // // Update status periodically
+    // setInterval(() => {
+    //   status.connection = socket.isConnected ? "Connected" : "Disconnected";
+    //   statusController.updateDisplay();
+    // }, 1000);
   }
   //#endregion
   //#region Debug
@@ -726,31 +735,6 @@ export class LeftUi extends BaseUi {
         .onChange((value) => {
           socket.debugReceive = value;
         });
-
-      // // Add network stats if enabled
-      // if (socket.debug) {
-      //   const stats = {
-      //     bytesSent: 0,
-      //     lastSent: "N/A",
-      //   };
-
-      //   const statsFolder = this.debugFolder.addFolder("Network Stats");
-
-      //   statsFolder.add(stats, "bytesSent").name("Bytes Sent").disable();
-
-      //   statsFolder.add(stats, "lastSent").name("Last Sent").disable();
-
-      //   // Update stats periodically
-      //   setInterval(() => {
-      //     if (socket.debug && socket.isConnected) {
-      //       stats.bytesSent = socket.bytesSent || 0;
-      //       stats.lastSent = socket.lastSentTime
-      //         ? new Date(socket.lastSentTime).toLocaleTimeString()
-      //         : "N/A";
-      //       statsFolder.controllers.forEach((c) => c.updateDisplay());
-      //     }
-      //   }, 1000);
-      // }
     }
   } //#endregion
 }
