@@ -32,8 +32,11 @@ class Main {
     this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
     this.debugRenderer = new DebugRenderer(this.gl);
     this.frame = 0;
-    this.mouseForces = new MouseForces(); // Create MouseForces instance
+    this.mouseForces = new MouseForces();
     this.mouseForces.setupMouseInteraction(this.canvas, this.particleSystem);
+
+    // IMPORTANT: Attach it to particleSystem so render() can find it
+    this.particleSystem.mouseForces = this.mouseForces;
     this.externalInput = new ExternalInputConnector(this.mouseForces)
       .enable()
       .setSensitivity(0.002); // Set up external input
@@ -42,6 +45,8 @@ class Main {
     // Set up socket connection
     socketManager.enable = true; // Enable the socket manager!
     socketManager.connect();
+
+    // this.setupMouseDebug();
   }
 
   async init() {
@@ -86,6 +91,40 @@ class Main {
     const main = new Main();
     await main.init();
     return main;
+  }
+
+  setupMouseDebug() {
+    this.canvas.addEventListener("mousedown", (e) => {
+      const rect = this.canvas.getBoundingClientRect();
+      const mouseX = (e.clientX - rect.left) / rect.width;
+      const mouseY = (e.clientY - rect.top) / rect.height;
+
+      console.table({
+        "Mouse Click": {
+          x: mouseX.toFixed(3),
+          y: mouseY.toFixed(3),
+        },
+        "Relative to Center": {
+          x: (mouseX - 0.5).toFixed(3),
+          y: (mouseY - 0.5).toFixed(3),
+        },
+        "Canvas Pixels": {
+          x: Math.round(e.clientX - rect.left),
+          y: Math.round(e.clientY - rect.top),
+        },
+      });
+
+      // Log boundary info from ParticleSystem, if available
+      if (this.particleSystem.centerX && this.particleSystem.centerY) {
+        console.log("Boundary:", {
+          center: {
+            x: this.particleSystem.centerX.toFixed(3),
+            y: this.particleSystem.centerY.toFixed(3),
+          },
+          radius: this.particleSystem.radius.toFixed(3),
+        });
+      }
+    });
   }
 }
 

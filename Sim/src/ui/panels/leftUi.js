@@ -487,6 +487,92 @@ export class LeftUi extends BaseUi {
   }
   //#endregion
 
+  initExternalInputControls() {
+    if (!this.main.externalInput) return;
+
+    const externalInput = this.main.externalInput;
+    const mouseForces = this.main.mouseForces;
+
+    // External input enable/disable
+    this.externalInputFolder
+      .add({ enabled: mouseForces.externalInputEnabled }, "enabled")
+      .name("Enable External Input")
+      .onChange((value) => {
+        if (value) {
+          externalInput.enable();
+        } else {
+          externalInput.disable();
+        }
+      });
+
+    // Create a persistent button type object
+    const buttonTypeControl = {
+      type: mouseForces.externalMouseState.button,
+    };
+
+    // Button type selector
+    const buttonController = this.externalInputFolder
+      .add(buttonTypeControl, "type", {
+        "Left (Attract)": 0,
+        "Middle (Drag)": 1,
+        "Right (Repulse)": 2,
+      })
+      .name("Button Type")
+      .onChange((value) => {
+        // Update the actual button type in mouseForces
+        mouseForces.externalMouseState.button = value;
+
+        // Apply the change via externalInput
+        externalInput.setMouseButton(
+          value,
+          mouseForces.externalMouseState.isPressed
+        );
+
+        console.log("Button type changed to:", value);
+      });
+
+    // Update the UI when external data changes button type
+    externalInput.onButtonTypeChange = (type) => {
+      buttonTypeControl.type = type;
+      buttonController.updateDisplay();
+    };
+
+    // Sensitivity control
+    this.externalInputFolder
+      .add(
+        { sensitivity: mouseForces.externalSensitivity },
+        "sensitivity",
+        0.0001,
+        0.01
+      )
+      .name("Sensitivity")
+      .onChange((value) => {
+        externalInput.setSensitivity(value);
+      });
+
+    // Position display (read-only)
+    const positionDisplay = {
+      position: `X: ${mouseForces.externalMouseState.position.x.toFixed(
+        2
+      )}, Y: ${mouseForces.externalMouseState.position.y.toFixed(2)}`,
+    };
+
+    const positionController = this.externalInputFolder
+      .add(positionDisplay, "position")
+      .name("Position")
+      .disable();
+
+    // Update position display periodically
+    setInterval(() => {
+      if (mouseForces.externalInputEnabled) {
+        positionDisplay.position = `X: ${mouseForces.externalMouseState.position.x.toFixed(
+          2
+        )}, Y: ${mouseForces.externalMouseState.position.y.toFixed(2)}`;
+        positionController.updateDisplay();
+      }
+    }, 100);
+  }
+
   //#region UDP
   initUDPControls() {
     const socket = socketManager;
@@ -667,141 +753,4 @@ export class LeftUi extends BaseUi {
       // }
     }
   } //#endregion
-
-  // Add this new method
-  initExternalInputControls() {
-    if (!this.main.externalInput) return;
-
-    const externalInput = this.main.externalInput;
-    const mouseForces = this.main.mouseForces;
-
-    // External input enable/disable
-    this.externalInputFolder
-      .add({ enabled: mouseForces.externalInputEnabled }, "enabled")
-      .name("Enable External Input")
-      .onChange((value) => {
-        if (value) {
-          externalInput.enable();
-        } else {
-          externalInput.disable();
-        }
-      });
-
-    // Auto-press button toggle
-    this.externalInputFolder
-      .add({ pressed: mouseForces.externalMouseState.isPressed }, "pressed")
-      .name("Auto-Press Button")
-      .onChange((value) => {
-        externalInput.setMouseButton(0, value); // Set left mouse button state
-      });
-
-    // Button type selector
-    this.externalInputFolder
-      .add({ button: mouseForces.externalMouseState.button }, "button", {
-        "Left (Attract)": 0,
-        "Middle (Drag)": 1,
-        "Right (Repulse)": 2,
-      })
-      .name("Button Type")
-      .onChange((value) => {
-        externalInput.setMouseButton(
-          value,
-          mouseForces.externalMouseState.isPressed
-        );
-      });
-
-    // Sensitivity control
-    this.externalInputFolder
-      .add(
-        { sensitivity: mouseForces.externalSensitivity },
-        "sensitivity",
-        0.0001,
-        0.01
-      )
-      .name("Sensitivity")
-      .onChange((value) => {
-        externalInput.setSensitivity(value);
-      });
-
-    // Position display (read-only)
-    const positionDisplay = {
-      position: `X: ${mouseForces.externalMouseState.position.x.toFixed(
-        2
-      )}, Y: ${mouseForces.externalMouseState.position.y.toFixed(2)}`,
-    };
-
-    const positionController = this.externalInputFolder
-      .add(positionDisplay, "position")
-      .name("Position")
-      .disable();
-
-    // Update position display periodically
-    setInterval(() => {
-      if (mouseForces.externalInputEnabled) {
-        positionDisplay.position = `X: ${mouseForces.externalMouseState.position.x.toFixed(
-          2
-        )}, Y: ${mouseForces.externalMouseState.position.y.toFixed(2)}`;
-        positionController.updateDisplay();
-      }
-    }, 100);
-
-    // Reset position button
-    this.externalInputFolder
-      .add(
-        {
-          reset: () => {
-            mouseForces.externalMouseState.position = { x: 0.5, y: 0.5 };
-            mouseForces.externalMouseState.lastPosition = { x: 0.5, y: 0.5 };
-          },
-        },
-        "reset"
-      )
-      .name("Center Position");
-
-    // Add a test button
-    this.externalInputFolder
-      .add(
-        {
-          test: () => {
-            // Simulate external input with random values
-            const x = Math.floor(Math.random() * 200) - 100; // -100 to 100
-            const y = Math.floor(Math.random() * 200) - 100; // -100 to 100
-
-            console.log(`Testing external input with values: x=${x}, y=${y}`);
-
-            // Call the mouse handler directly
-            this.main.externalInput.handleMouseData(x, y);
-          },
-        },
-        "test"
-      )
-      .name("Test Input (Random)");
-
-    // Add fixed position test buttons
-    const testButtonsContainer = document.createElement("div");
-    testButtonsContainer.style.display = "flex";
-    testButtonsContainer.style.justifyContent = "space-between";
-    testButtonsContainer.style.marginTop = "5px";
-
-    const directions = [
-      { name: "↑", x: 0, y: 100 },
-      { name: "←", x: -100, y: 0 },
-      { name: "→", x: 100, y: 0 },
-      { name: "↓", x: 0, y: -100 },
-    ];
-
-    directions.forEach((dir) => {
-      const btn = document.createElement("button");
-      btn.textContent = dir.name;
-      btn.style.flex = "1";
-      btn.style.margin = "2px";
-      btn.addEventListener("click", () => {
-        console.log(`Testing direction ${dir.name}: x=${dir.x}, y=${dir.y}`);
-        this.main.externalInput.handleMouseData(dir.x, dir.y);
-      });
-      testButtonsContainer.appendChild(btn);
-    });
-
-    this.externalInputFolder.domElement.appendChild(testButtonsContainer);
-  }
 }

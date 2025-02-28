@@ -41,11 +41,15 @@ export class ExternalInputConnector {
       this.enabled = true;
       this.mouseForces.enableExternalInput();
 
-      // Always set button pressed state when enabling
-      this.setMouseButton(0, true);
+      // Keep the current button type, just set pressed state
+      const currentButton = this.mouseForces.externalMouseState.button;
+      this.mouseForces.setExternalMouseButton(currentButton, true);
 
       socketManager.addMouseHandler(this.handleMouseData);
-      console.log("External input connector enabled");
+      console.log(
+        "External input connector enabled with button type:",
+        currentButton
+      );
     }
     return this;
   }
@@ -62,6 +66,15 @@ export class ExternalInputConnector {
 
   handleMouseData(x, y) {
     if (!this.enabled) return;
+
+    // Auto-press button when receiving data, but PRESERVE the selected button type
+    if (!this.mouseForces.externalMouseState.isPressed) {
+      // Get the current button selection instead of hardcoding to 0
+      const currentButtonType = this.mouseForces.externalMouseState.button;
+      this.setMouseButton(currentButtonType, true);
+    }
+
+    // Process the data
     this.mouseForces.handleExternalMouseData(x, y);
   }
 
