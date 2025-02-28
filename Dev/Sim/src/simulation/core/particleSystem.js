@@ -174,6 +174,15 @@ class ParticleSystem {
       this.organicBehavior.updateParticles(this, dt);
     }
 
+    // Update the time for field generators
+    if (this.turbulence) {
+      this.turbulence.update(dt);
+    }
+
+    if (this.voronoi) {
+      this.voronoi.update(dt);
+    }
+
     // 3. Update positions and handle collisions
     this.collisionSystem.update(
       this.particles,
