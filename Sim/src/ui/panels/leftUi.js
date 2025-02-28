@@ -102,6 +102,28 @@ export class LeftUi extends BaseUi {
       )
       .name("Delete");
 
+    // Add navigation buttons
+    const navContainer = document.createElement("div");
+    navContainer.style.display = "flex";
+    navContainer.style.justifyContent = "space-between";
+    navContainer.style.marginTop = "5px";
+    navContainer.style.width = "100%";
+
+    const prevButton = document.createElement("button");
+    prevButton.textContent = "← Prev";
+    prevButton.style.flex = "1";
+    prevButton.style.marginRight = "5px";
+    prevButton.addEventListener("click", () => this.navigatePreset(-1));
+
+    const nextButton = document.createElement("button");
+    nextButton.textContent = "Next →";
+    nextButton.style.flex = "1";
+    nextButton.style.marginLeft = "5px";
+    nextButton.addEventListener("click", () => this.navigatePreset(1));
+
+    navContainer.appendChild(prevButton);
+    navContainer.appendChild(nextButton);
+
     // Add export button
     this.presetFolder
       .add(
@@ -161,7 +183,26 @@ export class LeftUi extends BaseUi {
       .name("Import");
 
     this.presetFolder.domElement.appendChild(presetSelect);
+    this.presetFolder.domElement.appendChild(navContainer); // Add the navigation buttons
     console.log("Controllers after init:", this.presetFolder.controllers);
+  }
+
+  // Add navigation method
+  navigatePreset(direction) {
+    const options = this.presetManager.getPresetOptions();
+    const currentPreset = this.presetManager.getSelectedPreset();
+    let currentIndex = options.indexOf(currentPreset);
+
+    // Calculate new index with wrapping
+    let newIndex = (currentIndex + direction + options.length) % options.length;
+    const newPreset = options[newIndex];
+
+    // Load the new preset
+    console.log(`Navigating from "${currentPreset}" to "${newPreset}"`);
+    this.presetManager.loadPreset(newPreset);
+
+    // Update the dropdown display
+    this.presetControls.selector.value = newPreset;
   }
 
   updatePresetDropdown(selectElement) {

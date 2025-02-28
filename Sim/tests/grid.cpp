@@ -1,39 +1,55 @@
-#define SCREEN_WIDTH 240
-#define SCREEN_HEIGHT 240
-#define NBR_MODULES 341
-
-void RoundGraph()
+void SimGraph()
 {
-    const int center = SCREEN_WIDTH / 2; // 120
+    const int center = 240 / 2; // 120
     const float scale = 0.95f;
     const int radius = center * scale; // ~114
     const int gap = 1;
+    const int screenWidth = 240;
+    const int screenHeight = 240;
 
-    // Calculate cell size that will fit approximately NBR_MODULES
-    int cellWidth = 10; // Starting point based on gridRenderer
+    // Use the same cell dimensions as in JS
+    int cellWidth = 10;
     int cellHeight = 10;
 
-    // Generate grid positions
+    // Match the JavaScript algorithm
     int moduleCount = 0;
-    int cursorX, cursorY;
+    int maxCols = radius / (cellWidth + gap);
+    int maxRows = radius / (cellHeight + gap);
 
-    // Similar to gridRenderer's approach
-    for (int y = -radius; y <= radius && moduleCount < NBR_MODULES; y += cellHeight + gap)
+    // Similar algorithm to generateRectangles in JavaScript
+    for (int r = -maxRows; r <= maxRows && moduleCount < 342; r++)
     {
-        for (int x = -radius; x <= radius && moduleCount < NBR_MODULES; x += cellWidth + gap)
+        for (int c = -maxCols; c <= maxCols && moduleCount < 342; c++)
         {
+            int dx = c * (cellWidth + gap);
+            int dy = r * (cellHeight + gap);
+
             // Check if point is within circle
-            if (sqrt(x * x + y * y) <= radius)
+            if (sqrt(dx * dx + dy * dy) <= radius)
             {
-                // Convert to screen coordinates
-                cursorX = center + x - cellWidth / 2;
-                cursorY = center + y - cellHeight / 2;
+                // First calculate mirrored coordinates
+                int origX = center - dx - cellWidth / 2;  // Mirrored X (fixed from before)
+                int origY = center + dy - cellHeight / 2; // Normal Y
 
-                // Draw rectangle
-                uint32_t colSpeed = CRGB_UINT32(modulesMotLeds[moduleCount * 2]);
-                uint32_t colDir = modulesMotLeds[moduleCount * 2 + 1].g == 0 ? ColorValue(DIR_L) : ColorValue(DIR_R);
+                // Then rotate 90 degrees counterclockwise
+                int cursorX = origY;
+                int cursorY = screenWidth - origX - cellWidth;
 
-                tft.fillRect(cursorX, cursorY, cellWidth, cellHeight, colSpeed);
+                uint32_t colSpeed;
+                uint32_t colDir;
+                // Get color values from the array that's in the same order as JS
+                if (moduleCount < NBR_MODULES)
+                {
+                    colSpeed = CRGB_UINT32(modulesMotLeds[moduleCount * 2]);
+                }
+                else
+                {
+                    colSpeed = 0;
+                    colDir = 0;
+                }
+
+                // Swap width and height for the rotated rectangle
+                tft.fillRect(cursorX, cursorY, cellHeight, cellWidth, colSpeed);
                 moduleCount++;
             }
         }
