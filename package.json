@@ -1,6 +1,15 @@
 {
+  "name": "roundtouchsim",
+  "version": "1.0.0",
+  "description": "FLIP Fluid Simulation",
+  "main": "src/js/ui.js",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/roundtouchsim.git"
+  },
   "dependencies": {
-    "dgram": "^1.0.1",
-    "ws": "^8.18.1"
+    "lil-gui": "^0.18.2"
   }
 }
