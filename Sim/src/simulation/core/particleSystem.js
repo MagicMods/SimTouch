@@ -12,14 +12,14 @@ class ParticleSystem {
     picFlipRatio = 1,
     turbulence = null, // Keep turbulence as optional parameter
     voronoi = null, // Add voronoi as optional parameter
-    boundaryMode = "BOUNCE", // Add boundary mode parameter
+    boundaryMode = "WARP", // Add boundary mode parameter
   } = {}) {
     // Particle properties
     this.numParticles = particleCount;
     this.timeStep = timeStep;
     this.gravity = gravity;
     this.gravityFlip = false; // Add gravityFlip flag
-    this.particleRadius = 0.01;
+    this.particleRadius = 0.02;
     this.renderScale = 2000;
 
     // Add radius array to track individual particle sizes

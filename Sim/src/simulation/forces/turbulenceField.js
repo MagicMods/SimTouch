@@ -1,6 +1,6 @@
 class TurbulenceField {
   constructor({
-    strength = 0,
+    strength = 3,
     scale = 4.0,
     speed = 1.0,
     octaves = 3,
