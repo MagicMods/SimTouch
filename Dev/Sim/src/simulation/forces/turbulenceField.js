@@ -6,6 +6,7 @@ class TurbulenceField {
     octaves = 3,
     persistence = 0.5,
     rotation = 0.0,
+    rotationSpeed = 0.0, // Add new rotation speed parameter
     inwardFactor = 1.0,
     boundary = null,
     directionBias = [0, 0], // New: directional bias
@@ -32,6 +33,7 @@ class TurbulenceField {
     this._octaves = octaves; // Use private property for octaves
     this.persistence = persistence;
     this.rotation = rotation;
+    this.rotationSpeed = rotationSpeed; // Store the rotation speed
     this.inwardFactor = inwardFactor;
     this.time = 0;
     this.directionBias = directionBias;
@@ -172,6 +174,13 @@ class TurbulenceField {
   update(dt) {
     this.time += dt;
 
+    // Apply rotation based on rotation speed
+    if (this.rotationSpeed > 0) {
+      this.rotation += this.rotationSpeed * dt;
+      // Keep rotation within [0, 2π]
+      this.rotation %= Math.PI * 2;
+    }
+
     // Occasionally shift phase values for more variation
     if (Math.random() < 0.001) {
       for (let i = 0; i < this.octaves; i++) {
@@ -188,6 +197,7 @@ class TurbulenceField {
     octaves, // Add octaves parameter
     persistence, // Add persistence parameter
     rotation, // Add rotation parameter
+    rotationSpeed, // Add this parameter
     directionBias,
     decayRate,
     domainWarp,
@@ -199,6 +209,7 @@ class TurbulenceField {
     if (octaves !== undefined) this.octaves = octaves; // This will trigger regeneration
     if (persistence !== undefined) this.persistence = persistence;
     if (rotation !== undefined) this.rotation = rotation;
+    if (rotationSpeed !== undefined) this.rotationSpeed = rotationSpeed;
     if (directionBias !== undefined) this.directionBias = directionBias;
     if (decayRate !== undefined) this.decayRate = decayRate;
     if (domainWarp !== undefined) this.domainWarp = domainWarp;

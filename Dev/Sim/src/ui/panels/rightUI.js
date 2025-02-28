@@ -63,6 +63,9 @@ class RightUi extends BaseUi {
     advancedFolder.add(turbulence, "octaves", 1, 8, 1).name("Octaves");
     advancedFolder.add(turbulence, "persistence", 0, 1).name("Persistence");
     advancedFolder.add(turbulence, "rotation", 0, Math.PI * 2).name("Rotation");
+    advancedFolder
+      .add(turbulence, "rotationSpeed", 0, 1)
+      .name("Rotation Speed"); // Add this new control
     advancedFolder.add(turbulence, "inwardFactor", 0, 5).name("Inward Pull");
     advancedFolder.add(turbulence, "decayRate", 0.9, 1).name("Decay Rate");
 

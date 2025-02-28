@@ -166,14 +166,6 @@ class ParticleSystem {
   step() {
     const dt = this.timeStep * this.timeScale;
 
-    // 1. Apply external forces (including turbulence)
-    this.applyExternalForces(dt);
-
-    // 2. Apply organic behavior forces
-    if (this.organicBehavior.currentBehavior !== "None") {
-      this.organicBehavior.updateParticles(this, dt);
-    }
-
     // Update the time for field generators
     if (this.turbulence) {
       this.turbulence.update(dt);
@@ -181,6 +173,14 @@ class ParticleSystem {
 
     if (this.voronoi) {
       this.voronoi.update(dt);
+    }
+
+    // 1. Apply external forces (including turbulence)
+    this.applyExternalForces(dt);
+
+    // 2. Apply organic behavior forces
+    if (this.organicBehavior.currentBehavior !== "None") {
+      this.organicBehavior.updateParticles(this, dt);
     }
 
     // 3. Update positions and handle collisions
