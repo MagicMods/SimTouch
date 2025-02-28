@@ -276,6 +276,14 @@ export class LeftUi extends BaseUi {
 
     this.physicsFolder.add(particles, "gravity", 0, 1, 0.01).name("Gravity");
 
+    // Add gravity flip toggle
+    this.physicsFolder
+      .add(particles, "gravityFlip")
+      .name("Flip Gravity")
+      .onChange((value) => {
+        console.log(`Gravity direction flipped: ${value}`);
+      });
+
     this.physicsFolder
       .add(particles, "velocityDamping", 0.8, 1.0, 0.01)
       .name("Velocity Damping");

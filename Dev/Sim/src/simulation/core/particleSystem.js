@@ -18,6 +18,7 @@ class ParticleSystem {
     this.numParticles = particleCount;
     this.timeStep = timeStep;
     this.gravity = gravity;
+    this.gravityFlip = false; // Add gravityFlip flag
     this.particleRadius = 0.01;
     this.renderScale = 2000;
 
@@ -183,6 +184,13 @@ class ParticleSystem {
   }
 
   applyExternalForces(dt) {
+    if (this.gravity !== 0) {
+      // Apply gravity as acceleration in y-direction
+      const gravityValue = this.gravityFlip ? -this.gravity : this.gravity;
+      for (let i = 0; i < this.numParticles; i++) {
+        this.velocitiesY[i] += gravityValue * dt;
+      }
+    }
     // Track if organic behavior is active
     this.organicBehaviorActive =
       this.fluidBehavior?.enabled ||
@@ -197,16 +205,14 @@ class ParticleSystem {
         this.velocitiesY,
         dt
       );
-    }
-    if (this.swarmBehavior?.enabled) {
+    } else if (this.swarmBehavior?.enabled) {
       this.swarmBehavior.apply(
         this.particles,
         this.velocitiesX,
         this.velocitiesY,
         dt
       );
-    }
-    if (this.automataBehavior?.enabled) {
+    } else if (this.automataBehavior?.enabled) {
       this.automataBehavior.apply(
         this.particles,
         this.velocitiesX,
@@ -216,7 +222,11 @@ class ParticleSystem {
     }
 
     // Apply turbulence only if no organic behavior is active
-    if (this.turbulence?.strength > 0) {
+    if (
+      this.turbulence.affectScale ||
+      this.turbulence.affectPosition ||
+      this.turbulence.scaleField
+    ) {
       for (let i = 0; i < this.numParticles; i++) {
         const pos = [this.particles[i * 2], this.particles[i * 2 + 1]];
         const vel = [this.velocitiesX[i], this.velocitiesY[i]];

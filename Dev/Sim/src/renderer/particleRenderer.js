@@ -95,6 +95,14 @@ class ParticleRenderer extends BaseRenderer {
     if (program.attributes.size !== undefined) {
       this.gl.disableVertexAttribArray(program.attributes.size);
     }
+    // if (particles.length > 0) {
+    //   console.log(
+    //     `Drawing ${particles.length} particles, first sizes:`,
+    //     `normalized=${particles[0].radius.toFixed(
+    //       4
+    //     )}, pixel=${particles[0].size.toFixed(1)}`
+    //   );
+    // }
   }
 
   dispose() {
