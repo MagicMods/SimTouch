@@ -11,6 +11,69 @@ class MouseForces {
       isPressed: false,
       buttons: new Set(), // Track multiple buttons
     };
+
+    // External input state
+    this.externalInputEnabled = false;
+    this.externalMouseState = {
+      position: { x: 0.5, y: 0.5 }, // Center by default
+      lastPosition: { x: 0.5, y: 0.5 },
+      isPressed: false,
+      button: 0, // Default to left button
+    };
+    this.externalSensitivity = 0.001; // Adjust based on your input scale
+  }
+
+  // Enable external input handling
+  enableExternalInput() {
+    this.externalInputEnabled = true;
+    return this;
+  }
+
+  // Disable external input handling
+  disableExternalInput() {
+    this.externalInputEnabled = false;
+    return this;
+  }
+
+  // Set external input sensitivity
+  setExternalSensitivity(value) {
+    this.externalSensitivity = value;
+    return this;
+  }
+
+  // Handle UDP-received mouse data
+  handleExternalMouseData(x, y) {
+    if (!this.externalInputEnabled) return; // Add missing return statement
+
+    // Update positions
+    this.externalMouseState.lastPosition = {
+      ...this.externalMouseState.position,
+    };
+
+    // Convert raw input values to simulation coordinates
+    // Assume the input values are relative movements
+    const deltaX = x * this.externalSensitivity;
+    const deltaY = y * this.externalSensitivity;
+
+    // Update current position, keeping it within bounds [0,1]
+    this.externalMouseState.position.x = Math.max(
+      0,
+      Math.min(1, this.externalMouseState.position.x + deltaX)
+    );
+    this.externalMouseState.position.y = Math.max(
+      0,
+      Math.min(1, this.externalMouseState.position.y + deltaY)
+    );
+  }
+
+  // Set external mouse button state
+  setExternalMouseButton(button, pressed) {
+    if (pressed) {
+      this.externalMouseState.button = button;
+      this.externalMouseState.isPressed = true;
+    } else {
+      this.externalMouseState.isPressed = false;
+    }
   }
 
   setupMouseInteraction(canvas, particleSystem) {
@@ -78,8 +141,28 @@ class MouseForces {
   }
 
   update(particleSystem) {
-    // No longer needed as forces are applied directly in mousemove
-    return;
+    // Process external input if enabled
+    if (this.externalInputEnabled && this.externalMouseState.isPressed) {
+      const pos = this.externalMouseState.position;
+      const lastPos = this.externalMouseState.lastPosition;
+
+      // Calculate deltas
+      const dx = pos.x - lastPos.x;
+      const dy = pos.y - lastPos.y;
+
+      // Apply appropriate force based on button
+      switch (this.externalMouseState.button) {
+        case 0: // Left button
+          this.applyImpulseAt(particleSystem, pos.x, pos.y, "attract");
+          break;
+        case 1: // Middle button
+          this.applyDragForce(particleSystem, pos.x, pos.y, dx * 2, dy * 2);
+          break;
+        case 2: // Right button
+          this.applyImpulseAt(particleSystem, pos.x, pos.y, "repulse");
+          break;
+      }
+    }
   }
 
   applyImpulseAt(particleSystem, x, y, mode = null) {

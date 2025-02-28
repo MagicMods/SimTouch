@@ -29,6 +29,9 @@ export class LeftUi extends BaseUi {
     this.restFolder = this.createFolder("Rest State");
     this.mouseInputFolder = this.createFolder("Mouse Input");
 
+    // Add External Mouse Input folder!
+    this.externalInputFolder = this.createFolder("External Input");
+
     this.udpFolder = this.createFolder("UDP Network", true); // Non-persistent folders
     this.debugFolder = this.createFolder("Debug", true); // Non-persistent folders
 
@@ -42,6 +45,7 @@ export class LeftUi extends BaseUi {
     this.initBoundaryControls();
     this.initRestStateControls();
     this.initMouseControls();
+    this.initExternalInputControls(); // Add this line!
 
     // Set default open states
     this.presetFolder.open();
@@ -51,6 +55,7 @@ export class LeftUi extends BaseUi {
     this.collisionFolder.open();
     this.mouseInputFolder.open(true);
     this.debugFolder.open(false);
+    this.externalInputFolder.open(true); // Open this folder by default
   }
 
   initPresetControls() {
@@ -490,7 +495,8 @@ export class LeftUi extends BaseUi {
     // Create local control object
     const controls = {
       enabled: socket.enable,
-      debug: socket.debug,
+      debugSend: socket.debugSend,
+      debugReceive: socket.debugReceive,
     };
 
     // Add enable toggle
@@ -506,12 +512,51 @@ export class LeftUi extends BaseUi {
         }
       });
 
+    // Add debug receive toggle
+    this.udpFolder
+      .add(controls, "debugReceive")
+      .name("Debug Mouse Input")
+      .onChange((value) => {
+        socket.debugReceive = value;
+      });
+
+    // Add debug send toggle
+    this.udpFolder
+      .add(controls, "debugSend")
+      .name("Debug Outgoing Data")
+      .onChange((value) => {
+        socket.debugSend = value;
+      });
+
     // Add status display
-    const status = { connection: "Disconnected" };
+    const status = {
+      connection: "Disconnected",
+      lastMessage: "None",
+      messageCount: 0,
+    };
+
     const statusController = this.udpFolder
       .add(status, "connection")
       .name("Status")
       .disable();
+
+    const lastMessageController = this.udpFolder
+      .add(status, "lastMessage")
+      .name("Last Input")
+      .disable();
+
+    const msgCountController = this.udpFolder
+      .add(status, "messageCount")
+      .name("Message Count")
+      .disable();
+
+    // Track message count
+    socket.addMouseHandler((x, y) => {
+      status.messageCount++;
+      status.lastMessage = `X: ${x}, Y: ${y}`;
+      lastMessageController.updateDisplay();
+      msgCountController.updateDisplay();
+    });
 
     // Update status periodically
     setInterval(() => {
@@ -521,41 +566,11 @@ export class LeftUi extends BaseUi {
 
     // Add port configuration
     this.udpFolder
-      .add({ host: NetworkConfig.UDP_HOST }, "host")
-      .name("UDP Host")
+      .add({ port: NetworkConfig.UDP_INPUT_PORT }, "port", 1024, 65535, 1)
+      .name("UDP Input Port")
       .onChange((value) => {
-        if (socket.isConnected) {
-          socket.reconnect(undefined, value);
-        }
+        console.log(`Note: UDP input port changes require server restart`);
       });
-    this.udpFolder
-      .add({ port: NetworkConfig.UDP_PORT }, "port", 1024, 65535, 1)
-      .name("UDP Port")
-      .onChange((value) => {
-        if (socket.isConnected) {
-          socket.reconnect(value);
-        }
-      });
-    this.udpFolder
-      .add({ port: NetworkConfig.WEBSOCKET_PORT }, "port", 1024, 65535, 1)
-      .name("WebSocket Port")
-      .onChange((value) => {
-        if (socket.isConnected) {
-          socket.reconnect(value);
-        }
-      });
-
-    // // Add connection controls
-    // this.udpFolder
-    //   .add(
-    //     {
-    //       reconnect: () => {
-    //         socket.reconnect();
-    //       },
-    //     },
-    //     "reconnect"
-    //   )
-    //   .name("Reconnect");
   }
   //#endregion
   //#region Debug
@@ -608,40 +623,185 @@ export class LeftUi extends BaseUi {
     const socket = socketManager;
     if (socket) {
       const debugNetworkControl = {
-        showNetwork: socket.debug,
+        showNetwork: socket.debugSend,
+        showNetworkMouse: socket.debugReceive,
       };
 
       this.debugFolder
         .add(debugNetworkControl, "showNetwork")
-        .name("Network Debug")
+        .name("Network Debug Send")
         .onChange((value) => {
-          socket.debug = value;
+          socket.debugSend = value;
         });
 
-      // Add network stats if enabled
-      if (socket.debug) {
-        const stats = {
-          bytesSent: 0,
-          lastSent: "N/A",
-        };
+      this.debugFolder
+        .add(debugNetworkControl, "showNetworkMouse")
+        .name("Network Debug Receive")
+        .onChange((value) => {
+          socket.debugReceive = value;
+        });
 
-        const statsFolder = this.debugFolder.addFolder("Network Stats");
+      // // Add network stats if enabled
+      // if (socket.debug) {
+      //   const stats = {
+      //     bytesSent: 0,
+      //     lastSent: "N/A",
+      //   };
 
-        statsFolder.add(stats, "bytesSent").name("Bytes Sent").disable();
+      //   const statsFolder = this.debugFolder.addFolder("Network Stats");
 
-        statsFolder.add(stats, "lastSent").name("Last Sent").disable();
+      //   statsFolder.add(stats, "bytesSent").name("Bytes Sent").disable();
 
-        // Update stats periodically
-        setInterval(() => {
-          if (socket.debug && socket.isConnected) {
-            stats.bytesSent = socket.bytesSent || 0;
-            stats.lastSent = socket.lastSentTime
-              ? new Date(socket.lastSentTime).toLocaleTimeString()
-              : "N/A";
-            statsFolder.controllers.forEach((c) => c.updateDisplay());
-          }
-        }, 1000);
-      }
+      //   statsFolder.add(stats, "lastSent").name("Last Sent").disable();
+
+      //   // Update stats periodically
+      //   setInterval(() => {
+      //     if (socket.debug && socket.isConnected) {
+      //       stats.bytesSent = socket.bytesSent || 0;
+      //       stats.lastSent = socket.lastSentTime
+      //         ? new Date(socket.lastSentTime).toLocaleTimeString()
+      //         : "N/A";
+      //       statsFolder.controllers.forEach((c) => c.updateDisplay());
+      //     }
+      //   }, 1000);
+      // }
     }
   } //#endregion
+
+  // Add this new method
+  initExternalInputControls() {
+    if (!this.main.externalInput) return;
+
+    const externalInput = this.main.externalInput;
+    const mouseForces = this.main.mouseForces;
+
+    // External input enable/disable
+    this.externalInputFolder
+      .add({ enabled: mouseForces.externalInputEnabled }, "enabled")
+      .name("Enable External Input")
+      .onChange((value) => {
+        if (value) {
+          externalInput.enable();
+        } else {
+          externalInput.disable();
+        }
+      });
+
+    // Auto-press button toggle
+    this.externalInputFolder
+      .add({ pressed: mouseForces.externalMouseState.isPressed }, "pressed")
+      .name("Auto-Press Button")
+      .onChange((value) => {
+        externalInput.setMouseButton(0, value); // Set left mouse button state
+      });
+
+    // Button type selector
+    this.externalInputFolder
+      .add({ button: mouseForces.externalMouseState.button }, "button", {
+        "Left (Attract)": 0,
+        "Middle (Drag)": 1,
+        "Right (Repulse)": 2,
+      })
+      .name("Button Type")
+      .onChange((value) => {
+        externalInput.setMouseButton(
+          value,
+          mouseForces.externalMouseState.isPressed
+        );
+      });
+
+    // Sensitivity control
+    this.externalInputFolder
+      .add(
+        { sensitivity: mouseForces.externalSensitivity },
+        "sensitivity",
+        0.0001,
+        0.01
+      )
+      .name("Sensitivity")
+      .onChange((value) => {
+        externalInput.setSensitivity(value);
+      });
+
+    // Position display (read-only)
+    const positionDisplay = {
+      position: `X: ${mouseForces.externalMouseState.position.x.toFixed(
+        2
+      )}, Y: ${mouseForces.externalMouseState.position.y.toFixed(2)}`,
+    };
+
+    const positionController = this.externalInputFolder
+      .add(positionDisplay, "position")
+      .name("Position")
+      .disable();
+
+    // Update position display periodically
+    setInterval(() => {
+      if (mouseForces.externalInputEnabled) {
+        positionDisplay.position = `X: ${mouseForces.externalMouseState.position.x.toFixed(
+          2
+        )}, Y: ${mouseForces.externalMouseState.position.y.toFixed(2)}`;
+        positionController.updateDisplay();
+      }
+    }, 100);
+
+    // Reset position button
+    this.externalInputFolder
+      .add(
+        {
+          reset: () => {
+            mouseForces.externalMouseState.position = { x: 0.5, y: 0.5 };
+            mouseForces.externalMouseState.lastPosition = { x: 0.5, y: 0.5 };
+          },
+        },
+        "reset"
+      )
+      .name("Center Position");
+
+    // Add a test button
+    this.externalInputFolder
+      .add(
+        {
+          test: () => {
+            // Simulate external input with random values
+            const x = Math.floor(Math.random() * 200) - 100; // -100 to 100
+            const y = Math.floor(Math.random() * 200) - 100; // -100 to 100
+
+            console.log(`Testing external input with values: x=${x}, y=${y}`);
+
+            // Call the mouse handler directly
+            this.main.externalInput.handleMouseData(x, y);
+          },
+        },
+        "test"
+      )
+      .name("Test Input (Random)");
+
+    // Add fixed position test buttons
+    const testButtonsContainer = document.createElement("div");
+    testButtonsContainer.style.display = "flex";
+    testButtonsContainer.style.justifyContent = "space-between";
+    testButtonsContainer.style.marginTop = "5px";
+
+    const directions = [
+      { name: "↑", x: 0, y: 100 },
+      { name: "←", x: -100, y: 0 },
+      { name: "→", x: 100, y: 0 },
+      { name: "↓", x: 0, y: -100 },
+    ];
+
+    directions.forEach((dir) => {
+      const btn = document.createElement("button");
+      btn.textContent = dir.name;
+      btn.style.flex = "1";
+      btn.style.margin = "2px";
+      btn.addEventListener("click", () => {
+        console.log(`Testing direction ${dir.name}: x=${dir.x}, y=${dir.y}`);
+        this.main.externalInput.handleMouseData(dir.x, dir.y);
+      });
+      testButtonsContainer.appendChild(btn);
+    });
+
+    this.externalInputFolder.domElement.appendChild(testButtonsContainer);
+  }
 }

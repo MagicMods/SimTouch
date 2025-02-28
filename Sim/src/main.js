@@ -7,6 +7,9 @@ import { DebugRenderer } from "./renderer/debugRenderer.js"; // Import DebugRend
 import { TurbulenceField } from "./simulation/forces/turbulenceField.js";
 import { VoronoiField } from "./simulation/forces/voronoiField.js"; // Import VoronoiField
 import { CircularBoundary } from "./simulation/boundary/circularBoundary.js";
+import { socketManager } from "./network/socketManager.js"; // Import socketManager
+import { MouseForces } from "./simulation/forces/mouseForces.js"; // Import MouseForces
+import { ExternalInputConnector } from "./input/externalInputConnector.js"; // Import ExternalInputConnector
 
 class Main {
   constructor() {
@@ -29,11 +32,16 @@ class Main {
     this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
     this.debugRenderer = new DebugRenderer(this.gl);
     this.frame = 0;
-    this.particleSystem.mouseForces.setupMouseInteraction(
-      this.canvas,
-      this.particleSystem
-    );
+    this.mouseForces = new MouseForces(); // Create MouseForces instance
+    this.mouseForces.setupMouseInteraction(this.canvas, this.particleSystem);
+    this.externalInput = new ExternalInputConnector(this.mouseForces)
+      .enable()
+      .setSensitivity(0.002); // Set up external input
     this.paused = false;
+
+    // Set up socket connection
+    socketManager.enable = true; // Enable the socket manager!
+    socketManager.connect();
   }
 
   async init() {
