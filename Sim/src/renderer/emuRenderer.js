@@ -94,10 +94,54 @@ export class EmuRenderer {
     const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
     // For 90° counter-clockwise rotation with correct up/down:
-    // - New x = old y
-    // - New y = -old x
-    const indicatorX = centerX + clamp(data.accelY * scale, -radius, radius); // Use accelY for x (no negation needed)
-    const indicatorY = centerY - clamp(data.accelX * scale, -radius, radius); // Use NEGATIVE accelX for y to fix up/down
+    const indicatorX = centerX + clamp(data.accelY * scale, -radius, radius);
+    const indicatorY = centerY - clamp(data.accelX * scale, -radius, radius);
+
+    // Draw gravity vector (opposite to acceleration)
+    const arrowLength = radius * 0.75;
+
+    // Calculate normalized gravity vector (opposite of acceleration)
+    let vx = -data.accelY;
+    let vy = data.accelX;
+    const vz = -data.accelZ;
+
+    // Calculate vector length
+    const vLength = Math.sqrt(vx * vx + vy * vy + vz * vz);
+
+    // Normalize and scale to arrow length
+    if (vLength > 0) {
+      vx = (vx / vLength) * arrowLength;
+      vy = (vy / vLength) * arrowLength;
+
+      // Draw gravity arrow
+      ctx.strokeStyle = "rgba(255, 255, 0, 0.8)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.lineTo(centerX + vx, centerY + vy);
+
+      // Draw arrowhead
+      const headLength = 10;
+      const angle = Math.atan2(vy, vx);
+      ctx.lineTo(
+        centerX + vx - headLength * Math.cos(angle - Math.PI / 6),
+        centerY + vy - headLength * Math.sin(angle - Math.PI / 6)
+      );
+      ctx.moveTo(centerX + vx, centerY + vy);
+      ctx.lineTo(
+        centerX + vx - headLength * Math.cos(angle + Math.PI / 6),
+        centerY + vy - headLength * Math.sin(angle + Math.PI / 6)
+      );
+      ctx.stroke();
+
+      // Show gravity strength using line thickness
+      ctx.fillStyle = "rgba(255, 255, 0, 0.7)";
+      ctx.fillText(
+        "G: " + vLength.toFixed(2),
+        centerX - 45,
+        centerY + radius + 15
+      );
+    }
 
     // Draw the acceleration indicator (a filled circle)
     const intensity = Math.abs(data.accelZ);

@@ -52,13 +52,26 @@ export class EmuForces {
   apply(dt) {
     if (!this.enabled) return;
 
-    // Apply accelerometer data to gravity
+    // Apply accelerometer data to gravity vector in 360 degrees
     if (this.gravity && this.gravity.setDirection) {
-      const gravityX = this.emuData.accelX * this.accelGravityMultiplier;
-      const gravityY = this.emuData.accelY * this.accelGravityMultiplier;
-      const gravityZ = this.emuData.accelZ * this.accelGravityMultiplier;
+      // Fix: Invert the X axis to match visualization
+      // We're using accelY for X and accelX for Y (after 90° rotation)
+      const gravityX = this.emuData.accelY * this.accelGravityMultiplier; // REMOVED the negative sign
+      const gravityY = this.emuData.accelX * this.accelGravityMultiplier; // Keep this positive
+      const gravityZ = -this.emuData.accelZ * this.accelGravityMultiplier; // Z stays the same
 
-      this.gravity.setDirection(gravityX, gravityY, gravityZ);
+      // Normalize the vector to ensure consistent gravity strength
+      const length = Math.sqrt(
+        gravityX * gravityX + gravityY * gravityY + gravityZ * gravityZ
+      );
+      if (length > 0) {
+        const normalizedX = gravityX / length;
+        const normalizedY = gravityY / length;
+        const normalizedZ = gravityZ / length;
+
+        // Set the gravity direction using the normalized vector
+        this.gravity.setDirection(normalizedX, normalizedY, normalizedZ);
+      }
     }
   }
 }

@@ -40,9 +40,8 @@ class Main {
     // IMPORTANT: Attach it to particleSystem so render() can find it
     this.particleSystem.mouseForces = this.mouseForces;
 
-    // Create EmuForces instance and pass the simulation components it needs
+    // Create EmuForces instance with correct reference to gravity
     this.emuForces = new EmuForces({
-      turbulence: this.turbulenceField,
       gravity: this.particleSystem.gravity,
     });
 

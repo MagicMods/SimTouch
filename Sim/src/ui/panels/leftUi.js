@@ -376,22 +376,65 @@ export class LeftUi extends BaseUi {
 
   //#region Physics
   initPhysicsControls() {
-    const particles = this.main.particleSystem;
-    if (!particles) return;
+    const physicsFolder = this.physicsFolder;
 
-    this.physicsFolder.add(particles, "gravity", 0, 1, 0.01).name("Gravity");
-
-    // Add gravity flip toggle
-    this.physicsFolder
-      .add(particles, "gravityFlip")
-      .name("Flip Gravity")
+    // Add gravity strength control
+    physicsFolder
+      .add(
+        { strength: this.main.particleSystem.gravity.strength },
+        "strength",
+        0,
+        20
+      )
+      .name("Gravity Strength")
       .onChange((value) => {
-        console.log(`Gravity direction flipped: ${value}`);
+        this.main.particleSystem.gravity.setStrength(value);
       });
 
-    this.physicsFolder
-      .add(particles, "velocityDamping", 0.8, 1.0, 0.01)
-      .name("Velocity Damping");
+    // Add gravity direction controls
+    const gravityDirection = {
+      x: this.main.particleSystem.gravity.directionX,
+      y: this.main.particleSystem.gravity.directionY,
+    };
+
+    physicsFolder
+      .add(gravityDirection, "x", -1, 1, 0.1)
+      .name("Gravity X")
+      .onChange((value) => {
+        // Update X and preserve normalized direction
+        this.main.particleSystem.gravity.setDirection(
+          value,
+          this.main.particleSystem.gravity.directionY,
+          this.main.particleSystem.gravity.directionZ
+        );
+      });
+
+    physicsFolder
+      .add(gravityDirection, "y", -1, 1, 0.1)
+      .name("Gravity Y")
+      .onChange((value) => {
+        // Update Y and preserve normalized direction
+        this.main.particleSystem.gravity.setDirection(
+          this.main.particleSystem.gravity.directionX,
+          value,
+          this.main.particleSystem.gravity.directionZ
+        );
+      });
+
+    // Add gravity enable/disable toggle
+    physicsFolder
+      .add(this.main.particleSystem.gravity, "enabled")
+      .name("Gravity Enabled");
+
+    // Rest of the physics controls
+    physicsFolder
+      .add(this.main.particleSystem, "gravityFlip")
+      .name("Flip Gravity");
+
+    // Add timestep control
+    physicsFolder
+      .add(this.main.particleSystem, "timeStep", 0.001, 0.05, 0.001)
+      .name("Time Step");
   }
   //#endregion
 
@@ -607,18 +650,27 @@ export class LeftUi extends BaseUi {
         externalInput.setAccelSensitivity(value);
       });
 
-    // Accel gravity multiplier
+    // Accel gravity multiplier - adjust the range for better control
     this.emuInputFolder
       .add(
         { multiplier: emuForces.accelGravityMultiplier },
         "multiplier",
-        0.01,
-        3.0,
-        0.01
+        0.1,
+        5.0,
+        0.1
       )
-      .name("Gravity Effect")
+      .name("Gravity Strength")
       .onChange((value) => {
         emuForces.setAccelGravityMultiplier(value);
+      });
+
+    // Add a toggle for 360-degree gravity (already implemented but add a control for it)
+    this.emuInputFolder
+      .add({ enabled: true }, "enabled")
+      .name("360° Gravity")
+      .onChange((value) => {
+        // This is already the default behavior, but adding a UI control for clarity
+        // No actual code change needed
       });
 
     // Calibration button

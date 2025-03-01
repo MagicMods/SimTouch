@@ -6,7 +6,7 @@ export class EmuData {
     this.accelZ = 0;
 
     // Sensitivity multiplier
-    this.accelSensitivity = 1.0;
+    this.accelSensitivity = 5.0;
 
     // Calibration offsets
     this.accelOffsetX = 0;

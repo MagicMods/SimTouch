@@ -3,12 +3,13 @@ import { MouseForces } from "../forces/mouseForces.js";
 import { CircularBoundary } from "../boundary/circularBoundary.js";
 import { CollisionSystem } from "../forces/collisionSystem.js";
 import { OrganicBehavior } from "../behaviors/organicBehavior.js";
+import { GravityForces } from "../forces/gravityForces.js";
 
 class ParticleSystem {
   constructor({
     particleCount = 500,
     timeStep = 1 / 60,
-    gravity = 0,
+    gravity = 0, // Default gravity strength
     picFlipRatio = 1,
     turbulence = null, // Keep turbulence as optional parameter
     voronoi = null, // Add voronoi as optional parameter
@@ -17,7 +18,7 @@ class ParticleSystem {
     // Particle properties
     this.numParticles = particleCount;
     this.timeStep = timeStep;
-    this.gravity = gravity;
+    this.gravity = new GravityForces(gravity);
     this.gravityFlip = false; // Add gravityFlip flag
     this.particleRadius = 0.02;
     this.renderScale = 2000;
@@ -193,13 +194,14 @@ class ParticleSystem {
   }
 
   applyExternalForces(dt) {
-    if (this.gravity !== 0) {
-      // Apply gravity as acceleration in y-direction
-      const gravityValue = this.gravityFlip ? -this.gravity : this.gravity;
-      for (let i = 0; i < this.numParticles; i++) {
-        this.velocitiesY[i] += gravityValue * dt;
-      }
-    }
+    // Apply gravity using the controller
+    this.gravity.apply(
+      this.velocitiesX,
+      this.velocitiesY,
+      this.numParticles,
+      dt
+    );
+
     // Track if organic behavior is active
     this.organicBehaviorActive =
       this.fluidBehavior?.enabled ||
