@@ -294,6 +294,21 @@ class ParticleSystem {
       this.velocitiesX,
       this.velocitiesY
     );
+
+    // Finally check boundary collisions for all particles
+    for (let i = 0; i < this.numParticles; i++) {
+      const position = [this.particles[i * 2], this.particles[i * 2 + 1]];
+      const velocity = [this.velocitiesX[i], this.velocitiesY[i]];
+      const radius = this.particleRadii[i];
+
+      this.boundary.resolveCollision(position, velocity, radius);
+
+      // Store updated values
+      this.particles[i * 2] = position[0];
+      this.particles[i * 2 + 1] = position[1];
+      this.velocitiesX[i] = velocity[0];
+      this.velocitiesY[i] = velocity[1];
+    }
   }
 
   checkRestState(index, dt) {

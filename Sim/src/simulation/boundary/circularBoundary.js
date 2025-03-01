@@ -5,6 +5,7 @@ class CircularBoundary {
     radius = 0.5,
     cBoundaryRestitution = 0.8, // Renamed to be specific
     damping = 0.95,
+    boundaryRepulsion = 0.1,
     segments = 64, // Higher segment count for smoother circle
     mode = "BOUNCE", // Add boundary mode
   } = {}) {
@@ -12,7 +13,7 @@ class CircularBoundary {
     this.centerX = centerX;
     this.centerY = centerY;
     this.radius = radius;
-
+    this.boundaryRepulsion = boundaryRepulsion;
     // Physics parameters
     this.cBoundaryRestitution = cBoundaryRestitution; // Renamed
     this.damping = damping;
@@ -79,37 +80,82 @@ class CircularBoundary {
   }
 
   // Standard collision for particle system
-  resolveCollision(position, velocity) {
+  resolveCollision(position, velocity, particleRadius = 0) {
     const dx = position[0] - this.centerX;
     const dy = position[1] - this.centerY;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
-    if (dist > this.radius) {
-      const nx = dx / dist;
-      const ny = dy / dist;
+    // Normalize direction vector (points from center to particle)
+    const nx = dx / dist;
+    const ny = dy / dist;
 
+    // Case 1: Collision - particle crosses boundary
+    if (dist + particleRadius > this.radius) {
       if (this.mode === this.BOUNDARY_MODES.WARP) {
         // Warp to opposite side
-        const angle = Math.atan2(dy, dx);
-        position[0] = this.centerX - nx * (this.radius * 0.95); // Slightly inside
+        position[0] = this.centerX - nx * (this.radius * 0.95);
         position[1] = this.centerY - ny * (this.radius * 0.95);
-
-        // Retain velocity
-        return false; // Don't modify velocity
+        return false;
       } else {
-        // Original bounce behavior
+        // Calculate normal velocity component (along radius)
         const dot = velocity[0] * nx + velocity[1] * ny;
+
+        // Only apply bounce if moving toward/into boundary
         if (dot > 0) {
-          velocity[0] -= (1 + this.cBoundaryRestitution) * dot * nx; // Updated
-          velocity[1] -= (1 + this.cBoundaryRestitution) * dot * ny; // Updated
-          velocity[0] *= this.damping;
-          velocity[1] *= this.damping;
+          // Decompose velocity into normal and tangential components
+          const normalVx = dot * nx;
+          const normalVy = dot * ny;
+
+          // Tangential component (along boundary)
+          const tangentialVx = velocity[0] - normalVx;
+          const tangentialVy = velocity[1] - normalVy;
+
+          // Apply bounce to normal component (-restitution * normal)
+          const bounceVx = -this.cBoundaryRestitution * normalVx;
+          const bounceVy = -this.cBoundaryRestitution * normalVy;
+
+          // Apply friction to tangential component
+          const frictionVx = this.damping * tangentialVx;
+          const frictionVy = this.damping * tangentialVy;
+
+          // Replace velocity with new components
+          velocity[0] = bounceVx + frictionVx;
+          velocity[1] = bounceVy + frictionVy;
         }
-        position[0] = this.centerX + nx * this.radius;
-        position[1] = this.centerY + ny * this.radius;
+
+        // Position correction - place slightly inside boundary
+        const safeDistance = this.radius - particleRadius - 0.001;
+        position[0] = this.centerX + nx * safeDistance;
+        position[1] = this.centerY + ny * safeDistance;
+
         return true;
       }
     }
+    // Case 2: Repulsion - particle is near but not colliding with boundary
+    else if (this.boundaryRepulsion > 0) {
+      // Calculate distance from particle edge to boundary
+      const distanceToEdge = this.radius - (dist + particleRadius);
+
+      // Apply repulsion only when close to boundary (within 15% of radius)
+      const repulsionZone = this.radius * 0.15;
+
+      if (distanceToEdge < repulsionZone) {
+        // Calculate repulsion strength (stronger as particle gets closer)
+        // Map distance from 0 (at boundary) to 1 (at repulsion threshold)
+        const normalizedDistance = 1.0 - distanceToEdge / repulsionZone;
+
+        // Use quadratic falloff for smoother effect
+        const repulsionStrength =
+          this.boundaryRepulsion * normalizedDistance * normalizedDistance;
+
+        // Apply repulsion force (inward direction = -nx, -ny)
+        velocity[0] -= nx * repulsionStrength;
+        velocity[1] -= ny * repulsionStrength;
+
+        return true;
+      }
+    }
+
     return false;
   }
 
