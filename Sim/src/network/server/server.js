@@ -44,7 +44,7 @@ export const startServer = () => {
         });
       }
       // EMU data - 24 bytes
-      else if (msg.length === 24) {
+      else if (msg.length === 13) {
         // Forward binary data directly to WebSocket clients
         wss.clients.forEach((client) => {
           if (client.readyState === 1) {

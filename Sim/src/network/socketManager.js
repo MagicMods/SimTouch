@@ -189,7 +189,7 @@ class SocketManager {
         this.mouseCallbacks.forEach((callback) => callback(x, y));
       }
       // EMU data (24 bytes)
-      else if (byteLength === 24) {
+      else if (byteLength === 13) {
         // Notify EMU handlers directly with the binary data
         if (this.debugReceive) {
           console.log(`Received EMU data: ${byteLength} bytes`);

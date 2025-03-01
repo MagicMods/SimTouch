@@ -11,6 +11,7 @@ import { socketManager } from "./network/socketManager.js";
 import { MouseForces } from "./simulation/forces/mouseForces.js";
 import { ExternalInputConnector } from "./input/externalInputConnector.js";
 import { EmuForces } from "./simulation/forces/emuForces.js"; // Already imported
+import { EmuRenderer } from "./renderer/emuRenderer.js"; // Import the visualizer at the top of the file
 
 class Main {
   constructor() {
@@ -44,6 +45,10 @@ class Main {
       turbulence: this.turbulenceField,
       gravity: this.particleSystem.gravity,
     });
+
+    // Create the visualizer
+    this.emuRenderer = new EmuRenderer(document.body, this.emuForces);
+    this.emuRenderer.show(); // Make it visible by default
 
     // Pass both mouseForces and emuForces to ExternalInputConnector
     this.externalInput = new ExternalInputConnector(

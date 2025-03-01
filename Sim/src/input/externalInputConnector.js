@@ -115,24 +115,18 @@ export class ExternalInputConnector {
     if (typeof data === "string") {
       this.emuForces.handleStringData(data);
     } else if (data instanceof ArrayBuffer) {
-      // Handle the new 24-byte format (6 floats, 4 bytes each)
-      // Floats are ordered: accelX, accelY, accelZ, gyroX, gyroY, gyroZ
+      // Handle the 13-byte format (3 floats, 4 bytes each + 1 ghost byte)
       const view = new DataView(data);
 
-      // Read accelerometer data (first 12 bytes)
+      // Skip the ghost byte and read accelerometer data (12 bytes)
       const accelX = view.getFloat32(0, true); // true = little endian
       const accelY = view.getFloat32(4, true);
       const accelZ = view.getFloat32(8, true);
 
-      // Read gyroscope data (next 12 bytes)
-      const gyroX = view.getFloat32(12, true);
-      const gyroY = view.getFloat32(16, true);
-      const gyroZ = view.getFloat32(20, true);
-
-      this.emuForces.handleEmuData(gyroX, gyroY, gyroZ, accelX, accelY, accelZ);
+      this.emuForces.handleEmuData(accelX, accelY, accelZ);
     } else if (typeof data === "object") {
-      const { gyroX, gyroY, gyroZ, accelX, accelY, accelZ } = data;
-      this.emuForces.handleEmuData(gyroX, gyroY, gyroZ, accelX, accelY, accelZ);
+      const { accelX, accelY, accelZ } = data;
+      this.emuForces.handleEmuData(accelX, accelY, accelZ);
     }
   }
 
@@ -142,9 +136,7 @@ export class ExternalInputConnector {
   }
 
   setGyroSensitivity(value) {
-    if (this.emuForces) {
-      this.emuForces.setGyroSensitivity(value);
-    }
+    // Remove this method or leave as empty stub
     return this;
   }
 

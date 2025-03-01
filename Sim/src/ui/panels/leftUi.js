@@ -599,34 +599,12 @@ export class LeftUi extends BaseUi {
         }
       });
 
-    // Gyro sensitivity
-    this.emuInputFolder
-      .add({ sensitivity: 1.0 }, "sensitivity", 0.1, 5.0, 0.1)
-      .name("Gyro Sensitivity")
-      .onChange((value) => {
-        externalInput.setGyroSensitivity(value);
-      });
-
     // Accel sensitivity
     this.emuInputFolder
       .add({ sensitivity: 1.0 }, "sensitivity", 0.1, 5.0, 0.1)
       .name("Accel Sensitivity")
       .onChange((value) => {
         externalInput.setAccelSensitivity(value);
-      });
-
-    // Gyro turbulence multiplier
-    this.emuInputFolder
-      .add(
-        { multiplier: emuForces.gyroTurbulenceMultiplier },
-        "multiplier",
-        0.01,
-        1.0,
-        0.01
-      )
-      .name("Gyro Effect")
-      .onChange((value) => {
-        emuForces.setGyroTurbulenceMultiplier(value);
       });
 
     // Accel gravity multiplier
@@ -657,14 +635,8 @@ export class LeftUi extends BaseUi {
 
     // EMU data display (read-only)
     const dataDisplay = {
-      gyro: "X: 0.00, Y: 0.00, Z: 0.00",
       accel: "X: 0.00, Y: 0.00, Z: 0.00",
     };
-
-    const gyroController = this.emuInputFolder
-      .add(dataDisplay, "gyro")
-      .name("Gyroscope")
-      .disable();
 
     const accelController = this.emuInputFolder
       .add(dataDisplay, "accel")
@@ -675,16 +647,24 @@ export class LeftUi extends BaseUi {
     setInterval(() => {
       if (emuForces?.enabled) {
         const data = emuForces.emuData;
-        dataDisplay.gyro = `X: ${data.gyroX.toFixed(
-          2
-        )}, Y: ${data.gyroY.toFixed(2)}, Z: ${data.gyroZ.toFixed(2)}`;
         dataDisplay.accel = `X: ${data.accelX.toFixed(
           2
         )}, Y: ${data.accelY.toFixed(2)}, Z: ${data.accelZ.toFixed(2)}`;
-        gyroController.updateDisplay();
         accelController.updateDisplay();
       }
     }, 100);
+
+    // Add visualizer toggle
+    this.emuInputFolder
+      .add({ showVisualizer: true }, "showVisualizer")
+      .name("Show Visualization")
+      .onChange((value) => {
+        if (value) {
+          this.main.emuVisualizer.show();
+        } else {
+          this.main.emuVisualizer.hide();
+        }
+      });
   }
 
   //#region UDP
