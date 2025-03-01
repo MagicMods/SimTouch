@@ -1,15 +1,16 @@
 import { ShaderManager } from "./shaders/shaderManager.js";
 import { ParticleSystem } from "./simulation/core/particleSystem.js";
-import { UiManager } from "./ui/uiManager.js"; // Replace UI import
+import { UiManager } from "./ui/uiManager.js";
 import { ParticleRenderer } from "./renderer/particleRenderer.js";
-import { GridRenderer } from "./renderer/gridRenderer.js"; // Import GridRenderer
-import { DebugRenderer } from "./renderer/debugRenderer.js"; // Import DebugRenderer
+import { GridRenderer } from "./renderer/gridRenderer.js";
+import { DebugRenderer } from "./renderer/debugRenderer.js";
 import { TurbulenceField } from "./simulation/forces/turbulenceField.js";
-import { VoronoiField } from "./simulation/forces/voronoiField.js"; // Import VoronoiField
+import { VoronoiField } from "./simulation/forces/voronoiField.js";
 import { CircularBoundary } from "./simulation/boundary/circularBoundary.js";
-import { socketManager } from "./network/socketManager.js"; // Import socketManager
-import { MouseForces } from "./simulation/forces/mouseForces.js"; // Import MouseForces
-import { ExternalInputConnector } from "./input/externalInputConnector.js"; // Import ExternalInputConnector
+import { socketManager } from "./network/socketManager.js";
+import { MouseForces } from "./simulation/forces/mouseForces.js";
+import { ExternalInputConnector } from "./input/externalInputConnector.js";
+import { EmuForces } from "./simulation/forces/emuForces.js"; // Already imported
 
 class Main {
   constructor() {
@@ -23,10 +24,10 @@ class Main {
     this.shaderManager = new ShaderManager(this.gl);
     this.boundary = new CircularBoundary();
     this.turbulenceField = new TurbulenceField({ boundary: this.boundary });
-    this.voronoiField = new VoronoiField({ boundary: this.boundary }); // Create VoronoiField instance
+    this.voronoiField = new VoronoiField({ boundary: this.boundary });
     this.particleSystem = new ParticleSystem({
       turbulence: this.turbulenceField,
-      voronoi: this.voronoiField, // Add voronoi to particleSystem
+      voronoi: this.voronoiField,
     });
     this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager);
     this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
@@ -37,9 +38,21 @@ class Main {
 
     // IMPORTANT: Attach it to particleSystem so render() can find it
     this.particleSystem.mouseForces = this.mouseForces;
-    this.externalInput = new ExternalInputConnector(this.mouseForces)
+
+    // Create EmuForces instance and pass the simulation components it needs
+    this.emuForces = new EmuForces({
+      turbulence: this.turbulenceField,
+      gravity: this.particleSystem.gravity,
+    });
+
+    // Pass both mouseForces and emuForces to ExternalInputConnector
+    this.externalInput = new ExternalInputConnector(
+      this.mouseForces,
+      this.emuForces
+    )
       .enable()
       .setSensitivity(0.002); // Set up external input
+
     this.paused = false;
 
     // Set up socket connection
@@ -76,8 +89,14 @@ class Main {
     this.frame++;
     // this.gridRenderer.drawGridTest();
     this.particleSystem.mouseForces.update(this.particleSystem);
+
+    // Apply EMU forces if enabled
+    if (this.emuForces) {
+      this.emuForces.apply(this.particleSystem.timeStep);
+    }
+
     this.turbulenceField.update(this.particleSystem.timeStep);
-    this.voronoiField.update(this.particleSystem.timeStep); // Update voronoiField
+    this.voronoiField.update(this.particleSystem.timeStep);
 
     this.particleSystem.step();
     this.gridRenderer.draw(this.particleSystem);

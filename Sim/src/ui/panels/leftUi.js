@@ -28,8 +28,7 @@ export class LeftUi extends BaseUi {
     this.boundaryFolder = this.createFolder("Boundary");
     this.restFolder = this.createFolder("Rest State");
     this.mouseInputFolder = this.createFolder("Mouse Input");
-
-    // Add External Mouse Input folder!
+    this.emuInputFolder = this.createFolder("EMU Input"); // Add EMU input folder
     this.externalInputFolder = this.createFolder("External Input");
 
     this.udpFolder = this.createFolder("UDP Network", true); // Non-persistent folders
@@ -45,6 +44,7 @@ export class LeftUi extends BaseUi {
     this.initBoundaryControls();
     this.initRestStateControls();
     this.initMouseControls();
+    this.initEmuInputControls(); // Add this line!
     this.initExternalInputControls(); // Add this line!
 
     // Set default open states
@@ -54,6 +54,7 @@ export class LeftUi extends BaseUi {
     this.physicsFolder.open();
     this.collisionFolder.open();
     this.mouseInputFolder.open(true);
+    this.emuInputFolder.open(true); // Open EMU folder by default
     this.debugFolder.open(false);
     this.externalInputFolder.open(true); // Open this folder by default
   }
@@ -569,6 +570,113 @@ export class LeftUi extends BaseUi {
           2
         )}, Y: ${mouseForces.externalMouseState.position.y.toFixed(2)}`;
         positionController.updateDisplay();
+      }
+    }, 100);
+  }
+
+  initEmuInputControls() {
+    // Make sure EMU forces exist before adding controls
+    if (!this.main.externalInput?.emuForces) return;
+
+    const externalInput = this.main.externalInput;
+    const emuForces = externalInput.emuForces;
+
+    // EMU input enable/disable
+    this.emuInputFolder
+      .add({ enabled: false }, "enabled")
+      .name("Enable EMU Input")
+      .onChange((value) => {
+        if (value) {
+          externalInput.enableEmu();
+        } else {
+          externalInput.disableEmu();
+        }
+      });
+
+    // Gyro sensitivity
+    this.emuInputFolder
+      .add({ sensitivity: 1.0 }, "sensitivity", 0.1, 5.0, 0.1)
+      .name("Gyro Sensitivity")
+      .onChange((value) => {
+        externalInput.setGyroSensitivity(value);
+      });
+
+    // Accel sensitivity
+    this.emuInputFolder
+      .add({ sensitivity: 1.0 }, "sensitivity", 0.1, 5.0, 0.1)
+      .name("Accel Sensitivity")
+      .onChange((value) => {
+        externalInput.setAccelSensitivity(value);
+      });
+
+    // Gyro turbulence multiplier
+    this.emuInputFolder
+      .add(
+        { multiplier: emuForces.gyroTurbulenceMultiplier },
+        "multiplier",
+        0.01,
+        1.0,
+        0.01
+      )
+      .name("Gyro Effect")
+      .onChange((value) => {
+        emuForces.setGyroTurbulenceMultiplier(value);
+      });
+
+    // Accel gravity multiplier
+    this.emuInputFolder
+      .add(
+        { multiplier: emuForces.accelGravityMultiplier },
+        "multiplier",
+        0.01,
+        3.0,
+        0.01
+      )
+      .name("Gravity Effect")
+      .onChange((value) => {
+        emuForces.setAccelGravityMultiplier(value);
+      });
+
+    // Calibration button
+    const calibrateButton = {
+      calibrate: () => {
+        externalInput.calibrateEmu();
+        console.log("EMU sensors calibrated");
+      },
+    };
+
+    this.emuInputFolder
+      .add(calibrateButton, "calibrate")
+      .name("Calibrate Sensors");
+
+    // EMU data display (read-only)
+    const dataDisplay = {
+      gyro: "X: 0.00, Y: 0.00, Z: 0.00",
+      accel: "X: 0.00, Y: 0.00, Z: 0.00",
+    };
+
+    const gyroController = this.emuInputFolder
+      .add(dataDisplay, "gyro")
+      .name("Gyroscope")
+      .disable();
+
+    const accelController = this.emuInputFolder
+      .add(dataDisplay, "accel")
+      .name("Accelerometer")
+      .disable();
+
+    // Update sensor displays periodically
+    setInterval(() => {
+      if (emuForces?.enabled) {
+        const data = emuForces.emuData;
+        dataDisplay.gyro = `X: ${data.gyroX.toFixed(
+          2
+        )}, Y: ${data.gyroY.toFixed(2)}, Z: ${data.gyroZ.toFixed(2)}`;
+        dataDisplay.accel = `X: ${data.accelX.toFixed(
+          2
+        )}, Y: ${data.accelY.toFixed(2)}, Z: ${data.accelZ.toFixed(2)}`;
+        gyroController.updateDisplay();
+        accelController.updateDisplay();
       }
     }, 100);
   }

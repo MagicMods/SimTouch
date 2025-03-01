@@ -26,48 +26,38 @@ export const startServer = () => {
     udpServer.close();
   });
 
-  // Enhanced message handler that only processes mouse data packets
+  // Enhanced message handler that processes mouse and EMU data packets
   udpServer.on("message", (msg, rinfo) => {
-    // Log all incoming packets
-    // console.log(
-    //   `Received UDP data: ${msg.length} bytes from ${rinfo.address}:${rinfo.port}`
-    // );
-
     try {
-      // Process only 4-byte packets as mouse input
+      // Process packets based on length
       if (msg.length === 4) {
-        // Parse X and Y values from mouse data packet
+        // Mouse data - 4 bytes
         const x = msg.readInt16LE(0);
         const y = msg.readInt16LE(2);
 
-        console.log(`Mouse input: x=${x}, y=${y}`);
-
-        // Forward to all WebSocket clients
+        // Forward to WebSocket clients
         wss.clients.forEach((client) => {
           if (client.readyState === 1) {
             // OPEN
-            client.send(
-              JSON.stringify({
-                type: "mouseMove",
-                x: x,
-                y: y,
-              })
-            );
+            client.send(msg); // Send raw binary data directly
           }
         });
+      }
+      // EMU data - 24 bytes
+      else if (msg.length === 24) {
+        // Forward binary data directly to WebSocket clients
+        wss.clients.forEach((client) => {
+          if (client.readyState === 1) {
+            // OPEN
+            client.send(msg); // Send raw binary data directly
+          }
+        });
+      } else if (msg.length === 12) {
+        // Handle other message lengths
+      } else if (msg.length === 16) {
+        // Handle other message lengths
       } else {
-        // // Just log non-mouse packets without parsing them
-        // console.log(`Skipping non-mouse packet (${msg.length} bytes)`);
-        // // Optional: Add more detailed logging for debugging
-        // if (process.env.DEBUG_ALL_PACKETS) {
-        //   let packetDump = "Packet contents: ";
-        //   for (let i = 0; i < Math.min(msg.length, 16); i++) {
-        //     // Show max 16 bytes
-        //     packetDump += msg[i].toString(16).padStart(2, "0") + " ";
-        //   }
-        //   if (msg.length > 16) packetDump += "...";
-        //   console.log(packetDump);
-        // }
+        console.log(`Received non-standard packet (${msg.length} bytes)`);
       }
     } catch (error) {
       console.error(`Error processing UDP message: ${error.message}`);

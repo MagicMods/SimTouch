@@ -20,6 +20,9 @@ class SocketManager {
     this.retryCount = 0;
     this.maxRetries = 3;
     this.retryTimeout = null;
+    this.emuHandlers = [];
+    this.expectingBinaryData = false;
+    this.expectedBinaryLength = 0;
   }
 
   connect(port = 5501) {
@@ -102,41 +105,18 @@ class SocketManager {
     };
 
     this.ws.onmessage = (event) => {
-      try {
-        // Parse the message data
-        const message = event.data;
-        let parsedData;
+      // Get the data
+      let data = event.data;
 
-        // Try to parse as JSON if it's a string
-        if (typeof message === "string") {
-          try {
-            parsedData = JSON.parse(message);
-
-            // Special handling for mouse movement data
-            if (parsedData.type === "mouseMove") {
-              if (this.debugReceive) {
-                console.log(
-                  `Received mouse move data: x=${parsedData.x}, y=${parsedData.y}`
-                );
-              }
-              // Notify mouse-specific callbacks
-              this.mouseCallbacks.forEach((callback) =>
-                callback(parsedData.x, parsedData.y)
-              );
-              return; // Skip general callbacks for mouse data
-            }
-          } catch (e) {
-            // Not JSON, treat as regular message
-            parsedData = message;
-          }
-        } else {
-          parsedData = message;
-        }
-
-        // Notify general callbacks
-        this.callbacks.forEach((callback) => callback(parsedData));
-      } catch (error) {
-        console.error("Error handling WebSocket message:", error);
+      // If it's a blob, convert to ArrayBuffer
+      if (data instanceof Blob) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          this.processMessage(reader.result);
+        };
+        reader.readAsArrayBuffer(data);
+      } else {
+        this.processMessage(data);
       }
     };
   }
@@ -160,6 +140,25 @@ class SocketManager {
     this.mouseCallbacks.delete(callback);
   }
 
+  // Add an EMU data handler function
+  addEmuHandler(callback) {
+    this.emuHandlers.push(callback);
+    return this;
+  }
+
+  // Remove an EMU data handler function
+  removeEmuHandler(callback) {
+    this.emuHandlers = this.emuHandlers.filter((h) => h !== callback);
+    return this;
+  }
+
+  // Call this from your message handling code when EMU data arrives
+  handleEmuData(data) {
+    if (this.emuHandlers && this.emuHandlers.length > 0) {
+      this.emuHandlers.forEach((handler) => handler(data));
+    }
+  }
+
   reconnect() {
     if (this.ws) {
       this.disconnect();
@@ -170,6 +169,45 @@ class SocketManager {
   disconnect() {
     console.log("Closing WebSocket connection");
     this.ws.close();
+  }
+
+  processMessage(data) {
+    // If binary data
+    if (data instanceof ArrayBuffer) {
+      const byteLength = data.byteLength;
+
+      // Mouse data (4 bytes)
+      if (byteLength === 4) {
+        const view = new DataView(data);
+        const x = view.getInt16(0, true); // true = little endian
+        const y = view.getInt16(2, true);
+
+        // Notify mouse handlers
+        if (this.debugReceive) {
+          console.log(`Received mouse data: x=${x}, y=${y}`);
+        }
+        this.mouseCallbacks.forEach((callback) => callback(x, y));
+      }
+      // EMU data (24 bytes)
+      else if (byteLength === 24) {
+        // Notify EMU handlers directly with the binary data
+        if (this.debugReceive) {
+          console.log(`Received EMU data: ${byteLength} bytes`);
+        }
+        this.emuHandlers.forEach((handler) => handler(data));
+      } else if (byteLength === 12) {
+      } else if (byteLength === 16) {
+      }
+      return;
+    }
+
+    // For any other (non-binary) messages that might exist
+    try {
+      const jsonData = JSON.parse(data);
+      this.callbacks.forEach((cb) => cb(jsonData));
+    } catch (error) {
+      console.error("Error parsing WebSocket message:", error);
+    }
   }
 }
 
