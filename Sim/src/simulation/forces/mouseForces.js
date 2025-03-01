@@ -48,6 +48,12 @@ class MouseForces {
   handleExternalMouseData(x, y) {
     if (!this.externalInputEnabled) return;
 
+    // Special case: (0,0) signals a release
+    if (x === 0 && y === 0) {
+      this.externalMouseState.isPressed = false;
+      return;
+    }
+
     // Update positions
     this.externalMouseState.lastPosition = {
       ...this.externalMouseState.position,
@@ -161,40 +167,26 @@ class MouseForces {
     }
 
     // Process external input if enabled
-    if (this.externalInputEnabled) {
-      // Check if we should auto-release the button
-      if (this.externalMouseState.isPressed) {
-        const timeSinceLastInput =
-          performance.now() - this.externalMouseState.lastInputTime;
-        if (timeSinceLastInput > this.externalMouseState.inputTimeout) {
-          // Auto-release button after timeout
-          this.externalMouseState.isPressed = false;
-          console.log("External mouse button auto-released due to inactivity");
-        }
-      }
+    if (this.externalInputEnabled && this.externalMouseState.isPressed) {
+      const pos = this.externalMouseState.position;
 
-      // Process forces if button is pressed
-      if (this.externalMouseState.isPressed) {
-        const pos = this.externalMouseState.position;
-
-        // Apply appropriate force based on button - CONTINUOUSLY
-        switch (this.externalMouseState.button) {
-          case 0: // Left button
-            this.applyImpulseAt(particleSystem, pos.x, pos.y, "attract");
-            break;
-          case 1: // Middle button
-            // Middle button still needs movement for drag effect
-            const dx = pos.x - this.externalMouseState.lastPosition.x;
-            const dy = pos.y - this.externalMouseState.lastPosition.y;
-            if (Math.hypot(dx, dy) > 0.001) {
-              // Only if there's movement
-              this.applyDragForce(particleSystem, pos.x, pos.y, dx * 2, dy * 2);
-            }
-            break;
-          case 2: // Right button
-            this.applyImpulseAt(particleSystem, pos.x, pos.y, "repulse");
-            break;
-        }
+      // Apply appropriate force based on button - CONTINUOUSLY
+      switch (this.externalMouseState.button) {
+        case 0: // Left button
+          this.applyImpulseAt(particleSystem, pos.x, pos.y, "attract");
+          break;
+        case 1: // Middle button
+          // Middle button still needs movement for drag effect
+          const dx = pos.x - this.externalMouseState.lastPosition.x;
+          const dy = pos.y - this.externalMouseState.lastPosition.y;
+          if (Math.hypot(dx, dy) > 0.001) {
+            // Only if there's movement
+            this.applyDragForce(particleSystem, pos.x, pos.y, dx * 2, dy * 2);
+          }
+          break;
+        case 2: // Right button
+          this.applyImpulseAt(particleSystem, pos.x, pos.y, "repulse");
+          break;
       }
     }
   }
