@@ -480,7 +480,7 @@ export class LeftUi extends BaseUi {
       .add(particles.boundary, "cBoundaryRestitution", 0.0, 1.0, 0.05)
       .name("Bounce");
     this.boundaryFolder
-      .add(particles.boundary, "boundaryRepulsion", 0.0, 10, 0.01)
+      .add(particles.boundary, "boundaryRepulsion", 0.0, 20, 0.01)
       .name("Wall Repulsion")
       .onChange((value) => {
         console.log(`Boundary repulsion set to ${value}`);

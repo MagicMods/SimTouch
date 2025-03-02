@@ -80,7 +80,12 @@ class CircularBoundary {
   }
 
   // Standard collision for particle system
-  resolveCollision(position, velocity, particleRadius = 0) {
+  resolveCollision(
+    position,
+    velocity,
+    particleRadius = 0,
+    externalDamping = null
+  ) {
     const dx = position[0] - this.centerX;
     const dy = position[1] - this.centerY;
     const dist = Math.sqrt(dx * dx + dy * dy);
@@ -88,6 +93,10 @@ class CircularBoundary {
     // Normalize direction vector (points from center to particle)
     const nx = dx / dist;
     const ny = dy / dist;
+
+    // Use provided damping if available, otherwise use internal damping
+    const effectiveDamping =
+      externalDamping !== null ? externalDamping : this.damping;
 
     // Case 1: Collision - particle crosses boundary
     if (dist + particleRadius > this.radius) {
@@ -114,9 +123,9 @@ class CircularBoundary {
           const bounceVx = -this.cBoundaryRestitution * normalVx;
           const bounceVy = -this.cBoundaryRestitution * normalVy;
 
-          // Apply friction to tangential component
-          const frictionVx = this.damping * tangentialVx;
-          const frictionVy = this.damping * tangentialVy;
+          // Apply friction to tangential component using effective damping
+          const frictionVx = effectiveDamping * tangentialVx;
+          const frictionVy = effectiveDamping * tangentialVy;
 
           // Replace velocity with new components
           velocity[0] = bounceVx + frictionVx;

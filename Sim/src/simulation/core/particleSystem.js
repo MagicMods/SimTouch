@@ -280,8 +280,8 @@ class ParticleSystem {
       position[0] += velocity[0] * dt;
       position[1] += velocity[1] * dt;
 
-      // 4. Resolve boundary collision
-      this.boundary.resolveCollision(position, velocity);
+      // 4. Resolve boundary collision - REMOVE THIS FIRST CALL
+      // this.boundary.resolveCollision(position, velocity);
 
       // 5. Store updated values
       this.particles[i * 2] = position[0];
@@ -303,7 +303,13 @@ class ParticleSystem {
       const velocity = [this.velocitiesX[i], this.velocitiesY[i]];
       const radius = this.particleRadii[i];
 
-      this.boundary.resolveCollision(position, velocity, radius);
+      // Pass boundary damping to the boundary collision resolver
+      this.boundary.resolveCollision(
+        position,
+        velocity,
+        radius,
+        this.boundaryDamping
+      );
 
       // Store updated values
       this.particles[i * 2] = position[0];
