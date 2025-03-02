@@ -1,25 +1,23 @@
 import { BaseUi } from "./baseUi.js";
+import { PulseModulatorManager } from "../../input/pulseModulator.js";
+import { NetworkConfig } from "../../network/networkConfig.js";
+import { socketManager } from "../../network/socketManager.js";
 import { GridField } from "../../renderer/gridRenderModes.js";
 import { Behaviors } from "../../simulation/behaviors/organicBehavior.js";
-import { socketManager } from "../../network/socketManager.js";
-import { NetworkConfig } from "../../network/networkConfig.js";
-import { PulseModulatorManager } from "../../input/pulseModulator.js";
 
 export class LeftUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-    this.presetManager = null;
     this.controls = {};
     this.initFolders();
   }
 
   setPresetManager(presetManager) {
-    this.presetManager = presetManager;
-    this.initPresetControls(); // Move initialization here
+    // No longer needed for LeftUi
   }
 
   initFolders() {
-    this.presetFolder = this.createFolder("Presets", true); // Non-persistent folders
+    // Removed presetFolder
 
     // Persistent folders
     this.globalFolder = this.createFolder("Global");
@@ -29,7 +27,7 @@ export class LeftUi extends BaseUi {
     this.boundaryFolder = this.createFolder("Boundary");
     this.restFolder = this.createFolder("Rest State");
     this.mouseInputFolder = this.createFolder("Mouse Input");
-    this.emuInputFolder = this.createFolder("EMU Input"); // Add EMU input folder
+    this.emuInputFolder = this.createFolder("EMU Input");
     this.externalInputFolder = this.createFolder("External Input");
 
     this.udpFolder = this.createFolder("UDP Network", true); // Non-persistent folders
@@ -46,208 +44,26 @@ export class LeftUi extends BaseUi {
     this.initBoundaryControls();
     this.initRestStateControls();
     this.initMouseControls();
-    this.initEmuInputControls(); // Add this line!
-    this.initExternalInputControls(); // Add this line!
-    this.initPulseModulatorControls(); // Add this line!
+    this.initEmuInputControls();
+    this.initExternalInputControls();
+    this.initPulseModulatorControls();
 
     // Set default open states
-    this.presetFolder.open();
     this.globalFolder.open();
     this.particleFolder.open();
     this.physicsFolder.open();
     this.collisionFolder.open();
     this.mouseInputFolder.open(true);
-    this.emuInputFolder.open(true); // Open EMU folder by default
+    this.emuInputFolder.open(true);
     this.debugFolder.open(false);
-    this.externalInputFolder.open(true); // Open this folder by default
-    this.pulseModulatorFolder.open(true); // Open the pulse modulator folder by default
+    this.externalInputFolder.open(true);
+    this.pulseModulatorFolder.open(true);
   }
 
-  initPresetControls() {
-    this.presetControls = this.presetControls || {};
-
-    // Find the correct container in dat.GUI's structure
-    const containerElement =
-      this.presetFolder.domElement.querySelector(".children");
-    if (!containerElement) {
-      console.error("Could not find container element in preset folder");
-      return;
-    }
-
-    // Clear existing elements
-    containerElement.innerHTML = "";
-
-    const presetSelect = document.createElement("select");
-    presetSelect.classList = "preset-select";
-    // Add padding for better appearance
-    presetSelect.style.padding = "4px";
-    presetSelect.style.width = "100%";
-
-    this.updatePresetDropdown(presetSelect);
-
-    presetSelect.addEventListener("change", (e) => {
-      const value = e.target.value;
-      console.log("Preset selector changed to:", value);
-      this.presetManager.loadPreset(value);
-    });
-
-    this.presetControls.selector = presetSelect;
-
-    // Keep existing navigation buttons code unchanged
-    const navContainer = document.createElement("div");
-    navContainer.style.display = "flex";
-    navContainer.style.justifyContent = "space-between";
-    navContainer.style.margin = "5px 5px";
-    navContainer.style.width = "100%";
-
-    const prevButton = document.createElement("button");
-    prevButton.textContent = "← Prev";
-    prevButton.style.flex = "1";
-    prevButton.style.marginRight = "5px";
-    prevButton.addEventListener("click", () => this.navigatePreset(-1));
-
-    const nextButton = document.createElement("button");
-    nextButton.textContent = "Next →";
-    nextButton.style.flex = "1";
-    nextButton.style.marginLeft = "5px";
-    nextButton.addEventListener("click", () => this.navigatePreset(1));
-
-    navContainer.appendChild(prevButton);
-    navContainer.appendChild(nextButton);
-
-    // CREATE A NEW CONTAINER FOR PRESET MANAGEMENT BUTTONS
-    const actionsContainer = document.createElement("div");
-    actionsContainer.style.display = "flex";
-    actionsContainer.style.justifyContent = "space-between";
-    actionsContainer.style.margin = "5px 5px";
-    actionsContainer.style.width = "100%";
-    actionsContainer.style.flexWrap = "wrap"; // Allow wrapping if needed
-
-    // SAVE BUTTON
-    const saveButton = document.createElement("button");
-    saveButton.textContent = "Save";
-    saveButton.style.flex = "1";
-    saveButton.style.margin = "0 2px";
-    saveButton.addEventListener("click", () => {
-      const presetName = prompt("Enter preset name:");
-      if (this.presetManager.savePreset(presetName)) {
-        this.updatePresetDropdown(presetSelect);
-        presetSelect.value = this.presetManager.getSelectedPreset();
-        alert(`Preset "${presetName}" saved.`);
-      }
-    });
-
-    // DELETE BUTTON
-    const deleteButton = document.createElement("button");
-    deleteButton.textContent = "Delete";
-    deleteButton.style.flex = "1";
-    deleteButton.style.margin = "0 2px";
-    deleteButton.addEventListener("click", () => {
-      const current = this.presetManager.getSelectedPreset();
-      console.log("Attempting to delete preset:", current);
-      if (this.presetManager.deletePreset(current)) {
-        this.updatePresetDropdown(presetSelect);
-        presetSelect.value = this.presetManager.getSelectedPreset();
-        alert(`Preset "${current}" deleted.`);
-      }
-    });
-
-    // EXPORT BUTTON
-    const exportButton = document.createElement("button");
-    exportButton.textContent = "Export All";
-    exportButton.style.flex = "1";
-    exportButton.style.margin = "0 2px";
-    exportButton.addEventListener("click", () => {
-      this.presetManager.exportPresets();
-    });
-
-    // IMPORT BUTTON
-    const importButton = document.createElement("button");
-    importButton.textContent = "Import";
-    importButton.style.flex = "1";
-    importButton.style.margin = "0 2px";
-    importButton.addEventListener("click", () => {
-      // Create hidden file input element
-      const fileInput = document.createElement("input");
-      fileInput.type = "file";
-      fileInput.accept = ".json";
-      fileInput.style.display = "none";
-      document.body.appendChild(fileInput);
-
-      // Set up file input handling
-      fileInput.addEventListener("change", (event) => {
-        const file = event.target.files[0];
-        if (file) {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-            const result = this.presetManager.importPresets(e.target.result);
-            if (result) {
-              // Update the preset dropdown
-              this.updatePresetDropdown(this.presetControls.selector);
-              alert(
-                `Successfully imported presets. Added or updated ${result} presets.`
-              );
-            } else {
-              alert("Failed to import presets. Check console for details.");
-            }
-          };
-          reader.readAsText(file);
-        }
-        document.body.removeChild(fileInput);
-      });
-
-      // Trigger file input
-      fileInput.click();
-    });
-
-    // Add buttons to the container
-    actionsContainer.appendChild(saveButton);
-    actionsContainer.appendChild(deleteButton);
-    actionsContainer.appendChild(exportButton);
-    actionsContainer.appendChild(importButton);
-
-    // Use the correct container for adding elements
-    containerElement.appendChild(actionsContainer);
-    containerElement.appendChild(presetSelect);
-    containerElement.appendChild(navContainer);
-  }
-
-  // Add navigation method
-  navigatePreset(direction) {
-    const options = this.presetManager.getPresetOptions();
-    const currentPreset = this.presetManager.getSelectedPreset();
-    let currentIndex = options.indexOf(currentPreset);
-
-    // Calculate new index with wrapping
-    let newIndex = (currentIndex + direction + options.length) % options.length;
-    const newPreset = options[newIndex];
-
-    // Load the new preset
-    console.log(`Navigating from "${currentPreset}" to "${newPreset}"`);
-    this.presetManager.loadPreset(newPreset);
-
-    // Update the dropdown display
-    this.presetControls.selector.value = newPreset;
-  }
-
-  updatePresetDropdown(selectElement) {
-    const options = this.presetManager.getPresetOptions();
-    console.log("Updating preset dropdown with options:", options);
-
-    // Clear existing options
-    selectElement.innerHTML = "";
-
-    // Add new options
-    options.forEach((preset) => {
-      const option = document.createElement("option");
-      option.value = preset;
-      option.textContent = preset;
-      selectElement.appendChild(option);
-    });
-
-    // Set current value
-    selectElement.value = this.presetManager.getSelectedPreset();
-  }
+  // Removed preset-related methods:
+  // - initPresetControls()
+  // - navigatePreset()
+  // - updatePresetDropdown()
 
   //#region Control
   initGlobalControls() {

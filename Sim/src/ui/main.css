@@ -31,6 +31,13 @@ canvas {
     right: 0;
 }
 
+.gui-container-middle {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
 /* Stats container */
 .stats-container {
     position: absolute;
