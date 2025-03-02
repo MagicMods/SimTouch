@@ -1,8 +1,18 @@
 class MouseForces {
-  constructor({ impulseRadius = 0.75, impulseMag = 0.08 } = {}) {
+  constructor({
+    impulseRadius = 0.75,
+    impulseMag = 0.08,
+    overrideRadius = 0.15, // Inner zone where mouse completely overrides other forces
+    overrideStrength = 2.0, // How strongly to override other forces
+  } = {}) {
     // Force parameters
     this.impulseRadius = impulseRadius;
     this.impulseMag = impulseMag;
+
+    // Add new properties
+    this.overrideRadius = overrideRadius;
+    this.overrideStrength = overrideStrength;
+    this.isActive = false; // Track if mouse is currently influencing the system
 
     // Unified mouse state
     this.mouseState = {
@@ -150,8 +160,12 @@ class MouseForces {
   }
 
   update(particleSystem) {
+    // Reset activity flag at the start of each frame
+    this.isActive = false;
+
     // Process regular mouse input when button is held down
     if (this.mouseState.isPressed && this.mouseState.position) {
+      this.isActive = true;
       const pos = this.mouseState.position;
 
       // Apply appropriate force based on button
@@ -168,6 +182,7 @@ class MouseForces {
 
     // Process external input if enabled
     if (this.externalInputEnabled && this.externalMouseState.isPressed) {
+      this.isActive = true;
       const pos = this.externalMouseState.position;
 
       // Apply appropriate force based on button - CONTINUOUSLY
@@ -192,7 +207,6 @@ class MouseForces {
   }
 
   applyImpulseAt(particleSystem, x, y, mode = null) {
-    // console.log(`Applying ${mode} force at (${x.toFixed(2)}, ${y.toFixed(2)})`);
     const { particles, velocitiesX, velocitiesY, numParticles } =
       particleSystem;
     // Get inverse of velocity damping to counteract system damping
@@ -206,19 +220,41 @@ class MouseForces {
       const dist = Math.hypot(dx, dy);
 
       if (dist < this.impulseRadius && dist > 0) {
-        const factor = Math.pow(1 - dist / this.impulseRadius, 2);
-        // Apply damping compensation to force
-        let force = factor * this.impulseMag * dampingCompensation;
-
-        if (mode === "attract") {
-          force = -force;
-        }
-
+        // Calculate normalized direction
         const nx = dx / dist;
         const ny = dy / dist;
 
-        velocitiesX[i] += force * nx;
-        velocitiesY[i] += force * ny;
+        // Different behavior based on distance from mouse
+        if (dist < this.overrideRadius) {
+          // INNER ZONE: Complete override of velocities
+          const overrideFactor = Math.pow(1 - dist / this.overrideRadius, 2);
+
+          if (mode === "attract") {
+            // For attraction - directly set velocity toward mouse
+            const strength =
+              this.impulseMag * this.overrideStrength * overrideFactor;
+            velocitiesX[i] = -nx * strength * dampingCompensation;
+            velocitiesY[i] = -ny * strength * dampingCompensation;
+          } else {
+            // For repulsion - directly set velocity away from mouse
+            const strength =
+              this.impulseMag * this.overrideStrength * overrideFactor;
+            velocitiesX[i] = nx * strength * dampingCompensation;
+            velocitiesY[i] = ny * strength * dampingCompensation;
+          }
+        } else {
+          // OUTER ZONE: Traditional additive force with stronger magnitude
+          const factor = Math.pow(1 - dist / this.impulseRadius, 2);
+          // Apply enhanced force with damping compensation
+          let force = factor * this.impulseMag * dampingCompensation * 1.5;
+
+          if (mode === "attract") {
+            force = -force;
+          }
+
+          velocitiesX[i] += force * nx;
+          velocitiesY[i] += force * ny;
+        }
       }
     }
   }
@@ -248,6 +284,53 @@ class MouseForces {
         velocitiesX[i] += force * ndx;
         velocitiesY[i] += force * ndy;
       }
+    }
+  }
+
+  // New method to temporarily reduce other forces when mouse is active
+  neutralizeOtherForces(particleSystem) {
+    if (!this.isActive) return;
+
+    // Temporarily scale down gravity when mouse is active
+    if (particleSystem.gravity && particleSystem.gravity.enabled) {
+      // Store original strength if not already stored
+      if (!this._originalGravity) {
+        this._originalGravity = particleSystem.gravity.strength;
+      }
+
+      // Reduce gravity by 80% during mouse interaction
+      particleSystem.gravity.strength = this._originalGravity * 0.2;
+    }
+
+    // Similarly handle turbulence if needed
+    if (particleSystem.turbulence) {
+      if (!this._originalTurbulenceStrength) {
+        this._originalTurbulenceStrength = particleSystem.turbulence.strength;
+      }
+
+      // Reduce turbulence by 80%
+      particleSystem.turbulence.strength =
+        this._originalTurbulenceStrength * 0.2;
+    }
+  }
+
+  // Method to restore normal forces when mouse is inactive
+  restoreOtherForces(particleSystem) {
+    if (this.isActive) return;
+
+    // Restore original gravity
+    if (particleSystem.gravity && this._originalGravity !== undefined) {
+      particleSystem.gravity.strength = this._originalGravity;
+      this._originalGravity = undefined;
+    }
+
+    // Restore original turbulence
+    if (
+      particleSystem.turbulence &&
+      this._originalTurbulenceStrength !== undefined
+    ) {
+      particleSystem.turbulence.strength = this._originalTurbulenceStrength;
+      this._originalTurbulenceStrength = undefined;
     }
   }
 }

@@ -167,6 +167,13 @@ class ParticleSystem {
   step() {
     const dt = this.timeStep * this.timeScale;
 
+    // Allow mouse forces to neutralize other forces if active
+    if (this.mouseForces.isActive) {
+      this.mouseForces.neutralizeOtherForces(this);
+    } else {
+      this.mouseForces.restoreOtherForces(this);
+    }
+
     // Update the time for field generators
     if (this.turbulence) {
       this.turbulence.update(dt);
