@@ -3,6 +3,7 @@ import { GridField } from "../../renderer/gridRenderModes.js";
 import { Behaviors } from "../../simulation/behaviors/organicBehavior.js";
 import { socketManager } from "../../network/socketManager.js";
 import { NetworkConfig } from "../../network/networkConfig.js";
+import { PulseModulatorManager } from "../../input/pulseModulator.js";
 
 export class LeftUi extends BaseUi {
   constructor(main, container) {
@@ -33,6 +34,7 @@ export class LeftUi extends BaseUi {
 
     this.udpFolder = this.createFolder("UDP Network", true); // Non-persistent folders
     this.debugFolder = this.createFolder("Debug", true); // Non-persistent folders
+    this.pulseModulatorFolder = this.createFolder("Pulse Modulator", true); // Non-persistent folder
 
     // Initialize all controls
     this.initUDPControls();
@@ -46,6 +48,7 @@ export class LeftUi extends BaseUi {
     this.initMouseControls();
     this.initEmuInputControls(); // Add this line!
     this.initExternalInputControls(); // Add this line!
+    this.initPulseModulatorControls(); // Add this line!
 
     // Set default open states
     this.presetFolder.open();
@@ -57,6 +60,7 @@ export class LeftUi extends BaseUi {
     this.emuInputFolder.open(true); // Open EMU folder by default
     this.debugFolder.open(false);
     this.externalInputFolder.open(true); // Open this folder by default
+    this.pulseModulatorFolder.open(true); // Open the pulse modulator folder by default
   }
 
   initPresetControls() {
@@ -883,4 +887,155 @@ export class LeftUi extends BaseUi {
         });
     }
   } //#endregion
+
+  initPulseModulatorControls() {
+    // Initialize modulator manager
+    this.modulatorManager = new PulseModulatorManager();
+
+    // Add button to create new modulator
+    const addButton = { add: () => this.addPulseModulator() };
+    this.pulseModulatorFolder.add(addButton, "add").name("+ Add Modulator");
+
+    // Add one modulator by default
+    this.addPulseModulator();
+  }
+
+  // Get available control targets
+  getControlTargets() {
+    const targets = ["None"];
+
+    // Collect controls from various folders
+    if (this.controls.fieldType) targets.push("Grid Field");
+    targets.push("Particle Size"); // Always include this one for a clear visual effect
+    targets.push("Gravity Strength");
+    targets.push("Repulsion");
+
+    return targets;
+  }
+
+  // Find the actual controller for a given target name
+  getControllerForTarget(targetName) {
+    switch (targetName) {
+      case "Grid Field":
+        return {
+          controller: this.controls.fieldType,
+          property: "value",
+          min: 0,
+          max: Object.values(GridField).length - 1,
+        };
+
+      case "Particle Size":
+        // Access the controller directly from main
+        return {
+          controller: {
+            object: this.main.particleSystem,
+            property: "particleRadius",
+            updateDisplay: () => {}, // No-op since we're updating directly
+          },
+          property: "particleRadius",
+          min: 0.005,
+          max: 0.03,
+        };
+
+      case "Gravity Strength":
+        // Access gravity directly
+        return {
+          controller: {
+            object: this.main.particleSystem.gravity,
+            property: "strength",
+            updateDisplay: () => {}, // No-op since we're updating directly
+          },
+          property: "strength",
+          min: 0,
+          max: 20,
+        };
+
+      case "Repulsion":
+        // Access collision system directly
+        return {
+          controller: {
+            object: this.main.particleSystem.collisionSystem,
+            property: "repulsion",
+            updateDisplay: () => {}, // No-op since we're updating directly
+          },
+          property: "repulsion",
+          min: 0,
+          max: 5,
+        };
+
+      default:
+        return null;
+    }
+  }
+
+  addPulseModulator() {
+    // Create a modulator
+    const modulator = this.modulatorManager.addModulator();
+
+    // Create a subfolder for this modulator
+    const subfolder = this.pulseModulatorFolder.addFolder(
+      `Modulator ${modulator.id}`
+    );
+
+    // Add controls for the modulator
+    subfolder.add(modulator, "active").name("Active");
+    subfolder
+      .add(modulator, "type", ["sine", "square", "triangle"])
+      .name("Wave Type");
+    subfolder.add(modulator, "speed", 0.1, 5).name("Speed");
+
+    // Min/Max controls
+    subfolder.add(modulator, "min", -10, 10).name("Min Value");
+    subfolder.add(modulator, "max", -10, 10).name("Max Value");
+
+    // Target selector
+    const targetSelector = { target: "None" };
+    const targetOptions = this.getControlTargets();
+
+    subfolder
+      .add(targetSelector, "target", targetOptions)
+      .name("Target Parameter")
+      .onChange((value) => {
+        if (value === "None") {
+          modulator.targetControl = null;
+          modulator.targetProperty = null;
+          return;
+        }
+
+        const target = this.getControllerForTarget(value);
+        if (target) {
+          modulator.targetControl = target.controller;
+          modulator.targetProperty = target.property;
+
+          // Update min/max based on the target's range
+          if (target.min !== undefined && target.max !== undefined) {
+            modulator.min = target.min;
+            modulator.max = target.max;
+
+            // Update the displays for min/max by finding controls by property name
+            const minController = subfolder.controllers.find(
+              (c) => c.property === "min"
+            );
+            const maxController = subfolder.controllers.find(
+              (c) => c.property === "max"
+            );
+
+            if (minController) minController.updateDisplay();
+            if (maxController) maxController.updateDisplay();
+          }
+        }
+      });
+
+    // Remove button
+    const removeButton = {
+      remove: () => {
+        this.modulatorManager.removeModulator(modulator.id);
+        // Proper way to destroy a folder in lil-gui
+        subfolder.destroy();
+      },
+    };
+    subfolder.add(removeButton, "remove").name("- Remove");
+
+    return modulator;
+  }
 }
