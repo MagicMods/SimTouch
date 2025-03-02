@@ -31,9 +31,30 @@ canvas {
     right: 0;
 }
 
+/* New positioning classes */
+.gui-container-left-top {
+    position: absolute;
+    top: 0;
+    left: 245px; /* Position after the main left panel */
+}
+
+.gui-container-right-top {
+    position: absolute;
+    top: 0;
+    right: 245px; /* Position before the main right panel */
+}
+
+/* Existing middle positions - keep for reference/compatibility */
 .gui-container-middle {
     position: absolute;
     top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+}
+
+.gui-container-middle-bottom {
+    position: absolute;
+    top: 100px; /* Position it below the Presets panel */
     left: 50%;
     transform: translateX(-50%);
 }
@@ -105,12 +126,15 @@ canvas {
 }
 
 .preset-select {
-    background: #333333;
-    border: 1px solid #7a7a7a;
-    color: white;
+    width: calc(100% - 8px); /* Adjust width to account for margins */
+    padding: 6px;
+    margin: 4px 4px; /* Keep horizontal margins */
+    border: 1px solid #242424;
     border-radius: 4px;
+    background: #3b3b3b;
     text-align: center;
-    border-radius: 4px;
+    font-size: 10px;
+    color: white;
 }
 
 /* Notification message */
@@ -132,17 +156,7 @@ canvas {
 }
 
 
-.turb-preset-select {
-  width: 100%;
-  padding: 6px;
-  margin: 2px 0;
-  border: 1px solid #242424;
-  border-radius: 4px;
-  background: #3b3b3b;
-  text-align: center;
-  font-size: 10px;
-  color: white;
-}
+
 
 /* Override lil-gui colors */
 .lil-gui {

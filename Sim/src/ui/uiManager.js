@@ -1,6 +1,7 @@
 import { LeftUi } from "./panels/leftUi.js";
 import { RightUi } from "./panels/rightUi.js";
 import { PresetUi } from "./panels/presetUi.js";
+import { InputUi } from "./panels/inputUi.js";
 import { PresetManager } from "../util/presetManager.js";
 import Stats from "../util/statsModule.js";
 
@@ -12,12 +13,16 @@ export class UiManager {
     // Create GUI containers
     this.leftContainer = this.createContainer("left");
     this.rightContainer = this.createContainer("right");
-    this.presetContainer = this.createContainer("middle"); // Use the middle for preset controls
 
-    // Initialize UI panels first
+    // Update: Position presets on left-top, inputs on right-top
+    this.presetContainer = this.createContainer("left-top");
+    this.inputContainer = this.createContainer("right-top");
+
+    // Initialize UI panels
     this.leftUi = new LeftUi(main, this.leftContainer);
     this.rightUi = new RightUi(main, this.rightContainer);
     this.presetUi = new PresetUi(main, this.presetContainer);
+    this.inputUi = new InputUi(main, this.inputContainer);
 
     // Initialize PresetManager with both GUI instances
     this.presetManager = new PresetManager(this.leftUi.gui, this.rightUi.gui);
@@ -53,6 +58,7 @@ export class UiManager {
     this.leftUi.dispose();
     this.rightUi.dispose();
     this.presetUi.dispose();
+    this.inputUi.dispose();
     if (this.stats) {
       this.stats.dom.remove();
       this.stats = null;

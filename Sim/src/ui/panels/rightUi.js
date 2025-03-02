@@ -86,7 +86,7 @@ class RightUi extends BaseUi {
 
     // Create select dropdown
     const presetSelect = document.createElement("select");
-    presetSelect.classList.add("turb-preset-select");
+    presetSelect.classList.add("preset-select");
     presetSelect.style.padding = "4px";
     presetSelect.style.width = "100%";
     presetSelect.style.margin = "5px 0";
@@ -215,7 +215,7 @@ class RightUi extends BaseUi {
 
     // Create select dropdown
     const presetSelect = document.createElement("select");
-    presetSelect.classList.add("turb-preset-select");
+    presetSelect.classList.add("preset-select");
     presetSelect.style.padding = "4px";
     presetSelect.style.width = "100%";
     presetSelect.style.margin = "5px 0";
