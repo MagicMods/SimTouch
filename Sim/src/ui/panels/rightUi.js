@@ -508,5 +508,41 @@ class RightUi extends BaseUi {
 
     this.gridFolder.open(false);
   } //#endregion
+
+  /**
+   * Get controllers that can be targeted by pulse modulators
+   * @returns {Object} Map of target names to controllers
+   */
+  getControlTargets() {
+    const targets = {};
+
+    // Turbulence controls
+    if (this.turbulenceStrengthController)
+      targets["Turbulence Strength"] = this.turbulenceStrengthController;
+    if (this.turbulenceScaleController)
+      targets["Turbulence Scale"] = this.turbulenceScaleController;
+    if (this.turbulenceSpeedController)
+      targets["Turbulence Speed"] = this.turbulenceSpeedController;
+
+    // Voronoi controls
+    if (this.voronoiStrengthController)
+      targets["Voronoi Strength"] = this.voronoiStrengthController;
+    if (this.voronoiSpeedController)
+      targets["Voronoi Speed"] = this.voronoiSpeedController;
+
+    // Input controls
+    if (this.inputStrengthController)
+      targets["Input Strength"] = this.inputStrengthController;
+    if (this.inputSmoothingController)
+      targets["Input Smoothing"] = this.inputSmoothingController;
+
+    // Rendering controls
+    if (this.colorSaturationController)
+      targets["Color Saturation"] = this.colorSaturationController;
+    if (this.colorValueController)
+      targets["Color Value"] = this.colorValueController;
+
+    return targets;
+  }
 }
 export { RightUi };

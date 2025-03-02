@@ -1,100 +1,238 @@
-export class PulseModulator {
-  constructor(id, params = {}) {
-    this.id = id;
-    this.type = params.type || "sine"; // sine, square, triangle
-    this.speed = params.speed || 1.0;
-    this.min = params.min !== undefined ? params.min : 0;
-    this.max = params.max !== undefined ? params.max : 1;
-    this.targetControl = params.targetControl || null;
-    this.targetProperty = params.targetProperty || null;
-    this.active = params.active !== undefined ? params.active : true;
-    this.phase = params.phase || 0;
+/**
+ * Manages pulse modulators that can modify UI parameters over time
+ */
+export class PulseModulatorManager {
+  constructor() {
+    this.modulators = [];
+    this.targets = {};
+    this.targetRanges = {}; // Store min/max ranges for targets
+    this.lastUpdateTime = Date.now();
   }
 
-  getSignalValue() {
-    const time = (Date.now() / 1000) * this.speed + this.phase;
-    let value = 0;
-
-    switch (this.type) {
-      case "sine":
-        value = Math.sin(time * Math.PI * 2) * 0.5 + 0.5; // Map to 0-1
-        break;
-      case "square":
-        value = Math.sin(time * Math.PI * 2) >= 0 ? 1 : 0;
-        break;
-      case "triangle":
-        value = Math.abs((time % 2) - 1); // Triangle wave 0-1
-        break;
+  /**
+   * Add a target controller that can be modulated
+   * @param {string} name - Name of the target
+   * @param {object} controller - Controller object that can be modulated
+   */
+  addTarget(name, controller) {
+    // Make sure the controller has getValue and setValue methods
+    if (!controller.getValue) {
+      controller.getValue = function () {
+        return this.object[this.property];
+      };
     }
 
-    // Map from 0-1 to min-max
-    return this.min + value * (this.max - this.min);
+    if (!controller.setValue) {
+      controller.setValue = function (value) {
+        this.object[this.property] = value;
+        if (this.updateDisplay) this.updateDisplay();
+      };
+    }
+
+    this.targets[name] = controller;
   }
 
+  /**
+   * Add a target controller with range information
+   * @param {string} name - Name of the target
+   * @param {object} controller - Controller object that can be modulated
+   * @param {number} min - Minimum valid value
+   * @param {number} max - Maximum valid value
+   */
+  addTargetWithRange(name, controller, min, max) {
+    this.addTarget(name, controller);
+    this.targetRanges[name] = { min, max };
+  }
+
+  /**
+   * Add a target controller with full range information
+   * @param {string} name - Name of the target
+   * @param {object} controller - Controller object that can be modulated
+   * @param {number} min - Minimum valid value
+   * @param {number} max - Maximum valid value
+   * @param {number} step - Step value for the controller
+   */
+  addTargetWithRangeFull(name, controller, min, max, step) {
+    this.addTarget(name, controller);
+    this.targetRanges[name] = { min, max, step };
+  }
+
+  /**
+   * Get information about a target including its range
+   * @param {string} name - Target name
+   * @returns {object} Target information
+   */
+  getTargetInfo(name) {
+    return {
+      controller: this.targets[name],
+      ...(this.targetRanges[name] || {}),
+    };
+  }
+
+  /**
+   * Get all available target names
+   * @returns {string[]} Array of target names
+   */
+  getTargetNames() {
+    return Object.keys(this.targets);
+  }
+
+  /**
+   * Create a new modulator and add it to the manager
+   * @returns {PulseModulator} The created modulator
+   */
+  createModulator() {
+    const modulator = new PulseModulator(this);
+    this.modulators.push(modulator);
+    return modulator;
+  }
+
+  /**
+   * Remove a modulator by index
+   * @param {number} index - Index of modulator to remove
+   * @returns {boolean} Success
+   */
+  removeModulator(index) {
+    if (index >= 0 && index < this.modulators.length) {
+      const modulator = this.modulators[index];
+
+      // Make sure modulator is disabled
+      modulator.enabled = false;
+
+      // Remove it from the array
+      this.modulators.splice(index, 1);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * Update all modulators
+   */
   update() {
-    if (!this.active || !this.targetControl || !this.targetProperty) return;
+    const now = Date.now();
+    const deltaTime = (now - this.lastUpdateTime) / 1000; // seconds
+    this.lastUpdateTime = now;
 
-    // Get the current signal value
-    const value = this.getSignalValue();
-
-    // Update the target property
-    if (this.targetControl.object && this.targetProperty) {
-      this.targetControl.object[this.targetProperty] = value;
-      this.targetControl.updateDisplay();
+    for (const modulator of this.modulators) {
+      if (modulator.enabled) {
+        modulator.update(deltaTime);
+      }
     }
   }
 }
 
-export class PulseModulatorManager {
-  constructor() {
-    this.modulators = new Map();
-    this.nextId = 1;
-    this.animationFrameId = null;
-    this.updateBound = this.update.bind(this);
+/**
+ * A pulse modulator that can modify a parameter over time
+ */
+class PulseModulator {
+  constructor(manager) {
+    this.manager = manager;
+    this.enabled = false;
+    this.targetName = "";
+    this.type = "sine";
+    this.frequency = 1.0;
+    this.phase = 0;
+    this.min = 0; // New min property
+    this.max = 1; // New max property
+    this.time = 0;
+    this.targetController = null;
   }
 
-  addModulator(params = {}) {
-    const id = this.nextId++;
-    const modulator = new PulseModulator(id, params);
-    this.modulators.set(id, modulator);
-
-    if (this.modulators.size === 1) {
-      this.startUpdates();
+  /**
+   * Set the target to modulate
+   * @param {string} targetName - Name of the target to modulate
+   */
+  setTarget(targetName) {
+    // If changing targets, reset the previous one
+    if (this.targetController && this.enabled) {
+      try {
+        const oldValue = this.targetController.getValue();
+        console.log(`Resetting target ${this.targetName} to ${oldValue}`);
+        this.targetController.setValue(oldValue);
+      } catch (e) {
+        console.warn("Could not reset previous target:", e);
+      }
     }
 
-    return modulator;
+    this.targetName = targetName;
+    this.targetController = this.manager.targets[targetName];
+
+    // Set min/max from target range if available
+    const targetInfo = this.manager.getTargetInfo(targetName);
+    if (
+      targetInfo &&
+      targetInfo.min !== undefined &&
+      targetInfo.max !== undefined
+    ) {
+      this.min = targetInfo.min;
+      this.max = targetInfo.max;
+    }
+
+    console.log(
+      `Set target ${targetName} with range: ${this.min} - ${this.max}`
+    );
   }
 
-  removeModulator(id) {
-    const result = this.modulators.delete(id);
+  /**
+   * Update the modulator
+   * @param {number} deltaTime - Time since last update in seconds
+   */
+  update(deltaTime) {
+    if (!this.targetController || !this.enabled) return;
 
-    if (this.modulators.size === 0) {
-      this.stopUpdates();
+    this.time += deltaTime;
+
+    try {
+      // Calculate modulation and apply to target
+      const value = this.calculateModulation(this.time);
+
+      // Map from 0-1 to min-max
+      const mappedValue = this.min + value * (this.max - this.min);
+
+      // Add debug logging
+      // console.log(`Modulating ${this.targetName}: value=${mappedValue}`);
+
+      this.targetController.setValue(mappedValue);
+    } catch (e) {
+      console.error(`Error updating modulator for ${this.targetName}:`, e);
+      this.enabled = false; // Disable on error
     }
-
-    return result;
   }
 
-  startUpdates() {
-    if (!this.animationFrameId) {
-      this.update();
+  /**
+   * Calculate the modulation value based on time and settings
+   * @param {number} time - Current time in seconds
+   * @returns {number} Modulation value 0-1
+   */
+  calculateModulation(time) {
+    const t = time * this.frequency * Math.PI * 2 + this.phase;
+
+    let value = 0;
+    switch (this.type) {
+      case "sine":
+        value = Math.sin(t) * 0.5 + 0.5; // Map to 0-1
+        break;
+      case "square":
+        value = Math.sin(t) >= 0 ? 1 : 0;
+        break;
+      case "triangle":
+        value = Math.abs(((t / Math.PI) % 2) - 1); // Map to 0-1
+        break;
+      case "sawtooth":
+        value = ((t / Math.PI) % 2) / 2 + 0.5; // Map to 0-1
+        break;
+      default:
+        value = Math.sin(t) * 0.5 + 0.5;
     }
+
+    return value; // Return 0-1 value
   }
 
-  stopUpdates() {
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
-    }
-  }
-
-  update() {
-    // Update all modulators
-    for (const modulator of this.modulators.values()) {
-      modulator.update();
-    }
-
-    // Request next frame
-    this.animationFrameId = requestAnimationFrame(this.updateBound);
+  /**
+   * Disable modulation and clean up
+   */
+  disable() {
+    this.enabled = false;
   }
 }

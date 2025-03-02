@@ -1,6 +1,4 @@
 import { BaseUi } from "./baseUi.js";
-import { PulseModulatorManager } from "../../input/pulseModulator.js";
-import { NetworkConfig } from "../../network/networkConfig.js";
 import { socketManager } from "../../network/socketManager.js";
 import { GridField } from "../../renderer/gridRenderModes.js";
 import { Behaviors } from "../../simulation/behaviors/organicBehavior.js";
@@ -25,12 +23,15 @@ export class LeftUi extends BaseUi {
     this.boundaryFolder = this.createFolder("Boundary");
     this.restFolder = this.createFolder("Rest State");
 
-    this.udpFolder = this.createFolder("UDP Network", true); // Non-persistent folders
+    // Remove udpFolder
+    // this.udpFolder = this.createFolder("UDP Network", true);
+
     this.debugFolder = this.createFolder("Debug", true); // Non-persistent folders
-    this.pulseModulatorFolder = this.createFolder("Pulse Modulator", true); // Non-persistent folder
 
     // Initialize all controls
-    this.initUDPControls();
+    // Remove initUDPControls call
+    // this.initUDPControls();
+
     this.initDebugControls();
     this.initGlobalControls();
     this.initParticleControls();
@@ -39,15 +40,12 @@ export class LeftUi extends BaseUi {
     this.initBoundaryControls();
     this.initRestStateControls();
 
-    this.initPulseModulatorControls();
-
     // Set default open states
     this.globalFolder.open();
     this.particleFolder.open();
     this.physicsFolder.open();
     this.collisionFolder.open();
     this.debugFolder.open(false);
-    this.pulseModulatorFolder.open(true);
   }
 
   //#region Control
@@ -189,7 +187,8 @@ export class LeftUi extends BaseUi {
         { strength: this.main.particleSystem.gravity.strength },
         "strength",
         0,
-        20
+        20,
+        0.1 // Adding step information
       )
       .name("Gravity Strength")
       .onChange((value) => {
@@ -327,101 +326,6 @@ export class LeftUi extends BaseUi {
   }
   //#endregion
 
-  //#region UDP
-  initUDPControls() {
-    const socket = socketManager;
-    if (!socket) return;
-
-    // Create local control object
-    const controls = {
-      enabled: socket.enable,
-      debugSend: socket.debugSend,
-      debugReceive: socket.debugReceive,
-    };
-
-    // Add status display
-    const status = {
-      connection: "Disconnected",
-      lastMessage: "None",
-      messageCount: 0,
-    };
-    // Add enable toggle
-    this.udpFolder
-      .add(controls, "enabled")
-      .name("Enable Network")
-      .onChange((value) => {
-        socket.enable = value;
-        if (value && !socket.isConnected) {
-          socket.connect();
-        } else if (!value && socket.isConnected) {
-          socket.disconnect();
-        }
-      });
-
-    const statusController = this.udpFolder
-      .add(status, "connection")
-      .name("Status")
-      .disable();
-
-    setInterval(() => {
-      status.connection = socket.isConnected ? "Connected" : "Disconnected";
-      statusController.updateDisplay();
-    }, 1000);
-
-    this.udpFolder
-      .add({ host: NetworkConfig.UDP_HOST }, "host")
-      .name("UDP Host")
-      .onChange((value) => {
-        console.log(`Note: UDP host changes require server restart`);
-      });
-
-    this.udpFolder
-      .add({ port: NetworkConfig.UDP_PORT }, "port", 1024, 65535, 1)
-      .name("UDP Output Port")
-      .onChange((value) => {
-        console.log(`Note: UDP input port changes require server restart`);
-      });
-    // Add port configuration
-    this.udpFolder
-      .add({ port: NetworkConfig.UDP_INPUT_PORT }, "port", 1024, 65535, 1)
-      .name("UDP Input Port")
-      .onChange((value) => {
-        console.log(`Note: UDP input port changes require server restart`);
-      });
-
-    // // Add debug receive toggle
-    // this.udpFolder
-    //   .add(controls, "debugReceive")
-    //   .name("Debug Mouse Input")
-    //   .onChange((value) => {
-    //     socket.debugReceive = value;
-    //   });
-
-    // const lastMessageController = this.udpFolder
-    //   .add(status, "lastMessage")
-    //   .name("Last Input")
-    //   .disable();
-
-    // const msgCountController = this.udpFolder
-    //   .add(status, "messageCount")
-    //   .name("Message Count")
-    //   .disable();
-
-    // // Track message count
-    // socket.addMouseHandler((x, y) => {
-    //   status.messageCount++;
-    //   status.lastMessage = `X: ${x}, Y: ${y}`;
-    //   lastMessageController.updateDisplay();
-    //   msgCountController.updateDisplay();
-    // });
-
-    // // Update status periodically
-    // setInterval(() => {
-    //   status.connection = socket.isConnected ? "Connected" : "Disconnected";
-    //   statusController.updateDisplay();
-    // }, 1000);
-  }
-  //#endregion
   //#region Debug
   initDebugControls() {
     const particles = this.main.particleSystem;
@@ -492,18 +396,6 @@ export class LeftUi extends BaseUi {
     }
   } //#endregion
 
-  initPulseModulatorControls() {
-    // Initialize modulator manager
-    this.modulatorManager = new PulseModulatorManager();
-
-    // Add button to create new modulator
-    const addButton = { add: () => this.addPulseModulator() };
-    this.pulseModulatorFolder.add(addButton, "add").name("+ Add Modulator");
-
-    // Add one modulator by default
-    this.addPulseModulator();
-  }
-
   // Get available control targets
   getControlTargets() {
     const targets = ["None"];
@@ -556,6 +448,7 @@ export class LeftUi extends BaseUi {
           property: "particleRadius",
           min: 0.005,
           max: 0.03,
+          step: 0.001, // Adding step information
         };
 
       case "Gravity Strength":
@@ -568,6 +461,7 @@ export class LeftUi extends BaseUi {
           property: "strength",
           min: 0,
           max: 20,
+          step: 0.1, // Adding step information
         };
 
       case "Repulsion":
@@ -580,6 +474,7 @@ export class LeftUi extends BaseUi {
           property: "repulsion",
           min: 0,
           max: 5,
+          step: 0.01, // Adding step information
         };
 
       // Global section
@@ -593,6 +488,7 @@ export class LeftUi extends BaseUi {
           property: "maxDensity",
           min: 0.1,
           max: 10,
+          step: 0.1, // Adding step information
         };
 
       case "Animation Speed":
@@ -605,6 +501,7 @@ export class LeftUi extends BaseUi {
           property: "timeScale",
           min: 0,
           max: 2,
+          step: 0.1, // Adding step information
         };
 
       // Boundary section
@@ -623,6 +520,7 @@ export class LeftUi extends BaseUi {
           property: "radius",
           min: 0.3,
           max: 0.55,
+          step: 0.005, // Adding step information
         };
 
       case "Wall Repulsion":
@@ -635,6 +533,7 @@ export class LeftUi extends BaseUi {
           property: "boundaryRepulsion",
           min: 0,
           max: 20,
+          step: 0.01, // Adding step information
         };
 
       // Turbulence section
@@ -648,6 +547,7 @@ export class LeftUi extends BaseUi {
           property: "strength",
           min: 0,
           max: 10,
+          step: 0.1, // Adding step information
         };
 
       case "Turbulence Speed":
@@ -660,6 +560,7 @@ export class LeftUi extends BaseUi {
           property: "speed",
           min: 0,
           max: 20,
+          step: 0.1, // Adding step information
         };
 
       case "Scale Strength":
@@ -672,6 +573,7 @@ export class LeftUi extends BaseUi {
           property: "scaleStrength",
           min: 0,
           max: 1,
+          step: 0.01, // Adding step information
         };
 
       case "Inward Pull":
@@ -684,6 +586,7 @@ export class LeftUi extends BaseUi {
           property: "inwardFactor",
           min: 0,
           max: 5,
+          step: 0.1, // Adding step information
         };
 
       // Voronoi section
@@ -697,6 +600,7 @@ export class LeftUi extends BaseUi {
           property: "strength",
           min: 0,
           max: 10,
+          step: 0.1, // Adding step information
         };
 
       case "Edge Width":
@@ -709,6 +613,7 @@ export class LeftUi extends BaseUi {
           property: "edgeWidth",
           min: 0.1,
           max: 50,
+          step: 0.1, // Adding step information
         };
 
       case "Attraction":
@@ -721,6 +626,7 @@ export class LeftUi extends BaseUi {
           property: "attractionFactor",
           min: 0,
           max: 8,
+          step: 0.1, // Adding step information
         };
 
       case "Cell Count":
@@ -738,6 +644,7 @@ export class LeftUi extends BaseUi {
           property: "cellCount",
           min: 1,
           max: 10,
+          step: 1, // Adding step information
         };
 
       case "Cell Speed":
@@ -750,6 +657,7 @@ export class LeftUi extends BaseUi {
           property: "cellMovementSpeed",
           min: 0,
           max: 4,
+          step: 0.1, // Adding step information
         };
 
       // Force controls
@@ -763,6 +671,7 @@ export class LeftUi extends BaseUi {
           property: "base",
           min: 0,
           max: 5,
+          step: 0.1, // Adding step information
         };
 
       case "Swarm Force":
@@ -775,6 +684,7 @@ export class LeftUi extends BaseUi {
           property: "base",
           min: 0,
           max: 5,
+          step: 0.1, // Adding step information
         };
 
       case "Automata Force":
@@ -788,103 +698,11 @@ export class LeftUi extends BaseUi {
           property: "base",
           min: 0,
           max: 5,
+          step: 0.1, // Adding step information
         };
 
       default:
         return null;
     }
-  }
-
-  addPulseModulator() {
-    // Create a modulator
-    const modulator = this.modulatorManager.addModulator();
-
-    // Create a subfolder for this modulator
-    const subfolder = this.pulseModulatorFolder.addFolder(
-      `Modulator ${modulator.id}`
-    );
-
-    // 1. Active toggle
-    subfolder.add(modulator, "active").name("Active");
-
-    // 2. Wave type selector
-    subfolder
-      .add(modulator, "type", ["sine", "square", "triangle"])
-      .name("Wave Type");
-
-    // Target selector
-    const targetSelector = { target: "None" };
-    const targetOptions = this.getControlTargets();
-
-    // 3. Target Parameter
-    const targetController = subfolder
-      .add(targetSelector, "target", targetOptions)
-      .name("Target Parameter")
-      .onChange((value) => {
-        if (value === "None") {
-          modulator.targetControl = null;
-          modulator.targetProperty = null;
-          return;
-        }
-
-        const target = this.getControllerForTarget(value);
-        if (target) {
-          modulator.targetControl = target.controller;
-          modulator.targetProperty = target.property;
-
-          // Automatically set min/max based on the target's range
-          if (target.min !== undefined && target.max !== undefined) {
-            modulator.min = target.min;
-            modulator.max = target.max;
-            minController.updateDisplay();
-            maxController.updateDisplay();
-          }
-        }
-      });
-
-    // 4. Set Range from Target button
-    const autoRangeControl = {
-      autoRange: () => {
-        if (targetSelector.target === "None") {
-          alert("Select a target parameter first");
-          return;
-        }
-
-        const target = this.getControllerForTarget(targetSelector.target);
-        if (target && target.min !== undefined && target.max !== undefined) {
-          modulator.min = target.min;
-          modulator.max = target.max;
-          minController.updateDisplay();
-          maxController.updateDisplay();
-        }
-      },
-    };
-
-    subfolder.add(autoRangeControl, "autoRange").name("Set Range from Target");
-
-    // 5. Speed control
-    subfolder.add(modulator, "speed", 0.1, 5).name("Speed");
-
-    // 6. Phase control
-    subfolder.add(modulator, "phase", 0, Math.PI * 2).name("Phase");
-
-    // 7 & 8. Min/Max controls - store direct references to them
-    const minController = subfolder
-      .add(modulator, "min", -10, 10)
-      .name("Min Value");
-    const maxController = subfolder
-      .add(modulator, "max", -10, 10)
-      .name("Max Value");
-
-    // 9. Remove button
-    const removeButton = {
-      remove: () => {
-        this.modulatorManager.removeModulator(modulator.id);
-        subfolder.destroy();
-      },
-    };
-    subfolder.add(removeButton, "remove").name("- Remove");
-
-    return modulator;
   }
 }

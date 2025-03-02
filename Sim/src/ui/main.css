@@ -18,7 +18,7 @@ canvas {
     max-height: 100%;
 }
 
-/* GUI Container styles */
+/* Main panel positions */
 .gui-container-left {
     position: absolute;
     top: 0;
@@ -31,20 +31,46 @@ canvas {
     right: 0;
 }
 
-/* New positioning classes */
+/* New symmetrical positioning classes - accounting for side panels */
 .gui-container-left-top {
     position: absolute;
     top: 0;
-    left: 245px; /* Position after the main left panel */
+    /* Position at 20% of the available space between left and right panels */
+    left: calc(220px + (100% - 440px) * 0.150);
+    transform: translateX(-50%); /* Center at position point */
+}
+
+.gui-container-left-second {
+    position: absolute;
+    top: 0;
+    /* Position at 40% of the available space between left and right panels */
+    left: calc(220px + (100% - 440px) * 0.38);
+    transform: translateX(-50%); /* Center at position point */
+}
+
+.gui-container-center-top {
+    position: absolute;
+    top: 0;
+    /* Position at 60% of the available space between left and right panels */
+    left: calc(220px + (100% - 440px) * 0.62);
+    transform: translateX(-50%); /* Center at position point */
 }
 
 .gui-container-right-top {
     position: absolute;
     top: 0;
-    right: 245px; /* Position before the main right panel */
+    /* Position at 80% of the available space between left and right panels */
+    left: calc(220px + (100% - 440px) * 0.85);
+    transform: translateX(-50%); /* Center at position point */
 }
 
-/* Existing middle positions - keep for reference/compatibility */
+/* Keep support for other positions */
+.gui-container-left-bottom {
+    position: absolute;
+    top: 400px;
+    left: 0;
+}
+
 .gui-container-middle {
     position: absolute;
     top: 0;
@@ -54,7 +80,7 @@ canvas {
 
 .gui-container-middle-bottom {
     position: absolute;
-    top: 100px; /* Position it below the Presets panel */
+    top: 100px;
     left: 50%;
     transform: translateX(-50%);
 }
@@ -155,9 +181,6 @@ canvas {
     100% { opacity: 0; }
 }
 
-
-
-
 /* Override lil-gui colors */
 .lil-gui {
     --background-color: #1a1a1a;
@@ -169,4 +192,7 @@ canvas {
     --focus-color: #5a5a5a;
     --number-color: #ffc21a;
     --string-color: #1bd1f1;
+    --font-size: 10px;
+    --width : 220px;
+    --border-radius: 4px;
 }
