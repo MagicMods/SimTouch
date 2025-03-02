@@ -904,11 +904,36 @@ export class LeftUi extends BaseUi {
   getControlTargets() {
     const targets = ["None"];
 
-    // Collect controls from various folders
-    if (this.controls.fieldType) targets.push("Grid Field");
-    targets.push("Particle Size"); // Always include this one for a clear visual effect
+    // Basic targets (already implemented)
+    targets.push("Particle Size");
     targets.push("Gravity Strength");
     targets.push("Repulsion");
+
+    // Global section
+    targets.push("Max Density");
+    targets.push("Animation Speed");
+
+    // Boundary section
+    targets.push("Boundary Size");
+    targets.push("Wall Repulsion");
+
+    // Turbulence section
+    targets.push("Turbulence Strength");
+    targets.push("Turbulence Speed");
+    targets.push("Scale Strength");
+    targets.push("Inward Pull");
+
+    // Voronoi section
+    targets.push("Voronoi Strength");
+    targets.push("Edge Width");
+    targets.push("Attraction");
+    targets.push("Cell Count");
+    targets.push("Cell Speed");
+
+    // Force controls
+    targets.push("Fluid Force");
+    targets.push("Swarm Force");
+    targets.push("Automata Force");
 
     return targets;
   }
@@ -916,21 +941,13 @@ export class LeftUi extends BaseUi {
   // Find the actual controller for a given target name
   getControllerForTarget(targetName) {
     switch (targetName) {
-      case "Grid Field":
-        return {
-          controller: this.controls.fieldType,
-          property: "value",
-          min: 0,
-          max: Object.values(GridField).length - 1,
-        };
-
+      // Existing controls
       case "Particle Size":
-        // Access the controller directly from main
         return {
           controller: {
             object: this.main.particleSystem,
             property: "particleRadius",
-            updateDisplay: () => {}, // No-op since we're updating directly
+            updateDisplay: () => {},
           },
           property: "particleRadius",
           min: 0.005,
@@ -938,12 +955,11 @@ export class LeftUi extends BaseUi {
         };
 
       case "Gravity Strength":
-        // Access gravity directly
         return {
           controller: {
             object: this.main.particleSystem.gravity,
             property: "strength",
-            updateDisplay: () => {}, // No-op since we're updating directly
+            updateDisplay: () => {},
           },
           property: "strength",
           min: 0,
@@ -951,14 +967,221 @@ export class LeftUi extends BaseUi {
         };
 
       case "Repulsion":
-        // Access collision system directly
         return {
           controller: {
             object: this.main.particleSystem.collisionSystem,
             property: "repulsion",
-            updateDisplay: () => {}, // No-op since we're updating directly
+            updateDisplay: () => {},
           },
           property: "repulsion",
+          min: 0,
+          max: 5,
+        };
+
+      // Global section
+      case "Max Density":
+        return {
+          controller: {
+            object: this.main.gridRenderer,
+            property: "maxDensity",
+            updateDisplay: () => {},
+          },
+          property: "maxDensity",
+          min: 0.1,
+          max: 10,
+        };
+
+      case "Animation Speed":
+        return {
+          controller: {
+            object: this.main.particleSystem,
+            property: "timeScale",
+            updateDisplay: () => {},
+          },
+          property: "timeScale",
+          min: 0,
+          max: 2,
+        };
+
+      // Boundary section
+      case "Boundary Size":
+        return {
+          controller: {
+            object: this.main.particleSystem.boundary,
+            property: "radius",
+            updateDisplay: () => {
+              // Update the boundary visually when radius changes
+              this.main.particleSystem.boundary.update({
+                radius: this.main.particleSystem.boundary.radius,
+              });
+            },
+          },
+          property: "radius",
+          min: 0.3,
+          max: 0.55,
+        };
+
+      case "Wall Repulsion":
+        return {
+          controller: {
+            object: this.main.particleSystem.boundary,
+            property: "boundaryRepulsion",
+            updateDisplay: () => {},
+          },
+          property: "boundaryRepulsion",
+          min: 0,
+          max: 20,
+        };
+
+      // Turbulence section
+      case "Turbulence Strength":
+        return {
+          controller: {
+            object: this.main.turbulenceField,
+            property: "strength",
+            updateDisplay: () => {},
+          },
+          property: "strength",
+          min: 0,
+          max: 10,
+        };
+
+      case "Turbulence Speed":
+        return {
+          controller: {
+            object: this.main.turbulenceField,
+            property: "speed",
+            updateDisplay: () => {},
+          },
+          property: "speed",
+          min: 0,
+          max: 20,
+        };
+
+      case "Scale Strength":
+        return {
+          controller: {
+            object: this.main.turbulenceField,
+            property: "scaleStrength",
+            updateDisplay: () => {},
+          },
+          property: "scaleStrength",
+          min: 0,
+          max: 1,
+        };
+
+      case "Inward Pull":
+        return {
+          controller: {
+            object: this.main.turbulenceField,
+            property: "inwardFactor",
+            updateDisplay: () => {},
+          },
+          property: "inwardFactor",
+          min: 0,
+          max: 5,
+        };
+
+      // Voronoi section
+      case "Voronoi Strength":
+        return {
+          controller: {
+            object: this.main.voronoiField,
+            property: "strength",
+            updateDisplay: () => {},
+          },
+          property: "strength",
+          min: 0,
+          max: 10,
+        };
+
+      case "Edge Width":
+        return {
+          controller: {
+            object: this.main.voronoiField,
+            property: "edgeWidth",
+            updateDisplay: () => {},
+          },
+          property: "edgeWidth",
+          min: 0.1,
+          max: 50,
+        };
+
+      case "Attraction":
+        return {
+          controller: {
+            object: this.main.voronoiField,
+            property: "attractionFactor",
+            updateDisplay: () => {},
+          },
+          property: "attractionFactor",
+          min: 0,
+          max: 8,
+        };
+
+      case "Cell Count":
+        return {
+          controller: {
+            object: this.main.voronoiField,
+            property: "cellCount",
+            updateDisplay: () => {
+              // Regenerate cells when count changes
+              if (this.main.voronoiField.regenerateCells) {
+                this.main.voronoiField.regenerateCells();
+              }
+            },
+          },
+          property: "cellCount",
+          min: 1,
+          max: 10,
+        };
+
+      case "Cell Speed":
+        return {
+          controller: {
+            object: this.main.voronoiField,
+            property: "cellMovementSpeed",
+            updateDisplay: () => {},
+          },
+          property: "cellMovementSpeed",
+          min: 0,
+          max: 4,
+        };
+
+      // Force controls
+      case "Fluid Force":
+        return {
+          controller: {
+            object: this.main.particleSystem.organicBehavior.forceScales.Fluid,
+            property: "base",
+            updateDisplay: () => {},
+          },
+          property: "base",
+          min: 0,
+          max: 5,
+        };
+
+      case "Swarm Force":
+        return {
+          controller: {
+            object: this.main.particleSystem.organicBehavior.forceScales.Swarm,
+            property: "base",
+            updateDisplay: () => {},
+          },
+          property: "base",
+          min: 0,
+          max: 5,
+        };
+
+      case "Automata Force":
+        return {
+          controller: {
+            object:
+              this.main.particleSystem.organicBehavior.forceScales.Automata,
+            property: "base",
+            updateDisplay: () => {},
+          },
+          property: "base",
           min: 0,
           max: 5,
         };
@@ -977,22 +1200,20 @@ export class LeftUi extends BaseUi {
       `Modulator ${modulator.id}`
     );
 
-    // Add controls for the modulator
+    // 1. Active toggle
     subfolder.add(modulator, "active").name("Active");
+
+    // 2. Wave type selector
     subfolder
       .add(modulator, "type", ["sine", "square", "triangle"])
       .name("Wave Type");
-    subfolder.add(modulator, "speed", 0.1, 5).name("Speed");
-
-    // Min/Max controls
-    subfolder.add(modulator, "min", -10, 10).name("Min Value");
-    subfolder.add(modulator, "max", -10, 10).name("Max Value");
 
     // Target selector
     const targetSelector = { target: "None" };
     const targetOptions = this.getControlTargets();
 
-    subfolder
+    // 3. Target Parameter
+    const targetController = subfolder
       .add(targetSelector, "target", targetOptions)
       .name("Target Parameter")
       .onChange((value) => {
@@ -1007,30 +1228,54 @@ export class LeftUi extends BaseUi {
           modulator.targetControl = target.controller;
           modulator.targetProperty = target.property;
 
-          // Update min/max based on the target's range
+          // Automatically set min/max based on the target's range
           if (target.min !== undefined && target.max !== undefined) {
             modulator.min = target.min;
             modulator.max = target.max;
-
-            // Update the displays for min/max by finding controls by property name
-            const minController = subfolder.controllers.find(
-              (c) => c.property === "min"
-            );
-            const maxController = subfolder.controllers.find(
-              (c) => c.property === "max"
-            );
-
-            if (minController) minController.updateDisplay();
-            if (maxController) maxController.updateDisplay();
+            minController.updateDisplay();
+            maxController.updateDisplay();
           }
         }
       });
 
-    // Remove button
+    // 4. Set Range from Target button
+    const autoRangeControl = {
+      autoRange: () => {
+        if (targetSelector.target === "None") {
+          alert("Select a target parameter first");
+          return;
+        }
+
+        const target = this.getControllerForTarget(targetSelector.target);
+        if (target && target.min !== undefined && target.max !== undefined) {
+          modulator.min = target.min;
+          modulator.max = target.max;
+          minController.updateDisplay();
+          maxController.updateDisplay();
+        }
+      },
+    };
+
+    subfolder.add(autoRangeControl, "autoRange").name("Set Range from Target");
+
+    // 5. Speed control
+    subfolder.add(modulator, "speed", 0.1, 5).name("Speed");
+
+    // 6. Phase control
+    subfolder.add(modulator, "phase", 0, Math.PI * 2).name("Phase");
+
+    // 7 & 8. Min/Max controls - store direct references to them
+    const minController = subfolder
+      .add(modulator, "min", -10, 10)
+      .name("Min Value");
+    const maxController = subfolder
+      .add(modulator, "max", -10, 10)
+      .name("Max Value");
+
+    // 9. Remove button
     const removeButton = {
       remove: () => {
         this.modulatorManager.removeModulator(modulator.id);
-        // Proper way to destroy a folder in lil-gui
         subfolder.destroy();
       },
     };
