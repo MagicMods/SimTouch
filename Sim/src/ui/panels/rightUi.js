@@ -193,7 +193,7 @@ class RightUi extends BaseUi {
       .add(voronoi, "attractionFactor", 0, 8)
       .name("Attraction");
     this.voronoiFolder
-      .add(voronoi, "cellCount", 1, 50, 1)
+      .add(voronoi, "cellCount", 1, 10, 1)
       .name("Cell Count")
       .onChange(() => voronoi.regenerateCells());
     this.voronoiFolder
