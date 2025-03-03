@@ -194,6 +194,11 @@ class PulseModulator {
       // console.log(`Modulating ${this.targetName}: value=${mappedValue}`);
 
       this.targetController.setValue(mappedValue);
+
+      // Update the UI display after setting the value
+      // if (this.targetController.updateDisplay) {
+      this.targetController.updateDisplay();
+      // }
     } catch (e) {
       console.error(`Error updating modulator for ${this.targetName}:`, e);
       this.enabled = false; // Disable on error

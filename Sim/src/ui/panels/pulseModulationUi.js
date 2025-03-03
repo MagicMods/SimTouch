@@ -15,12 +15,17 @@ export class PulseModulationUi extends BaseUi {
     // Store folders for modulators
     this.modulatorFolders = [];
 
+    // Initialize the target controller map
+    this.targetControllerMap = new Map();
     // Add basic controls
     this.initBasicControls();
 
     // PresetManager will be initialized later when available
     this.presetManager = null;
     this.presetController = null;
+
+    // Initialize target controller map
+    this.initializeTargetControllerMap();
   }
 
   initBasicControls() {
@@ -47,7 +52,12 @@ export class PulseModulationUi extends BaseUi {
 
   // Register available targets from other UI panels
   registerAvailableTargets() {
-    // Get target names from leftUI (which has the comprehensive list)
+    // Initialize the map if not already done
+    if (!this.targetControllerMap) {
+      this.targetControllerMap = new Map();
+    }
+
+    // Get target names from leftUI
     const targetNames = this.leftUi.getControlTargets();
 
     // For each target, get the controller and register it
@@ -57,27 +67,25 @@ export class PulseModulationUi extends BaseUi {
         if (target && target.controller) {
           const controller = target.controller;
 
-          // Add getValue and setValue methods if they don't exist
-          if (!controller.getValue) {
-            controller.getValue = function () {
-              return this.object[this.property];
+          // Find the actual GUI controller for this target
+          const guiController = this.findGuiControllerForTarget(name);
+          if (guiController) {
+            // Store the reference to the actual GUI controller
+            this.targetControllerMap.set(name, guiController);
+
+            // Override updateDisplay to use the GUI controller's updateDisplay
+            controller.updateDisplay = () => {
+              guiController.updateDisplay();
             };
           }
 
-          if (!controller.setValue) {
-            controller.setValue = function (value) {
-              this.object[this.property] = value;
-              if (this.updateDisplay) this.updateDisplay();
-            };
-          }
-
-          // Register the controller with min/max/step ranges
+          // Register the controller with range info
           this.pulseModManager.addTargetWithRangeFull(
             name,
             controller,
             target.min,
             target.max,
-            target.step || 0.01 // Default step if not provided
+            target.step || 0.01
           );
         }
       }
@@ -585,6 +593,8 @@ export class PulseModulationUi extends BaseUi {
   update() {
     if (this.pulseModManager) {
       this.pulseModManager.update();
+      // Add this line to update the UI displays after values have changed
+      this.updateModulatorDisplays();
     }
   }
 
@@ -734,5 +744,63 @@ export class PulseModulationUi extends BaseUi {
         "PresetManager not provided to PulseModulationUi.initWithPresetManager"
       );
     }
+  }
+
+  // Add this method to the PulseModulationUi class
+  updateModulatorDisplays() {
+    // Update all modulator UI controllers to reflect current values
+    if (!this.pulseModManager || !this.modulatorFolders) return;
+
+    this.pulseModManager.modulators.forEach((modulator, index) => {
+      // Find the folder for this modulator
+      const folder = this.modulatorFolders[index];
+      if (!folder) return;
+
+      // Update all controllers in the folder
+      folder.controllers.forEach((controller) => {
+        // Only update controllers for properties that exist on the modulator
+        if (modulator.hasOwnProperty(controller.property)) {
+          controller.updateDisplay();
+        }
+      });
+    });
+  }
+
+  // Add this method to maintain a mapping between target names and their GUI controllers
+  initializeTargetControllerMap() {
+    this.targetControllerMap = new Map();
+  }
+
+  // Add this helper method to find GUI controllers
+  findGuiControllerForTarget(name) {
+    // Check in leftUi
+    if (this.leftUi && this.leftUi.gui) {
+      for (const folder of this.leftUi.gui.folders) {
+        for (const controller of folder.controllers) {
+          if (controller.property === this.getPropertyForTargetName(name)) {
+            return controller;
+          }
+        }
+      }
+    }
+
+    // Check in rightUi
+    if (this.rightUi && this.rightUi.gui) {
+      for (const folder of this.rightUi.gui.folders) {
+        for (const controller of folder.controllers) {
+          if (controller.property === this.getPropertyForTargetName(name)) {
+            return controller;
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  // Helper to get property name from target name
+  getPropertyForTargetName(name) {
+    const target = this.leftUi.getControllerForTarget(name);
+    return target ? target.property : null;
   }
 }
