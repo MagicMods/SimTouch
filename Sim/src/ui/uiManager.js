@@ -12,9 +12,7 @@ export class UiManager {
     if (!main) throw new Error("Main instance required");
     this.main = main;
 
-    // The constructor already uses the correct container positions:
-    // Create GUI containers with the new order:
-    // Left - Pulse Modifications - Presets - Network - Input - Turbulence(Right)
+    // Create GUI containers with the new order
     this.leftContainer = this.createContainer("left");
     this.rightContainer = this.createContainer("right");
     this.pulseModContainer = this.createContainer("left-top");
@@ -30,18 +28,23 @@ export class UiManager {
     this.networkUi = new NetworkUi(main, this.networkContainer);
     this.inputUi = new InputUi(main, this.inputContainer);
 
-    // Initialize PresetManager with both GUI instances
-    this.presetManager = new PresetManager(this.leftUi.gui, this.rightUi.gui);
+    // Initialize PresetManager with UI panels directly
+    this.presetManager = new PresetManager(
+      this.leftUi.gui,
+      this.rightUi.gui,
+      this.pulseModUi // Pass pulseModUi directly
+    );
 
     // Pass PresetManager to panels
     this.presetUi.setPresetManager(this.presetManager);
     this.rightUi.setPresetManager(this.presetManager);
 
-    // Now initialize the pulse modulation UI with references to other panels
+    // Initialize the pulse modulation UI with references to other panels
     this.pulseModUi.initializeWithUiPanels(this.leftUi, this.rightUi);
 
     // Pass PresetManager to PulseModulationUi
     this.pulseModUi.initWithPresetManager(this.presetManager);
+
     // Initialize stats
     this.stats = new Stats();
     this.initStats();

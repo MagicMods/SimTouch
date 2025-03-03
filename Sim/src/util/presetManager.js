@@ -1,20 +1,20 @@
 class PresetManager {
-  constructor(leftGui, rightGui) {
+  constructor(leftGui, rightGui, pulseModUi) {
     if (!leftGui || !rightGui) {
       throw new Error("Both GUI instances required");
     }
     this.leftGui = leftGui;
     this.rightGui = rightGui;
+    this.pulseModUi = pulseModUi; // Store reference to pulseModUi directly
     this.presets = this.loadPresetsFromStorage();
     this.turbPresets = this.loadTurbPresetsFromStorage();
-    this.voronoiPresets = this.loadVoronoiPresetsFromStorage(); // Add voronoi presets
-    this.pulsePresets = this.loadPulsePresetsFromStorage(); // Add pulse presets
+    this.voronoiPresets = this.loadVoronoiPresetsFromStorage();
+    this.pulsePresets = this.loadPulsePresetsFromStorage();
     this.selectedPreset = "Default";
     this.selectedTurbPreset = "None";
-    this.selectedVoronoiPreset = "None"; // Add selected voronoi preset
-    this.selectedPulsePreset = "None"; // Add selected pulse preset
+    this.selectedVoronoiPreset = "None";
+    this.selectedPulsePreset = "None";
   }
-
   loadPresetsFromStorage() {
     const storedPresets = localStorage.getItem("savedPresets");
     return storedPresets
@@ -58,16 +58,35 @@ class PresetManager {
       }
     }
 
+    // Get pulse modulation state if available
+    let pulseModState = null;
+    if (this.pulseModUi && this.pulseModUi.pulseModManager) {
+      const modulators = this.pulseModUi.pulseModManager.modulators;
+      if (modulators && modulators.length > 0) {
+        pulseModState = modulators.map((mod) => ({
+          enabled: mod.enabled,
+          targetName: mod.targetName,
+          type: mod.type,
+          frequency: mod.frequency,
+          min: mod.min,
+          max: mod.max,
+          phase: mod.phase,
+        }));
+        console.log("Saving pulse modulation state:", pulseModState);
+      }
+    }
+
     // Save the filtered state
     this.presets[presetName] = {
       left: leftGuiState,
       right: rightGuiState,
+      pulseModulation: pulseModState,
     };
 
     this.selectedPreset = presetName;
     this.savePresetsToStorage();
     console.log(
-      "Saved preset with non-persistent folders excluded:",
+      "Saved preset with pulse modulation state:",
       this.presets[presetName]
     );
     return true;
@@ -113,6 +132,82 @@ class PresetManager {
       }
 
       if (preset.right) this.rightGui.load(preset.right);
+
+      // Handle pulse modulation state - ALWAYS clear existing modulators first
+      if (this.pulseModUi) {
+        // Clear all existing modulators first
+        if (
+          this.pulseModUi.modulatorFolders &&
+          this.pulseModUi.modulatorFolders.length > 0
+        ) {
+          console.log("Clearing existing pulse modulators");
+
+          // Remove all GUI folders
+          for (
+            let i = this.pulseModUi.modulatorFolders.length - 1;
+            i >= 0;
+            i--
+          ) {
+            if (this.pulseModUi.modulatorFolders[i]) {
+              this.pulseModUi.modulatorFolders[i].destroy();
+            }
+          }
+          this.pulseModUi.modulatorFolders = [];
+        }
+
+        // Reset the modulator manager
+        if (this.pulseModUi.pulseModManager) {
+          this.pulseModUi.pulseModManager.modulators = [];
+
+          // Only add modulators from preset if they exist
+          if (
+            preset.pulseModulation &&
+            Array.isArray(preset.pulseModulation) &&
+            preset.pulseModulation.length > 0
+          ) {
+            console.log(
+              "Loading pulse modulation state:",
+              preset.pulseModulation
+            );
+
+            // Add modulators from preset
+            preset.pulseModulation.forEach((modData) => {
+              const modulator = this.pulseModUi.addPulseModulator();
+              if (modulator) {
+                // Apply saved properties
+                modulator.enabled = modData.enabled;
+                modulator.setTarget(modData.targetName || "None");
+                modulator.type = modData.type || "sine";
+                modulator.frequency = modData.frequency || 1;
+                modulator.min = modData.min !== undefined ? modData.min : 0;
+                modulator.max = modData.max !== undefined ? modData.max : 1;
+                modulator.phase = modData.phase || 0;
+
+                // Update the GUI to reflect changes
+                const index =
+                  this.pulseModUi.pulseModManager.modulators.indexOf(modulator);
+                if (
+                  index >= 0 &&
+                  index < this.pulseModUi.modulatorFolders.length
+                ) {
+                  const folder = this.pulseModUi.modulatorFolders[index];
+                  if (folder && folder.controllers) {
+                    folder.controllers.forEach((controller) => {
+                      if (controller && controller.updateDisplay) {
+                        controller.updateDisplay();
+                      }
+                    });
+                  }
+                }
+              }
+            });
+          } else {
+            console.log(
+              "No pulse modulation data in preset - cleared existing modulators"
+            );
+          }
+        }
+      }
 
       this.selectedPreset = presetName;
       console.log(
