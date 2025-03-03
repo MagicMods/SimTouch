@@ -44,10 +44,8 @@ export class NetworkUi extends BaseUi {
       });
 
     // Status display (keep at top level)
-    const statusController = this.gui
-      .add(status, "connection")
-      .name("Status")
-      .disable();
+    const statusController = this.gui.add(status, "connection").name("Status");
+    // .disable();
 
     // Create config folder for the rest
     const configFolder = this.gui.addFolder("Config");

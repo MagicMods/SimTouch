@@ -32,6 +32,15 @@ export class PulseModulationUi extends BaseUi {
     // Add button to add a new modulator
     const addButton = { add: () => this.addPulseModulator() };
     this.gui.add(addButton, "add").name("Add Modulator");
+
+    // Add master frequency slider
+    this.gui
+      .add(this.pulseModManager, "masterFrequency", 0.01, 3, 0.01)
+      .name("Master Frequency (Hz)")
+      .onChange(() => {
+        // When master frequency changes, update all modulators that are synced
+        this.updateModulatorDisplays();
+      });
   }
 
   // Called after other UI panels are initialized
@@ -179,8 +188,32 @@ export class PulseModulationUi extends BaseUi {
       ])
       .name("Wave Type");
 
+    // Add sync control
+    folder
+      .add(modulator, "sync")
+      .name("Sync with Master")
+      .onChange((value) => {
+        // Show/hide the frequency control based on sync state
+        if (value) {
+          // When sync is true, hide the frequency controller
+          frequencyController.domElement.style.display = "none";
+          // When enabling sync, update displays
+          this.updateModulatorDisplays();
+        } else {
+          // When sync is false, show the frequency controller
+          frequencyController.domElement.style.display = "";
+        }
+      });
+
     // Add frequency control
-    folder.add(modulator, "frequency", 0.01, 3, 0.01).name("Frequency (Hz)");
+    const frequencyController = folder
+      .add(modulator, "frequency", 0.01, 3, 0.01)
+      .name("Frequency (Hz)");
+
+    // Initially hide the frequency controller if sync is enabled
+    if (modulator.sync) {
+      frequencyController.domElement.style.display = "none";
+    }
 
     // Add min/max controls
     const minController = folder

@@ -7,6 +7,7 @@ export class PulseModulatorManager {
     this.targets = {};
     this.targetRanges = {}; // Store min/max ranges for targets
     this.lastUpdateTime = Date.now();
+    this.masterFrequency = 1.0; // Add master frequency property
   }
 
   /**
@@ -132,9 +133,10 @@ class PulseModulator {
     this.targetName = "";
     this.type = "sine";
     this.frequency = 1.0;
+    this.sync = true; // Add sync property
     this.phase = 0;
-    this.min = 0; // New min property
-    this.max = 1; // New max property
+    this.min = 0;
+    this.max = 1;
     this.time = 0;
     this.targetController = null;
   }
@@ -185,20 +187,17 @@ class PulseModulator {
 
     try {
       // Calculate modulation and apply to target
-      const value = this.calculateModulation(this.time);
+      // Use master frequency if sync is enabled
+      const effectiveFrequency = this.sync
+        ? this.manager.masterFrequency
+        : this.frequency;
+      const value = this.calculateModulation(this.time, effectiveFrequency);
 
       // Map from 0-1 to min-max
       const mappedValue = this.min + value * (this.max - this.min);
 
-      // Add debug logging
-      // console.log(`Modulating ${this.targetName}: value=${mappedValue}`);
-
       this.targetController.setValue(mappedValue);
-
-      // Update the UI display after setting the value
-      // if (this.targetController.updateDisplay) {
       this.targetController.updateDisplay();
-      // }
     } catch (e) {
       console.error(`Error updating modulator for ${this.targetName}:`, e);
       this.enabled = false; // Disable on error
@@ -208,10 +207,16 @@ class PulseModulator {
   /**
    * Calculate the modulation value based on time and settings
    * @param {number} time - Current time in seconds
+   * @param {number} frequency - Frequency to use (could be master or local)
    * @returns {number} Modulation value 0-1
    */
-  calculateModulation(time) {
-    const t = time * this.frequency * Math.PI * 2 + this.phase;
+  calculateModulation(time, frequency = null) {
+    // If no frequency provided, use the appropriate one based on sync setting
+    if (frequency === null) {
+      frequency = this.sync ? this.manager.masterFrequency : this.frequency;
+    }
+
+    const t = time * frequency * Math.PI * 2 + this.phase;
 
     let value = 0;
     switch (this.type) {
