@@ -242,7 +242,7 @@ export class InputUi extends BaseUi {
       });
 
     // Sensitivity control
-    this.micInputFolder
+    this.micSensitivityController = this.micInputFolder
       .add({ sensitivity: 1.0 }, "sensitivity", 0.1, 10.0, 0.1)
       .name("Mic Sensitivity")
       .onChange((value) => {
@@ -250,7 +250,7 @@ export class InputUi extends BaseUi {
       });
 
     // Smoothing control
-    this.micInputFolder
+    this.micSmoothingController = this.micInputFolder
       .add({ smoothing: 0.8 }, "smoothing", 0, 1, 0.01)
       .name("Smoothing")
       .onChange((value) => {
@@ -265,7 +265,7 @@ export class InputUi extends BaseUi {
       max: 1,
     };
 
-    this.micInputFolder
+    this.micTargetController = this.micInputFolder
       .add(targetController, "target", targets)
       .name("Target Parameter")
       .onChange((value) => {
@@ -298,7 +298,7 @@ export class InputUi extends BaseUi {
       });
 
     // Min/max range controls
-    const minController = this.micInputFolder
+    this.micMinController = this.micInputFolder
       .add(targetController, "min", 0, 1, 0.01)
       .name("Min Value")
       .onChange((value) => {
@@ -318,7 +318,7 @@ export class InputUi extends BaseUi {
         }
       });
 
-    const maxController = this.micInputFolder
+    this.micMaxController = this.micInputFolder
       .add(targetController, "max", 0, 1, 0.01)
       .name("Max Value")
       .onChange((value) => {
@@ -395,5 +395,60 @@ export class InputUi extends BaseUi {
 
     // Fallback to null
     return null;
+  }
+
+  updateMicInputDisplay() {
+    if (!this.main.externalInput?.micForces) return;
+
+    const micForces = this.main.externalInput.micForces;
+
+    // Update sensitivity controller
+    if (this.micSensitivityController) {
+      this.micSensitivityController.setValue(micForces.sensitivity);
+      this.micSensitivityController.updateDisplay();
+    }
+
+    // Update smoothing controller
+    if (this.micSmoothingController) {
+      this.micSmoothingController.setValue(micForces.smoothing);
+      this.micSmoothingController.updateDisplay();
+    }
+
+    // Update target controller if present
+    if (this.micTargetController && micForces.targetControllers.size > 0) {
+      // Get the first target info
+      const [controller, config] = Array.from(
+        micForces.targetControllers.entries()
+      )[0];
+
+      // Find target name based on controller
+      const targetName = this.findTargetNameByController(controller);
+      if (targetName) {
+        this.micTargetController.setValue(targetName);
+        this.micTargetController.updateDisplay();
+
+        // Update min/max controllers
+        if (this.micMinController) {
+          this.micMinController.setValue(config.min);
+          this.micMinController.updateDisplay();
+        }
+
+        if (this.micMaxController) {
+          this.micMaxController.setValue(config.max);
+          this.micMaxController.updateDisplay();
+        }
+      }
+    }
+  }
+
+  findTargetNameByController(controller) {
+    const targets = this.getControlTargets();
+    for (const targetName of targets) {
+      const info = this.getControllerForTarget(targetName);
+      if (info?.controller === controller) {
+        return targetName;
+      }
+    }
+    return "None";
   }
 }

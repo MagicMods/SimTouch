@@ -78,11 +78,34 @@ class PresetManager {
       }
     }
 
+    // Get microphone settings if available
+    let micSettings = null;
+    if (this.rightGui.main.externalInput?.micForces) {
+      const micForces = this.rightGui.main.externalInput.micForces;
+      micSettings = {
+        sensitivity: micForces.sensitivity,
+        smoothing: micForces.smoothing,
+        baselineAmplitude: micForces.baselineAmplitude,
+        // Save active targets
+        targets: Array.from(micForces.targetControllers.entries()).map(
+          ([controller, config]) => {
+            return {
+              controllerPath: this.findControllerPath(controller),
+              min: config.min,
+              max: config.max,
+            };
+          }
+        ),
+      };
+      console.log("Saving microphone settings:", micSettings);
+    }
+
     // Save the filtered state
     this.presets[presetName] = {
       left: leftGuiState,
       right: rightGuiState,
       pulseModulation: pulseModState,
+      micSettings: micSettings, // Add mic settings to preset
     };
 
     this.selectedPreset = presetName;
@@ -211,6 +234,37 @@ class PresetManager {
         }
       }
 
+      // Handle mic settings if present
+      if (preset.micSettings && this.rightGui.main.externalInput?.micForces) {
+        const micForces = this.rightGui.main.externalInput.micForces;
+        const micSettings = preset.micSettings;
+
+        console.log("Loading microphone settings:", micSettings);
+
+        // Apply basic settings
+        micForces.setSensitivity(micSettings.sensitivity || 1.0);
+        micForces.setSmoothing(micSettings.smoothing || 0.8);
+        micForces.baselineAmplitude = micSettings.baselineAmplitude || 0.05;
+
+        // Clear and restore targets if available
+        micForces.clearTargets();
+        if (micSettings.targets && Array.isArray(micSettings.targets)) {
+          micSettings.targets.forEach((targetInfo) => {
+            const controller = this.findControllerByPath(
+              targetInfo.controllerPath
+            );
+            if (controller) {
+              micForces.addTarget(controller, targetInfo.min, targetInfo.max);
+            }
+          });
+        }
+
+        // Update UI to reflect settings (if needed)
+        if (this.rightGui.main.inputUi) {
+          this.rightGui.main.inputUi.updateMicInputDisplay();
+        }
+      }
+
       this.selectedPreset = presetName;
       console.log(
         `Loaded preset "${presetName}" (excluding non-persistent folders):`,
@@ -231,6 +285,7 @@ class PresetManager {
       presets: this.presets,
       turbPresets: this.turbPresets,
       voronoiPresets: this.voronoiPresets,
+      pulsePresets: this.pulsePresets,
     };
 
     const dataStr = JSON.stringify(allPresets, null, 2);
@@ -676,6 +731,34 @@ class PresetManager {
     return this.selectedPulsePreset;
   }
   //#endregion
+
+  // Add helper methods to PresetManager
+  findControllerPath(controller) {
+    // Traverse the GUI structure to find the path to this controller
+    // This is a simplified approach - you'll need a more robust implementation
+    const guiName = controller.parent?._title || "unknown";
+    const propName = controller.property || "unknown";
+    return `${guiName}.${propName}`;
+  }
+
+  findControllerByPath(path) {
+    // Find controller by the stored path
+    const [guiName, propName] = path.split(".");
+
+    // Search in leftGui and rightGui
+    const allGuis = [this.leftGui, this.rightGui];
+    for (const gui of allGuis) {
+      const folder = gui.folders.find((f) => f._title === guiName);
+      if (folder) {
+        const controller = folder.controllers.find(
+          (c) => c.property === propName
+        );
+        if (controller) return controller;
+      }
+    }
+
+    return null;
+  }
 }
 
 export { PresetManager };
