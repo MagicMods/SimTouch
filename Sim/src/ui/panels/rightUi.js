@@ -6,6 +6,7 @@ class RightUi extends BaseUi {
     super(main, container);
     this.presetManager = null;
     this.initFolders();
+    this.gui.title("Turbulences Fx");
   }
 
   setPresetManager(presetManager) {
@@ -15,17 +16,16 @@ class RightUi extends BaseUi {
   }
 
   async initFolders() {
-    this.turbulenceFolder = this.createFolder("Turbulence");
+    this.initTurbulenceControls();
     this.voronoiFolder = this.createFolder("Voronoi Field"); // Add voronoi folder
     this.organicFolder = this.createFolder("Organic Behavior");
     this.gridFolder = this.createFolder("Grid");
 
-    this.initTurbulenceControls();
     this.initVoronoiControls(); // Initialize voronoi controls
     this.initOrganicControls();
     this.initGridControls();
 
-    this.turbulenceFolder.open();
+    this.gui.open();
     this.voronoiFolder.open();
     this.organicFolder.open(true);
     this.gridFolder.open(false);
@@ -36,30 +36,24 @@ class RightUi extends BaseUi {
     const turbulence = this.main.turbulenceField;
     if (!turbulence) return;
 
-    this.turbulenceFolder
-      .add(turbulence, "affectPosition")
-      .name("Affect Position");
-    this.turbulenceFolder
-      .add(turbulence, "scaleField")
-      .name("Affect Scale Field");
-    this.turbulenceFolder
-      .add(turbulence, "affectScale")
-      .name("Affect Scale Particles");
+    this.gui.add(turbulence, "affectPosition").name("Affect Position");
+    this.gui.add(turbulence, "scaleField").name("Affect Scale Field");
+    this.gui.add(turbulence, "affectScale").name("Affect Scale Particles");
 
     // Defer preset controls to setPresetManager
-    this.turbulenceFolder.add(turbulence, "strength", 0, 10).name("Strength");
-    this.turbulenceFolder.add(turbulence, "scale", 0.1, 10).name("Scale");
-    this.turbulenceFolder.add(turbulence, "speed", 0, 20).name("Speed");
+    this.gui.add(turbulence, "strength", 0, 10).name("Strength");
+    this.gui.add(turbulence, "scale", 0.1, 10).name("Scale");
+    this.gui.add(turbulence, "speed", 0, 20).name("Speed");
 
     // Add min/max scale controls
-    const scaleRangeFolder = this.turbulenceFolder.addFolder("Scale Range");
+    const scaleRangeFolder = this.gui.addFolder("Scale Range");
     scaleRangeFolder
       .add(turbulence, "scaleStrength", 0, 1)
       .name("Scale Strength");
     scaleRangeFolder.add(turbulence, "minScale", 0.1, 1.0).name("Min Scale");
     scaleRangeFolder.add(turbulence, "maxScale", 1.0, 4.0).name("Max Scale");
 
-    const advancedFolder = this.turbulenceFolder.addFolder("Advanced");
+    const advancedFolder = this.gui.addFolder("Advanced");
     advancedFolder.add(turbulence, "octaves", 1, 8, 1).name("Octaves");
     advancedFolder.add(turbulence, "persistence", 0, 1).name("Persistence");
     advancedFolder.add(turbulence, "rotation", 0, Math.PI * 2).name("Rotation");
@@ -69,7 +63,7 @@ class RightUi extends BaseUi {
     advancedFolder.add(turbulence, "inwardFactor", 0, 5).name("Inward Pull");
     advancedFolder.add(turbulence, "decayRate", 0.9, 1).name("Decay Rate");
 
-    const biasFolder = this.turbulenceFolder.addFolder("Direction Bias");
+    const biasFolder = this.gui.addFolder("Direction Bias");
     biasFolder.add(turbulence.directionBias, "0", -1, 1).name("X Bias");
     biasFolder.add(turbulence.directionBias, "1", -1, 1).name("Y Bias");
   }
@@ -77,8 +71,7 @@ class RightUi extends BaseUi {
 
   initTurbulencePresetControls() {
     // Find the correct container in dat.GUI's structure
-    const containerElement =
-      this.turbulenceFolder.domElement.querySelector(".children");
+    const containerElement = this.gui.domElement.querySelector(".children");
     if (!containerElement) {
       console.error("Could not find container element in turbulence folder");
       return;
@@ -143,27 +136,27 @@ class RightUi extends BaseUi {
     actionsContainer.appendChild(deleteButton);
 
     // Insert elements at the beginning of the folder
-    this.turbulenceFolder.domElement.insertBefore(
+    this.gui.domElement.insertBefore(
       actionsContainer,
-      this.turbulenceFolder.domElement.querySelector(".children")
+      this.gui.domElement.querySelector(".children")
     );
 
-    this.turbulenceFolder.domElement.insertBefore(
+    this.gui.domElement.insertBefore(
       presetSelect,
-      this.turbulenceFolder.domElement.querySelector(".children")
+      this.gui.domElement.querySelector(".children")
     );
 
     // Remove old dat.GUI controls if they exist
-    const oldSaveControls = this.turbulenceFolder.controllers.filter(
+    const oldSaveControls = this.gui.controllers.filter(
       (c) => c.property === "save"
     );
-    const oldDeleteControls = this.turbulenceFolder.controllers.filter(
+    const oldDeleteControls = this.gui.controllers.filter(
       (c) => c.property === "delete"
     );
 
     // Remove old controls
-    oldSaveControls.forEach((c) => this.turbulenceFolder.remove(c));
-    oldDeleteControls.forEach((c) => this.turbulenceFolder.remove(c));
+    oldSaveControls.forEach((c) => this.gui.remove(c));
+    oldDeleteControls.forEach((c) => this.gui.remove(c));
   }
 
   updateTurbPresetDropdown(selectElement) {
