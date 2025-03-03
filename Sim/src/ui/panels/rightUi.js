@@ -317,12 +317,15 @@ class RightUi extends BaseUi {
     const particles = this.main.particleSystem;
     if (!particles.organicBehavior) return;
 
+    // Add global force control to the organic folder root
+    this.addGlobalForceControl(this.organicFolder, particles.organicBehavior);
+
     // Store folder references for later use
     this.fluidFolder = this.organicFolder.addFolder("Fluid Parameters");
     this.swarmFolder = this.organicFolder.addFolder("Swarm Parameters");
     this.automataFolder = this.organicFolder.addFolder("Automata Parameters");
 
-    // Add parameters with their respective force controls
+    // Add parameters without their individual force controls
     this.initFluidControls(this.fluidFolder, particles);
     this.initSwarmControls(this.swarmFolder, particles);
     this.initAutomataControls(this.automataFolder, particles);
@@ -332,6 +335,41 @@ class RightUi extends BaseUi {
     this.fluidFolder.open(false);
     this.swarmFolder.open(false);
     this.automataFolder.open(false);
+  }
+
+  // Add new method for global force control
+  addGlobalForceControl(folder, behavior) {
+    if (!behavior?.forceScales) return;
+
+    // Calculate average of current force values as starting point
+    const forceTypes = ["Fluid", "Swarm", "Automata"];
+    let initialForce = 0;
+    let count = 0;
+
+    forceTypes.forEach((type) => {
+      if (behavior.forceScales[type]?.base !== undefined) {
+        initialForce += behavior.forceScales[type].base;
+        count++;
+      }
+    });
+
+    // Create control object with the average force
+    this.globalForceControl = {
+      force: count > 0 ? initialForce / count : 1.0,
+    };
+
+    // Create controller
+    this.globalForceController = folder
+      .add(this.globalForceControl, "force", 0, 5)
+      .name("Force")
+      .onChange((value) => {
+        // Apply the same force value to all types
+        forceTypes.forEach((type) => {
+          if (behavior.forceScales[type]) {
+            behavior.forceScales[type].base = value;
+          }
+        });
+      });
   }
 
   updateOrganicFolders(mode) {
@@ -350,10 +388,8 @@ class RightUi extends BaseUi {
     this.automataFolder?.controllers.forEach((controller) =>
       controller.enable(automataEnabled)
     );
-    // Force controls are always enabled
-    this.forceFolder?.controllers.forEach((controller) =>
-      controller.enable(true)
-    );
+
+    // Show/hide folders based on current mode
     if (fluidEnabled) {
       this.fluidFolder.open();
       this.swarmFolder.close();
@@ -372,7 +408,12 @@ class RightUi extends BaseUi {
     if (mode == "None") {
       this.fluidFolder.close();
       this.swarmFolder.close();
-      this.automataFolder;
+      this.automataFolder.close();
+    }
+
+    // Update the organic behavior mode
+    if (this.main.particleSystem?.organicBehavior) {
+      this.main.particleSystem.organicBehavior.currentBehavior = mode;
     }
   }
   //#endregion
@@ -393,9 +434,10 @@ class RightUi extends BaseUi {
       .add(particles.organicBehavior.params.Fluid, "damping", 0, 1)
       .name("Damping");
 
-    this.addForceControl(folder, particles.organicBehavior, "Fluid");
+    // Individual force control removed
   }
 
+  // Modify other init methods similarly to remove individual force controls
   initSwarmControls(folder, particles) {
     // Add swarm parameters
     folder
@@ -414,7 +456,7 @@ class RightUi extends BaseUi {
       .add(particles.organicBehavior.params.Swarm, "maxSpeed", 0, 1)
       .name("Max Speed");
 
-    this.addForceControl(folder, particles.organicBehavior, "Swarm");
+    // Individual force control removed
   }
 
   initAutomataControls(folder, particles) {
@@ -432,21 +474,8 @@ class RightUi extends BaseUi {
       .add(particles.organicBehavior.params.Automata, "threshold", 0, 1)
       .name("Threshold");
 
-    this.addForceControl(folder, particles.organicBehavior, "Automata");
+    // Individual force control removed
   }
-
-  addForceControl(folder, behavior, type) {
-    if (!behavior?.forceScales?.[type]) return;
-
-    const control = { force: behavior.forceScales[type].base || 1.0 };
-    folder
-      .add(control, "force", 0, 5)
-      .name(`${type} Force`)
-      .onChange((value) => {
-        behavior.forceScales[type].base = value;
-      });
-  }
-  //#endregion
 
   //#region Grid
 
