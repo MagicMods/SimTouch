@@ -128,10 +128,58 @@ export class MicInputForces {
   updateTargets(amplitude) {
     if (!this.enabled) return;
 
+    // If we have frequency data, do frequency-based processing
+    const frequencyData = this.dataArray;
+
     this.targetControllers.forEach((config, controller) => {
       if (controller && typeof controller.setValue === "function") {
+        let targetAmplitude = amplitude;
+
+        // Apply frequency filtering if we have frequency data
+        if (
+          frequencyData &&
+          config.frequency &&
+          (config.frequency.min > 0 || config.frequency.max < 20000)
+        ) {
+          // Calculate frequency-specific amplitude
+          let sum = 0;
+          let count = 0;
+
+          // Map frequency range to bin indices
+          // Assuming standard 44.1kHz sample rate, fftSize bins map to frequency ranges
+          const binCount = this.analyser.frequencyBinCount;
+          const maxFreq = 22050; // Nyquist frequency (half sample rate)
+
+          const minBin = Math.floor(
+            (config.frequency.min / maxFreq) * binCount
+          );
+          const maxBin = Math.ceil((config.frequency.max / maxFreq) * binCount);
+
+          // Sum amplitudes in the target frequency range
+          for (let i = minBin; i < maxBin && i < binCount; i++) {
+            sum += frequencyData[i];
+            count++;
+          }
+
+          if (count > 0) {
+            // Normalize to 0-1 range
+            targetAmplitude = sum / (count * 255);
+
+            // Apply baseline subtraction and sensitivity
+            targetAmplitude = Math.max(
+              0,
+              (targetAmplitude - this.baselineAmplitude) *
+                this.sensitivity *
+                config.sensitivity
+            );
+          }
+        } else {
+          // Just apply global sensitivity and the modulator's sensitivity
+          targetAmplitude = amplitude * config.sensitivity;
+        }
+
         // Map amplitude (0-1) to target range
-        const value = config.min + amplitude * (config.max - config.min);
+        const value = config.min + targetAmplitude * (config.max - config.min);
         controller.setValue(value);
 
         // Update display if available
@@ -142,9 +190,70 @@ export class MicInputForces {
     });
   }
 
-  addTarget(controller, min, max) {
+  addTarget(
+    controller,
+    min,
+    max,
+    folder = null,
+    sensitivity = 1.0,
+    frequency = null
+  ) {
     if (controller && typeof controller.setValue === "function") {
-      this.targetControllers.set(controller, { min, max });
+      this.targetControllers.set(controller, {
+        min,
+        max,
+        folder,
+        sensitivity: sensitivity || 1.0,
+        frequency: frequency || { min: 0, max: 20000 },
+      });
+    }
+    return this;
+  }
+
+  hasTarget(folder) {
+    if (!folder) return false;
+
+    for (const config of this.targetControllers.values()) {
+      if (config.folder === folder) return true;
+    }
+
+    return false;
+  }
+
+  removeTargetByFolder(folder) {
+    if (!folder) return this;
+
+    for (const [controller, config] of this.targetControllers.entries()) {
+      if (config.folder === folder) {
+        this.targetControllers.delete(controller);
+        break;
+      }
+    }
+
+    return this;
+  }
+
+  updateTargetRange(controller, min, max) {
+    if (this.targetControllers.has(controller)) {
+      const config = this.targetControllers.get(controller);
+      config.min = min;
+      config.max = max;
+    }
+    return this;
+  }
+
+  updateTargetSensitivity(controller, sensitivity) {
+    if (this.targetControllers.has(controller)) {
+      const config = this.targetControllers.get(controller);
+      config.sensitivity = sensitivity;
+    }
+    return this;
+  }
+
+  updateTargetFrequencyRange(controller, freqMin, freqMax) {
+    if (this.targetControllers.has(controller)) {
+      const config = this.targetControllers.get(controller);
+      config.frequency = { min: freqMin, max: freqMax };
     }
     return this;
   }

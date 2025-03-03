@@ -86,13 +86,15 @@ class PresetManager {
         sensitivity: micForces.sensitivity,
         smoothing: micForces.smoothing,
         baselineAmplitude: micForces.baselineAmplitude,
-        // Save active targets
-        targets: Array.from(micForces.targetControllers.entries()).map(
+        // Save active targets as modulators
+        modulators: Array.from(micForces.targetControllers.entries()).map(
           ([controller, config]) => {
             return {
               controllerPath: this.findControllerPath(controller),
               min: config.min,
               max: config.max,
+              sensitivity: config.sensitivity || 1.0,
+              frequency: config.frequency || { min: 0, max: 20000 },
             };
           }
         ),
@@ -246,20 +248,29 @@ class PresetManager {
         micForces.setSmoothing(micSettings.smoothing || 0.8);
         micForces.baselineAmplitude = micSettings.baselineAmplitude || 0.05;
 
-        // Clear and restore targets if available
+        // Clear existing targets
         micForces.clearTargets();
-        if (micSettings.targets && Array.isArray(micSettings.targets)) {
-          micSettings.targets.forEach((targetInfo) => {
+
+        // Restore modulators if available
+        if (micSettings.modulators && Array.isArray(micSettings.modulators)) {
+          micSettings.modulators.forEach((modulatorInfo) => {
             const controller = this.findControllerByPath(
-              targetInfo.controllerPath
+              modulatorInfo.controllerPath
             );
             if (controller) {
-              micForces.addTarget(controller, targetInfo.min, targetInfo.max);
+              micForces.addTarget(
+                controller,
+                modulatorInfo.min,
+                modulatorInfo.max,
+                null, // folder will be set by updateMicInputDisplay
+                modulatorInfo.sensitivity,
+                modulatorInfo.frequency
+              );
             }
           });
         }
 
-        // Update UI to reflect settings (if needed)
+        // Update UI to reflect settings
         if (this.rightGui.main.inputUi) {
           this.rightGui.main.inputUi.updateMicInputDisplay();
         }

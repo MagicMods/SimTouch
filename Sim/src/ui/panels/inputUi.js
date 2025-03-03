@@ -229,6 +229,9 @@ export class InputUi extends BaseUi {
     const externalInput = this.main.externalInput;
     const micForces = externalInput.micForces;
 
+    // Store mic modulators folders
+    this.micModulatorFolders = [];
+
     // Enable toggle
     this.micInputFolder
       .add({ enabled: false }, "enabled")
@@ -241,15 +244,15 @@ export class InputUi extends BaseUi {
         }
       });
 
-    // Sensitivity control
+    // Global sensitivity control
     this.micSensitivityController = this.micInputFolder
       .add({ sensitivity: 1.0 }, "sensitivity", 0.1, 10.0, 0.1)
-      .name("Mic Sensitivity")
+      .name("Global Sensitivity")
       .onChange((value) => {
         externalInput.setMicSensitivity(value);
       });
 
-    // Smoothing control
+    // Global smoothing control
     this.micSmoothingController = this.micInputFolder
       .add({ smoothing: 0.8 }, "smoothing", 0, 1, 0.01)
       .name("Smoothing")
@@ -257,86 +260,12 @@ export class InputUi extends BaseUi {
         externalInput.setMicSmoothing(value);
       });
 
-    // Target selection (similar to PulseModulator)
-    const targets = this.getControlTargets();
-    const targetController = {
-      target: "None",
-      min: 0,
-      max: 1,
+    // Add modulator button
+    const addModulatorControl = {
+      add: () => this.addMicModulator(),
     };
 
-    this.micTargetController = this.micInputFolder
-      .add(targetController, "target", targets)
-      .name("Target Parameter")
-      .onChange((value) => {
-        // Remove previous target
-        micForces.clearTargets();
-
-        if (value !== "None") {
-          const controlInfo = this.getControllerForTarget(value);
-          if (controlInfo && controlInfo.controller) {
-            // Update min/max
-            targetController.min = controlInfo.min;
-            targetController.max = controlInfo.max;
-
-            minController.min(controlInfo.min * 0.5);
-            minController.max(controlInfo.max * 1.5);
-            maxController.min(controlInfo.min * 0.5);
-            maxController.max(controlInfo.max * 1.5);
-
-            minController.setValue(controlInfo.min);
-            maxController.setValue(controlInfo.max);
-
-            // Add the target
-            micForces.addTarget(
-              controlInfo.controller,
-              targetController.min,
-              targetController.max
-            );
-          }
-        }
-      });
-
-    // Min/max range controls
-    this.micMinController = this.micInputFolder
-      .add(targetController, "min", 0, 1, 0.01)
-      .name("Min Value")
-      .onChange((value) => {
-        if (targetController.target !== "None") {
-          micForces.clearTargets();
-
-          const controlInfo = this.getControllerForTarget(
-            targetController.target
-          );
-          if (controlInfo && controlInfo.controller) {
-            micForces.addTarget(
-              controlInfo.controller,
-              value,
-              targetController.max
-            );
-          }
-        }
-      });
-
-    this.micMaxController = this.micInputFolder
-      .add(targetController, "max", 0, 1, 0.01)
-      .name("Max Value")
-      .onChange((value) => {
-        if (targetController.target !== "None") {
-          micForces.clearTargets();
-
-          const controlInfo = this.getControllerForTarget(
-            targetController.target
-          );
-          if (controlInfo && controlInfo.controller) {
-            micForces.addTarget(
-              controlInfo.controller,
-              targetController.min,
-              value
-            );
-          }
-        }
-      });
+    this.micInputFolder.add(addModulatorControl, "add").name("Add Modulation");
 
     // Audio level visualization
     const visualElement = document.createElement("div");
@@ -450,5 +379,247 @@ export class InputUi extends BaseUi {
       }
     }
     return "None";
+  }
+
+  // Add a new method to create mic modulators
+  addMicModulator() {
+    if (!this.main.externalInput?.micForces) return;
+
+    const externalInput = this.main.externalInput;
+    const micForces = externalInput.micForces;
+
+    // Create a modulator index
+    const index = this.micModulatorFolders
+      ? this.micModulatorFolders.length + 1
+      : 1;
+    if (!this.micModulatorFolders) this.micModulatorFolders = [];
+
+    // Create the modulator data
+    const modulator = {
+      target: "None",
+      min: 0,
+      max: 1,
+      sensitivity: 1.0,
+      frequencyMin: 0,
+      frequencyMax: 20000,
+    };
+
+    // Create a folder for this modulator
+    const folder = this.micInputFolder.addFolder(`Mic Modulator ${index}`);
+    this.micModulatorFolders.push(folder);
+
+    // Target selection
+    const targets = this.getControlTargets();
+
+    const targetController = folder
+      .add(modulator, "target", targets)
+      .name("Target Parameter")
+      .onChange((value) => {
+        if (value === "None") {
+          // Remove this target
+          if (micForces.hasTarget(folder)) {
+            micForces.removeTargetByFolder(folder);
+          }
+          return;
+        }
+
+        const controlInfo = this.getControllerForTarget(value);
+        if (controlInfo && controlInfo.controller) {
+          // Update min/max based on the controller's range
+          modulator.min = controlInfo.min;
+          modulator.max = controlInfo.max;
+
+          // Update the UI sliders
+          minController.min(controlInfo.min * 0.5);
+          minController.max(controlInfo.max * 1.5);
+          maxController.min(controlInfo.min * 0.5);
+          maxController.max(controlInfo.max * 1.5);
+
+          minController.setValue(controlInfo.min);
+          maxController.setValue(controlInfo.max);
+
+          // Add/update the target in micForces
+          micForces.addTarget(
+            controlInfo.controller,
+            modulator.min,
+            modulator.max,
+            folder,
+            modulator.sensitivity,
+            {
+              min: modulator.frequencyMin,
+              max: modulator.frequencyMax,
+            }
+          );
+        }
+      });
+
+    // Sensitivity for this specific modulator
+    folder
+      .add(modulator, "sensitivity", 0.1, 10.0, 0.1)
+      .name("Sensitivity")
+      .onChange((value) => {
+        if (modulator.target !== "None") {
+          const controlInfo = this.getControllerForTarget(modulator.target);
+          if (controlInfo && controlInfo.controller) {
+            micForces.updateTargetSensitivity(controlInfo.controller, value);
+          }
+        }
+      });
+
+    // Min/max range controls
+    const minController = folder
+      .add(modulator, "min", 0, 1, 0.01)
+      .name("Min Value")
+      .onChange((value) => {
+        if (modulator.target !== "None") {
+          const controlInfo = this.getControllerForTarget(modulator.target);
+          if (controlInfo && controlInfo.controller) {
+            micForces.updateTargetRange(
+              controlInfo.controller,
+              value,
+              modulator.max
+            );
+          }
+        }
+      });
+
+    const maxController = folder
+      .add(modulator, "max", 0, 1, 0.01)
+      .name("Max Value")
+      .onChange((value) => {
+        if (modulator.target !== "None") {
+          const controlInfo = this.getControllerForTarget(modulator.target);
+          if (controlInfo && controlInfo.controller) {
+            micForces.updateTargetRange(
+              controlInfo.controller,
+              modulator.min,
+              value
+            );
+          }
+        }
+      });
+
+    // Frequency filtering
+    folder
+      .add(modulator, "frequencyMin", 0, 20000, 10)
+      .name("Min Frequency")
+      .onChange((value) => {
+        if (modulator.target !== "None") {
+          const controlInfo = this.getControllerForTarget(modulator.target);
+          if (controlInfo && controlInfo.controller) {
+            micForces.updateTargetFrequencyRange(
+              controlInfo.controller,
+              value,
+              modulator.frequencyMax
+            );
+          }
+        }
+      });
+
+    folder
+      .add(modulator, "frequencyMax", 0, 20000, 10)
+      .name("Max Frequency")
+      .onChange((value) => {
+        if (modulator.target !== "None") {
+          const controlInfo = this.getControllerForTarget(modulator.target);
+          if (controlInfo && controlInfo.controller) {
+            micForces.updateTargetFrequencyRange(
+              controlInfo.controller,
+              modulator.frequencyMin,
+              value
+            );
+          }
+        }
+      });
+
+    // Remove button
+    const removeControl = {
+      remove: () => {
+        // Remove from MicForces
+        if (modulator.target !== "None") {
+          const controlInfo = this.getControllerForTarget(modulator.target);
+          if (controlInfo && controlInfo.controller) {
+            micForces.removeTarget(controlInfo.controller);
+          }
+        }
+
+        // Remove folder
+        folder.destroy();
+
+        // Remove from tracking array
+        const folderIndex = this.micModulatorFolders.indexOf(folder);
+        if (folderIndex > -1) {
+          this.micModulatorFolders.splice(folderIndex, 1);
+        }
+      },
+    };
+
+    folder.add(removeControl, "remove").name("Remove");
+
+    // Open the folder by default
+    folder.open();
+
+    return modulator;
+  }
+
+  // Update the microphone UI display from preset
+  updateMicInputDisplay() {
+    if (!this.main.externalInput?.micForces) return;
+
+    const micForces = this.main.externalInput.micForces;
+
+    // Update global controls
+    if (this.micSensitivityController) {
+      this.micSensitivityController.setValue(micForces.sensitivity);
+      this.micSensitivityController.updateDisplay();
+    }
+
+    if (this.micSmoothingController) {
+      this.micSmoothingController.setValue(micForces.smoothing);
+      this.micSmoothingController.updateDisplay();
+    }
+
+    // Clear existing modulators
+    if (this.micModulatorFolders) {
+      this.micModulatorFolders.forEach((folder) => folder.destroy());
+      this.micModulatorFolders = [];
+    }
+
+    // Recreate modulators based on targets in micForces
+    if (micForces.targetControllers.size > 0) {
+      Array.from(micForces.targetControllers.entries()).forEach(
+        ([controller, config]) => {
+          // Find target name for this controller
+          const targetName = this.findTargetNameByController(controller);
+          if (!targetName || targetName === "None") return;
+
+          // Create new modulator
+          const modulator = this.addMicModulator();
+
+          // Set values
+          const folder =
+            this.micModulatorFolders[this.micModulatorFolders.length - 1];
+
+          // Set target (this triggers onChange which sets up the controller)
+          folder.controllers[0].setValue(targetName);
+
+          // Update other values
+          if (config.sensitivity) {
+            folder.controllers[1].setValue(config.sensitivity);
+          }
+
+          folder.controllers[2].setValue(config.min);
+          folder.controllers[3].setValue(config.max);
+
+          if (config.frequency) {
+            folder.controllers[4].setValue(config.frequency.min || 0);
+            folder.controllers[5].setValue(config.frequency.max || 20000);
+          }
+
+          // Update all displays
+          folder.controllers.forEach((c) => c.updateDisplay());
+        }
+      );
+    }
   }
 }
