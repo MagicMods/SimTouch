@@ -121,10 +121,42 @@ export class PulseModulationUi extends BaseUi {
         // Update min/max controllers with the target's range if available
         const target = this.pulseModManager.getTargetInfo(value);
         if (target && target.min !== undefined && target.max !== undefined) {
-          modulator.min = target.min;
-          modulator.max = target.max;
-          minController.updateDisplay();
-          maxController.updateDisplay();
+          const controllerInfo = this.leftUi.getControllerForTarget(value);
+
+          if (controllerInfo) {
+            // Calculate appropriate slider ranges
+            const rangeBuffer = (controllerInfo.max - controllerInfo.min) * 0.5;
+            const sliderMin = Math.min(
+              controllerInfo.min - rangeBuffer,
+              controllerInfo.min * 0.5
+            );
+            const sliderMax = Math.max(
+              controllerInfo.max + rangeBuffer,
+              controllerInfo.max * 1.5
+            );
+
+            // Update modulator values
+            modulator.min = controllerInfo.min;
+            modulator.max = controllerInfo.max;
+
+            // Update slider ranges
+            minController.min(sliderMin);
+            minController.max(sliderMax);
+            maxController.min(sliderMin);
+            maxController.max(sliderMax);
+
+            // Update step if available
+            if (controllerInfo.step !== undefined) {
+              minController.step(controllerInfo.step);
+              maxController.step(controllerInfo.step);
+            }
+
+            minController.updateDisplay();
+            maxController.updateDisplay();
+            console.log(
+              `Updated slider range for ${value}: ${sliderMin} to ${sliderMax}`
+            );
+          }
         }
       });
 
@@ -159,20 +191,33 @@ export class PulseModulationUi extends BaseUi {
 
           // Use the specified min, max, and step values if available
           if (controllerInfo) {
+            // Calculate appropriate slider ranges based on target values
+            const rangeBuffer = (controllerInfo.max - controllerInfo.min) * 0.5;
+            const sliderMin = Math.min(
+              controllerInfo.min - rangeBuffer,
+              controllerInfo.min * 0.5
+            );
+            const sliderMax = Math.max(
+              controllerInfo.max + rangeBuffer,
+              controllerInfo.max * 1.5
+            );
+
+            // Set modulator values
             modulator.min = controllerInfo.min;
             modulator.max = controllerInfo.max;
 
+            // Update the min controller with new range
+            minController.min(sliderMin);
+            minController.max(sliderMax);
+
+            // Update the max controller with new range
+            maxController.min(sliderMin);
+            maxController.max(sliderMax);
+
             // Set step value if available
             if (controllerInfo.step !== undefined) {
-              // Find the step controller in the folder and update it
-              for (const controller of folder.controllers) {
-                if (
-                  controller.property === "min" ||
-                  controller.property === "max"
-                ) {
-                  controller.step(controllerInfo.step);
-                }
-              }
+              minController.step(controllerInfo.step);
+              maxController.step(controllerInfo.step);
             }
 
             minController.updateDisplay();
@@ -182,6 +227,7 @@ export class PulseModulationUi extends BaseUi {
                 modulator.max
               } (step: ${controllerInfo.step || "default"})`
             );
+            console.log(`Slider range updated: ${sliderMin} to ${sliderMax}`);
           } else {
             // Fallback to stored range values
             modulator.min = target.min;
