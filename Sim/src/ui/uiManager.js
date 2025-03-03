@@ -40,6 +40,8 @@ export class UiManager {
     // Now initialize the pulse modulation UI with references to other panels
     this.pulseModUi.initializeWithUiPanels(this.leftUi, this.rightUi);
 
+    // Pass PresetManager to PulseModulationUi
+    this.pulseModUi.initWithPresetManager(this.presetManager);
     // Initialize stats
     this.stats = new Stats();
     this.initStats();

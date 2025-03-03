@@ -8,9 +8,11 @@ class PresetManager {
     this.presets = this.loadPresetsFromStorage();
     this.turbPresets = this.loadTurbPresetsFromStorage();
     this.voronoiPresets = this.loadVoronoiPresetsFromStorage(); // Add voronoi presets
+    this.pulsePresets = this.loadPulsePresetsFromStorage(); // Add pulse presets
     this.selectedPreset = "Default";
     this.selectedTurbPreset = "None";
     this.selectedVoronoiPreset = "None"; // Add selected voronoi preset
+    this.selectedPulsePreset = "None"; // Add selected pulse preset
   }
 
   loadPresetsFromStorage() {
@@ -126,6 +128,88 @@ class PresetManager {
     return this.selectedPreset;
   }
 
+  // Export all presets (main, turbulence, voronoi) to a JSON file
+  exportPresets() {
+    const allPresets = {
+      presets: this.presets,
+      turbPresets: this.turbPresets,
+      voronoiPresets: this.voronoiPresets,
+    };
+
+    const dataStr = JSON.stringify(allPresets, null, 2);
+    const dataUri =
+      "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
+
+    const exportFileName = `svibe-presets-${new Date()
+      .toISOString()
+      .slice(0, 10)}.json`;
+
+    const linkElement = document.createElement("a");
+    linkElement.setAttribute("href", dataUri);
+    linkElement.setAttribute("download", exportFileName);
+    linkElement.style.display = "none";
+    document.body.appendChild(linkElement);
+    linkElement.click();
+    document.body.removeChild(linkElement);
+
+    console.log("Exported presets to file:", exportFileName);
+    return true;
+  }
+
+  // Import presets from a JSON file
+  importPresets(jsonData) {
+    try {
+      const importedData = JSON.parse(jsonData);
+      let importCount = 0;
+
+      // Import main presets
+      if (importedData.presets) {
+        Object.entries(importedData.presets).forEach(([name, preset]) => {
+          // Skip Default preset to avoid overriding core settings
+          if (name !== "Default") {
+            this.presets[name] = preset;
+            importCount++;
+          }
+        });
+        this.savePresetsToStorage();
+      }
+
+      // Import turbulence presets
+      if (importedData.turbPresets) {
+        Object.entries(importedData.turbPresets).forEach(([name, preset]) => {
+          // Skip None preset
+          if (name !== "None") {
+            this.turbPresets[name] = preset;
+            importCount++;
+          }
+        });
+        this.saveTurbPresetsToStorage();
+      }
+
+      // Import voronoi presets
+      if (importedData.voronoiPresets) {
+        Object.entries(importedData.voronoiPresets).forEach(
+          ([name, preset]) => {
+            // Skip None and Default presets
+            if (name !== "None" && name !== "Default") {
+              this.voronoiPresets[name] = preset;
+              importCount++;
+            }
+          }
+        );
+        this.saveVoronoiPresetsToStorage();
+      }
+
+      console.log(`Successfully imported ${importCount} presets`);
+      return importCount;
+    } catch (error) {
+      console.error("Failed to import presets:", error);
+      return false;
+    }
+  }
+
+  //#region Turbulence Presets
+
   loadTurbPresetsFromStorage() {
     const storedPresets = localStorage.getItem("savedTurbPresets");
     const defaults = {
@@ -228,8 +312,9 @@ class PresetManager {
   getSelectedTurbPreset() {
     return this.selectedTurbPreset;
   }
+  //#endregion
 
-  // Voronoi preset methods - following the pattern of turbulence presets
+  //#region Voronoi
   loadVoronoiPresetsFromStorage() {
     const storedPresets = localStorage.getItem("savedVoronoiPresets");
     const defaults = {
@@ -360,85 +445,134 @@ class PresetManager {
     return this.selectedVoronoiPreset;
   }
 
-  // Export all presets (main, turbulence, voronoi) to a JSON file
-  exportPresets() {
-    const allPresets = {
-      presets: this.presets,
-      turbPresets: this.turbPresets,
-      voronoiPresets: this.voronoiPresets,
+  //#endregion
+
+  //#region Pulse Presets
+  // Pulse modulation preset methods
+  loadPulsePresetsFromStorage() {
+    const storedPresets = localStorage.getItem("savedPulsePresets");
+    const defaults = {
+      None: { pulse: { modulators: [] } },
     };
+    return storedPresets
+      ? { ...defaults, ...JSON.parse(storedPresets) }
+      : defaults;
+  }
 
-    const dataStr = JSON.stringify(allPresets, null, 2);
-    const dataUri =
-      "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
+  savePulsePresetsToStorage() {
+    localStorage.setItem(
+      "savedPulsePresets",
+      JSON.stringify(this.pulsePresets)
+    );
+    console.log(
+      "Saved pulse modulation presets to storage:",
+      this.pulsePresets
+    );
+  }
 
-    const exportFileName = `svibe-presets-${new Date()
-      .toISOString()
-      .slice(0, 10)}.json`;
+  getPulsePresetOptions() {
+    return Object.keys(this.pulsePresets);
+  }
 
-    const linkElement = document.createElement("a");
-    linkElement.setAttribute("href", dataUri);
-    linkElement.setAttribute("download", exportFileName);
-    linkElement.style.display = "none";
-    document.body.appendChild(linkElement);
-    linkElement.click();
-    document.body.removeChild(linkElement);
+  savePulsePreset(presetName, pulseModManager) {
+    if (!presetName || presetName.trim() === "") {
+      alert("Preset name cannot be empty!");
+      return false;
+    }
+    if (this.pulsePresets[presetName]) {
+      alert("Pulse modulation preset name already exists!");
+      return false;
+    }
 
-    console.log("Exported presets to file:", exportFileName);
+    // Save the modulators state
+    const modulators = pulseModManager.modulators.map((mod) => ({
+      enabled: mod.enabled,
+      targetName: mod.targetName,
+      type: mod.type,
+      frequency: mod.frequency,
+      min: mod.min,
+      max: mod.max,
+      phase: mod.phase,
+    }));
+
+    this.pulsePresets[presetName] = { pulse: { modulators } };
+    this.selectedPulsePreset = presetName;
+    this.savePulsePresetsToStorage();
+    console.log(`Saved pulse modulation preset "${presetName}":`, modulators);
     return true;
   }
 
-  // Import presets from a JSON file
-  importPresets(jsonData) {
-    try {
-      const importedData = JSON.parse(jsonData);
-      let importCount = 0;
-
-      // Import main presets
-      if (importedData.presets) {
-        Object.entries(importedData.presets).forEach(([name, preset]) => {
-          // Skip Default preset to avoid overriding core settings
-          if (name !== "Default") {
-            this.presets[name] = preset;
-            importCount++;
-          }
-        });
-        this.savePresetsToStorage();
-      }
-
-      // Import turbulence presets
-      if (importedData.turbPresets) {
-        Object.entries(importedData.turbPresets).forEach(([name, preset]) => {
-          // Skip None preset
-          if (name !== "None") {
-            this.turbPresets[name] = preset;
-            importCount++;
-          }
-        });
-        this.saveTurbPresetsToStorage();
-      }
-
-      // Import voronoi presets
-      if (importedData.voronoiPresets) {
-        Object.entries(importedData.voronoiPresets).forEach(
-          ([name, preset]) => {
-            // Skip None and Default presets
-            if (name !== "None" && name !== "Default") {
-              this.voronoiPresets[name] = preset;
-              importCount++;
-            }
-          }
-        );
-        this.saveVoronoiPresetsToStorage();
-      }
-
-      console.log(`Successfully imported ${importCount} presets`);
-      return importCount;
-    } catch (error) {
-      console.error("Failed to import presets:", error);
+  deletePulsePreset(presetName) {
+    if (presetName === "None") {
+      alert("Cannot delete the None pulse modulation preset!");
       return false;
     }
+    if (!this.pulsePresets[presetName]) {
+      console.warn("Pulse modulation preset not found:", presetName);
+      return false;
+    }
+    delete this.pulsePresets[presetName];
+    this.selectedPulsePreset = "None";
+    this.savePulsePresetsToStorage();
+    return true;
   }
+
+  loadPulsePreset(presetName, pulseModUi) {
+    const preset = this.pulsePresets[presetName];
+    if (preset && preset.pulse && preset.pulse.modulators) {
+      console.log("Loading pulse modulation preset:", preset.pulse.modulators);
+
+      // Clear existing modulators
+      if (pulseModUi.pulseModManager) {
+        // Remove all GUI folders first
+        pulseModUi.modulatorFolders.forEach((folder) => folder.destroy());
+        pulseModUi.modulatorFolders = [];
+
+        // Reset the modulator manager
+        pulseModUi.pulseModManager.modulators = [];
+
+        // Add modulators from preset
+        if (preset.pulse.modulators.length > 0) {
+          preset.pulse.modulators.forEach((modData) => {
+            const modulator = pulseModUi.addPulseModulator();
+            if (modulator) {
+              // Apply saved properties
+              modulator.enabled = modData.enabled;
+              modulator.setTarget(modData.targetName);
+              modulator.type = modData.type;
+              modulator.frequency = modData.frequency;
+              modulator.min = modData.min;
+              modulator.max = modData.max;
+              modulator.phase = modData.phase;
+
+              // Update the GUI to reflect changes
+              const index =
+                pulseModUi.pulseModManager.modulators.indexOf(modulator);
+              if (index >= 0 && index < pulseModUi.modulatorFolders.length) {
+                const folder = pulseModUi.modulatorFolders[index];
+                folder.controllers.forEach((controller) =>
+                  controller.updateDisplay()
+                );
+              }
+            }
+          });
+        }
+      } else {
+        console.warn("PulseModUi instance not fully initialized");
+        return false;
+      }
+
+      this.selectedPulsePreset = presetName;
+      console.log(`Loaded pulse modulation preset "${presetName}"`);
+      return true;
+    }
+    return false;
+  }
+
+  getSelectedPulsePreset() {
+    return this.selectedPulsePreset;
+  }
+  //#endregion
 }
 
 export { PresetManager };

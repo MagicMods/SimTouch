@@ -17,6 +17,10 @@ export class PulseModulationUi extends BaseUi {
 
     // Add basic controls
     this.initBasicControls();
+
+    // PresetManager will be initialized later when available
+    this.presetManager = null;
+    this.presetController = null;
   }
 
   initBasicControls() {
@@ -141,7 +145,7 @@ export class PulseModulationUi extends BaseUi {
       .name("Max Value");
 
     // Add phase control
-    folder.add(modulator, "phase", 0, Math.PI * 2, 0.01).name("Phase");
+    folder.add(modulator, "phase", 0, 3.9, 0.01).name("Phase");
 
     // Add auto-range button
     const autoRangeControl = {
@@ -529,6 +533,109 @@ export class PulseModulationUi extends BaseUi {
   update() {
     if (this.pulseModManager) {
       this.pulseModManager.update();
+    }
+  }
+
+  initPresetControls(presetManager) {
+    if (!presetManager) {
+      console.warn("PresetManager not provided to PulseModulationUi");
+      return;
+    }
+
+    this.presetManager = presetManager;
+
+    // Create a folder for presets at the top of the GUI
+    const presetFolder = this.gui.addFolder("Presets");
+
+    // Create the preset control object - keep outside the function for later reference
+    const presetControl = {
+      preset: presetManager.getSelectedPulsePreset(),
+    };
+
+    // Function to refresh preset dropdown
+    const refreshPresetDropdown = (selectedValue) => {
+      // Remove existing controller if it exists
+      if (this.presetController) {
+        this.presetController.destroy();
+      }
+
+      // Get latest options
+      const presetOptions = presetManager.getPulsePresetOptions();
+
+      // Create a new controller with updated options
+      this.presetController = presetFolder
+        .add(presetControl, "preset", presetOptions)
+        .name("Preset")
+        .onChange((value) => {
+          presetManager.loadPulsePreset(value, this);
+        });
+
+      // Set selected value if provided
+      if (selectedValue) {
+        presetControl.preset = selectedValue;
+        this.presetController.updateDisplay();
+      }
+
+      // Make sure this controller comes first in the folder
+      if (presetFolder.children) {
+        // Move to the beginning
+        const controllers = presetFolder.children;
+        if (controllers.length > 1) {
+          const index = controllers.indexOf(this.presetController);
+          if (index > 0) {
+            controllers.splice(index, 1);
+            controllers.unshift(this.presetController);
+          }
+        }
+      }
+    };
+
+    // Initial creation of dropdown
+    refreshPresetDropdown();
+
+    // Add save preset button
+    const savePresetControl = {
+      save: () => {
+        const presetName = prompt("Enter preset name:");
+        if (presetManager.savePulsePreset(presetName, this.pulseModManager)) {
+          // Update the preset dropdown with new selected value
+          refreshPresetDropdown(presetName);
+        }
+      },
+    };
+    presetFolder.add(savePresetControl, "save").name("Save Preset");
+
+    // Add delete preset button
+    const deletePresetControl = {
+      delete: () => {
+        if (presetControl.preset === "None") {
+          alert("Cannot delete the None preset!");
+          return;
+        }
+
+        const confirmed = confirm(`Delete preset "${presetControl.preset}"?`);
+        if (
+          confirmed &&
+          presetManager.deletePulsePreset(presetControl.preset)
+        ) {
+          // Update the preset dropdown
+          refreshPresetDropdown("None");
+        }
+      },
+    };
+    presetFolder.add(deletePresetControl, "delete").name("Delete Preset");
+
+    // Keep the preset folder open by default
+    presetFolder.open();
+  }
+
+  initWithPresetManager(presetManager) {
+    if (presetManager) {
+      this.initPresetControls(presetManager);
+    } else {
+      console.warn(
+        "PresetManager not provided to PulseModulationUi.initWithPresetManager"
+      );
     }
   }
 }
