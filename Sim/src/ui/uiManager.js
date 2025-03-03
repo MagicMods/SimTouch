@@ -28,22 +28,25 @@ export class UiManager {
     this.networkUi = new NetworkUi(main, this.networkContainer);
     this.inputUi = new InputUi(main, this.inputContainer);
 
-    // Initialize PresetManager with UI panels directly
+    // Initialize PresetManager with all UI panels
     this.presetManager = new PresetManager(
       this.leftUi.gui,
       this.rightUi.gui,
-      this.pulseModUi // Pass pulseModUi directly
+      this.pulseModUi,
+      this.inputUi
     );
+
+    // Make sure InputUi has access to PresetManager
+    this.inputUi.main.presetManager = this.presetManager;
 
     // Pass PresetManager to panels
     this.presetUi.setPresetManager(this.presetManager);
     this.rightUi.setPresetManager(this.presetManager);
+    this.pulseModUi.initWithPresetManager(this.presetManager);
+    this.inputUi.initWithPresetManager(this.presetManager); // Initialize mic presets UI
 
     // Initialize the pulse modulation UI with references to other panels
     this.pulseModUi.initializeWithUiPanels(this.leftUi, this.rightUi);
-
-    // Pass PresetManager to PulseModulationUi
-    this.pulseModUi.initWithPresetManager(this.presetManager);
 
     // Initialize stats
     this.stats = new Stats();

@@ -229,11 +229,18 @@ export class InputUi extends BaseUi {
     const externalInput = this.main.externalInput;
     const micForces = externalInput.micForces;
 
+    // Add preset controls
+    this.micPresetController = null;
+    this.initMicPresetControls();
+
     // Store mic modulators folders
     this.micModulatorFolders = [];
 
+    // Create a basic controls folder for global settings
+    const basicControls = this.micInputFolder.addFolder("Controls");
+
     // Enable toggle
-    this.micInputFolder
+    basicControls
       .add({ enabled: false }, "enabled")
       .name("Enable Microphone")
       .onChange((value) => {
@@ -245,7 +252,7 @@ export class InputUi extends BaseUi {
       });
 
     // Global sensitivity control
-    this.micSensitivityController = this.micInputFolder
+    this.micSensitivityController = basicControls
       .add(
         { sensitivity: micForces.sensitivity || 1.0 },
         "sensitivity",
@@ -259,34 +266,71 @@ export class InputUi extends BaseUi {
       });
 
     // Global smoothing control
-    this.micSmoothingController = this.micInputFolder
+    this.micSmoothingController = basicControls
       .add({ smoothing: micForces.smoothing || 0.8 }, "smoothing", 0, 1, 0.01)
       .name("Smoothing")
       .onChange((value) => {
         externalInput.setMicSmoothing(value);
       });
 
+    // Calibrate button
+    const calibrationControl = {
+      calibrate: () => {
+        if (externalInput.micForces && externalInput.micForces.enabled) {
+          externalInput.calibrateMic();
+          alert("Microphone calibrated to current ambient level");
+        } else {
+          alert("Please enable microphone input first");
+        }
+      },
+    };
+
+    basicControls.add(calibrationControl, "calibrate").name("Calibrate Mic");
+
+    // Open basic controls by default
+    basicControls.open();
+
+    // Modulation section header
+    const modulationHeader = this.micInputFolder.addFolder("Modulations");
+
     // Add modulator button
     const addModulatorControl = {
       add: () => this.addMicModulator(),
     };
 
-    this.micInputFolder.add(addModulatorControl, "add").name("Add Modulator");
+    modulationHeader.add(addModulatorControl, "add").name("Add Modulator");
+
+    // Open modulations by default
+    modulationHeader.open();
 
     // Audio level visualization
     const visualElement = document.createElement("div");
-    visualElement.style.height = "10px";
+    visualElement.classList.add("mic-visualization");
+    visualElement.style.height = "12px";
     visualElement.style.backgroundColor = "#444";
-    visualElement.style.marginTop = "5px";
+    visualElement.style.marginTop = "10px";
+    visualElement.style.marginBottom = "5px";
     visualElement.style.position = "relative";
+    visualElement.style.borderRadius = "3px";
 
     const levelElement = document.createElement("div");
     levelElement.style.height = "100%";
     levelElement.style.backgroundColor = "#0f0";
     levelElement.style.width = "0%";
     levelElement.style.position = "absolute";
+    levelElement.style.borderRadius = "3px";
+    levelElement.style.transition = "width 0.05s ease-out";
+
+    const levelLabel = document.createElement("div");
+    levelLabel.textContent = "Audio Level";
+    levelLabel.style.fontSize = "10px";
+    levelLabel.style.color = "#aaa";
+    levelLabel.style.position = "absolute";
+    levelLabel.style.top = "-16px";
+    levelLabel.style.left = "0";
 
     visualElement.appendChild(levelElement);
+    visualElement.appendChild(levelLabel);
     this.micInputFolder.domElement.appendChild(visualElement);
 
     // Update visualization
@@ -294,9 +338,18 @@ export class InputUi extends BaseUi {
       if (micForces && micForces.enabled) {
         const level = Math.min(
           100,
-          Math.max(0, micForces.smoothedAmplitude * 100)
+          Math.max(0, micForces.smoothedAmplitude * 200) // Multiply by 200 for better visibility
         );
         levelElement.style.width = level + "%";
+
+        // Change color based on level
+        if (level > 80) {
+          levelElement.style.backgroundColor = "#f44";
+        } else if (level > 50) {
+          levelElement.style.backgroundColor = "#ff4";
+        } else {
+          levelElement.style.backgroundColor = "#4f4";
+        }
       } else {
         levelElement.style.width = "0%";
       }
@@ -635,5 +688,278 @@ export class InputUi extends BaseUi {
       }
     }
     return null;
+  }
+
+  // Add preset control methods
+  initMicPresetControls() {
+    if (!this.main.presetManager) return;
+
+    const presetManager = this.main.presetManager;
+
+    // Find the correct container in the mic input folder structure
+    const containerElement =
+      this.micInputFolder.domElement.querySelector(".children");
+    if (!containerElement) {
+      console.error("Could not find container element in mic input folder");
+      return;
+    }
+
+    // Create select dropdown
+    const presetSelect = document.createElement("select");
+    presetSelect.classList.add("preset-select");
+    presetSelect.style.padding = "4px";
+    presetSelect.style.margin = "5px";
+    presetSelect.style.width = "100%";
+
+    this.updateMicPresetDropdown(presetSelect);
+
+    presetSelect.addEventListener("change", (e) => {
+      const value = e.target.value;
+      console.log("Mic input preset selector changed to:", value);
+      presetManager.loadMicPreset(value, this);
+    });
+
+    this.micPresetControls = { selector: presetSelect };
+
+    // Create action buttons container
+    const actionsContainer = document.createElement("div");
+    actionsContainer.style.display = "flex";
+    actionsContainer.style.justifyContent = "space-between";
+    actionsContainer.style.margin = "5px";
+    actionsContainer.style.width = "100%";
+    actionsContainer.style.flexWrap = "wrap";
+
+    // SAVE BUTTON
+    const saveButton = document.createElement("button");
+    saveButton.textContent = "Save";
+    saveButton.style.flex = "1";
+    saveButton.style.margin = "0 2px";
+    saveButton.addEventListener("click", () => {
+      const presetName = prompt("Enter microphone preset name:");
+      if (
+        presetName &&
+        presetManager.saveMicPreset(
+          presetName,
+          this.main.externalInput.micForces
+        )
+      ) {
+        this.updateMicPresetDropdown(presetSelect);
+        presetSelect.value = presetManager.getSelectedMicPreset();
+        alert(`Microphone preset "${presetName}" saved.`);
+      }
+    });
+
+    // DELETE BUTTON
+    const deleteButton = document.createElement("button");
+    deleteButton.textContent = "Delete";
+    deleteButton.style.flex = "1";
+    deleteButton.style.margin = "0 2px";
+    deleteButton.addEventListener("click", () => {
+      const current = presetSelect.value;
+      if (current === "None") {
+        alert("Cannot delete the None preset!");
+        return;
+      }
+      console.log("Attempting to delete mic preset:", current);
+      if (
+        confirm(`Delete mic preset "${current}"?`) &&
+        presetManager.deleteMicPreset(current)
+      ) {
+        this.updateMicPresetDropdown(presetSelect);
+        presetSelect.value = presetManager.getSelectedMicPreset();
+        alert(`Microphone preset "${current}" deleted.`);
+      }
+    });
+
+    // Add buttons to the container
+    actionsContainer.appendChild(saveButton);
+    actionsContainer.appendChild(deleteButton);
+
+    // Insert elements at the beginning of the mic input folder
+    this.micInputFolder.domElement.insertBefore(
+      actionsContainer,
+      this.micInputFolder.domElement.querySelector(".children")
+    );
+
+    this.micInputFolder.domElement.insertBefore(
+      presetSelect,
+      this.micInputFolder.domElement.querySelector(".children")
+    );
+  }
+
+  // Helper method to update preset dropdown
+  updateMicPresetDropdown(selectElement) {
+    if (!this.main.presetManager) return;
+
+    const options = this.main.presetManager.getMicPresetOptions();
+    console.log("Updating mic preset dropdown with options:", options);
+
+    selectElement.innerHTML = "";
+    options.forEach((preset) => {
+      const option = document.createElement("option");
+      option.value = preset;
+      option.textContent = preset;
+      selectElement.appendChild(option);
+    });
+
+    selectElement.value = this.main.presetManager.getSelectedMicPreset();
+  }
+
+  // Add a helper method to enable/disable modulations when switching presets
+  disableMicModulations() {
+    const externalInput = this.main.externalInput;
+    if (externalInput?.micForces) {
+      externalInput.micForces.clearTargets();
+    }
+
+    // Clear UI representation
+    if (this.micModulatorFolders) {
+      this.micModulatorFolders.forEach((folder) => folder.destroy());
+      this.micModulatorFolders = [];
+    }
+  }
+
+  initWithPresetManager(presetManager) {
+    if (presetManager) {
+      this.initMicPresetControls(presetManager);
+    } else {
+      console.warn(
+        "PresetManager not provided to InputUi.initWithPresetManager"
+      );
+    }
+  }
+
+  initMicPresetControls(presetManager) {
+    if (!presetManager) {
+      console.warn("PresetManager not provided to InputUi");
+      return;
+    }
+
+    this.presetManager = presetManager;
+
+    // Find the correct container in GUI structure
+    const containerElement =
+      this.micInputFolder.domElement.querySelector(".children");
+    if (!containerElement) {
+      console.error("Could not find container element in mic input folder");
+      return;
+    }
+
+    // Create select dropdown
+    const presetSelect = document.createElement("select");
+    presetSelect.classList.add("preset-select");
+    presetSelect.style.padding = "4px";
+    presetSelect.style.margin = "5px";
+    presetSelect.style.width = "100%";
+
+    this.updateMicPresetDropdown(presetSelect);
+
+    presetSelect.addEventListener("change", (e) => {
+      const value = e.target.value;
+      console.log("Mic input preset selector changed to:", value);
+      this.presetManager.loadMicPreset(value, this);
+    });
+
+    this.micPresetControls = { selector: presetSelect };
+
+    // Create action buttons container
+    const actionsContainer = document.createElement("div");
+    actionsContainer.style.display = "flex";
+    actionsContainer.style.justifyContent = "space-between";
+    actionsContainer.style.margin = "5px";
+    actionsContainer.style.flexWrap = "wrap";
+
+    // SAVE BUTTON
+    const saveButton = document.createElement("button");
+    saveButton.textContent = "Save";
+    saveButton.style.flex = "1";
+    saveButton.style.margin = "0 2px";
+    saveButton.addEventListener("click", () => {
+      const presetName = prompt("Enter microphone preset name:");
+      if (
+        presetName &&
+        this.presetManager.saveMicPreset(
+          presetName,
+          this.main.externalInput.micForces
+        )
+      ) {
+        this.updateMicPresetDropdown(presetSelect);
+        presetSelect.value = this.presetManager.getSelectedMicPreset();
+        alert(`Microphone preset "${presetName}" saved.`);
+      }
+    });
+
+    // DELETE BUTTON
+    const deleteButton = document.createElement("button");
+    deleteButton.textContent = "Delete";
+    deleteButton.style.flex = "1";
+    deleteButton.style.margin = "0 2px";
+    deleteButton.addEventListener("click", () => {
+      const current = presetSelect.value;
+      if (current === "None") {
+        alert("Cannot delete the None preset!");
+        return;
+      }
+      console.log("Attempting to delete mic preset:", current);
+      if (
+        confirm(`Delete mic preset "${current}"?`) &&
+        this.presetManager.deleteMicPreset(current)
+      ) {
+        this.updateMicPresetDropdown(presetSelect);
+        presetSelect.value = this.presetManager.getSelectedMicPreset();
+        alert(`Microphone preset "${current}" deleted.`);
+      }
+    });
+
+    // Add buttons to the container
+    actionsContainer.appendChild(saveButton);
+    actionsContainer.appendChild(deleteButton);
+
+    // Get any existing top-level controller for the mic input (like the enable button)
+    const enableControls = Array.from(this.micInputFolder.controllers);
+    const enableElement =
+      enableControls.length > 0 ? enableControls[0].domElement : null;
+
+    // Remove enable button from its current position if needed
+    if (enableElement && enableElement.parentNode) {
+      enableElement.parentNode.removeChild(enableElement);
+    }
+
+    // Insert preset controls at the top of the mic input folder
+    this.micInputFolder.domElement.insertBefore(
+      presetSelect,
+      this.micInputFolder.domElement.querySelector(".children")
+    );
+
+    this.micInputFolder.domElement.insertBefore(
+      actionsContainer,
+      this.micInputFolder.domElement.querySelector(".children")
+    );
+
+    // Add the enable button back after the preset controls
+    if (enableElement) {
+      this.micInputFolder.domElement
+        .querySelector(".children")
+        .insertBefore(
+          enableElement,
+          this.micInputFolder.domElement.querySelector(".children").firstChild
+        );
+    }
+  }
+
+  // Helper method to update dropdown options
+  updateMicPresetDropdown(selectElement) {
+    const options = this.presetManager.getMicPresetOptions();
+    console.log("Updating mic preset dropdown with options:", options);
+
+    selectElement.innerHTML = "";
+    options.forEach((preset) => {
+      const option = document.createElement("option");
+      option.value = preset;
+      option.textContent = preset;
+      selectElement.appendChild(option);
+    });
+
+    selectElement.value = this.presetManager.getSelectedMicPreset();
   }
 }

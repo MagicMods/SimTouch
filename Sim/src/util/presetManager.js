@@ -1,19 +1,22 @@
 class PresetManager {
-  constructor(leftGui, rightGui, pulseModUi) {
+  constructor(leftGui, rightGui, pulseModUi, inputUi) {
     if (!leftGui || !rightGui) {
       throw new Error("Both GUI instances required");
     }
     this.leftGui = leftGui;
     this.rightGui = rightGui;
     this.pulseModUi = pulseModUi; // Store reference to pulseModUi directly
+    this.inputUi = inputUi; // Add reference to inputUi
     this.presets = this.loadPresetsFromStorage();
     this.turbPresets = this.loadTurbPresetsFromStorage();
     this.voronoiPresets = this.loadVoronoiPresetsFromStorage();
     this.pulsePresets = this.loadPulsePresetsFromStorage();
+    this.micPresets = this.loadMicPresetsFromStorage(); // Add initialization of micPresets
     this.selectedPreset = "Default";
     this.selectedTurbPreset = "None";
     this.selectedVoronoiPreset = "None";
     this.selectedPulsePreset = "None";
+    this.selectedMicPreset = "None"; // Add initialization of selectedMicPreset
   }
   loadPresetsFromStorage() {
     const storedPresets = localStorage.getItem("savedPresets");
@@ -297,6 +300,7 @@ class PresetManager {
       turbPresets: this.turbPresets,
       voronoiPresets: this.voronoiPresets,
       pulsePresets: this.pulsePresets,
+      micPresets: this.micPresets, // Add this linee
     };
 
     const dataStr = JSON.stringify(allPresets, null, 2);
@@ -361,6 +365,30 @@ class PresetManager {
           }
         );
         this.saveVoronoiPresetsToStorage();
+      }
+
+      // Import pulse presets
+      if (importedData.pulsePresets) {
+        Object.entries(importedData.pulsePresets).forEach(([name, preset]) => {
+          // Skip None preset
+          if (name !== "None") {
+            this.pulsePresets[name] = preset;
+            importCount++;
+          }
+        });
+        this.savePulsePresetsToStorage();
+      }
+
+      // Import mic presets
+      if (importedData.micPresets) {
+        Object.entries(importedData.micPresets).forEach(([name, preset]) => {
+          // Skip None preset
+          if (name !== "None") {
+            this.micPresets[name] = preset;
+            importCount++;
+          }
+        });
+        this.saveMicPresetsToStorage();
       }
 
       console.log(`Successfully imported ${importCount} presets`);
@@ -770,6 +798,147 @@ class PresetManager {
 
     return null;
   }
+
+  //#region Mic Presets
+  // Microphone input preset methods
+  loadMicPresetsFromStorage() {
+    const storedPresets = localStorage.getItem("savedMicPresets");
+    const defaults = {
+      None: { mic: { modulators: [] } },
+    };
+    return storedPresets
+      ? { ...defaults, ...JSON.parse(storedPresets) }
+      : defaults;
+  }
+
+  saveMicPresetsToStorage() {
+    localStorage.setItem("savedMicPresets", JSON.stringify(this.micPresets));
+    console.log("Saved microphone input presets to storage:", this.micPresets);
+  }
+
+  getMicPresetOptions() {
+    return Object.keys(this.micPresets);
+  }
+
+  saveMicPreset(presetName, micForces) {
+    if (!presetName || presetName.trim() === "") {
+      alert("Preset name cannot be empty!");
+      return false;
+    }
+
+    if (this.micPresets[presetName]) {
+      const confirmOverride = confirm(
+        `"${presetName}" microphone preset already exists. Do you want to override it?`
+      );
+      if (!confirmOverride) return false;
+    }
+
+    // Save the modulators state
+    const modulators = Array.from(micForces.targetControllers.entries()).map(
+      ([controller, config]) => {
+        return {
+          controllerPath: this.findControllerPath(controller),
+          min: config.min,
+          max: config.max,
+          sensitivity: config.sensitivity || 1.0,
+          frequency: config.frequency || { min: 0, max: 20000 },
+        };
+      }
+    );
+
+    // Save global settings
+    const settings = {
+      sensitivity: micForces.sensitivity || 1.0,
+      smoothing: micForces.smoothing || 0.8,
+      baselineAmplitude: micForces.baselineAmplitude || 0.05,
+    };
+
+    this.micPresets[presetName] = {
+      mic: {
+        modulators,
+        settings,
+      },
+    };
+
+    this.selectedMicPreset = presetName;
+    this.saveMicPresetsToStorage();
+    console.log(`Saved microphone input preset "${presetName}":`, modulators);
+    return true;
+  }
+
+  deleteMicPreset(presetName) {
+    if (presetName === "None") {
+      alert("Cannot delete the None microphone preset!");
+      return false;
+    }
+
+    if (!this.micPresets[presetName]) {
+      console.warn("Microphone preset not found:", presetName);
+      return false;
+    }
+
+    delete this.micPresets[presetName];
+    this.selectedMicPreset = "None";
+    this.saveMicPresetsToStorage();
+    return true;
+  }
+
+  loadMicPreset(presetName, inputUi) {
+    const preset = this.micPresets[presetName];
+    if (!preset || !preset.mic) return false;
+
+    console.log("Loading microphone preset:", preset.mic);
+
+    const micForces = inputUi.main.externalInput?.micForces;
+    if (!micForces) {
+      console.warn("MicForces not available");
+      return false;
+    }
+
+    // Apply global settings
+    if (preset.mic.settings) {
+      micForces.setSensitivity(preset.mic.settings.sensitivity || 1.0);
+      micForces.setSmoothing(preset.mic.settings.smoothing || 0.8);
+      micForces.baselineAmplitude =
+        preset.mic.settings.baselineAmplitude || 0.05;
+    }
+
+    // Clear existing modulators
+    micForces.clearTargets();
+
+    // Add modulators from preset
+    if (
+      preset.mic.modulators &&
+      Array.isArray(preset.mic.modulators) &&
+      preset.mic.modulators.length > 0
+    ) {
+      preset.mic.modulators.forEach((modData) => {
+        const controller = this.findControllerByPath(modData.controllerPath);
+        if (controller) {
+          micForces.addTarget(
+            controller,
+            modData.min,
+            modData.max,
+            null,
+            modData.sensitivity,
+            modData.frequency
+          );
+        }
+      });
+    }
+
+    // Update UI
+    inputUi.updateMicInputDisplay();
+
+    this.selectedMicPreset = presetName;
+    console.log(`Loaded microphone preset "${presetName}"`);
+    return true;
+  }
+
+  getSelectedMicPreset() {
+    return this.selectedMicPreset;
+  }
+  //#endregion
 }
 
 export { PresetManager };
