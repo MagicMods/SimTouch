@@ -231,6 +231,7 @@ export class InputUi extends BaseUi {
 
     // Store mic modulators folders
     this.micModulatorFolders = [];
+    this.micControllers = [];
 
     // Enable toggle at ROOT level
     this.micEnableController = this.micInputFolder
@@ -243,18 +244,12 @@ export class InputUi extends BaseUi {
           externalInput.disableMic();
         }
 
-        // Toggle visibility of preset controls
-        this.toggleMicPresetControlsVisibility(value);
+        // Toggle visibility of all other controls
+        this.toggleAllMicControlsVisibility(value);
       });
 
-    // Create a basic controls folder for global settings
-    const basicControls = this.micInputFolder.addFolder("Controls");
-
-    // Store reference for later access
-    this.micControlsFolder = basicControls;
-
     // Global sensitivity control
-    this.micSensitivityController = basicControls
+    this.micSensitivityController = this.micInputFolder
       .add(
         { sensitivity: micForces.sensitivity || 1.0 },
         "sensitivity",
@@ -266,14 +261,16 @@ export class InputUi extends BaseUi {
       .onChange((value) => {
         externalInput.setMicSensitivity(value);
       });
+    this.micControllers.push(this.micSensitivityController);
 
     // Global smoothing control
-    this.micSmoothingController = basicControls
+    this.micSmoothingController = this.micInputFolder
       .add({ smoothing: micForces.smoothing || 0.8 }, "smoothing", 0, 1, 0.01)
       .name("Smoothing")
       .onChange((value) => {
         externalInput.setMicSmoothing(value);
       });
+    this.micControllers.push(this.micSmoothingController);
 
     // Calibrate button
     const calibrationControl = {
@@ -287,17 +284,20 @@ export class InputUi extends BaseUi {
       },
     };
 
-    basicControls.add(calibrationControl, "calibrate").name("Calibrate Mic");
+    const calibrateController = this.micInputFolder
+      .add(calibrationControl, "calibrate")
+      .name("Calibrate Mic");
+    this.micControllers.push(calibrateController);
 
-    // Open basic controls by default
-    basicControls.open();
-
-    // Add modulator button at ROOT level
+    // Add modulator button
     const addModulatorControl = {
       add: () => this.addMicModulator(),
     };
 
-    this.micInputFolder.add(addModulatorControl, "add").name("Add Modulator");
+    const addModulatorController = this.micInputFolder
+      .add(addModulatorControl, "add")
+      .name("Add Modulator");
+    this.micControllers.push(addModulatorController);
 
     // Audio level visualization
     const visualElement = document.createElement("div");
@@ -317,17 +317,21 @@ export class InputUi extends BaseUi {
     levelElement.style.borderRadius = "3px";
     levelElement.style.transition = "width 0.05s ease-out";
 
-    const levelLabel = document.createElement("div");
-    levelLabel.textContent = "Audio Level";
-    levelLabel.style.fontSize = "10px";
-    levelLabel.style.color = "#aaa";
-    levelLabel.style.position = "absolute";
-    levelLabel.style.top = "-16px";
-    levelLabel.style.left = "0";
+    // const levelLabel = document.createElement("div");
+    // levelLabel.textContent = "Audio Level";
+    // levelLabel.style.fontSize = "10px";
+    // levelLabel.style.color = "#aaa";
+    // levelLabel.style.position = "absolute";
+    // levelLabel.style.top = "-16px";
+    // levelLabel.style.left = "0";
 
     visualElement.appendChild(levelElement);
-    visualElement.appendChild(levelLabel);
+    // visualElement.appendChild(levelLabel);
     this.micInputFolder.domElement.appendChild(visualElement);
+    this.micVisualization = visualElement;
+
+    // Hide controls initially
+    this.toggleAllMicControlsVisibility(false);
 
     // Update visualization
     setInterval(() => {
@@ -464,6 +468,12 @@ export class InputUi extends BaseUi {
     // Create a folder for this modulator
     const folder = this.micInputFolder.addFolder(`Mic Modulator ${index}`);
     this.micModulatorFolders.push(folder);
+
+    // Set initial visibility based on mic enabled state
+    const isEnabled = this.main.externalInput?.micForces?.enabled || false;
+    if (!isEnabled) {
+      folder.domElement.style.display = "none";
+    }
 
     // Target selection
     const targets = this.getControlTargets();
@@ -695,17 +705,12 @@ export class InputUi extends BaseUi {
 
     this.presetManager = presetManager;
 
-    if (!this.micControlsFolder) {
-      console.error("Controls folder not initialized yet");
-      return;
-    }
-
-    // Create preset controls as the first item inside the Controls folder
-    const presetLabel = document.createElement("div");
-    presetLabel.style.paddingBottom = "6px";
-    presetLabel.style.paddingTop = "6px";
-    presetLabel.textContent = "Presets";
-    presetLabel.style.fontWeight = "bold";
+    // Create preset controls for the main mic input folder
+    // const presetLabel = document.createElement("div");
+    // presetLabel.style.paddingBottom = "6px";
+    // presetLabel.style.paddingTop = "6px";
+    // presetLabel.textContent = "Presets";
+    // presetLabel.style.fontWeight = "bold";
 
     // Create select dropdown
     const presetSelect = document.createElement("select");
@@ -777,26 +782,32 @@ export class InputUi extends BaseUi {
     actionsContainer.appendChild(saveButton);
     actionsContainer.appendChild(deleteButton);
 
-    // Get the children div where controllers are placed
-    const childrenDiv =
-      this.micControlsFolder.domElement.querySelector(".children");
+    // Get the insertion point - after the enable button but before other controls
+    const enableController = this.micEnableController;
+    const insertionPoint = enableController
+      ? enableController.domElement.nextSibling
+      : this.micInputFolder.domElement.querySelector(".children").firstChild;
 
     // Create a container for our preset controls
     const presetContainer = document.createElement("div");
     presetContainer.classList.add("controller");
     presetContainer.style.marginTop = "4px";
-    presetContainer.appendChild(presetLabel);
+    // presetContainer.appendChild(presetLabel);
     presetContainer.appendChild(presetSelect);
     presetContainer.appendChild(actionsContainer);
 
     // Store reference to the container for visibility toggling
     this.presetContainer = presetContainer;
 
-    // Insert at the beginning of the children div
-    if (childrenDiv && childrenDiv.firstChild) {
-      childrenDiv.insertBefore(presetContainer, childrenDiv.firstChild);
-    } else if (childrenDiv) {
-      childrenDiv.appendChild(presetContainer);
+    // Insert after the enable button
+    if (insertionPoint) {
+      this.micInputFolder.domElement
+        .querySelector(".children")
+        .insertBefore(presetContainer, insertionPoint);
+    } else {
+      this.micInputFolder.domElement
+        .querySelector(".children")
+        .appendChild(presetContainer);
     }
 
     // Set initial visibility based on microphone enabled state
@@ -850,6 +861,37 @@ export class InputUi extends BaseUi {
   toggleMicPresetControlsVisibility(show) {
     if (this.presetContainer) {
       this.presetContainer.style.display = show ? "block" : "none";
+    }
+  }
+
+  // Updated method to toggle visibility of all mic controls
+  toggleAllMicControlsVisibility(show) {
+    // Toggle preset controls
+    if (this.presetContainer) {
+      this.presetContainer.style.display = show ? "block" : "none";
+    }
+
+    // Toggle all other controllers
+    if (this.micControllers) {
+      for (const controller of this.micControllers) {
+        if (controller && controller.domElement) {
+          controller.domElement.style.display = show ? "block" : "none";
+        }
+      }
+    }
+
+    // Toggle modulator folders
+    if (this.micModulatorFolders) {
+      for (const folder of this.micModulatorFolders) {
+        if (folder && folder.domElement) {
+          folder.domElement.style.display = show ? "block" : "none";
+        }
+      }
+    }
+
+    // Toggle visualization
+    if (this.micVisualization) {
+      this.micVisualization.style.display = show ? "block" : "none";
     }
   }
 }
