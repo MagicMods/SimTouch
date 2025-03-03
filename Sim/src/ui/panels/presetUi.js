@@ -5,6 +5,9 @@ export class PresetUi extends BaseUi {
     super(main, container);
     this.presetManager = null;
     this.presetControls = {};
+    this.autoPlayActive = false;
+    this.autoPlayInterval = null;
+    this.autoPlaySpeed = 2000; // Default: 2 seconds
 
     // Change the GUI title
     this.gui.title("Presets");
@@ -58,6 +61,14 @@ export class PresetUi extends BaseUi {
     prevButton.style.marginRight = "5px";
     prevButton.addEventListener("click", () => this.navigatePreset(-1));
 
+    // Add Play button
+    const playButton = document.createElement("button");
+    playButton.textContent = "▶ Play";
+    playButton.style.flex = "1";
+    playButton.style.margin = "0 5px";
+    playButton.addEventListener("click", () => this.toggleAutoPlay(playButton));
+    this.presetControls.playButton = playButton;
+
     const nextButton = document.createElement("button");
     nextButton.textContent = "Next →";
     nextButton.style.flex = "1";
@@ -65,7 +76,42 @@ export class PresetUi extends BaseUi {
     nextButton.addEventListener("click", () => this.navigatePreset(1));
 
     navContainer.appendChild(prevButton);
+    navContainer.appendChild(playButton);
     navContainer.appendChild(nextButton);
+
+    // Create speed slider container (initially hidden)
+    const speedContainer = document.createElement("div");
+    speedContainer.style.margin = "5px";
+    speedContainer.style.display = "none";
+
+    const speedLabel = document.createElement("div");
+    speedLabel.textContent = "Speed: 2.0s";
+    speedLabel.style.marginBottom = "5px";
+    speedLabel.style.textAlign = "center";
+
+    const speedSlider = document.createElement("input");
+    speedSlider.type = "range";
+    speedSlider.min = "500";
+    speedSlider.max = "10000";
+    speedSlider.step = "500";
+    speedSlider.value = this.autoPlaySpeed.toString();
+    speedSlider.style.width = "100%";
+
+    speedSlider.addEventListener("input", (e) => {
+      const value = parseInt(e.target.value);
+      this.autoPlaySpeed = value;
+      speedLabel.textContent = `Speed: ${(value / 1000).toFixed(1)}s`;
+
+      // If autoplay is active, restart it with new speed
+      if (this.autoPlayActive) {
+        this.stopAutoPlay();
+        this.startAutoPlay();
+      }
+    });
+
+    speedContainer.appendChild(speedLabel);
+    speedContainer.appendChild(speedSlider);
+    this.presetControls.speedContainer = speedContainer;
 
     // Create buttons for preset management
     const actionsContainer = document.createElement("div");
@@ -150,6 +196,36 @@ export class PresetUi extends BaseUi {
     containerElement.appendChild(actionsContainer);
     containerElement.appendChild(presetSelect);
     containerElement.appendChild(navContainer);
+    containerElement.appendChild(speedContainer);
+  }
+
+  toggleAutoPlay(playButton) {
+    if (this.autoPlayActive) {
+      this.stopAutoPlay();
+      playButton.textContent = "▶ Play";
+      this.presetControls.speedContainer.style.display = "none";
+    } else {
+      this.startAutoPlay();
+      playButton.textContent = "⏹ Stop";
+      this.presetControls.speedContainer.style.display = "block";
+    }
+  }
+
+  startAutoPlay() {
+    this.autoPlayActive = true;
+    this.autoPlayInterval = setInterval(() => {
+      this.navigatePreset(1);
+    }, this.autoPlaySpeed);
+    console.log(`Auto-play started with ${this.autoPlaySpeed}ms interval`);
+  }
+
+  stopAutoPlay() {
+    if (this.autoPlayInterval) {
+      clearInterval(this.autoPlayInterval);
+      this.autoPlayInterval = null;
+    }
+    this.autoPlayActive = false;
+    console.log("Auto-play stopped");
   }
 
   // The rest of the methods remain unchanged
