@@ -57,12 +57,21 @@ export class LeftUi extends BaseUi {
     if (!particles) return;
 
     // Pause control
-    this.gui
-      .add(this.main, "paused")
-      .name("Pause")
-      .onFinishChange((value) => {
-        console.log(`Simulation is ${value ? "paused" : "running"}`);
-      });
+    const pauseButton = this.gui.add(
+      {
+        togglePause: () => {
+          this.main.paused = !this.main.paused;
+          pauseButton.name(this.main.paused ? "Resume" : "Pause");
+          console.log(
+            `Simulation is ${this.main.paused ? "paused" : "running"}`
+          );
+        },
+      },
+      "togglePause"
+    );
+
+    // Set initial button text based on current state
+    pauseButton.name(this.main.paused ? "Resume" : "Pause");
 
     // Update the render mode dropdown to include the new "Overlap" option
     if (this.main.gridRenderer.renderModes) {

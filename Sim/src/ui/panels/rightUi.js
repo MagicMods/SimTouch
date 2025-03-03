@@ -334,22 +334,21 @@ class RightUi extends BaseUi {
   addGlobalForceControl(folder, behavior) {
     if (!behavior?.forceScales) return;
 
-    // Calculate average of current force values as starting point
+    // Set default force to 5.0 instead of calculating average
     const forceTypes = ["Fluid", "Swarm", "Automata"];
-    let initialForce = 0;
-    let count = 0;
+    const defaultForce = 5.0;
 
+    // Create control object with fixed default force
+    this.globalForceControl = {
+      force: defaultForce,
+    };
+
+    // Apply the default force to all behavior types immediately
     forceTypes.forEach((type) => {
-      if (behavior.forceScales[type]?.base !== undefined) {
-        initialForce += behavior.forceScales[type].base;
-        count++;
+      if (behavior.forceScales[type]) {
+        behavior.forceScales[type].base = defaultForce;
       }
     });
-
-    // Create control object with the average force
-    this.globalForceControl = {
-      force: count > 0 ? initialForce / count : 1.0,
-    };
 
     // Create controller
     this.globalForceController = folder
@@ -364,7 +363,6 @@ class RightUi extends BaseUi {
         });
       });
   }
-
   updateOrganicFolders(mode) {
     const fluidEnabled = mode === "Fluid";
     const swarmEnabled = mode === "Swarm";
