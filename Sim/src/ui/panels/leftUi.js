@@ -80,6 +80,7 @@ export class LeftUi extends BaseUi {
 
       this.controls.fieldType = this.globalFolder
         .add(fieldControl, "field", Object.values(GridField))
+        // .className("preset-select")
         .name("Mode")
         .onChange((value) => {
           // Set new mode
@@ -87,20 +88,6 @@ export class LeftUi extends BaseUi {
           // Update display
           this.controls.fieldType.updateDisplay();
         });
-
-      const smoothing = this.main.gridRenderer.renderModes.smoothing;
-      this.globalFolder
-        .add(this.main.gridRenderer, "maxDensity", 0.1, 10, 0.1)
-        .name("Max Density");
-      this.globalFolder
-        .add(smoothing, "rateIn", 0.01, 0.5)
-        .name("Fade In Speed")
-        .onFinishChange(() => console.log("Smoothing in:", smoothing.rateIn));
-
-      this.globalFolder
-        .add(smoothing, "rateOut", 0.01, 0.5)
-        .name("Fade Out Speed")
-        .onFinishChange(() => console.log("Smoothing out:", smoothing.rateOut));
 
       const behaviorControl = {
         behavior: particles.organicBehavior.currentBehavior,
@@ -120,20 +107,6 @@ export class LeftUi extends BaseUi {
         });
 
       this.globalFolder
-        .add(particles, "timeScale", 0, 2, 0.1)
-        .name("Speed")
-        .onFinishChange((value) => {
-          console.log(`Animation speed: ${value}x`);
-        });
-
-      this.globalFolder
-        .add(particles, "picFlipRatio", 0, 1, 0.01)
-        .name("PIC / FLIP")
-        .onFinishChange((value) => {
-          console.log(`PIC/FLIP mixing ratio: ${value * 100}% FLIP`);
-        });
-
-      this.globalFolder
         .add(this.main.particleSystem.boundary, "mode", {
           Bounce: "BOUNCE",
           Warp: "WARP",
@@ -142,6 +115,44 @@ export class LeftUi extends BaseUi {
         .onChange((value) => {
           this.main.particleSystem.setBoundaryMode(value);
         });
+
+      const smoothing = this.main.gridRenderer.renderModes.smoothing;
+      this.globalFolder
+        .add(this.main.gridRenderer, "maxDensity", 0.1, 10, 0.1)
+        .name("Max Density");
+      this.globalFolder
+        .add(smoothing, "rateIn", 0.01, 0.5)
+        .name("Fade In Speed")
+        .onFinishChange(() => console.log("Smoothing in:", smoothing.rateIn));
+
+      this.globalFolder
+        .add(smoothing, "rateOut", 0.01, 0.5)
+        .name("Fade Out Speed")
+        .onFinishChange(() => console.log("Smoothing out:", smoothing.rateOut));
+
+      this.globalFolder
+        .add(particles, "timeStep", 0.001, 0.05, 0.001)
+        .name("Time Step");
+
+      this.globalFolder
+        .add(particles, "timeScale", 0, 2, 0.1)
+        .name("Speed")
+        .onFinishChange((value) => {
+          console.log(`Animation speed: ${value}x`);
+        });
+
+      this.globalFolder
+        .add(particles, "velocityDamping", 0.8, 1, 0.01)
+        .name("Velocity Damping")
+        .onFinishChange((value) => {
+          console.log(`Velocity damping set to ${value}`);
+        });
+      // this.globalFolder
+      //   .add(particles, "picFlipRatio", 0, 1, 0.01)
+      //   .name("PIC / FLIP")
+      //   .onFinishChange((value) => {
+      //     console.log(`PIC/FLIP mixing ratio: ${value * 100}% FLIP`);
+      //   });
     }
   }
   //#endregion
@@ -230,15 +241,12 @@ export class LeftUi extends BaseUi {
       .add(this.main.particleSystem.gravity, "enabled")
       .name("Gravity Enabled");
 
-    // Rest of the physics controls
-    physicsFolder
-      .add(this.main.particleSystem, "gravityFlip")
-      .name("Flip Gravity");
+    // // Rest of the physics controls
+    // physicsFolder
+    //   .add(this.main.particleSystem, "gravityFlip")
+    //   .name("Flip Gravity");
 
     // Add timestep control
-    physicsFolder
-      .add(this.main.particleSystem, "timeStep", 0.001, 0.05, 0.001)
-      .name("Time Step");
   }
   //#endregion
 

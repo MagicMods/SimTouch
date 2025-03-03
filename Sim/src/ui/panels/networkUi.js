@@ -116,5 +116,6 @@ export class NetworkUi extends BaseUi {
 
     // Open the config folder by default
     configFolder.open(false);
+    this.gui.open(true);
   }
 }
