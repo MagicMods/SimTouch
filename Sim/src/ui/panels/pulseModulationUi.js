@@ -162,7 +162,13 @@ export class PulseModulationUi extends BaseUi {
 
     // Add modulation type
     folder
-      .add(modulator, "type", ["sine", "square", "triangle", "sawtooth"])
+      .add(modulator, "type", [
+        "sine",
+        "square",
+        "triangle",
+        "sawtooth",
+        "sustainedPulse",
+      ])
       .name("Wave Type");
 
     // Add frequency control

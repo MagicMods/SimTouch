@@ -222,6 +222,18 @@ class PulseModulator {
       case "sawtooth":
         value = ((t / Math.PI) % 2) / 2 + 0.5; // Map to 0-1
         break;
+      case "sustainedPulse":
+        // Calculate position in the cycle (0 to 1)
+        const position = (t % (Math.PI * 2)) / (Math.PI * 2);
+
+        if (position < 0.5) {
+          // First half of cycle: maintain at max value (1.0)
+          value = 1.0;
+        } else {
+          // Second half of cycle: linear ramp from max (1.0) to min (0.0)
+          value = 1.0 - (position - 0.5) * 2; // Maps position 0.5->1.0 to value 1.0->0.0
+        }
+        break;
       default:
         value = Math.sin(t) * 0.5 + 0.5;
     }
