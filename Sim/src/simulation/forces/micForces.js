@@ -199,12 +199,25 @@ export class MicInputForces {
     frequency = null
   ) {
     if (controller && typeof controller.setValue === "function") {
+      // Check if this controller is already a target, and if so, remove it first
+      if (this.targetControllers.has(controller)) {
+        this.removeTarget(controller);
+      }
+
+      // Add the new configuration
       this.targetControllers.set(controller, {
         min,
         max,
         folder,
         sensitivity: sensitivity || 1.0,
         frequency: frequency || { min: 0, max: 20000 },
+      });
+
+      console.log("Added mic target:", {
+        min,
+        max,
+        sensitivity,
+        folder: folder?._title,
       });
     }
     return this;
@@ -259,12 +272,42 @@ export class MicInputForces {
   }
 
   removeTarget(controller) {
-    this.targetControllers.delete(controller);
+    if (controller) {
+      // Make sure to reset the controller value to its current value (stop modulation)
+      try {
+        // Get the current value from the controller if possible
+        if (typeof controller.getValue === "function") {
+          const currentValue = controller.getValue();
+          controller.setValue(currentValue);
+        }
+      } catch (e) {
+        console.warn("Error resetting controller value:", e);
+      }
+
+      // Remove from targetControllers map
+      this.targetControllers.delete(controller);
+      console.log("Target removed from mic forces");
+    }
     return this;
   }
 
   clearTargets() {
+    // Reset all controllers before removing them
+    for (const [controller, config] of this.targetControllers.entries()) {
+      try {
+        // Get the current value from the controller if possible
+        if (typeof controller.getValue === "function") {
+          const currentValue = controller.getValue();
+          controller.setValue(currentValue);
+        }
+      } catch (e) {
+        console.warn("Error resetting controller value:", e);
+      }
+    }
+
+    // Clear the map
     this.targetControllers.clear();
+    console.log("All mic targets cleared");
     return this;
   }
 

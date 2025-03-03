@@ -205,6 +205,29 @@ export class ExternalInputConnector {
     return this;
   }
 
+  // Add this new method to handle setting mic targets
+  setMicTarget(controller, min, max, sensitivity = 1.0, frequency = null) {
+    if (this.micForces) {
+      this.micForces.addTarget(
+        controller,
+        min,
+        max,
+        null,
+        sensitivity,
+        frequency
+      );
+    }
+    return this;
+  }
+
+  // Add this method to clear mic targets
+  clearMicTargets() {
+    if (this.micForces) {
+      this.micForces.clearTargets();
+    }
+    return this;
+  }
+
   cleanup() {
     socketManager.removeMouseHandler(this.handleMouseData);
     socketManager.removeMessageHandler(this.handleConnectionChange);
