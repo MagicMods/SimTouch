@@ -1,11 +1,13 @@
 import { socketManager } from "../network/socketManager.js";
 
 export class ExternalInputConnector {
-  constructor(mouseForces, emuForces = null) {
+  constructor(mouseForces, emuForces = null, micForces = null) {
     this.mouseForces = mouseForces;
     this.emuForces = emuForces;
+    this.micForces = micForces;
     this.enabled = false;
     this.emuEnabled = false;
+    this.micEnabled = false;
     this.autoEnableOnConnection = false;
 
     // Bind methods to maintain correct 'this' context
@@ -94,6 +96,50 @@ export class ExternalInputConnector {
     return this;
   }
 
+  enableMic() {
+    if (this.micForces && !this.micEnabled) {
+      this.micForces.enable().then((success) => {
+        if (success) {
+          this.micEnabled = true;
+          console.log("Microphone input enabled");
+        } else {
+          console.error("Failed to enable microphone input");
+        }
+      });
+    }
+    return this;
+  }
+
+  disableMic() {
+    if (this.micForces && this.micEnabled) {
+      this.micEnabled = false;
+      this.micForces.disable();
+      console.log("Microphone input disabled");
+    }
+    return this;
+  }
+
+  setMicSensitivity(value) {
+    if (this.micForces) {
+      this.micForces.setSensitivity(value);
+    }
+    return this;
+  }
+
+  setMicSmoothing(value) {
+    if (this.micForces) {
+      this.micForces.setSmoothing(value);
+    }
+    return this;
+  }
+
+  calibrateMic() {
+    if (this.micForces) {
+      this.micForces.calibrate();
+    }
+    return this;
+  }
+
   handleMouseData(x, y) {
     if (!this.enabled) return;
 
@@ -165,6 +211,10 @@ export class ExternalInputConnector {
 
     if (this.emuForces) {
       socketManager.removeEmuHandler(this.handleEmuData);
+    }
+
+    if (this.micForces && this.micEnabled) {
+      this.disableMic();
     }
   }
 }

@@ -14,12 +14,14 @@ export class InputUi extends BaseUi {
     // Create top-level folders for each input type
     this.mouseInputFolder = this.createFolder("Mouse Input");
     this.emuInputFolder = this.createFolder("EMU Input");
-    this.externalInputFolder = this.createFolder("External Input");
+    this.externalInputFolder = this.createFolder("Touch Input");
+    this.micInputFolder = this.createFolder("Microphone Input");
 
     // Initialize input controls
     this.initMouseControls();
     this.initEmuInputControls();
     this.initExternalInputControls();
+    this.initMicInputControls();
 
     // Set default open states
     this.mouseInputFolder.open(true);
@@ -219,5 +221,179 @@ export class InputUi extends BaseUi {
           this.main.emuVisualizer.hide();
         }
       });
+  }
+
+  initMicInputControls() {
+    if (!this.main.externalInput?.micForces) return;
+
+    const externalInput = this.main.externalInput;
+    const micForces = externalInput.micForces;
+
+    // Enable toggle
+    this.micInputFolder
+      .add({ enabled: false }, "enabled")
+      .name("Enable Microphone")
+      .onChange((value) => {
+        if (value) {
+          externalInput.enableMic();
+        } else {
+          externalInput.disableMic();
+        }
+      });
+
+    // Sensitivity control
+    this.micInputFolder
+      .add({ sensitivity: 1.0 }, "sensitivity", 0.1, 10.0, 0.1)
+      .name("Mic Sensitivity")
+      .onChange((value) => {
+        externalInput.setMicSensitivity(value);
+      });
+
+    // Smoothing control
+    this.micInputFolder
+      .add({ smoothing: 0.8 }, "smoothing", 0, 1, 0.01)
+      .name("Smoothing")
+      .onChange((value) => {
+        externalInput.setMicSmoothing(value);
+      });
+
+    // Target selection (similar to PulseModulator)
+    const targets = this.getControlTargets();
+    const targetController = {
+      target: "None",
+      min: 0,
+      max: 1,
+    };
+
+    this.micInputFolder
+      .add(targetController, "target", targets)
+      .name("Target Parameter")
+      .onChange((value) => {
+        // Remove previous target
+        micForces.clearTargets();
+
+        if (value !== "None") {
+          const controlInfo = this.getControllerForTarget(value);
+          if (controlInfo && controlInfo.controller) {
+            // Update min/max
+            targetController.min = controlInfo.min;
+            targetController.max = controlInfo.max;
+
+            minController.min(controlInfo.min * 0.5);
+            minController.max(controlInfo.max * 1.5);
+            maxController.min(controlInfo.min * 0.5);
+            maxController.max(controlInfo.max * 1.5);
+
+            minController.setValue(controlInfo.min);
+            maxController.setValue(controlInfo.max);
+
+            // Add the target
+            micForces.addTarget(
+              controlInfo.controller,
+              targetController.min,
+              targetController.max
+            );
+          }
+        }
+      });
+
+    // Min/max range controls
+    const minController = this.micInputFolder
+      .add(targetController, "min", 0, 1, 0.01)
+      .name("Min Value")
+      .onChange((value) => {
+        if (targetController.target !== "None") {
+          micForces.clearTargets();
+
+          const controlInfo = this.getControllerForTarget(
+            targetController.target
+          );
+          if (controlInfo && controlInfo.controller) {
+            micForces.addTarget(
+              controlInfo.controller,
+              value,
+              targetController.max
+            );
+          }
+        }
+      });
+
+    const maxController = this.micInputFolder
+      .add(targetController, "max", 0, 1, 0.01)
+      .name("Max Value")
+      .onChange((value) => {
+        if (targetController.target !== "None") {
+          micForces.clearTargets();
+
+          const controlInfo = this.getControllerForTarget(
+            targetController.target
+          );
+          if (controlInfo && controlInfo.controller) {
+            micForces.addTarget(
+              controlInfo.controller,
+              targetController.min,
+              value
+            );
+          }
+        }
+      });
+
+    // Audio level visualization
+    const visualElement = document.createElement("div");
+    visualElement.style.height = "10px";
+    visualElement.style.backgroundColor = "#444";
+    visualElement.style.marginTop = "5px";
+    visualElement.style.position = "relative";
+
+    const levelElement = document.createElement("div");
+    levelElement.style.height = "100%";
+    levelElement.style.backgroundColor = "#0f0";
+    levelElement.style.width = "0%";
+    levelElement.style.position = "absolute";
+
+    visualElement.appendChild(levelElement);
+    this.micInputFolder.domElement.appendChild(visualElement);
+
+    // Update visualization
+    setInterval(() => {
+      if (micForces && micForces.enabled) {
+        const level = Math.min(
+          100,
+          Math.max(0, micForces.smoothedAmplitude * 100)
+        );
+        levelElement.style.width = level + "%";
+      } else {
+        levelElement.style.width = "0%";
+      }
+    }, 50);
+  }
+
+  // Add these methods to the InputUi class
+  getControlTargets() {
+    // Access leftUi implementation if available
+    if (
+      this.main.ui &&
+      this.main.ui.leftUi &&
+      typeof this.main.ui.leftUi.getControlTargets === "function"
+    ) {
+      return this.main.ui.leftUi.getControlTargets();
+    }
+
+    // Fallback to a minimal implementation
+    return ["None", "Particle Size", "Gravity Strength", "Repulsion"];
+  }
+
+  getControllerForTarget(targetName) {
+    // Access leftUi implementation if available
+    if (
+      this.main.ui &&
+      this.main.ui.leftUi &&
+      typeof this.main.ui.leftUi.getControllerForTarget === "function"
+    ) {
+      return this.main.ui.leftUi.getControllerForTarget(targetName);
+    }
+
+    // Fallback to null
+    return null;
   }
 }

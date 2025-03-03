@@ -12,6 +12,7 @@ import { MouseForces } from "./simulation/forces/mouseForces.js";
 import { ExternalInputConnector } from "./input/externalInputConnector.js";
 import { EmuForces } from "./simulation/forces/emuForces.js"; // Already imported
 import { EmuRenderer } from "./renderer/emuRenderer.js"; // Import the visualizer at the top of the file
+import { MicInputForces } from "./simulation/forces/micForces.js"; // Import the microphone forces class
 
 class Main {
   constructor() {
@@ -36,6 +37,7 @@ class Main {
     this.frame = 0;
     this.mouseForces = new MouseForces();
     this.mouseForces.setupMouseInteraction(this.canvas, this.particleSystem);
+    this.micForces = new MicInputForces(); // Create a new instance of MicForces
 
     // IMPORTANT: Attach it to particleSystem so render() can find it
     this.particleSystem.mouseForces = this.mouseForces;
@@ -52,7 +54,8 @@ class Main {
     // Pass both mouseForces and emuForces to ExternalInputConnector
     this.externalInput = new ExternalInputConnector(
       this.mouseForces,
-      this.emuForces
+      this.emuForces,
+      this.micForces
     )
       .enable()
       .setSensitivity(0.002); // Set up external input
