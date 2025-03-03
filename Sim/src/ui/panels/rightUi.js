@@ -88,8 +88,8 @@ class RightUi extends BaseUi {
     const presetSelect = document.createElement("select");
     presetSelect.classList.add("preset-select");
     presetSelect.style.padding = "4px";
-    presetSelect.style.width = "100%";
-    presetSelect.style.margin = "5px 0";
+
+    presetSelect.style.margin = "5px";
 
     this.updateTurbPresetDropdown(presetSelect);
 
@@ -105,8 +105,8 @@ class RightUi extends BaseUi {
     const actionsContainer = document.createElement("div");
     actionsContainer.style.display = "flex";
     actionsContainer.style.justifyContent = "space-between";
-    actionsContainer.style.margin = "5px 5px";
-    actionsContainer.style.width = "100%";
+    actionsContainer.style.margin = "5px";
+
     actionsContainer.style.flexWrap = "wrap"; // Allow wrapping if needed
 
     // SAVE BUTTON
@@ -217,7 +217,6 @@ class RightUi extends BaseUi {
     const presetSelect = document.createElement("select");
     presetSelect.classList.add("preset-select");
     presetSelect.style.padding = "4px";
-    presetSelect.style.width = "100%";
     presetSelect.style.margin = "5px 0";
 
     this.updateVoronoiPresetDropdown(presetSelect);

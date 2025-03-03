@@ -153,8 +153,8 @@ canvas {
 
 .preset-select {
     width: calc(100% - 8px); /* Adjust width to account for margins */
-    padding: 6px;
-    margin: 4px 4px; /* Keep horizontal margins */
+    /* padding: 6px; */
+    margin:5px;
     border: 1px solid #242424;
     border-radius: 4px;
     background: #3b3b3b;
