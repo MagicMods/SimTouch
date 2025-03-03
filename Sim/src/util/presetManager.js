@@ -37,8 +37,10 @@ class PresetManager {
       return false;
     }
     if (this.presets[presetName]) {
-      alert("Preset name already exists!");
-      return false;
+      const confirmOverride = confirm(
+        `"${presetName}" preset already exists. Do you want to override it?`
+      );
+      if (!confirmOverride) return false;
     }
 
     // Save the complete GUI state
@@ -330,8 +332,10 @@ class PresetManager {
       return false;
     }
     if (this.turbPresets[presetName]) {
-      alert("Turbulence preset name already exists!");
-      return false;
+      const confirmOverride = confirm(
+        `"${presetName}" turbulence preset already exists. Do you want to override it?`
+      );
+      if (!confirmOverride) return false;
     }
     const fullState = turbGui.save();
     console.log("Full turbulence GUI state:", fullState);
@@ -454,8 +458,10 @@ class PresetManager {
       return false;
     }
     if (this.voronoiPresets[presetName]) {
-      alert("Voronoi preset name already exists!");
-      return false;
+      const confirmOverride = confirm(
+        `"${presetName}" Voronoi preset already exists. Do you want to override it?`
+      );
+      if (!confirmOverride) return false;
     }
     const fullState = voronoiGui.save();
     console.log("Full voronoi GUI state:", fullState);
@@ -575,8 +581,10 @@ class PresetManager {
       return false;
     }
     if (this.pulsePresets[presetName]) {
-      alert("Pulse modulation preset name already exists!");
-      return false;
+      const confirmOverride = confirm(
+        `"${presetName}" pulse modulation preset already exists. Do you want to override it?`
+      );
+      if (!confirmOverride) return false;
     }
 
     // Save the modulators state
