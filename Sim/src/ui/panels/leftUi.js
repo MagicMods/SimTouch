@@ -8,6 +8,7 @@ export class LeftUi extends BaseUi {
     super(main, container);
     this.controls = {};
     this.initFolders();
+    this.gui.title("Parameters");
   }
 
   setPresetManager(presetManager) {
@@ -16,7 +17,10 @@ export class LeftUi extends BaseUi {
 
   initFolders() {
     // Persistent folders
-    this.globalFolder = this.createFolder("Global");
+    // this.gui = this.createFolder("Global");
+
+    this.initGlobalControls();
+
     this.particleFolder = this.createFolder("Particles");
     this.physicsFolder = this.createFolder("Physics");
     this.collisionFolder = this.createFolder("Collision");
@@ -32,16 +36,15 @@ export class LeftUi extends BaseUi {
     // Remove initUDPControls call
     // this.initUDPControls();
 
-    this.initDebugControls();
-    this.initGlobalControls();
     this.initParticleControls();
     this.initPhysicsControls();
     this.initCollisionControls();
     this.initBoundaryControls();
     this.initRestStateControls();
+    this.initDebugControls();
 
     // Set default open states
-    this.globalFolder.open();
+    // this.gui.open();
     this.particleFolder.open();
     this.physicsFolder.open();
     this.collisionFolder.open();
@@ -54,7 +57,7 @@ export class LeftUi extends BaseUi {
     if (!particles) return;
 
     // Pause control
-    this.globalFolder
+    this.gui
       .add(this.main, "paused")
       .name("Pause")
       .onFinishChange((value) => {
@@ -67,7 +70,7 @@ export class LeftUi extends BaseUi {
         this.main.gridRenderer.renderModes.modes
       );
       // Make sure "Overlap" is included in gridFields from the updated GridField enum
-      // this.globalFolder
+      // this.gui
       //   .add(this.main.gridRenderer.renderModes, "currentMode", gridFields)
       //   .name("Grid Field")
       //   .onChange(() => this.main.gridRenderer.resetColors());
@@ -78,7 +81,7 @@ export class LeftUi extends BaseUi {
         field: this.main.gridRenderer.renderModes.currentMode,
       };
 
-      this.controls.fieldType = this.globalFolder
+      this.controls.fieldType = this.gui
         .add(fieldControl, "field", Object.values(GridField))
         // .className("preset-select")
         .name("Mode")
@@ -93,7 +96,7 @@ export class LeftUi extends BaseUi {
         behavior: particles.organicBehavior.currentBehavior,
       };
 
-      this.controls.behaviorType = this.globalFolder
+      this.controls.behaviorType = this.gui
         .add(behaviorControl, "behavior", Object.values(Behaviors))
         .name("Organic Behavior")
         .onChange((value) => {
@@ -106,7 +109,7 @@ export class LeftUi extends BaseUi {
           this.controls.behaviorType.updateDisplay();
         });
 
-      this.globalFolder
+      this.gui
         .add(this.main.particleSystem.boundary, "mode", {
           Bounce: "BOUNCE",
           Warp: "WARP",
@@ -117,37 +120,35 @@ export class LeftUi extends BaseUi {
         });
 
       const smoothing = this.main.gridRenderer.renderModes.smoothing;
-      this.globalFolder
+      this.gui
         .add(this.main.gridRenderer, "maxDensity", 0.1, 10, 0.1)
         .name("Max Density");
-      this.globalFolder
+      this.gui
         .add(smoothing, "rateIn", 0.01, 0.5)
         .name("Fade In Speed")
         .onFinishChange(() => console.log("Smoothing in:", smoothing.rateIn));
 
-      this.globalFolder
+      this.gui
         .add(smoothing, "rateOut", 0.01, 0.5)
         .name("Fade Out Speed")
         .onFinishChange(() => console.log("Smoothing out:", smoothing.rateOut));
 
-      this.globalFolder
-        .add(particles, "timeStep", 0.001, 0.05, 0.001)
-        .name("Time Step");
+      this.gui.add(particles, "timeStep", 0.001, 0.05, 0.001).name("Time Step");
 
-      this.globalFolder
+      this.gui
         .add(particles, "timeScale", 0, 2, 0.1)
         .name("Speed")
         .onFinishChange((value) => {
           console.log(`Animation speed: ${value}x`);
         });
 
-      this.globalFolder
+      this.gui
         .add(particles, "velocityDamping", 0.8, 1, 0.01)
         .name("Velocity Damping")
         .onFinishChange((value) => {
           console.log(`Velocity damping set to ${value}`);
         });
-      // this.globalFolder
+      // this.gui
       //   .add(particles, "picFlipRatio", 0, 1, 0.01)
       //   .name("PIC / FLIP")
       //   .onFinishChange((value) => {

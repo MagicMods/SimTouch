@@ -41,6 +41,7 @@ export class PulseModulationUi extends BaseUi {
         // When master frequency changes, update all modulators that are synced
         this.updateModulatorDisplays();
       });
+    this.gui.open(false);
   }
 
   // Called after other UI panels are initialized
