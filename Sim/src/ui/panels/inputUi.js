@@ -24,7 +24,7 @@ export class InputUi extends BaseUi {
     this.initMicInputControls();
 
     // Set default open states
-    this.mouseInputFolder.open(true);
+    this.mouseInputFolder.open(false);
     this.emuInputFolder.open(false);
     this.externalInputFolder.open(false);
   }
