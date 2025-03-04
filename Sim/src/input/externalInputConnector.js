@@ -240,4 +240,38 @@ export class ExternalInputConnector {
       this.disableMic();
     }
   }
+
+  setAudioInputDevice(constraints) {
+    if (!this.micForces || !this.micForces.enabled) {
+      console.warn("Audio input not enabled, can't change device");
+      return;
+    }
+
+    console.log("Changing audio input device with constraints:", constraints);
+
+    // Stop current stream if it exists
+    if (this.micStream) {
+      this.micStream.getTracks().forEach((track) => track.stop());
+    }
+
+    // Create new audio stream with the selected device
+    navigator.mediaDevices
+      .getUserMedia(constraints)
+      .then((stream) => {
+        this.micStream = stream;
+
+        // Reconnect the audio context
+        if (this.audioContext && this.analyser) {
+          const source = this.audioContext.createMediaStreamSource(stream);
+          source.connect(this.analyser);
+          console.log("Audio input device changed successfully");
+        }
+      })
+      .catch((err) => {
+        console.error("Error accessing selected audio device:", err);
+        alert(
+          "Could not access the selected audio device. Please check permissions."
+        );
+      });
+  }
 }

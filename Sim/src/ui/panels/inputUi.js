@@ -236,10 +236,14 @@ export class InputUi extends BaseUi {
     // Enable toggle at ROOT level
     this.micEnableController = this.micInputFolder
       .add({ enabled: false }, "enabled")
-      .name("Enable Microphone")
+      .name("Enable Audio Input") // Updated label to be more generic
       .onChange((value) => {
         if (value) {
           externalInput.enableMic();
+          // Refresh device list when enabled
+          if (this.audioInputDeviceSelect) {
+            this.populateAudioDevices();
+          }
         } else {
           externalInput.disableMic();
         }
@@ -248,6 +252,10 @@ export class InputUi extends BaseUi {
         this.toggleAllMicControlsVisibility(value);
       });
 
+    // Add device selector right after the enable toggle
+    this.addAudioDeviceSelector();
+
+    // Continue with the rest of the existing code
     // Global sensitivity control
     this.micSensitivityController = this.micInputFolder
       .add(
@@ -927,8 +935,15 @@ export class InputUi extends BaseUi {
     // Toggle all other controllers
     if (this.micControllers) {
       for (const controller of this.micControllers) {
-        if (controller && controller.domElement) {
-          controller.domElement.style.display = show ? "block" : "none";
+        if (controller) {
+          // Handle both dat.gui controllers and direct DOM elements
+          if (controller.domElement) {
+            // Regular dat.gui controller
+            controller.domElement.style.display = show ? "block" : "none";
+          } else if (controller instanceof HTMLElement) {
+            // Direct DOM element like our device container
+            controller.style.display = show ? "block" : "none";
+          }
         }
       }
     }
@@ -946,5 +961,116 @@ export class InputUi extends BaseUi {
     if (this.micVisualization) {
       this.micVisualization.style.display = show ? "block" : "none";
     }
+  }
+
+  ////////
+
+  addAudioDeviceSelector() {
+    if (!this.micInputFolder) return;
+
+    // Container for device selection
+    const deviceContainer = document.createElement("div");
+    deviceContainer.classList.add("controller");
+    deviceContainer.style.marginTop = "8px";
+    deviceContainer.style.marginBottom = "8px";
+
+    // Label for device selection
+    const deviceLabel = document.createElement("div");
+    deviceLabel.textContent = "Select Audio Input";
+    deviceLabel.style.marginBottom = "4px";
+
+    // Create select dropdown
+    this.audioInputDeviceSelect = document.createElement("select");
+    this.audioInputDeviceSelect.classList.add("preset-select");
+    this.audioInputDeviceSelect.style.padding = "4px";
+    this.audioInputDeviceSelect.style.width = "100%";
+
+    // Add option for loading devices
+    const loadingOption = document.createElement("option");
+    loadingOption.textContent = "Loading audio devices...";
+    this.audioInputDeviceSelect.appendChild(loadingOption);
+
+    // Handle device change
+    this.audioInputDeviceSelect.addEventListener("change", (e) => {
+      const deviceId = e.target.value;
+      console.log("Selected audio device:", deviceId);
+      this.setAudioInputDevice(deviceId);
+    });
+
+    // Add elements to container
+    deviceContainer.appendChild(deviceLabel);
+    deviceContainer.appendChild(this.audioInputDeviceSelect);
+
+    // Find insertion point - right after the enable button
+    const insertionPoint = this.micEnableController
+      ? this.micEnableController.domElement.nextSibling
+      : this.micInputFolder.domElement.querySelector(".children").firstChild;
+
+    // Add to UI folder
+    this.micInputFolder.domElement
+      .querySelector(".children")
+      .insertBefore(deviceContainer, insertionPoint);
+
+    // Store reference to the container for visibility toggling
+    this.deviceContainer = deviceContainer;
+    this.micControllers.push(deviceContainer);
+
+    // Populate with available devices
+    this.populateAudioDevices();
+  }
+
+  // Add method to populate audio devices
+  async populateAudioDevices() {
+    try {
+      // Check if browser supports MediaDevices API
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        console.error("Browser doesn't support device enumeration");
+        return;
+      }
+
+      // Get available devices
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioInputDevices = devices.filter(
+        (device) => device.kind === "audioinput"
+      );
+
+      // Clear existing options
+      this.audioInputDeviceSelect.innerHTML = "";
+
+      // Add default option
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "default";
+      defaultOption.textContent = "Default Input";
+      this.audioInputDeviceSelect.appendChild(defaultOption);
+
+      // Add each audio input device
+      audioInputDevices.forEach((device) => {
+        const option = document.createElement("option");
+        option.value = device.deviceId;
+        // Handle unnamed devices by giving them a generic name
+        option.textContent =
+          device.label ||
+          `Audio Input ${audioInputDevices.indexOf(device) + 1}`;
+        this.audioInputDeviceSelect.appendChild(option);
+      });
+    } catch (err) {
+      console.error("Error enumerating audio devices:", err);
+      this.audioInputDeviceSelect.innerHTML =
+        "<option>Error loading devices</option>";
+    }
+  }
+
+  // Method to set the selected audio input device
+  setAudioInputDevice(deviceId) {
+    if (!this.main.externalInput) return;
+
+    const constraints = {
+      audio: {
+        deviceId: deviceId !== "default" ? { exact: deviceId } : undefined,
+      },
+    };
+
+    // Pass these constraints to the external input manager
+    this.main.externalInput.setAudioInputDevice(constraints);
   }
 }
