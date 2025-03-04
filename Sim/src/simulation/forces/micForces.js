@@ -108,6 +108,7 @@ export class MicInputForces {
     this.updateTargets(processedAmplitude);
   }
 
+  // Update the updateTargets method to handle sensitivity correctly
   updateTargets(amplitude) {
     if (!this.enabled) return;
 
@@ -116,7 +117,7 @@ export class MicInputForces {
 
     this.targetControllers.forEach((config, controller) => {
       if (controller && typeof controller.setValue === "function") {
-        let targetAmplitude = amplitude;
+        let rawAmplitude = amplitude;
 
         // Apply frequency filtering if we have frequency data
         if (
@@ -125,24 +126,24 @@ export class MicInputForces {
           (config.frequency.min > 0 || config.frequency.max < 20000)
         ) {
           // Get frequency-specific amplitude using analyzer helper method
-          targetAmplitude = this.analyzer.getFrequencyRangeValue(
+          rawAmplitude = this.analyzer.getFrequencyRangeValue(
             config.frequency.min,
             config.frequency.max
           );
 
-          // Apply baseline subtraction and sensitivity
-          targetAmplitude = Math.max(
-            0,
-            (targetAmplitude - this.baselineAmplitude) *
-              this.sensitivity *
-              config.sensitivity
-          );
-        } else {
-          // Just apply global sensitivity and the modulator's sensitivity
-          targetAmplitude = amplitude * config.sensitivity;
+          // Apply baseline subtraction
+          rawAmplitude = Math.max(0, rawAmplitude - this.baselineAmplitude);
         }
 
-        // Map amplitude (0-1) to target range
+        // Apply sensitivity to make detection more/less responsive
+        // but keep the value normalized between 0-1
+        let targetAmplitude =
+          rawAmplitude * this.sensitivity * config.sensitivity;
+
+        // Clamp to 0-1 range for proper mapping
+        targetAmplitude = Math.min(1.0, Math.max(0, targetAmplitude));
+
+        // Map the normalized amplitude (0-1) to target range
         const value = config.min + targetAmplitude * (config.max - config.min);
         controller.setValue(value);
 

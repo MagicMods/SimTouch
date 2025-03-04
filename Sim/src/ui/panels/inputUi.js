@@ -722,7 +722,7 @@ export class InputUi extends BaseUi {
 
     // Sensitivity for this specific modulator
     folder
-      .add(modulator, "sensitivity", 0.1, 10.0, 0.1)
+      .add(modulator, "sensitivity", 0.1, 2.0, 0.01)
       .name("Sensitivity")
       .onChange((value) => {
         if (modulator._activeController) {
@@ -1383,7 +1383,8 @@ export class InputUi extends BaseUi {
     this.main.externalInput.setAudioInputDevice(constraints);
   }
 
-  // Add this method to update all band visualizations at once
+  // Update the updateAllBandVisualizations method
+
   updateAllBandVisualizations() {
     if (
       !this.micModulatorFolders ||
@@ -1406,7 +1407,7 @@ export class InputUi extends BaseUi {
       if (now - modulator._bandVisual.lastUpdate < 50) return;
       modulator._bandVisual.lastUpdate = now;
 
-      let bandValue = 0;
+      let rawValue = 0;
       let bandName = "Full Range";
 
       if (
@@ -1418,18 +1419,13 @@ export class InputUi extends BaseUi {
         const band = micForces.analyzer.bands[modulator.frequencyBand];
 
         // Get energy in this frequency band
-        bandValue = micForces.analyzer.getFrequencyRangeValue(
+        rawValue = micForces.analyzer.getFrequencyRangeValue(
           band.min,
           band.max
         );
 
-        // Apply baseline subtraction and sensitivity
-        bandValue = Math.max(
-          0,
-          (bandValue - micForces.baselineAmplitude) *
-            micForces.sensitivity *
-            modulator.sensitivity
-        );
+        // Apply baseline subtraction
+        rawValue = Math.max(0, rawValue - micForces.baselineAmplitude);
 
         // Get friendly name for the band
         bandName =
@@ -1441,16 +1437,20 @@ export class InputUi extends BaseUi {
         if (bandName === "HighMid") bandName = "High Mid";
       } else {
         // Full range mode - use overall volume
-        bandValue = Math.max(
+        rawValue = Math.max(
           0,
-          (micForces.smoothedAmplitude - micForces.baselineAmplitude) *
-            micForces.sensitivity *
-            modulator.sensitivity
+          micForces.smoothedAmplitude - micForces.baselineAmplitude
         );
       }
 
-      // Update the visual
-      const level = Math.min(100, Math.max(0, bandValue * 100));
+      // Apply sensitivity (affects responsiveness)
+      let bandValue = rawValue * micForces.sensitivity * modulator.sensitivity;
+
+      // Normalize to 0-1 range for visualization
+      bandValue = Math.min(1.0, Math.max(0, bandValue));
+
+      // Update the visual (0-100%)
+      const level = bandValue * 100;
       modulator._bandVisual.bar.style.width = `${level}%`;
 
       // Update label with band name and value percentage
