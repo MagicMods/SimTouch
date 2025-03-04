@@ -362,6 +362,109 @@ export class InputUi extends BaseUi {
         levelElement.style.width = "0%";
       }
     }, 50);
+
+    // Add audio analyzer controls in a subfolder
+    const analyzerFolder = this.micInputFolder.addFolder(
+      "Audio Analysis Settings"
+    );
+    this.micControllers.push(analyzerFolder);
+
+    // FFT size control
+    const fftSizes = {
+      "512 (Faster)": 512,
+      "1024 (Default)": 1024,
+      "2048 (Detailed)": 2048,
+      "4096 (High Detail)": 4096,
+      "8192 (Max Detail)": 8192,
+    };
+
+    analyzerFolder
+      .add({ fftSize: "1024 (Default)" }, "fftSize", Object.keys(fftSizes))
+      .name("FFT Resolution")
+      .onChange((value) => {
+        if (externalInput.micForces) {
+          externalInput.micForces.setFftSize(fftSizes[value]);
+        }
+      });
+
+    // Beat detection controls
+    analyzerFolder
+      .add({ threshold: 1.5 }, "threshold", 1.1, 3.0, 0.1)
+      .name("Beat Threshold")
+      .onChange((value) => {
+        if (externalInput.micForces?.analyzer) {
+          externalInput.micForces.analyzer.setBeatDetectionConfig({
+            energyThreshold: value,
+          });
+        }
+      });
+
+    // Visualizer controls
+    const visualizerFolder = this.micInputFolder.addFolder("Audio Visualizer");
+    this.micControllers.push(visualizerFolder);
+
+    // Toggle visualizer
+    visualizerFolder
+      .add({ show: false }, "show")
+      .name("Show Visualizer")
+      .onChange((value) => {
+        if (externalInput.micForces) {
+          if (value) {
+            externalInput.micForces.showVisualizer();
+          } else {
+            externalInput.micForces.hideVisualizer();
+          }
+        }
+      });
+
+    // Theme selector
+    visualizerFolder
+      .add({ theme: "dark" }, "theme", ["dark", "light", "neon"])
+      .name("Visualizer Theme")
+      .onChange((value) => {
+        if (externalInput.micForces) {
+          externalInput.micForces.setVisualizerTheme(value);
+        }
+      });
+
+    // Visualization modes
+    const vizTypes = {
+      "Frequency Spectrum": "spectrum",
+      Waveform: "waveform",
+      "Volume Level": "volume",
+      "Frequency Bands": "bands",
+      "Volume History": "history",
+    };
+
+    // Create a selection of checkboxes for visualizations
+    const selectedVizs = {
+      "Frequency Spectrum": true,
+      Waveform: true,
+      "Volume Level": true,
+      "Frequency Bands": true,
+      "Volume History": false,
+    };
+
+    // Add a checkbox for each visualization type
+    Object.keys(vizTypes).forEach((vizName) => {
+      visualizerFolder
+        .add(selectedVizs, vizName)
+        .name(vizName)
+        .onChange(() => {
+          // Create array of selected visualization types
+          const selected = Object.keys(selectedVizs)
+            .filter((key) => selectedVizs[key])
+            .map((key) => vizTypes[key]);
+
+          if (externalInput.micForces?.visualizer) {
+            externalInput.micForces.setVisualizations(selected);
+          }
+        });
+    });
+
+    // Close these folders by default
+    analyzerFolder.open(false);
+    visualizerFolder.open(false);
   }
 
   // Add these methods to the InputUi class

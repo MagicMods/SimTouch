@@ -241,30 +241,25 @@ export class ExternalInputConnector {
     }
   }
 
-  setAudioInputDevice(constraints) {
-    if (!this.micForces || !this.micForces.enabled) {
+  setAudioInputDevice(deviceId) {
+    if (!this.micForces || !this.micEnabled) {
       console.warn("Audio input not enabled, can't change device");
       return;
     }
 
-    console.log("Changing audio input device with constraints:", constraints);
+    console.log("Changing audio input device:", deviceId);
 
-    // Stop current stream if it exists
-    if (this.micStream) {
-      this.micStream.getTracks().forEach((track) => track.stop());
-    }
-
-    // Create new audio stream with the selected device
-    navigator.mediaDevices
-      .getUserMedia(constraints)
-      .then((stream) => {
-        this.micStream = stream;
-
-        // Reconnect the audio context
-        if (this.audioContext && this.analyser) {
-          const source = this.audioContext.createMediaStreamSource(stream);
-          source.connect(this.analyser);
+    // Use the new changeDevice method
+    this.micForces
+      .changeDevice(deviceId)
+      .then((success) => {
+        if (success) {
           console.log("Audio input device changed successfully");
+        } else {
+          console.error("Failed to change audio input device");
+          alert(
+            "Could not access the selected audio device. Please check permissions."
+          );
         }
       })
       .catch((err) => {

@@ -1,62 +1,74 @@
+import { SoundAnalyzer } from "../../sound/soundAnalyzer.js";
+import { SoundVisualizer } from "../../sound/soundVisualizer.js";
+
 export class MicInputForces {
   constructor() {
     this.enabled = false;
-    this.audioContext = null;
-    this.analyser = null;
-    this.mediaStream = null;
-    this.dataArray = null;
-    this.animationFrameId = null;
+    this.targetControllers = new Map();
+    this.baselineAmplitude = 0.05; // Silent threshold
 
     // Configuration
     this.sensitivity = 1.0;
     this.smoothing = 0.8;
     this.fftSize = 1024;
 
-    // Audio data
+    // Create analyzer with our settings
+    this.analyzer = new SoundAnalyzer({
+      fftSize: this.fftSize,
+      smoothingTimeConstant: this.smoothing,
+      minDecibels: -90,
+      maxDecibels: -10,
+    });
+
+    // Create visualizer (but don't show it yet)
+    this.visualizer = new SoundVisualizer({
+      analyzer: this.analyzer,
+      width: 320,
+      height: 240,
+      visualizations: ["spectrum", "waveform", "volume", "bands", "history"],
+      theme: "dark",
+    });
+
+    // Audio data - exposed for compatibility with existing code
     this.amplitude = 0;
     this.smoothedAmplitude = 0;
-    this.targetControllers = new Map();
-    this.baselineAmplitude = 0.05; // Silent threshold
+    this.dataArray = null; // Will be filled by analyzer
 
-    // Bind methods
+    // Visualization state
+    this.visualizerVisible = false;
+
+    // Bind methods for analyzer callbacks
     this.processAudioData = this.processAudioData.bind(this);
   }
 
   async enable() {
-    if (this.enabled) return;
+    if (this.enabled) return true;
 
     try {
-      // Create audio context and get microphone access
-      this.audioContext = new (window.AudioContext ||
-        window.webkitAudioContext)();
-      this.mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: true,
-      });
+      // Initialize and enable the analyzer
+      await this.analyzer.initialize();
+      await this.analyzer.enable();
 
-      // Setup audio processing pipeline
-      const source = this.audioContext.createMediaStreamSource(
-        this.mediaStream
-      );
-      this.analyser = this.audioContext.createAnalyser();
-      this.analyser.fftSize = this.fftSize;
-      this.analyser.smoothingTimeConstant = this.smoothing;
+      // Set callback to process audio data
+      this.analyzer.onAnalyze = this.processAudioData;
 
-      // Connect source to analyser (not to destination to prevent feedback)
-      source.connect(this.analyser);
+      // Initialize data array reference for compatibility
+      this.dataArray = this.analyzer.frequencyData;
 
-      // Create data array for frequency analysis
-      this.dataArray = new Uint8Array(this.analyser.frequencyBinCount);
-
-      // Start processing audio
+      // Set flag
       this.enabled = true;
-      this.processAudioData();
       console.log("Microphone input enabled");
+
+      // Show visualizer if it was visible before
+      if (this.visualizerVisible) {
+        this.showVisualizer();
+      }
+
+      return true;
     } catch (error) {
       console.error("Error enabling microphone:", error);
       return false;
     }
-
-    return true;
   }
 
   disable() {
@@ -64,53 +76,27 @@ export class MicInputForces {
 
     this.enabled = false;
 
-    // Stop animation frame
-    if (this.animationFrameId) {
-      cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
-    }
+    // Hide visualizer
+    this.hideVisualizer();
 
-    // Close microphone connection
-    if (this.mediaStream) {
-      this.mediaStream.getTracks().forEach((track) => track.stop());
-      this.mediaStream = null;
-    }
-
-    // Close audio context
-    if (this.audioContext && this.audioContext.state !== "closed") {
-      this.audioContext.close();
-      this.audioContext = null;
+    // Disable analyzer
+    if (this.analyzer) {
+      this.analyzer.disable();
     }
 
     // Reset data
-    this.analyser = null;
-    this.dataArray = null;
     this.amplitude = 0;
     this.smoothedAmplitude = 0;
 
     console.log("Microphone input disabled");
   }
 
-  processAudioData() {
-    if (!this.enabled || !this.analyser || !this.dataArray) {
-      this.animationFrameId = null;
-      return;
-    }
+  processAudioData(data) {
+    if (!this.enabled) return;
 
-    // Get frequency data
-    this.analyser.getByteFrequencyData(this.dataArray);
-
-    // Calculate average amplitude (0-1)
-    let sum = 0;
-    for (let i = 0; i < this.dataArray.length; i++) {
-      sum += this.dataArray[i];
-    }
-
-    this.amplitude = sum / (this.dataArray.length * 255);
-
-    // Apply smoothing for more stable values
-    this.smoothedAmplitude =
-      this.smoothedAmplitude * 0.8 + this.amplitude * 0.2;
+    // Update our exposed properties with data from analyzer
+    this.amplitude = data.volume;
+    this.smoothedAmplitude = data.smoothedVolume;
 
     // Apply sensitivity and subtract baseline
     const processedAmplitude = Math.max(
@@ -120,16 +106,13 @@ export class MicInputForces {
 
     // Update target controllers
     this.updateTargets(processedAmplitude);
-
-    // Continue processing in the next frame
-    this.animationFrameId = requestAnimationFrame(this.processAudioData);
   }
 
   updateTargets(amplitude) {
     if (!this.enabled) return;
 
-    // If we have frequency data, do frequency-based processing
-    const frequencyData = this.dataArray;
+    // Use frequency data from analyzer
+    const frequencyData = this.analyzer.frequencyData;
 
     this.targetControllers.forEach((config, controller) => {
       if (controller && typeof controller.setValue === "function") {
@@ -141,38 +124,19 @@ export class MicInputForces {
           config.frequency &&
           (config.frequency.min > 0 || config.frequency.max < 20000)
         ) {
-          // Calculate frequency-specific amplitude
-          let sum = 0;
-          let count = 0;
-
-          // Map frequency range to bin indices
-          // Assuming standard 44.1kHz sample rate, fftSize bins map to frequency ranges
-          const binCount = this.analyser.frequencyBinCount;
-          const maxFreq = 22050; // Nyquist frequency (half sample rate)
-
-          const minBin = Math.floor(
-            (config.frequency.min / maxFreq) * binCount
+          // Get frequency-specific amplitude using analyzer helper method
+          targetAmplitude = this.analyzer.getFrequencyRangeValue(
+            config.frequency.min,
+            config.frequency.max
           );
-          const maxBin = Math.ceil((config.frequency.max / maxFreq) * binCount);
 
-          // Sum amplitudes in the target frequency range
-          for (let i = minBin; i < maxBin && i < binCount; i++) {
-            sum += frequencyData[i];
-            count++;
-          }
-
-          if (count > 0) {
-            // Normalize to 0-1 range
-            targetAmplitude = sum / (count * 255);
-
-            // Apply baseline subtraction and sensitivity
-            targetAmplitude = Math.max(
-              0,
-              (targetAmplitude - this.baselineAmplitude) *
-                this.sensitivity *
-                config.sensitivity
-            );
-          }
+          // Apply baseline subtraction and sensitivity
+          targetAmplitude = Math.max(
+            0,
+            (targetAmplitude - this.baselineAmplitude) *
+              this.sensitivity *
+              config.sensitivity
+          );
         } else {
           // Just apply global sensitivity and the modulator's sensitivity
           targetAmplitude = amplitude * config.sensitivity;
@@ -188,6 +152,35 @@ export class MicInputForces {
         }
       }
     });
+  }
+
+  // Toggle visualizer visibility
+  toggleVisualizer() {
+    if (this.visualizerVisible) {
+      this.hideVisualizer();
+    } else {
+      this.showVisualizer();
+    }
+    return this.visualizerVisible;
+  }
+
+  // Show audio visualizer
+  showVisualizer() {
+    if (!this.visualizer) return false;
+
+    this.visualizer.initialize();
+    this.visualizer.show();
+    this.visualizerVisible = true;
+    return true;
+  }
+
+  // Hide audio visualizer
+  hideVisualizer() {
+    if (!this.visualizer) return false;
+
+    this.visualizer.hide();
+    this.visualizerVisible = false;
+    return true;
   }
 
   addTarget(
@@ -319,16 +312,62 @@ export class MicInputForces {
   setSmoothing(value) {
     if (value >= 0 && value <= 1) {
       this.smoothing = value;
-      if (this.analyser) {
-        this.analyser.smoothingTimeConstant = value;
+      if (this.analyzer) {
+        this.analyzer.setConfig({ smoothingTimeConstant: value });
       }
     }
     return this;
   }
 
+  // Change FFT size
+  setFftSize(size) {
+    if (this.analyzer) {
+      this.analyzer.setConfig({ fftSize: size });
+      // Update our data array reference
+      this.dataArray = this.analyzer.frequencyData;
+    }
+    return this;
+  }
+
+  // Change audio device
+  async changeDevice(deviceId) {
+    if (this.analyzer) {
+      return await this.analyzer.changeDevice(deviceId);
+    }
+    return false;
+  }
+
+  // Get list of available audio devices
+  async getAudioDevices() {
+    if (this.analyzer) {
+      return await this.analyzer.refreshDevices();
+    }
+    return [];
+  }
+
+  // Set visualizer theme
+  setVisualizerTheme(theme) {
+    if (this.visualizer) {
+      this.visualizer.setTheme(theme);
+    }
+    return this;
+  }
+
+  // Set which visualizations to display
+  setVisualizations(types) {
+    if (this.visualizer) {
+      this.visualizer.setVisualizations(types);
+    }
+    return this;
+  }
+
   calibrate() {
-    // Future enhancement: could analyze current room noise level
-    // and automatically set baselineAmplitude
+    if (this.analyzer && this.analyzer.isEnabled) {
+      this.analyzer.calibrate(1000, 1.2).then((baseline) => {
+        this.baselineAmplitude = baseline;
+        console.log(`Microphone calibrated: baseline=${baseline.toFixed(4)}`);
+      });
+    }
     return this;
   }
 }
