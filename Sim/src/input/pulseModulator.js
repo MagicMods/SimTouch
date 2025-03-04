@@ -197,7 +197,11 @@ class PulseModulator {
       const mappedValue = this.min + value * (this.max - this.min);
 
       this.targetController.setValue(mappedValue);
-      this.targetController.updateDisplay();
+
+      // Make sure to call updateDisplay after setting value
+      if (this.targetController.updateDisplay) {
+        this.targetController.updateDisplay();
+      }
     } catch (e) {
       console.error(`Error updating modulator for ${this.targetName}:`, e);
       this.enabled = false; // Disable on error

@@ -32,40 +32,72 @@ class RightUi extends BaseUi {
   }
 
   //#region Turbulence
+
   initTurbulenceControls() {
     const turbulence = this.main.turbulenceField;
     if (!turbulence) return;
 
-    this.gui.add(turbulence, "affectPosition").name("Affect Position");
-    this.gui.add(turbulence, "scaleField").name("Affect Scale Field");
-    this.gui.add(turbulence, "affectScale").name("Affect Scale Particles");
+    // Store controllers as class properties
+    this.turbulenceAffectPositionController = this.gui
+      .add(turbulence, "affectPosition")
+      .name("Affect Position");
+    this.turbulenceScaleFieldController = this.gui
+      .add(turbulence, "scaleField")
+      .name("Affect Scale Field");
+    this.turbulenceAffectScaleController = this.gui
+      .add(turbulence, "affectScale")
+      .name("Affect Scale Particles");
 
-    // Defer preset controls to setPresetManager
-    this.gui.add(turbulence, "strength", 0, 10).name("Strength");
-    this.gui.add(turbulence, "scale", 0.1, 10).name("Scale");
-    this.gui.add(turbulence, "speed", 0, 20).name("Speed");
+    // Store these key controllers that will be targeted by modulators
+    this.turbulenceStrengthController = this.gui
+      .add(turbulence, "strength", 0, 10)
+      .name("Strength");
+    this.turbulenceScaleController = this.gui
+      .add(turbulence, "scale", 0.1, 10)
+      .name("Scale");
+    this.turbulenceSpeedController = this.gui
+      .add(turbulence, "speed", 0, 20)
+      .name("Speed");
 
     // Add min/max scale controls
     const scaleRangeFolder = this.gui.addFolder("Scale Range");
-    scaleRangeFolder
+    this.turbulenceScaleStrengthController = scaleRangeFolder
       .add(turbulence, "scaleStrength", 0, 1)
       .name("Scale Strength");
-    scaleRangeFolder.add(turbulence, "minScale", 0.1, 1.0).name("Min Scale");
-    scaleRangeFolder.add(turbulence, "maxScale", 1.0, 4.0).name("Max Scale");
+    this.turbulenceMinScaleController = scaleRangeFolder
+      .add(turbulence, "minScale", 0.1, 1.0)
+      .name("Min Scale");
+    this.turbulenceMaxScaleController = scaleRangeFolder
+      .add(turbulence, "maxScale", 1.0, 4.0)
+      .name("Max Scale");
 
     const advancedFolder = this.gui.addFolder("Advanced");
-    advancedFolder.add(turbulence, "octaves", 1, 8, 1).name("Octaves");
-    advancedFolder.add(turbulence, "persistence", 0, 1).name("Persistence");
-    advancedFolder.add(turbulence, "rotation", 0, Math.PI * 2).name("Rotation");
-    advancedFolder
+    this.turbulenceOctavesController = advancedFolder
+      .add(turbulence, "octaves", 1, 8, 1)
+      .name("Octaves");
+    this.turbulencePersistenceController = advancedFolder
+      .add(turbulence, "persistence", 0, 1)
+      .name("Persistence");
+    this.turbulenceRotationController = advancedFolder
+      .add(turbulence, "rotation", 0, Math.PI * 2)
+      .name("Rotation");
+    this.turbulenceRotationSpeedController = advancedFolder
       .add(turbulence, "rotationSpeed", 0, 1)
-      .name("Rotation Speed"); // Add this new control
-    advancedFolder.add(turbulence, "inwardFactor", 0, 5).name("Inward Pull");
-    advancedFolder.add(turbulence, "decayRate", 0.9, 1).name("Decay Rate");
+      .name("Rotation Speed");
+    this.turbulenceInwardFactorController = advancedFolder
+      .add(turbulence, "inwardFactor", 0, 5)
+      .name("Inward Pull");
+    this.turbulenceDecayRateController = advancedFolder
+      .add(turbulence, "decayRate", 0.9, 1)
+      .name("Decay Rate");
 
     const biasFolder = this.gui.addFolder("Direction Bias");
-    biasFolder.add(turbulence.directionBias, "0", -1, 1).name("X Bias");
-    biasFolder.add(turbulence.directionBias, "1", -1, 1).name("Y Bias");
+    this.turbulenceBiasXController = biasFolder
+      .add(turbulence.directionBias, "0", -1, 1)
+      .name("X Bias");
+    this.turbulenceBiasYController = biasFolder
+      .add(turbulence.directionBias, "1", -1, 1)
+      .name("Y Bias");
   }
   //#endregion
 
@@ -179,20 +211,31 @@ class RightUi extends BaseUi {
     const voronoi = this.main.voronoiField;
     if (!voronoi) return;
 
-    // Basic voronoi controls
-    this.voronoiFolder.add(voronoi, "strength", 0, 10).name("Strength");
-    this.voronoiFolder.add(voronoi, "edgeWidth", 0.1, 50).name("Edge Width");
-    this.voronoiFolder
+    // Basic voronoi controls - store as class properties
+    this.voronoiStrengthController = this.voronoiFolder
+      .add(voronoi, "strength", 0, 10)
+      .name("Strength");
+
+    this.voronoiEdgeWidthController = this.voronoiFolder
+      .add(voronoi, "edgeWidth", 0.1, 50)
+      .name("Edge Width");
+
+    this.voronoiAttractionController = this.voronoiFolder
       .add(voronoi, "attractionFactor", 0, 8)
       .name("Attraction");
-    this.voronoiFolder
+
+    this.voronoiCellCountController = this.voronoiFolder
       .add(voronoi, "cellCount", 1, 10, 1)
       .name("Cell Count")
       .onChange(() => voronoi.regenerateCells());
-    this.voronoiFolder
+
+    this.voronoiSpeedController = this.voronoiFolder
       .add(voronoi, "cellMovementSpeed", 0, 4)
       .name("Cell Speed");
-    this.voronoiFolder.add(voronoi, "decayRate", 0.9, 1).name("Decay Rate");
+
+    this.voronoiDecayRateController = this.voronoiFolder
+      .add(voronoi, "decayRate", 0.9, 1)
+      .name("Decay Rate");
   }
 
   initVoronoiPresetControls() {
@@ -411,61 +454,65 @@ class RightUi extends BaseUi {
 
   //#region Fluid
   initFluidControls(folder, particles) {
-    // Add fluid parameters
-    folder
+    // Add fluid parameters as class properties
+    this.fluidRadiusController = folder
       .add(particles.organicBehavior.params.Fluid, "radius", 5, 50)
       .name("Radius");
-    folder
+
+    this.fluidSurfaceTensionController = folder
       .add(particles.organicBehavior.params.Fluid, "surfaceTension", 0, 1)
       .name("Surface Tension");
-    folder
+
+    this.fluidViscosityController = folder
       .add(particles.organicBehavior.params.Fluid, "viscosity", 0, 1)
       .name("Viscosity");
-    folder
+
+    this.fluidDampingController = folder
       .add(particles.organicBehavior.params.Fluid, "damping", 0, 1)
       .name("Damping");
-
-    // Individual force control removed
   }
 
   // Modify other init methods similarly to remove individual force controls
   initSwarmControls(folder, particles) {
-    // Add swarm parameters
-    folder
+    // Add swarm parameters as class properties
+    this.swarmRadiusController = folder
       .add(particles.organicBehavior.params.Swarm, "radius", 5, 50)
       .name("Radius");
-    folder
+
+    this.swarmCohesionController = folder
       .add(particles.organicBehavior.params.Swarm, "cohesion", 0, 2)
       .name("Cohesion");
-    folder
+
+    this.swarmAlignmentController = folder
       .add(particles.organicBehavior.params.Swarm, "alignment", 0, 2)
       .name("Alignment");
-    folder
+
+    this.swarmSeparationController = folder
       .add(particles.organicBehavior.params.Swarm, "separation", 0, 2)
       .name("Separation");
-    folder
+
+    this.swarmMaxSpeedController = folder
       .add(particles.organicBehavior.params.Swarm, "maxSpeed", 0, 1)
       .name("Max Speed");
-
-    // Individual force control removed
   }
 
   initAutomataControls(folder, particles) {
-    // Add automata parameters
-    folder
+    // Add automata parameters as class properties
+    this.automataRadiusController = folder
       .add(particles.organicBehavior.params.Automata, "radius", 5, 200)
       .name("Radius");
-    folder
+
+    this.automataRepulsionController = folder
       .add(particles.organicBehavior.params.Automata, "repulsion", 0, 2)
       .name("Repulsion");
-    folder
+
+    this.automataAttractionController = folder
       .add(particles.organicBehavior.params.Automata, "attraction", 0, 10)
       .name("Attraction");
-    folder
+
+    this.automataThresholdController = folder
       .add(particles.organicBehavior.params.Automata, "threshold", 0, 1)
       .name("Threshold");
-
-    // Individual force control removed
   }
 
   //#region Grid
@@ -480,22 +527,22 @@ class RightUi extends BaseUi {
     if (gridRenderer.gridParams) {
       const gridParamFolder = this.gridFolder.addFolder("Parameters");
 
-      gridParamFolder
+      this.gridTargetCellsController = gridParamFolder
         .add(gridRenderer.gridParams, "target", 1, 800, 1)
         .name("Target Cells")
         .onChange(() => gridRenderer.updateGrid());
 
-      gridParamFolder
+      this.gridGapController = gridParamFolder
         .add(gridRenderer.gridParams, "gap", 0, 20, 1)
         .name("Gap (px)")
         .onChange(() => gridRenderer.updateGrid());
 
-      gridParamFolder
+      this.gridAspectRatioController = gridParamFolder
         .add(gridRenderer.gridParams, "aspectRatio", 0.5, 4, 0.01)
         .name("Cell Ratio")
         .onChange(() => gridRenderer.updateGrid());
 
-      gridParamFolder
+      this.gridScaleController = gridParamFolder
         .add(gridRenderer.gridParams, "scale", 0.1, 1, 0.01)
         .name("Grid Scale")
         .onChange(() => gridRenderer.updateGrid());
@@ -508,21 +555,29 @@ class RightUi extends BaseUi {
       stats.add(gridRenderer.gridParams, "height").name("Rect Height").listen();
     }
 
-    // Gradient controls
+    // Gradient controls - store in arrays if needed
     const gradientFolder = this.gridFolder.addFolder("Gradient");
     gradientFolder.open(false);
     const gradientPoints = this.main.gridRenderer.gradient.points;
 
+    this.gradientPointControllers = [];
+
     gradientPoints.forEach((point, index) => {
       const pointFolder = gradientFolder.addFolder(`Point ${index + 1}`);
-      pointFolder
+      const posController = pointFolder
         .add(point, "pos", 0, 100, 1)
         .name("Position")
         .onChange(() => this.main.gridRenderer.gradient.update());
-      pointFolder
+
+      const colorController = pointFolder
         .addColor(point, "color")
         .name("Color")
         .onChange(() => this.main.gridRenderer.gradient.update());
+
+      this.gradientPointControllers.push({
+        position: posController,
+        color: colorController,
+      });
     });
 
     this.gridFolder.open(false);
@@ -542,26 +597,138 @@ class RightUi extends BaseUi {
       targets["Turbulence Scale"] = this.turbulenceScaleController;
     if (this.turbulenceSpeedController)
       targets["Turbulence Speed"] = this.turbulenceSpeedController;
+    if (this.turbulenceScaleStrengthController)
+      targets["Scale Strength"] = this.turbulenceScaleStrengthController;
+    if (this.turbulenceInwardFactorController)
+      targets["Inward Pull"] = this.turbulenceInwardFactorController;
+    if (this.turbulenceDecayRateController)
+      targets["Turbulence Decay"] = this.turbulenceDecayRateController;
 
     // Voronoi controls
     if (this.voronoiStrengthController)
       targets["Voronoi Strength"] = this.voronoiStrengthController;
     if (this.voronoiSpeedController)
-      targets["Voronoi Speed"] = this.voronoiSpeedController;
+      targets["Cell Speed"] = this.voronoiSpeedController;
+    if (this.voronoiEdgeWidthController)
+      targets["Edge Width"] = this.voronoiEdgeWidthController;
+    if (this.voronoiAttractionController)
+      targets["Attraction"] = this.voronoiAttractionController;
+    if (this.voronoiCellCountController)
+      targets["Cell Count"] = this.voronoiCellCountController;
 
-    // Input controls
-    if (this.inputStrengthController)
-      targets["Input Strength"] = this.inputStrengthController;
-    if (this.inputSmoothingController)
-      targets["Input Smoothing"] = this.inputSmoothingController;
+    // Organic controls
+    if (this.globalForceController)
+      targets["Force"] = this.globalForceController;
 
-    // Rendering controls
-    if (this.colorSaturationController)
-      targets["Color Saturation"] = this.colorSaturationController;
-    if (this.colorValueController)
-      targets["Color Value"] = this.colorValueController;
+    // Fluid controls
+    if (this.fluidRadiusController)
+      targets["Fluid Radius"] = this.fluidRadiusController;
+    if (this.fluidSurfaceTensionController)
+      targets["Surface Tension"] = this.fluidSurfaceTensionController;
+    if (this.fluidViscosityController)
+      targets["Viscosity"] = this.fluidViscosityController;
+
+    // Grid controls
+    if (this.gridTargetCellsController)
+      targets["Target Cells"] = this.gridTargetCellsController;
+    if (this.gridGapController) targets["Grid Gap"] = this.gridGapController;
+    if (this.gridScaleController)
+      targets["Grid Scale"] = this.gridScaleController;
 
     return targets;
+  }
+
+  /**
+   * Get controller and range information for a specific target
+   * @param {string} targetName - Name of the target
+   * @returns {object|null} Controller info or null if not found
+   */
+  getControllerForTarget(targetName) {
+    const targets = this.getControlTargets();
+    const controller = targets[targetName];
+
+    if (!controller) return null;
+
+    // Extract min, max and step values from the controller if available
+    const min = controller.__min !== undefined ? controller.__min : 0;
+    const max = controller.__max !== undefined ? controller.__max : 1;
+    const step = controller.__step !== undefined ? controller.__step : 0.01;
+
+    return {
+      controller,
+      min,
+      max,
+      step,
+    };
+  }
+
+  updateControllerDisplays() {
+    // Update all turbulence controllers
+    if (this.turbulenceStrengthController)
+      this.turbulenceStrengthController.updateDisplay();
+    if (this.turbulenceScaleController)
+      this.turbulenceScaleController.updateDisplay();
+    if (this.turbulenceSpeedController)
+      this.turbulenceSpeedController.updateDisplay();
+    if (this.turbulenceScaleStrengthController)
+      this.turbulenceScaleStrengthController.updateDisplay();
+    if (this.turbulenceInwardFactorController)
+      this.turbulenceInwardFactorController.updateDisplay();
+    if (this.turbulenceDecayRateController)
+      this.turbulenceDecayRateController.updateDisplay();
+
+    // Update all voronoi controllers
+    if (this.voronoiStrengthController)
+      this.voronoiStrengthController.updateDisplay();
+    if (this.voronoiEdgeWidthController)
+      this.voronoiEdgeWidthController.updateDisplay();
+    if (this.voronoiAttractionController)
+      this.voronoiAttractionController.updateDisplay();
+    if (this.voronoiSpeedController)
+      this.voronoiSpeedController.updateDisplay();
+    if (this.voronoiCellCountController)
+      this.voronoiCellCountController.updateDisplay();
+
+    // Update organic behavior controllers
+    if (this.globalForceController) this.globalForceController.updateDisplay();
+
+    // Update fluid controllers
+    if (this.fluidRadiusController) this.fluidRadiusController.updateDisplay();
+    if (this.fluidSurfaceTensionController)
+      this.fluidSurfaceTensionController.updateDisplay();
+    if (this.fluidViscosityController)
+      this.fluidViscosityController.updateDisplay();
+    if (this.fluidDampingController)
+      this.fluidDampingController.updateDisplay();
+
+    // Update swarm controllers
+    if (this.swarmRadiusController) this.swarmRadiusController.updateDisplay();
+    if (this.swarmCohesionController)
+      this.swarmCohesionController.updateDisplay();
+    if (this.swarmAlignmentController)
+      this.swarmAlignmentController.updateDisplay();
+    if (this.swarmSeparationController)
+      this.swarmSeparationController.updateDisplay();
+    if (this.swarmMaxSpeedController)
+      this.swarmMaxSpeedController.updateDisplay();
+
+    // Update automata controllers
+    if (this.automataRadiusController)
+      this.automataRadiusController.updateDisplay();
+    if (this.automataRepulsionController)
+      this.automataRepulsionController.updateDisplay();
+    if (this.automataAttractionController)
+      this.automataAttractionController.updateDisplay();
+    if (this.automataThresholdController)
+      this.automataThresholdController.updateDisplay();
+
+    // Update grid controllers
+    if (this.gridTargetCellsController)
+      this.gridTargetCellsController.updateDisplay();
+    if (this.gridGapController) this.gridGapController.updateDisplay();
+    if (this.gridAspectRatioController)
+      this.gridAspectRatioController.updateDisplay();
+    if (this.gridScaleController) this.gridScaleController.updateDisplay();
   }
 }
 export { RightUi };

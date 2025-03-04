@@ -627,7 +627,16 @@ export class PulseModulationUi extends BaseUi {
   update() {
     if (this.pulseModManager) {
       this.pulseModManager.update();
-      // Add this line to update the UI displays after values have changed
+
+      // After modulations are applied, update all potential target displays
+      if (
+        this.rightUi &&
+        typeof this.rightUi.updateControllerDisplays === "function"
+      ) {
+        this.rightUi.updateControllerDisplays();
+      }
+
+      // Update our own modulator displays as well
       this.updateModulatorDisplays();
     }
   }
