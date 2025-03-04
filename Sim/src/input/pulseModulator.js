@@ -139,6 +139,7 @@ class PulseModulator {
     this.max = 1;
     this.time = 0;
     this.targetController = null;
+    this.originalValue = null; // Store original value to restore when disabled
   }
 
   /**
@@ -148,17 +149,24 @@ class PulseModulator {
   setTarget(targetName) {
     // If changing targets, reset the previous one
     if (this.targetController && this.enabled) {
-      try {
-        const oldValue = this.targetController.getValue();
-        console.log(`Resetting target ${this.targetName} to ${oldValue}`);
-        this.targetController.setValue(oldValue);
-      } catch (e) {
-        console.warn("Could not reset previous target:", e);
-      }
+      this.resetToOriginal();
     }
 
     this.targetName = targetName;
     this.targetController = this.manager.targets[targetName];
+
+    // Store the original value when first targeting
+    if (this.targetController) {
+      try {
+        this.originalValue = this.targetController.getValue();
+        console.log(
+          `Stored original value ${this.originalValue} for ${targetName}`
+        );
+      } catch (e) {
+        console.warn("Could not store original value:", e);
+        this.originalValue = null;
+      }
+    }
 
     // Set min/max from target range if available
     const targetInfo = this.manager.getTargetInfo(targetName);
@@ -174,6 +182,25 @@ class PulseModulator {
     console.log(
       `Set target ${targetName} with range: ${this.min} - ${this.max}`
     );
+  }
+
+  /**
+   * Reset target to its original value
+   */
+  resetToOriginal() {
+    if (this.targetController && this.originalValue !== null) {
+      try {
+        console.log(
+          `Resetting target ${this.targetName} to original value ${this.originalValue}`
+        );
+        this.targetController.setValue(this.originalValue);
+        if (this.targetController.updateDisplay) {
+          this.targetController.updateDisplay();
+        }
+      } catch (e) {
+        console.warn("Could not reset target to original value:", e);
+      }
+    }
   }
 
   /**
@@ -260,5 +287,6 @@ class PulseModulator {
    */
   disable() {
     this.enabled = false;
+    this.resetToOriginal(); // Reset to original value when disabled
   }
 }

@@ -62,48 +62,57 @@ export class PulseModulationUi extends BaseUi {
 
   // Register available targets from other UI panels
   registerAvailableTargets() {
-    // Initialize the map if not already done
-    if (!this.targetControllerMap) {
-      this.targetControllerMap = new Map();
-    }
+    try {
+      // Get left panel targets
+      const leftTargets = this.leftUi ? this.leftUi.getControlTargets() : {};
+      // Get right panel targets
+      const rightTargets = this.rightUi ? this.rightUi.getControlTargets() : {};
 
-    // Get target names from leftUI
-    const targetNames = this.leftUi.getControlTargets();
-
-    // For each target, get the controller and register it
-    targetNames.forEach((name) => {
-      if (name !== "None") {
-        const target = this.leftUi.getControllerForTarget(name);
-        if (target && target.controller) {
-          const controller = target.controller;
-
-          // Find the actual GUI controller for this target
-          const guiController = this.findGuiControllerForTarget(name);
-          if (guiController) {
-            // Store the reference to the actual GUI controller
-            this.targetControllerMap.set(name, guiController);
-
-            // Override updateDisplay to use the GUI controller's updateDisplay
-            controller.updateDisplay = () => {
-              guiController.updateDisplay();
-            };
+      // Add targets from both panels
+      if (leftTargets) {
+        const leftTargetNames = Object.keys(leftTargets);
+        leftTargetNames.forEach((name) => {
+          const targetInfo = this.leftUi.getControllerForTarget(name);
+          if (targetInfo && targetInfo.controller) {
+            this.pulseModManager.addTargetWithRangeFull(
+              name,
+              targetInfo.controller,
+              targetInfo.min,
+              targetInfo.max,
+              targetInfo.step
+            );
           }
-
-          // Register the controller with range info
-          this.pulseModManager.addTargetWithRangeFull(
-            name,
-            controller,
-            target.min,
-            target.max,
-            target.step || 0.01
-          );
-        }
+        });
       }
-    });
+
+      if (rightTargets) {
+        const rightTargetNames = Object.keys(rightTargets);
+        rightTargetNames.forEach((name) => {
+          const targetInfo = this.rightUi.getControllerForTarget(name);
+          if (targetInfo && targetInfo.controller) {
+            this.pulseModManager.addTargetWithRangeFull(
+              name,
+              targetInfo.controller,
+              targetInfo.min,
+              targetInfo.max,
+              targetInfo.step
+            );
+          }
+        });
+      }
+
+      // Update the UI with available targets
+      this.updateTargetDropdowns();
+    } catch (e) {
+      console.error("Error registering targets:", e);
+    }
   }
 
   // Add a new pulse modulator
   addPulseModulator() {
+    // Refresh available targets before checking
+    this.registerAvailableTargets();
+
     // Check if we have any targets
     const targetNames = this.pulseModManager.getTargetNames();
     if (targetNames.length === 0) {
@@ -135,47 +144,7 @@ export class PulseModulationUi extends BaseUi {
       .name("Target")
       .onChange((value) => {
         modulator.setTarget(value);
-
-        // Update min/max controllers with the target's range if available
-        const target = this.pulseModManager.getTargetInfo(value);
-        if (target && target.min !== undefined && target.max !== undefined) {
-          const controllerInfo = this.leftUi.getControllerForTarget(value);
-
-          if (controllerInfo) {
-            // Calculate appropriate slider ranges
-            const rangeBuffer = (controllerInfo.max - controllerInfo.min) * 0.5;
-            const sliderMin = Math.min(
-              controllerInfo.min - rangeBuffer,
-              controllerInfo.min * 0.5
-            );
-            const sliderMax = Math.max(
-              controllerInfo.max + rangeBuffer,
-              controllerInfo.max * 1.5
-            );
-
-            // Update modulator values
-            modulator.min = controllerInfo.min;
-            modulator.max = controllerInfo.max;
-
-            // Update slider ranges
-            minController.min(sliderMin);
-            minController.max(sliderMax);
-            maxController.min(sliderMin);
-            maxController.max(sliderMax);
-
-            // Update step if available
-            if (controllerInfo.step !== undefined) {
-              minController.step(controllerInfo.step);
-              maxController.step(controllerInfo.step);
-            }
-
-            minController.updateDisplay();
-            maxController.updateDisplay();
-            console.log(
-              `Updated slider range for ${value}: ${sliderMin} to ${sliderMax}`
-            );
-          }
-        }
+        this.updateRangeForTarget(modulator, minController, maxController);
       });
 
     // Add modulation type
@@ -230,65 +199,7 @@ export class PulseModulationUi extends BaseUi {
     // Add auto-range button
     const autoRangeControl = {
       autoRange: () => {
-        const target = this.pulseModManager.getTargetInfo(modulator.targetName);
-        if (target && target.min !== undefined && target.max !== undefined) {
-          // Get the target controller info
-          const controllerInfo = this.leftUi.getControllerForTarget(
-            modulator.targetName
-          );
-
-          // Use the specified min, max, and step values if available
-          if (controllerInfo) {
-            // Calculate appropriate slider ranges based on target values
-            const rangeBuffer = (controllerInfo.max - controllerInfo.min) * 0.5;
-            const sliderMin = Math.min(
-              controllerInfo.min - rangeBuffer,
-              controllerInfo.min * 0.5
-            );
-            const sliderMax = Math.max(
-              controllerInfo.max + rangeBuffer,
-              controllerInfo.max * 1.5
-            );
-
-            // Set modulator values
-            modulator.min = controllerInfo.min;
-            modulator.max = controllerInfo.max;
-
-            // Update the min controller with new range
-            minController.min(sliderMin);
-            minController.max(sliderMax);
-
-            // Update the max controller with new range
-            maxController.min(sliderMin);
-            maxController.max(sliderMax);
-
-            // Set step value if available
-            if (controllerInfo.step !== undefined) {
-              minController.step(controllerInfo.step);
-              maxController.step(controllerInfo.step);
-            }
-
-            minController.updateDisplay();
-            maxController.updateDisplay();
-            console.log(
-              `Set range automatically: ${modulator.min} to ${
-                modulator.max
-              } (step: ${controllerInfo.step || "default"})`
-            );
-            console.log(`Slider range updated: ${sliderMin} to ${sliderMax}`);
-          } else {
-            // Fallback to stored range values
-            modulator.min = target.min;
-            modulator.max = target.max;
-            minController.updateDisplay();
-            maxController.updateDisplay();
-            console.log(
-              `Set range from stored values: ${target.min} to ${target.max}`
-            );
-          }
-        } else {
-          console.warn("No range information available for this target");
-        }
+        this.updateRangeForTarget(modulator, minController, maxController);
       },
     };
     folder.add(autoRangeControl, "autoRange").name("Auto Range");
@@ -296,8 +207,8 @@ export class PulseModulationUi extends BaseUi {
     // Add remove button - FIXED using the correct method for lil-gui
     const removeButton = {
       remove: () => {
-        // Disable the modulator first to stop affecting the target
-        modulator.enabled = false;
+        // Disable the modulator first to reset target to original value
+        modulator.disable();
 
         // Remove the modulator from the manager
         this.pulseModManager.removeModulator(index);
@@ -318,44 +229,6 @@ export class PulseModulationUi extends BaseUi {
     folder.open();
 
     return modulator;
-  }
-
-  // Get available control targets - directly from the LeftUi implementation
-  getControlTargets() {
-    const targets = ["None"];
-
-    // Basic targets (already implemented)
-    targets.push("Particle Size");
-    targets.push("Gravity Strength");
-    targets.push("Repulsion");
-
-    // Global section
-    targets.push("Max Density");
-    targets.push("Animation Speed");
-
-    // Boundary section
-    targets.push("Boundary Size");
-    targets.push("Wall Repulsion");
-
-    // Turbulence section
-    targets.push("Turbulence Strength");
-    targets.push("Turbulence Speed");
-    targets.push("Scale Strength");
-    targets.push("Inward Pull");
-
-    // Voronoi section
-    targets.push("Voronoi Strength");
-    targets.push("Edge Width");
-    targets.push("Attraction");
-    targets.push("Cell Count");
-    targets.push("Cell Speed");
-
-    // Force controls
-    targets.push("Fluid Force");
-    targets.push("Swarm Force");
-    targets.push("Automata Force");
-
-    return targets;
   }
 
   // Find the actual controller for a given target name - directly from the LeftUi implementation
@@ -845,5 +718,92 @@ export class PulseModulationUi extends BaseUi {
   getPropertyForTargetName(name) {
     const target = this.leftUi.getControllerForTarget(name);
     return target ? target.property : null;
+  }
+
+  /**
+   * Update target dropdown options in all modulator folders
+   */
+  updateTargetDropdowns() {
+    // Get the updated list of target names
+    const targetNames = this.pulseModManager?.getTargetNames() || [];
+
+    // Skip if we don't have modulators or target names
+    if (!this.modulatorFolders || !targetNames.length) return;
+
+    // Update each modulator folder's target dropdown
+    this.modulatorFolders.forEach((folder) => {
+      // Find the target controller (usually the second controller in the folder)
+      const targetController = folder.controllers.find(
+        (c) => c.property === "targetName"
+      );
+
+      if (targetController && targetController.options) {
+        // Update available options
+        targetController.options(targetNames);
+        targetController.updateDisplay();
+      }
+    });
+  }
+
+  /**
+   * Update min/max sliders range based on the target's range
+   * @param {PulseModulator} modulator - The modulator to update
+   * @param {Controller} minController - The min value slider controller
+   * @param {Controller} maxController - The max value slider controller
+   */
+  updateRangeForTarget(modulator, minController, maxController) {
+    const targetName = modulator.targetName;
+    if (!targetName) return;
+
+    // Get target info from either UI panel
+    let controllerInfo = null;
+    if (this.leftUi) {
+      controllerInfo = this.leftUi.getControllerForTarget(targetName);
+    }
+
+    if (!controllerInfo && this.rightUi) {
+      controllerInfo = this.rightUi.getControllerForTarget(targetName);
+    }
+
+    if (
+      controllerInfo &&
+      controllerInfo.min !== undefined &&
+      controllerInfo.max !== undefined
+    ) {
+      // Get the target's min and max
+      const min = controllerInfo.min;
+      const max = controllerInfo.max;
+
+      // Use the actual min/max from the target as the modulator's min/max
+      modulator.min = min;
+      modulator.max = max;
+
+      // Set both min/max slider ranges to exactly match the target's range
+      minController.min(min);
+      minController.max(max);
+      maxController.min(min);
+      maxController.max(max);
+
+      // Also set the actual values to match the target's range
+      // This ensures the sliders display sensible values within the new range
+      minController.setValue(min);
+      maxController.setValue(max);
+
+      // Set step value for precision
+      if (controllerInfo.step !== undefined) {
+        minController.step(controllerInfo.step);
+        maxController.step(controllerInfo.step);
+      }
+
+      console.log(
+        `Set range for ${targetName}: both sliders now have range ${min} to ${max}`
+      );
+
+      // Update controller displays
+      minController.updateDisplay();
+      maxController.updateDisplay();
+    } else {
+      console.warn(`No range information available for target: ${targetName}`);
+    }
   }
 }

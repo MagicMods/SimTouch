@@ -6,9 +6,14 @@ import { Behaviors } from "../../simulation/behaviors/organicBehavior.js";
 export class LeftUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
+
+    // Initialize controls collection to store references
     this.controls = {};
+    // Change the GUI title
+    this.gui.title("Paramters");
+
+    // Initialize folders and controllers
     this.initFolders();
-    this.gui.title("Parameters");
   }
 
   setPresetManager(presetManager) {
@@ -17,38 +22,30 @@ export class LeftUi extends BaseUi {
 
   initFolders() {
     // Persistent folders
-    // this.gui = this.createFolder("Global");
-
     this.initGlobalControls();
 
     this.particleFolder = this.createFolder("Particles");
-    this.physicsFolder = this.createFolder("Physics");
-    this.collisionFolder = this.createFolder("Collision");
-    this.boundaryFolder = this.createFolder("Boundary");
-    this.restFolder = this.createFolder("Rest State");
-
-    // Remove udpFolder
-    // this.udpFolder = this.createFolder("UDP Network", true);
-
-    this.debugFolder = this.createFolder("Debug", true); // Non-persistent folders
-
-    // Initialize all controls
-    // Remove initUDPControls call
-    // this.initUDPControls();
-
     this.initParticleControls();
+
+    this.physicsFolder = this.createFolder("Physics");
     this.initPhysicsControls();
+
+    this.collisionFolder = this.createFolder("Collision");
     this.initCollisionControls();
+
+    this.boundaryFolder = this.createFolder("Boundary");
     this.initBoundaryControls();
+
+    this.restFolder = this.createFolder("Rest State");
     this.initRestStateControls();
+
+    this.debugFolder = this.createFolder("Debug");
     this.initDebugControls();
 
     // Set default open states
-    // this.gui.open();
     this.particleFolder.open();
     this.physicsFolder.open();
     this.collisionFolder.open();
-    this.debugFolder.open(false);
   }
 
   //#region Control
@@ -57,21 +54,19 @@ export class LeftUi extends BaseUi {
     if (!particles) return;
 
     // Pause control
-    const pauseButton = this.gui.add(
-      {
-        togglePause: () => {
-          this.main.paused = !this.main.paused;
-          pauseButton.name(this.main.paused ? "Resume" : "Pause");
-          console.log(
-            `Simulation is ${this.main.paused ? "paused" : "running"}`
-          );
-        },
+    const pauseControl = {
+      togglePause: () => {
+        this.main.paused = !this.main.paused;
+        this.pauseButtonController.name(this.main.paused ? "Resume" : "Pause");
+        console.log(`Simulation is ${this.main.paused ? "paused" : "running"}`);
       },
-      "togglePause"
-    );
+    };
+
+    // Store as class property instead of local variable
+    this.pauseButtonController = this.gui.add(pauseControl, "togglePause");
 
     // Set initial button text based on current state
-    pauseButton.name(this.main.paused ? "Resume" : "Pause");
+    this.pauseButtonController.name(this.main.paused ? "Resume" : "Pause");
 
     // Update the render mode dropdown to include the new "Overlap" option
     if (this.main.gridRenderer.renderModes) {
@@ -90,7 +85,8 @@ export class LeftUi extends BaseUi {
         field: this.main.gridRenderer.renderModes.currentMode,
       };
 
-      this.controls.fieldType = this.gui
+      // Store as class property instead of in this.controls
+      this.fieldTypeController = this.gui
         .add(fieldControl, "field", Object.values(GridField))
         // .className("preset-select")
         .name("Mode")
@@ -98,27 +94,28 @@ export class LeftUi extends BaseUi {
           // Set new mode
           this.main.gridRenderer.renderModes.currentMode = value;
           // Update display
-          this.controls.fieldType.updateDisplay();
+          this.fieldTypeController.updateDisplay();
         });
 
       const behaviorControl = {
         behavior: particles.organicBehavior.currentBehavior,
       };
 
-      this.controls.behaviorType = this.gui
+      // Store as class property instead of in this.controls
+      this.behaviorTypeController = this.gui
         .add(behaviorControl, "behavior", Object.values(Behaviors))
         .name("Organic Behavior")
         .onChange((value) => {
           console.log("Behavior changed to:", value);
           particles.organicBehavior.currentBehavior = value;
-          // Use stored uiManager reference
 
           this.main.ui.rightUi.updateOrganicFolders(value);
 
-          this.controls.behaviorType.updateDisplay();
+          this.behaviorTypeController.updateDisplay();
         });
 
-      this.gui
+      // Store as class property
+      this.boundaryModeController = this.gui
         .add(this.main.particleSystem.boundary, "mode", {
           Bounce: "BOUNCE",
           Warp: "WARP",
@@ -129,40 +126,44 @@ export class LeftUi extends BaseUi {
         });
 
       const smoothing = this.main.gridRenderer.renderModes.smoothing;
-      this.gui
+
+      // Store as class property
+      this.maxDensityController = this.gui
         .add(this.main.gridRenderer, "maxDensity", 0.1, 10, 0.1)
         .name("Max Density");
-      this.gui
+
+      // Store as class property
+      this.fadeInSpeedController = this.gui
         .add(smoothing, "rateIn", 0.01, 0.5)
         .name("Fade In Speed")
         .onFinishChange(() => console.log("Smoothing in:", smoothing.rateIn));
 
-      this.gui
+      // Store as class property
+      this.fadeOutSpeedController = this.gui
         .add(smoothing, "rateOut", 0.01, 0.5)
         .name("Fade Out Speed")
         .onFinishChange(() => console.log("Smoothing out:", smoothing.rateOut));
 
-      this.gui.add(particles, "timeStep", 0.001, 0.05, 0.001).name("Time Step");
+      // Store as class property
+      this.timeStepController = this.gui
+        .add(particles, "timeStep", 0.001, 0.05, 0.001)
+        .name("Time Step");
 
-      this.gui
+      // Store as class property
+      this.timeScaleController = this.gui
         .add(particles, "timeScale", 0, 2, 0.1)
         .name("Speed")
         .onFinishChange((value) => {
           console.log(`Animation speed: ${value}x`);
         });
 
-      this.gui
+      // Store as class property
+      this.velocityDampingController = this.gui
         .add(particles, "velocityDamping", 0.8, 1, 0.01)
         .name("Velocity Damping")
         .onFinishChange((value) => {
           console.log(`Velocity damping set to ${value}`);
         });
-      // this.gui
-      //   .add(particles, "picFlipRatio", 0, 1, 0.01)
-      //   .name("PIC / FLIP")
-      //   .onFinishChange((value) => {
-      //     console.log(`PIC/FLIP mixing ratio: ${value * 100}% FLIP`);
-      //   });
     }
   }
   //#endregion
@@ -172,14 +173,15 @@ export class LeftUi extends BaseUi {
     const particles = this.main.particleSystem;
     if (!particles) return;
 
-    this.particleFolder
+    // Store controllers as class properties with clear naming
+    this.particleCountController = this.particleFolder
       .add(particles, "numParticles", 1, 2000, 10)
       .name("Count")
       .onFinishChange((value) => {
         particles.reinitializeParticles(value);
       });
 
-    this.particleFolder
+    this.particleSizeController = this.particleFolder
       .add(particles, "particleRadius", 0.005, 0.03, 0.001)
       .name("Size")
       .onChange((value) => {
@@ -188,11 +190,11 @@ export class LeftUi extends BaseUi {
         particles.particleRadii.fill(value);
       });
 
-    this.particleFolder
+    this.particleOpacityController = this.particleFolder
       .add(this.main.particleRenderer, "particleOpacity", 0.0, 1.0, 0.01)
       .name("Opacity");
 
-    this.particleFolder
+    this.particleColorController = this.particleFolder
       .addColor(this.main.particleRenderer.config, "color")
       .name("Color");
   }
@@ -200,121 +202,112 @@ export class LeftUi extends BaseUi {
 
   //#region Physics
   initPhysicsControls() {
-    const physicsFolder = this.physicsFolder;
+    const particles = this.main.particleSystem;
+    if (!particles || !particles.gravity) return;
 
     // Add gravity strength control
-    physicsFolder
-      .add(
-        { strength: this.main.particleSystem.gravity.strength },
-        "strength",
-        0,
-        20,
-        0.1 // Adding step information
-      )
+    this.gravityStrengthController = this.physicsFolder
+      .add({ strength: particles.gravity.strength }, "strength", 0, 20, 0.1)
       .name("Gravity Strength")
       .onChange((value) => {
-        this.main.particleSystem.gravity.setStrength(value);
+        particles.gravity.strength = value;
       });
 
     // Add gravity direction controls
     const gravityDirection = {
-      x: this.main.particleSystem.gravity.directionX,
-      y: this.main.particleSystem.gravity.directionY,
+      x: particles.gravity.directionX,
+      y: particles.gravity.directionY,
     };
 
-    physicsFolder
+    this.gravityXController = this.physicsFolder
       .add(gravityDirection, "x", -1, 1, 0.1)
       .name("Gravity X")
       .onChange((value) => {
-        // Update X and preserve normalized direction
-        this.main.particleSystem.gravity.setDirection(
-          value,
-          this.main.particleSystem.gravity.directionY,
-          this.main.particleSystem.gravity.directionZ
-        );
+        particles.gravity.directionX = value;
       });
 
-    physicsFolder
+    this.gravityYController = this.physicsFolder
       .add(gravityDirection, "y", -1, 1, 0.1)
       .name("Gravity Y")
       .onChange((value) => {
-        // Update Y and preserve normalized direction
-        this.main.particleSystem.gravity.setDirection(
-          this.main.particleSystem.gravity.directionX,
-          value,
-          this.main.particleSystem.gravity.directionZ
-        );
+        particles.gravity.directionY = value;
       });
 
     // Add gravity enable/disable toggle
-    physicsFolder
-      .add(this.main.particleSystem.gravity, "enabled")
+    this.gravityEnabledController = this.physicsFolder
+      .add(particles.gravity, "enabled")
       .name("Gravity Enabled");
-
-    // // Rest of the physics controls
-    // physicsFolder
-    //   .add(this.main.particleSystem, "gravityFlip")
-    //   .name("Flip Gravity");
-
-    // Add timestep control
   }
   //#endregion
 
   //#region Collision
   initCollisionControls() {
     const particles = this.main.particleSystem;
-    if (!particles) return;
+    if (!particles || !particles.collisionSystem) return;
 
-    this.collisionFolder
-      .add(particles.collisionSystem, "repulsion", 0, 5, 0.01)
+    const collisionSystem = particles.collisionSystem;
+
+    this.collisionRepulsionController = this.collisionFolder
+      .add(collisionSystem, "repulsion", 0, 5, 0.01)
       .name("Repulsion");
 
-    this.collisionFolder
-      .add(particles.collisionSystem, "particleRestitution", 0.0, 1.0, 0.05)
-      .name("Bounce");
+    // Check if properties exist before adding them
+    if (collisionSystem.particleRestitution !== undefined) {
+      this.collisionBounceController = this.collisionFolder
+        .add(collisionSystem, "particleRestitution", 0.0, 1.0, 0.05)
+        .name("Bounce");
+    }
 
-    this.collisionFolder
-      .add(particles.collisionSystem, "damping", 0.5, 1.0, 0.01)
-      .name("Collision Damping");
+    if (collisionSystem.damping !== undefined) {
+      this.collisionDampingController = this.collisionFolder
+        .add(collisionSystem, "damping", 0.5, 1.0, 0.01)
+        .name("Collision Damping");
+    }
   }
   //#endregion
 
   //#region Boundary
   initBoundaryControls() {
     const particles = this.main.particleSystem;
-    if (!particles) return;
+    if (!particles || !particles.boundary) return;
 
-    this.boundaryFolder
-      .add(particles.boundary, "radius", 0.3, 0.55, 0.005)
-      .name("Size")
-      .onChange((value) => {
-        particles.boundary.update({ radius: value }, [
-          // (boundary) => this.main.baseRenderer.drawCircularBoundary(boundary),
-        ]);
-      });
+    const boundary = particles.boundary;
 
-    this.boundaryFolder
-      .add(particles, "boundaryDamping", 0.0, 1.0, 0.01)
-      .name("Wall Friction")
-      .onChange((value) => (particles.boundaryDamping = value));
+    if (boundary.radius !== undefined) {
+      this.boundarySizeController = this.boundaryFolder
+        .add(boundary, "radius", 0.3, 0.55, 0.005)
+        .name("Size")
+        .onChange((value) => {
+          if (boundary.update) boundary.update({ radius: value });
+        });
+    }
 
-    this.boundaryFolder
-      .add(particles.boundary, "cBoundaryRestitution", 0.0, 1.0, 0.05)
-      .name("Bounce");
-    this.boundaryFolder
-      .add(particles.boundary, "boundaryRepulsion", 0.0, 20, 0.01)
-      .name("Wall Repulsion")
-      .onChange((value) => {
-        console.log(`Boundary repulsion set to ${value}`);
-      });
+    // Check if properties exist before adding controllers
+    if (particles.boundaryDamping !== undefined) {
+      this.boundaryFrictionController = this.boundaryFolder
+        .add(particles, "boundaryDamping", 0.0, 1.0, 0.01)
+        .name("Wall Friction");
+    }
+
+    if (boundary.cBoundaryRestitution !== undefined) {
+      this.boundaryBounceController = this.boundaryFolder
+        .add(boundary, "cBoundaryRestitution", 0.0, 1.0, 0.05)
+        .name("Bounce");
+    }
+
+    if (boundary.boundaryRepulsion !== undefined) {
+      this.boundaryRepulsionController = this.boundaryFolder
+        .add(boundary, "boundaryRepulsion", 0.0, 20, 0.01)
+        .name("Wall Repulsion");
+    }
   }
   //#endregion
-
   //#region Rest State
   initRestStateControls() {
     const particles = this.main.particleSystem;
     if (!particles) return;
 
+    // Create controls object with default values that checks for property existence
     const controls = {
       density: particles.restDensity || 1.0,
       gasConstant: particles.gasConstant || 2.0,
@@ -322,25 +315,34 @@ export class LeftUi extends BaseUi {
       positionThreshold: particles.positionThreshold || 0.01,
     };
 
-    this.restFolder
-      .add(controls, "density", 0, 10)
-      .name("Rest Density")
-      .onChange((value) => (particles.restDensity = value));
+    // Only add controllers if the corresponding properties exist
+    if (particles.restDensity !== undefined) {
+      this.restDensityController = this.restFolder
+        .add(controls, "density", 0, 10)
+        .name("Rest Density")
+        .onChange((value) => (particles.restDensity = value));
+    }
 
-    this.restFolder
-      .add(controls, "gasConstant", 0, 100)
-      .name("Gas Constant")
-      .onChange((value) => (particles.gasConstant = value));
+    if (particles.gasConstant !== undefined) {
+      this.gasConstantController = this.restFolder
+        .add(controls, "gasConstant", 0, 100)
+        .name("Gas Constant")
+        .onChange((value) => (particles.gasConstant = value));
+    }
 
-    this.restFolder
-      .add(controls, "velocityThreshold", 0, 0.1)
-      .name("Velocity Threshold")
-      .onChange((value) => (particles.velocityThreshold = value));
+    if (particles.velocityThreshold !== undefined) {
+      this.velocityThresholdController = this.restFolder
+        .add(controls, "velocityThreshold", 0, 0.1)
+        .name("Velocity Threshold")
+        .onChange((value) => (particles.velocityThreshold = value));
+    }
 
-    this.restFolder
-      .add(controls, "positionThreshold", 0, 0.1)
-      .name("Position Threshold")
-      .onChange((value) => (particles.positionThreshold = value));
+    if (particles.positionThreshold !== undefined) {
+      this.positionThresholdController = this.restFolder
+        .add(controls, "positionThreshold", 0, 0.1)
+        .name("Position Threshold")
+        .onChange((value) => (particles.positionThreshold = value));
+    }
   }
   //#endregion
 
@@ -349,1238 +351,246 @@ export class LeftUi extends BaseUi {
     const particles = this.main.particleSystem;
     if (!particles) return;
 
-    // Grid visibility
-    if (this.main.gridRenderer) {
-      const gridControl = { showGrid: false };
-      this.debugFolder
-        .add(gridControl, "showGrid")
-        .name("Grid")
-        .onChange((value) => {
-          if (this.main.gridRenderer?.visible !== undefined) {
-            this.main.gridRenderer.visible = value;
-          }
-        });
+    // Create a debug display object that will store our debug properties
+    const debugDisplay = {
+      showDebug:
+        this.main.showDebug !== undefined ? this.main.showDebug : false,
+      fps: this.main.fps !== undefined ? this.main.fps : 0,
+    };
+
+    // Toggle debug display only if property exists
+    if (this.main.showDebug !== undefined) {
+      this.debugDisplayController = this.debugFolder
+        .add(this.main, "showDebug")
+        .name("Show Debug");
+    } else {
+      // Add a dummy control if property doesn't exist
+      this.debugDisplayController = this.debugFolder
+        .add(debugDisplay, "showDebug")
+        .name("Show Debug");
     }
 
-    // Boundary visibility
-    if (this.main.boundary) {
-      this.debugFolder
-        .add({ showBoundary: true }, "showBoundary")
-        .name("Boundary");
-      // .onChange((value) => this.main.boundary.setVisible(value));
+    // Display FPS if property exists
+    if (this.main.fps !== undefined) {
+      this.debugFpsController = this.debugFolder
+        .add(this.main, "fps")
+        .name("FPS")
+        .listen();
+    } else {
+      // Add a dummy FPS display
+      this.debugFpsController = this.debugFolder
+        .add(debugDisplay, "fps")
+        .name("FPS");
     }
 
-    // Particle visibility
-    if (this.main.particleRenderer) {
-      this.debugFolder
-        .add({ showParticles: true }, "showParticles")
-        .name("Particles");
-      // .onChange((value) => this.main.particleRenderer.setVisible(value));
+    // Toggle velocity display if present
+    if (
+      this.main.particleRenderer &&
+      this.main.particleRenderer.showVelocity !== undefined
+    ) {
+      this.debugVelocityController = this.debugFolder
+        .add(this.main.particleRenderer, "showVelocity")
+        .name("Show Velocity");
     }
 
-    // Debug renderer controls
-    if (this.main.debugRenderer) {
-      this.debugFolder
-        .add({ showVelocities: false }, "showVelocities")
-        .name("Velocities");
-      // .onChange((value) => this.main.debugRenderer.setShowVelocities(value));
-
-      this.debugFolder
-        .add({ showNeighbors: false }, "showNeighbors")
-        .name("Neighbors");
-      // .onChange((value) => this.main.debugRenderer.setShowNeighbors(value));
+    // Toggle showing grid if present
+    if (
+      this.main.gridRenderer &&
+      this.main.gridRenderer.showGrid !== undefined
+    ) {
+      this.debugShowGridController = this.debugFolder
+        .add(this.main.gridRenderer, "showGrid")
+        .name("Show Grid");
     }
+  }
+  //#endregion
 
-    const socket = socketManager;
-    if (socket) {
-      const debugNetworkControl = {
-        showNetwork: socket.debugSend,
-        showNetworkMouse: socket.debugReceive,
-      };
-
-      this.debugFolder
-        .add(debugNetworkControl, "showNetwork")
-        .name("Network Debug Send")
-        .onChange((value) => {
-          socket.debugSend = value;
-        });
-
-      this.debugFolder
-        .add(debugNetworkControl, "showNetworkMouse")
-        .name("Network Debug Receive")
-        .onChange((value) => {
-          socket.debugReceive = value;
-        });
-    }
-  } //#endregion
-
-  // Get available control targets
+  /**
+   * Get controllers that can be targeted by pulse modulators
+   * @returns {Object} Map of target names to controllers
+   */
   getControlTargets() {
-    const targets = ["None"];
+    const targets = {};
 
-    // Basic targets (already implemented)
-    targets.push("Particle Size");
-    targets.push("Gravity Strength");
-    targets.push("Repulsion");
+    if (this.maxDensityController)
+      targets["Max Density"] = this.maxDensityController;
+    if (this.fadeInSpeedController)
+      targets["Fade In Speed"] = this.fadeInSpeedController;
+    if (this.fadeOutSpeedController)
+      targets["Fade Out Speed"] = this.fadeOutSpeedController;
+    if (this.timeStepController) targets["Time Step"] = this.timeStepController;
+    if (this.timeScaleController)
+      targets["Animation Speed"] = this.timeScaleController;
+    if (this.velocityDampingController)
+      targets["Velocity Damping"] = this.velocityDampingController;
 
-    // Global section
-    targets.push("Max Density");
-    targets.push("Animation Speed");
-    targets.push("Fade In Speed");
-    targets.push("Fade Out Speed");
-    targets.push("Time Step");
-    targets.push("Velocity Damping");
+    // // Particle controllers
+    // if (this.particleCountController)
+    //   targets["Particle Count"] = this.particleCountController;
+    if (this.particleSizeController)
+      targets["Particle Size"] = this.particleSizeController;
+    // if (this.particleOpacityController)
+    //   targets["Particle Opacity"] = this.particleOpacityController;
 
-    // Particle section
-    targets.push("Particle Count");
-    targets.push("Particle Opacity");
+    // Physics controllers
+    if (this.gravityStrengthController)
+      targets["Gravity Strength"] = this.gravityStrengthController;
+    if (this.gravityXController) targets["Gravity X"] = this.gravityXController;
+    if (this.gravityYController) targets["Gravity Y"] = this.gravityYController;
+    if (this.gravityEnabledController)
+      targets["Gravity Enabled"] = this.gravityEnabledController;
 
-    // Physics section
-    targets.push("Gravity X");
-    targets.push("Gravity Y");
+    // Collision controllers
+    if (this.collisionRepulsionController)
+      targets["Repulsion"] = this.collisionRepulsionController;
+    if (this.collisionBounceController)
+      targets["Bounce"] = this.collisionBounceController;
+    if (this.collisionDampingController)
+      targets["Collision Damping"] = this.collisionDampingController;
 
-    // Collision section
-    targets.push("Bounce");
-    targets.push("Collision Damping");
+    // Boundary controllers
+    if (this.boundarySizeController)
+      targets["Boundary Size"] = this.boundarySizeController;
+    if (this.boundaryRepulsionController)
+      targets["Wall Repulsion"] = this.boundaryRepulsionController;
+    if (this.boundaryFrictionController)
+      targets["Wall Friction"] = this.boundaryFrictionController;
+    if (this.boundaryBounceController)
+      targets["Boundary Bounce"] = this.boundaryBounceController;
 
-    // Boundary section
-    targets.push("Boundary Size");
-    targets.push("Wall Repulsion");
-    targets.push("Wall Friction");
-    targets.push("Boundary Bounce");
-
-    // Rest State section
-    targets.push("Rest Density");
-    targets.push("Gas Constant");
-    targets.push("Velocity Threshold");
-    targets.push("Position Threshold");
-
-    // Turbulence section (expanded)
-    targets.push("Turbulence Strength");
-    targets.push("Turbulence Scale");
-    targets.push("Turbulence Speed");
-    targets.push("Scale Strength");
-    targets.push("Min Scale");
-    targets.push("Max Scale");
-    targets.push("Octaves");
-    targets.push("Persistence");
-    targets.push("Rotation");
-    targets.push("Rotation Speed");
-    targets.push("Inward Pull");
-    targets.push("Decay Rate");
-    targets.push("X Bias");
-    targets.push("Y Bias");
-
-    // Voronoi section
-    targets.push("Voronoi Strength");
-    targets.push("Edge Width");
-    targets.push("Attraction");
-    targets.push("Cell Count");
-    targets.push("Cell Speed");
-    targets.push("Voronoi Decay Rate");
-
-    // Fluid Parameters
-    targets.push("Fluid Radius");
-    targets.push("Surface Tension");
-    targets.push("Viscosity");
-    targets.push("Fluid Damping");
-
-    // Swarm Parameters
-    targets.push("Swarm Radius");
-    targets.push("Cohesion");
-    targets.push("Alignment");
-    targets.push("Separation");
-    targets.push("Max Speed");
-
-    // Automata Parameters
-    targets.push("Automata Radius");
-    targets.push("Automata Repulsion");
-    targets.push("Automata Attraction");
-    targets.push("Threshold");
-
-    // Grid Parameters
-    targets.push("Target Cells");
-    targets.push("Grid Gap");
-    targets.push("Cell Ratio");
-    targets.push("Grid Scale");
-
-    // Force controls
-    targets.push("Organic Force");
+    // Rest state controllers
+    if (this.restDensityController)
+      targets["Rest Density"] = this.restDensityController;
+    if (this.gasConstantController)
+      targets["Gas Constant"] = this.gasConstantController;
+    if (this.velocityThresholdController)
+      targets["Velocity Threshold"] = this.velocityThresholdController;
+    if (this.positionThresholdController)
+      targets["Position Threshold"] = this.positionThresholdController;
 
     return targets;
   }
-
-  // Find the actual controller for a given target name
+  /**
+   * Get controller and range information for a specific target
+   * @param {string} targetName - Name of the target
+   * @returns {object|null} Controller info or null if not found
+   */
   getControllerForTarget(targetName) {
-    switch (targetName) {
-      case "Particle Size":
-        return {
-          controller: {
-            object: this.main.particleSystem,
-            property: "particleRadius",
-            getValue: () => this.main.particleSystem.particleRadius,
-            setValue: (value) => {
-              this.main.particleSystem.particleRadius = value;
-              this.main.particleSystem.collisionSystem.particleRadius =
-                value * 2;
-              // Reset all particles to new base radius before turbulence affects them
-              this.main.particleSystem.particleRadii.fill(value);
-            },
-            updateDisplay: () => {},
-          },
-          property: "particleRadius",
-          min: 0.005,
-          max: 0.03,
-          step: 0.001,
-        };
+    // First check if the target is in our direct controller map
+    const targets = this.getControlTargets();
+    const controller = targets[targetName];
 
-      case "Gravity Strength":
-        return {
-          controller: {
-            object: this.main.particleSystem.gravity,
-            property: "strength",
-            getValue: () => this.main.particleSystem.gravity.strength,
-            setValue: (value) =>
-              this.main.particleSystem.gravity.setStrength(value),
-            updateDisplay: () => {},
-          },
-          property: "strength",
-          min: 0,
-          max: 20,
-          step: 0.1,
-        };
+    if (controller) {
+      // Initialize result object with controller reference
+      const result = {
+        controller,
+        property: controller.property,
+      };
 
-      case "Repulsion":
-        return {
-          controller: {
-            object: this.main.particleSystem.collisionSystem,
-            property: "repulsion",
-            getValue: () => this.main.particleSystem.collisionSystem.repulsion,
-            setValue: (value) =>
-              (this.main.particleSystem.collisionSystem.repulsion = value),
-            updateDisplay: () => {},
-          },
-          property: "repulsion",
-          min: 0,
-          max: 5,
-          step: 0.01,
-        };
+      // Try to get min/max values using specific approaches for lil-gui
+      try {
+        // For lil-gui controls
+        if (typeof controller._min !== "undefined") {
+          result.min = Number(controller._min);
+          result.max = Number(controller._max);
 
-      case "Max Density":
-        return {
-          controller: {
-            object: this.main.gridRenderer,
-            property: "maxDensity",
-            getValue: () => this.main.gridRenderer.maxDensity,
-            setValue: (value) => (this.main.gridRenderer.maxDensity = value),
-            updateDisplay: () => {},
-          },
-          property: "maxDensity",
-          min: 0.1,
-          max: 10,
-          step: 0.1,
-        };
+          if (typeof controller._step !== "undefined") {
+            result.step = Number(controller._step);
+          }
+        }
+        // Try alternative property names
+        else if (typeof controller.__min !== "undefined") {
+          result.min = Number(controller.__min);
+          result.max = Number(controller.__max);
 
-      case "Animation Speed":
-        return {
-          controller: {
-            object: this.main.particleSystem,
-            property: "timeScale",
-            getValue: () => this.main.particleSystem.timeScale,
-            setValue: (value) => (this.main.particleSystem.timeScale = value),
-            updateDisplay: () => {},
-          },
-          property: "timeScale",
-          min: 0,
-          max: 2,
-          step: 0.1,
-        };
+          if (typeof controller.__step !== "undefined") {
+            result.step = Number(controller.__step);
+          }
+        }
+        // Try function calls if available
+        else if (typeof controller.min === "function") {
+          result.min = Number(controller.min());
+          result.max = Number(controller.max());
 
-      case "Fade In Speed":
-        return {
-          controller: {
-            object: this.main.gridRenderer.renderModes.smoothing,
-            property: "rateIn",
-            getValue: () => this.main.gridRenderer.renderModes.smoothing.rateIn,
-            setValue: (value) =>
-              (this.main.gridRenderer.renderModes.smoothing.rateIn = value),
-            updateDisplay: () => {},
-          },
-          property: "rateIn",
-          min: 0.01,
-          max: 0.5,
-          step: 0.01,
-        };
+          if (typeof controller.step === "function") {
+            result.step = Number(controller.step());
+          }
+        }
 
-      case "Fade Out Speed":
-        return {
-          controller: {
-            object: this.main.gridRenderer.renderModes.smoothing,
-            property: "rateOut",
-            getValue: () =>
-              this.main.gridRenderer.renderModes.smoothing.rateOut,
-            setValue: (value) =>
-              (this.main.gridRenderer.renderModes.smoothing.rateOut = value),
-            updateDisplay: () => {},
-          },
-          property: "rateOut",
-          min: 0.01,
-          max: 0.5,
-          step: 0.01,
-        };
+        console.log(
+          `GetControllerForTarget ${targetName}: Range ${result.min} - ${
+            result.max
+          }, Current value: ${controller.getValue()}`
+        );
+      } catch (e) {
+        console.error(`Error extracting range for ${targetName}:`, e);
 
-      case "Time Step":
-        return {
-          controller: {
-            object: this.main.particleSystem,
-            property: "timeStep",
-            getValue: () => this.main.particleSystem.timeStep,
-            setValue: (value) => (this.main.particleSystem.timeStep = value),
-            updateDisplay: () => {},
-          },
-          property: "timeStep",
-          min: 0.001,
-          max: 0.05,
-          step: 0.001,
-        };
+        // Provide default range based on the current value
+        const value = controller.getValue();
+        if (typeof value === "number") {
+          result.min = 0;
+          result.max = Math.max(1, value * 2);
+          result.step = 0.01;
+        }
+      }
 
-      case "Velocity Damping":
-        return {
-          controller: {
-            object: this.main.particleSystem,
-            property: "velocityDamping",
-            getValue: () => this.main.particleSystem.velocityDamping,
-            setValue: (value) =>
-              (this.main.particleSystem.velocityDamping = value),
-            updateDisplay: () => {},
-          },
-          property: "velocityDamping",
-          min: 0.8,
-          max: 1,
-          step: 0.01,
-        };
-
-      case "Particle Count":
-        return {
-          controller: {
-            object: this.main.particleSystem,
-            property: "numParticles",
-            getValue: () => this.main.particleSystem.numParticles,
-            setValue: (value) => {
-              const intValue = Math.round(value);
-              this.main.particleSystem.numParticles = intValue;
-              this.main.particleSystem.reinitializeParticles(intValue);
-            },
-            updateDisplay: () => {},
-          },
-          property: "numParticles",
-          min: 1,
-          max: 2000,
-          step: 10,
-        };
-
-      case "Particle Opacity":
-        return {
-          controller: {
-            object: this.main.particleRenderer,
-            property: "particleOpacity",
-            getValue: () => this.main.particleRenderer.particleOpacity,
-            setValue: (value) =>
-              (this.main.particleRenderer.particleOpacity = value),
-            updateDisplay: () => {},
-          },
-          property: "particleOpacity",
-          min: 0.0,
-          max: 1.0,
-          step: 0.01,
-        };
-
-      case "Gravity X":
-        return {
-          controller: {
-            object: this.main.particleSystem.gravity,
-            property: "directionX",
-            getValue: () => this.main.particleSystem.gravity.directionX,
-            setValue: (value) => {
-              this.main.particleSystem.gravity.setDirection(
-                value,
-                this.main.particleSystem.gravity.directionY,
-                this.main.particleSystem.gravity.directionZ
-              );
-            },
-            updateDisplay: () => {},
-          },
-          property: "directionX",
-          min: -1,
-          max: 1,
-          step: 0.1,
-        };
-
-      case "Gravity Y":
-        return {
-          controller: {
-            object: this.main.particleSystem.gravity,
-            property: "directionY",
-            getValue: () => this.main.particleSystem.gravity.directionY,
-            setValue: (value) => {
-              this.main.particleSystem.gravity.setDirection(
-                this.main.particleSystem.gravity.directionX,
-                value,
-                this.main.particleSystem.gravity.directionZ
-              );
-            },
-            updateDisplay: () => {},
-          },
-          property: "directionY",
-          min: -1,
-          max: 1,
-          step: 0.1,
-        };
-
-      case "Bounce":
-        return {
-          controller: {
-            object: this.main.particleSystem.collisionSystem,
-            property: "particleRestitution",
-            getValue: () =>
-              this.main.particleSystem.collisionSystem.particleRestitution,
-            setValue: (value) =>
-              (this.main.particleSystem.collisionSystem.particleRestitution =
-                value),
-            updateDisplay: () => {},
-          },
-          property: "particleRestitution",
-          min: 0.0,
-          max: 1.0,
-          step: 0.05,
-        };
-
-      case "Collision Damping":
-        return {
-          controller: {
-            object: this.main.particleSystem.collisionSystem,
-            property: "damping",
-            getValue: () => this.main.particleSystem.collisionSystem.damping,
-            setValue: (value) =>
-              (this.main.particleSystem.collisionSystem.damping = value),
-            updateDisplay: () => {},
-          },
-          property: "damping",
-          min: 0.5,
-          max: 1.0,
-          step: 0.01,
-        };
-
-      case "Boundary Size":
-        return {
-          controller: {
-            object: this.main.particleSystem.boundary,
-            property: "radius",
-            getValue: () => this.main.particleSystem.boundary.radius,
-            setValue: (value) => {
-              this.main.particleSystem.boundary.update({ radius: value });
-            },
-            updateDisplay: () => {},
-          },
-          property: "radius",
-          min: 0.3,
-          max: 0.55,
-          step: 0.005,
-        };
-
-      case "Wall Repulsion":
-        return {
-          controller: {
-            object: this.main.particleSystem.boundary,
-            property: "boundaryRepulsion",
-            getValue: () => this.main.particleSystem.boundary.boundaryRepulsion,
-            setValue: (value) =>
-              (this.main.particleSystem.boundary.boundaryRepulsion = value),
-            updateDisplay: () => {},
-          },
-          property: "boundaryRepulsion",
-          min: 0.0,
-          max: 20,
-          step: 0.01,
-        };
-
-      case "Wall Friction":
-        return {
-          controller: {
-            object: this.main.particleSystem,
-            property: "boundaryDamping",
-            getValue: () => this.main.particleSystem.boundaryDamping,
-            setValue: (value) =>
-              (this.main.particleSystem.boundaryDamping = value),
-            updateDisplay: () => {},
-          },
-          property: "boundaryDamping",
-          min: 0.0,
-          max: 1.0,
-          step: 0.01,
-        };
-
-      case "Boundary Bounce":
-        return {
-          controller: {
-            object: this.main.particleSystem.boundary,
-            property: "cBoundaryRestitution",
-            getValue: () =>
-              this.main.particleSystem.boundary.cBoundaryRestitution,
-            setValue: (value) =>
-              (this.main.particleSystem.boundary.cBoundaryRestitution = value),
-            updateDisplay: () => {},
-          },
-          property: "cBoundaryRestitution",
-          min: 0.0,
-          max: 1.0,
-          step: 0.05,
-        };
-
-      case "Rest Density":
-        return {
-          controller: {
-            object: this.main.particleSystem,
-            property: "restDensity",
-            getValue: () => this.main.particleSystem.restDensity,
-            setValue: (value) => (this.main.particleSystem.restDensity = value),
-            updateDisplay: () => {},
-          },
-          property: "restDensity",
-          min: 0,
-          max: 10,
-          step: 0.1,
-        };
-
-      case "Gas Constant":
-        return {
-          controller: {
-            object: this.main.particleSystem,
-            property: "gasConstant",
-            getValue: () => this.main.particleSystem.gasConstant,
-            setValue: (value) => (this.main.particleSystem.gasConstant = value),
-            updateDisplay: () => {},
-          },
-          property: "gasConstant",
-          min: 0,
-          max: 100,
-          step: 1,
-        };
-
-      case "Velocity Threshold":
-        return {
-          controller: {
-            object: this.main.particleSystem,
-            property: "velocityThreshold",
-            getValue: () => this.main.particleSystem.velocityThreshold,
-            setValue: (value) =>
-              (this.main.particleSystem.velocityThreshold = value),
-            updateDisplay: () => {},
-          },
-          property: "velocityThreshold",
-          min: 0,
-          max: 0.1,
-          step: 0.001,
-        };
-
-      case "Position Threshold":
-        return {
-          controller: {
-            object: this.main.particleSystem,
-            property: "positionThreshold",
-            getValue: () => this.main.particleSystem.positionThreshold,
-            setValue: (value) =>
-              (this.main.particleSystem.positionThreshold = value),
-            updateDisplay: () => {},
-          },
-          property: "positionThreshold",
-          min: 0,
-          max: 0.1,
-          step: 0.001,
-        };
-
-      // Turbulence section
-      case "Turbulence Strength":
-        return {
-          controller: {
-            object: this.main.turbulenceField,
-            property: "strength",
-            getValue: () => this.main.turbulenceField.strength,
-            setValue: (value) => (this.main.turbulenceField.strength = value),
-            updateDisplay: () => {},
-          },
-          property: "strength",
-          min: 0,
-          max: 10,
-          step: 0.1,
-        };
-
-      case "Turbulence Speed":
-        return {
-          controller: {
-            object: this.main.turbulenceField,
-            property: "speed",
-            getValue: () => this.main.turbulenceField.speed,
-            setValue: (value) => (this.main.turbulenceField.speed = value),
-            updateDisplay: () => {},
-          },
-          property: "speed",
-          min: 0,
-          max: 20,
-          step: 0.1,
-        };
-
-      case "Scale Strength":
-        return {
-          controller: {
-            object: this.main.turbulenceField,
-            property: "scaleStrength",
-            getValue: () => this.main.turbulenceField.scaleStrength,
-            setValue: (value) =>
-              (this.main.turbulenceField.scaleStrength = value),
-            updateDisplay: () => {},
-          },
-          property: "scaleStrength",
-          min: 0,
-          max: 1,
-          step: 0.01,
-        };
-
-      case "Inward Pull":
-        return {
-          controller: {
-            object: this.main.turbulenceField,
-            property: "inwardFactor",
-            getValue: () => this.main.turbulenceField.inwardFactor,
-            setValue: (value) =>
-              (this.main.turbulenceField.inwardFactor = value),
-            updateDisplay: () => {},
-          },
-          property: "inwardFactor",
-          min: 0,
-          max: 5,
-          step: 0.1,
-        };
-
-      // Voronoi section
-      case "Voronoi Strength":
-        return {
-          controller: {
-            object: this.main.voronoiField,
-            property: "strength",
-            getValue: () => this.main.voronoiField.strength,
-            setValue: (value) => (this.main.voronoiField.strength = value),
-            updateDisplay: () => {},
-          },
-          property: "strength",
-          min: 0,
-          max: 10,
-          step: 0.1,
-        };
-
-      case "Edge Width":
-        return {
-          controller: {
-            object: this.main.voronoiField,
-            property: "edgeWidth",
-            getValue: () => this.main.voronoiField.edgeWidth,
-            setValue: (value) => (this.main.voronoiField.edgeWidth = value),
-            updateDisplay: () => {},
-          },
-          property: "edgeWidth",
-          min: 0.1,
-          max: 50,
-          step: 0.1,
-        };
-
-      case "Attraction":
-        return {
-          controller: {
-            object: this.main.voronoiField,
-            property: "attractionFactor",
-            getValue: () => this.main.voronoiField.attractionFactor,
-            setValue: (value) =>
-              (this.main.voronoiField.attractionFactor = value),
-            updateDisplay: () => {},
-          },
-          property: "attractionFactor",
-          min: 0,
-          max: 8,
-          step: 0.1,
-        };
-
-      case "Cell Count":
-        return {
-          controller: {
-            object: this.main.voronoiField,
-            property: "cellCount",
-            getValue: () => this.main.voronoiField.cellCount,
-            setValue: (value) => {
-              const intValue = Math.round(value);
-              this.main.voronoiField.cellCount = intValue;
-              this.main.voronoiField.regenerateCells();
-            },
-            updateDisplay: () => {},
-          },
-          property: "cellCount",
-          min: 1,
-          max: 100,
-          step: 1,
-        };
-
-      case "Cell Speed":
-        return {
-          controller: {
-            object: this.main.voronoiField,
-            property: "cellSpeed",
-            getValue: () => this.main.voronoiField.cellSpeed,
-            setValue: (value) => (this.main.voronoiField.cellSpeed = value),
-            updateDisplay: () => {},
-          },
-          property: "cellSpeed",
-          min: 0,
-          max: 10,
-          step: 0.1,
-        };
-
-      // Force controls
-      case "Organic Force":
-        // Get direct access to behavior object instead of going through UI
-        const behavior = this.main.particleSystem.organicBehavior;
-        return {
-          controller: {
-            // Create a proxy object that doesn't depend on rightUi
-            object: {
-              force: 1.0, // Default value
-            },
-            property: "force",
-            getValue: () => {
-              // Safely calculate current force value from behavior
-              if (behavior && behavior.forceScales) {
-                const forceTypes = ["Fluid", "Swarm", "Automata"];
-                let totalForce = 0;
-                let count = 0;
-
-                forceTypes.forEach((type) => {
-                  if (behavior.forceScales[type]) {
-                    totalForce += behavior.forceScales[type].base;
-                    count++;
-                  }
-                });
-
-                return count > 0 ? totalForce / count : 1.0;
-              }
-              return 1.0;
-            },
-            setValue: (value) => {
-              // Apply directly to behavior object
-              if (behavior && behavior.forceScales) {
-                const forceTypes = ["Fluid", "Swarm", "Automata"];
-                forceTypes.forEach((type) => {
-                  if (behavior.forceScales[type]) {
-                    behavior.forceScales[type].base = value;
-                  }
-                });
-              }
-            },
-            updateDisplay: () => {},
-          },
-          property: "force",
-          min: 0,
-          max: 5,
-          step: 0.1,
-        };
-
-      // Additional Turbulence controls from right panel
-      case "Turbulence Scale":
-        return {
-          controller: {
-            object: this.main.turbulenceField,
-            property: "scale",
-            getValue: () => this.main.turbulenceField.scale,
-            setValue: (value) => (this.main.turbulenceField.scale = value),
-            updateDisplay: () => {},
-          },
-          property: "scale",
-          min: 0.1,
-          max: 10,
-          step: 0.1,
-        };
-
-      case "Min Scale":
-        return {
-          controller: {
-            object: this.main.turbulenceField,
-            property: "minScale",
-            getValue: () => this.main.turbulenceField.minScale,
-            setValue: (value) => (this.main.turbulenceField.minScale = value),
-            updateDisplay: () => {},
-          },
-          property: "minScale",
-          min: 0.1,
-          max: 1.0,
-          step: 0.01,
-        };
-
-      case "Max Scale":
-        return {
-          controller: {
-            object: this.main.turbulenceField,
-            property: "maxScale",
-            getValue: () => this.main.turbulenceField.maxScale,
-            setValue: (value) => (this.main.turbulenceField.maxScale = value),
-            updateDisplay: () => {},
-          },
-          property: "maxScale",
-          min: 1.0,
-          max: 4.0,
-          step: 0.01,
-        };
-
-      case "Octaves":
-        return {
-          controller: {
-            object: this.main.turbulenceField,
-            property: "octaves",
-            getValue: () => this.main.turbulenceField.octaves,
-            setValue: (value) => {
-              this.main.turbulenceField.octaves = Math.round(value);
-              this.main.turbulenceField.regenerateNoiseBases();
-            },
-            updateDisplay: () => {},
-          },
-          property: "octaves",
-          min: 1,
-          max: 8,
-          step: 1,
-        };
-
-      case "Persistence":
-        return {
-          controller: {
-            object: this.main.turbulenceField,
-            property: "persistence",
-            getValue: () => this.main.turbulenceField.persistence,
-            setValue: (value) =>
-              (this.main.turbulenceField.persistence = value),
-            updateDisplay: () => {},
-          },
-          property: "persistence",
-          min: 0,
-          max: 1,
-          step: 0.01,
-        };
-
-      case "Rotation":
-        return {
-          controller: {
-            object: this.main.turbulenceField,
-            property: "rotation",
-            getValue: () => this.main.turbulenceField.rotation,
-            setValue: (value) => (this.main.turbulenceField.rotation = value),
-            updateDisplay: () => {},
-          },
-          property: "rotation",
-          min: 0,
-          max: Math.PI * 2,
-          step: 0.01,
-        };
-
-      case "Rotation Speed":
-        return {
-          controller: {
-            object: this.main.turbulenceField,
-            property: "rotationSpeed",
-            getValue: () => this.main.turbulenceField.rotationSpeed,
-            setValue: (value) =>
-              (this.main.turbulenceField.rotationSpeed = value),
-            updateDisplay: () => {},
-          },
-          property: "rotationSpeed",
-          min: 0,
-          max: 1,
-          step: 0.01,
-        };
-
-      case "Decay Rate":
-        return {
-          controller: {
-            object: this.main.turbulenceField,
-            property: "decayRate",
-            getValue: () => this.main.turbulenceField.decayRate,
-            setValue: (value) => (this.main.turbulenceField.decayRate = value),
-            updateDisplay: () => {},
-          },
-          property: "decayRate",
-          min: 0.9,
-          max: 1,
-          step: 0.001,
-        };
-
-      case "X Bias":
-        return {
-          controller: {
-            object: this.main.turbulenceField.directionBias,
-            property: "0",
-            getValue: () => this.main.turbulenceField.directionBias[0],
-            setValue: (value) =>
-              (this.main.turbulenceField.directionBias[0] = value),
-            updateDisplay: () => {},
-          },
-          property: "0",
-          min: -1,
-          max: 1,
-          step: 0.01,
-        };
-
-      case "Y Bias":
-        return {
-          controller: {
-            object: this.main.turbulenceField.directionBias,
-            property: "1",
-            getValue: () => this.main.turbulenceField.directionBias[1],
-            setValue: (value) =>
-              (this.main.turbulenceField.directionBias[1] = value),
-            updateDisplay: () => {},
-          },
-          property: "1",
-          min: -1,
-          max: 1,
-          step: 0.01,
-        };
-
-      // Additional Voronoi controls
-      case "Voronoi Decay Rate":
-        return {
-          controller: {
-            object: this.main.voronoiField,
-            property: "decayRate",
-            getValue: () => this.main.voronoiField.decayRate,
-            setValue: (value) => (this.main.voronoiField.decayRate = value),
-            updateDisplay: () => {},
-          },
-          property: "decayRate",
-          min: 0.9,
-          max: 1,
-          step: 0.001,
-        };
-
-      // Fluid Parameters
-      case "Fluid Radius":
-        return {
-          controller: {
-            object: this.main.particleSystem.organicBehavior.params.Fluid,
-            property: "radius",
-            getValue: () =>
-              this.main.particleSystem.organicBehavior.params.Fluid.radius,
-            setValue: (value) =>
-              (this.main.particleSystem.organicBehavior.params.Fluid.radius =
-                value),
-            updateDisplay: () => {},
-          },
-          property: "radius",
-          min: 5,
-          max: 50,
-          step: 1,
-        };
-
-      case "Surface Tension":
-        return {
-          controller: {
-            object: this.main.particleSystem.organicBehavior.params.Fluid,
-            property: "surfaceTension",
-            getValue: () =>
-              this.main.particleSystem.organicBehavior.params.Fluid
-                .surfaceTension,
-            setValue: (value) =>
-              (this.main.particleSystem.organicBehavior.params.Fluid.surfaceTension =
-                value),
-            updateDisplay: () => {},
-          },
-          property: "surfaceTension",
-          min: 0,
-          max: 1,
-          step: 0.01,
-        };
-
-      case "Viscosity":
-        return {
-          controller: {
-            object: this.main.particleSystem.organicBehavior.params.Fluid,
-            property: "viscosity",
-            getValue: () =>
-              this.main.particleSystem.organicBehavior.params.Fluid.viscosity,
-            setValue: (value) =>
-              (this.main.particleSystem.organicBehavior.params.Fluid.viscosity =
-                value),
-            updateDisplay: () => {},
-          },
-          property: "viscosity",
-          min: 0,
-          max: 1,
-          step: 0.01,
-        };
-
-      case "Fluid Damping":
-        return {
-          controller: {
-            object: this.main.particleSystem.organicBehavior.params.Fluid,
-            property: "damping",
-            getValue: () =>
-              this.main.particleSystem.organicBehavior.params.Fluid.damping,
-            setValue: (value) =>
-              (this.main.particleSystem.organicBehavior.params.Fluid.damping =
-                value),
-            updateDisplay: () => {},
-          },
-          property: "damping",
-          min: 0,
-          max: 1,
-          step: 0.01,
-        };
-
-      // Swarm Parameters
-      case "Swarm Radius":
-        return {
-          controller: {
-            object: this.main.particleSystem.organicBehavior.params.Swarm,
-            property: "radius",
-            getValue: () =>
-              this.main.particleSystem.organicBehavior.params.Swarm.radius,
-            setValue: (value) =>
-              (this.main.particleSystem.organicBehavior.params.Swarm.radius =
-                value),
-            updateDisplay: () => {},
-          },
-          property: "radius",
-          min: 5,
-          max: 50,
-          step: 1,
-        };
-
-      case "Cohesion":
-        return {
-          controller: {
-            object: this.main.particleSystem.organicBehavior.params.Swarm,
-            property: "cohesion",
-            getValue: () =>
-              this.main.particleSystem.organicBehavior.params.Swarm.cohesion,
-            setValue: (value) =>
-              (this.main.particleSystem.organicBehavior.params.Swarm.cohesion =
-                value),
-            updateDisplay: () => {},
-          },
-          property: "cohesion",
-          min: 0,
-          max: 2,
-          step: 0.01,
-        };
-
-      case "Alignment":
-        return {
-          controller: {
-            object: this.main.particleSystem.organicBehavior.params.Swarm,
-            property: "alignment",
-            getValue: () =>
-              this.main.particleSystem.organicBehavior.params.Swarm.alignment,
-            setValue: (value) =>
-              (this.main.particleSystem.organicBehavior.params.Swarm.alignment =
-                value),
-            updateDisplay: () => {},
-          },
-          property: "alignment",
-          min: 0,
-          max: 2,
-          step: 0.01,
-        };
-
-      case "Separation":
-        return {
-          controller: {
-            object: this.main.particleSystem.organicBehavior.params.Swarm,
-            property: "separation",
-            getValue: () =>
-              this.main.particleSystem.organicBehavior.params.Swarm.separation,
-            setValue: (value) =>
-              (this.main.particleSystem.organicBehavior.params.Swarm.separation =
-                value),
-            updateDisplay: () => {},
-          },
-          property: "separation",
-          min: 0,
-          max: 2,
-          step: 0.01,
-        };
-
-      case "Max Speed":
-        return {
-          controller: {
-            object: this.main.particleSystem.organicBehavior.params.Swarm,
-            property: "maxSpeed",
-            getValue: () =>
-              this.main.particleSystem.organicBehavior.params.Swarm.maxSpeed,
-            setValue: (value) =>
-              (this.main.particleSystem.organicBehavior.params.Swarm.maxSpeed =
-                value),
-            updateDisplay: () => {},
-          },
-          property: "maxSpeed",
-          min: 0,
-          max: 1,
-          step: 0.01,
-        };
-
-      // Automata Parameters
-      case "Automata Radius":
-        return {
-          controller: {
-            object: this.main.particleSystem.organicBehavior.params.Automata,
-            property: "radius",
-            getValue: () =>
-              this.main.particleSystem.organicBehavior.params.Automata.radius,
-            setValue: (value) =>
-              (this.main.particleSystem.organicBehavior.params.Automata.radius =
-                value),
-            updateDisplay: () => {},
-          },
-          property: "radius",
-          min: 5,
-          max: 200,
-          step: 1,
-        };
-
-      case "Automata Repulsion":
-        return {
-          controller: {
-            object: this.main.particleSystem.organicBehavior.params.Automata,
-            property: "repulsion",
-            getValue: () =>
-              this.main.particleSystem.organicBehavior.params.Automata
-                .repulsion,
-            setValue: (value) =>
-              (this.main.particleSystem.organicBehavior.params.Automata.repulsion =
-                value),
-            updateDisplay: () => {},
-          },
-          property: "repulsion",
-          min: 0,
-          max: 2,
-          step: 0.01,
-        };
-
-      case "Automata Attraction":
-        return {
-          controller: {
-            object: this.main.particleSystem.organicBehavior.params.Automata,
-            property: "attraction",
-            getValue: () =>
-              this.main.particleSystem.organicBehavior.params.Automata
-                .attraction,
-            setValue: (value) =>
-              (this.main.particleSystem.organicBehavior.params.Automata.attraction =
-                value),
-            updateDisplay: () => {},
-          },
-          property: "attraction",
-          min: 0,
-          max: 10,
-          step: 0.01,
-        };
-
-      case "Threshold":
-        return {
-          controller: {
-            object: this.main.particleSystem.organicBehavior.params.Automata,
-            property: "threshold",
-            getValue: () =>
-              this.main.particleSystem.organicBehavior.params.Automata
-                .threshold,
-            setValue: (value) =>
-              (this.main.particleSystem.organicBehavior.params.Automata.threshold =
-                value),
-            updateDisplay: () => {},
-          },
-          property: "threshold",
-          min: 0,
-          max: 1,
-          step: 0.01,
-        };
-
-      // Grid Controls
-      case "Target Cells":
-        return {
-          controller: {
-            object: this.main.gridRenderer.gridParams,
-            property: "target",
-            getValue: () => this.main.gridRenderer.gridParams.target,
-            setValue: (value) => {
-              this.main.gridRenderer.gridParams.target = Math.round(value);
-              this.main.gridRenderer.updateGrid();
-            },
-            updateDisplay: () => {},
-          },
-          property: "target",
-          min: 1,
-          max: 800,
-          step: 1,
-        };
-
-      case "Grid Gap":
-        return {
-          controller: {
-            object: this.main.gridRenderer.gridParams,
-            property: "gap",
-            getValue: () => this.main.gridRenderer.gridParams.gap,
-            setValue: (value) => {
-              this.main.gridRenderer.gridParams.gap = Math.round(value);
-              this.main.gridRenderer.updateGrid();
-            },
-            updateDisplay: () => {},
-          },
-          property: "gap",
-          min: 0,
-          max: 20,
-          step: 1,
-        };
-
-      case "Cell Ratio":
-        return {
-          controller: {
-            object: this.main.gridRenderer.gridParams,
-            property: "aspectRatio",
-            getValue: () => this.main.gridRenderer.gridParams.aspectRatio,
-            setValue: (value) => {
-              this.main.gridRenderer.gridParams.aspectRatio = value;
-              this.main.gridRenderer.updateGrid();
-            },
-            updateDisplay: () => {},
-          },
-          property: "aspectRatio",
-          min: 0.5,
-          max: 4,
-          step: 0.01,
-        };
-
-      case "Grid Scale":
-        return {
-          controller: {
-            object: this.main.gridRenderer.gridParams,
-            property: "scale",
-            getValue: () => this.main.gridRenderer.gridParams.scale,
-            setValue: (value) => {
-              this.main.gridRenderer.gridParams.scale = value;
-              this.main.gridRenderer.updateGrid();
-            },
-            updateDisplay: () => {},
-          },
-          property: "scale",
-          min: 0.1,
-          max: 1,
-          step: 0.01,
-        };
-
-      default:
-        return null;
+      return result;
     }
+
+    return null;
+  }
+  /**
+   * Force update the display of all controllers that might be affected by modulators
+   */
+  updateControllerDisplays() {
+    // Helper function to safely update a controller's display
+    const safeUpdateDisplay = (controller) => {
+      if (controller && typeof controller.updateDisplay === "function") {
+        try {
+          controller.updateDisplay();
+        } catch (e) {
+          console.warn("Error updating controller display:", e);
+        }
+      }
+    };
+
+    // Update particle controllers
+    safeUpdateDisplay(this.particleSizeController);
+    safeUpdateDisplay(this.particleCountController);
+    safeUpdateDisplay(this.particleOpacityController);
+    safeUpdateDisplay(this.particleColorController);
+
+    // Update physics controllers
+    safeUpdateDisplay(this.gravityStrengthController);
+    safeUpdateDisplay(this.gravityXController);
+    safeUpdateDisplay(this.gravityYController);
+    safeUpdateDisplay(this.gravityEnabledController);
+
+    // Update collision controllers
+    safeUpdateDisplay(this.collisionRepulsionController);
+    safeUpdateDisplay(this.collisionBounceController);
+    safeUpdateDisplay(this.collisionDampingController);
+
+    // Update boundary controllers
+    safeUpdateDisplay(this.boundarySizeController);
+    safeUpdateDisplay(this.boundaryRepulsionController);
+    safeUpdateDisplay(this.boundaryFrictionController);
+    safeUpdateDisplay(this.boundaryBounceController);
+
+    // Update rest state controllers
+    safeUpdateDisplay(this.restDensityController);
+    safeUpdateDisplay(this.gasConstantController);
+    safeUpdateDisplay(this.velocityThresholdController);
+    safeUpdateDisplay(this.positionThresholdController);
+
+    // Update debug controllers
+    safeUpdateDisplay(this.debugDisplayController);
+    safeUpdateDisplay(this.debugFpsController);
+    safeUpdateDisplay(this.debugVelocityController);
+    safeUpdateDisplay(this.debugShowGridController);
+
+    // Update render mode controllers
+    safeUpdateDisplay(this.renderModeController);
+    safeUpdateDisplay(this.particleRenderModeController);
   }
 }

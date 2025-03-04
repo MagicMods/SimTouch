@@ -90,4 +90,30 @@ export class UiManager {
       this.stats = null;
     }
   }
+
+  initializeUiComponents() {
+    try {
+      // Set up cross-panel connections
+      if (this.pulseModulationUi && this.leftUi && this.rightUi) {
+        this.pulseModulationUi.initializeWithUiPanels(
+          this.leftUi,
+          this.rightUi
+        );
+      } else {
+        console.warn("Some UI panels not initialized, skipping connections");
+      }
+
+      // Initialize preset managers if they exist
+      if (this.presetManager) {
+        if (this.rightUi) this.rightUi.setPresetManager(this.presetManager);
+        if (this.inputUi && this.inputUi.initWithPresetManager)
+          this.inputUi.initWithPresetManager(this.presetManager);
+        if (this.pulseModulationUi && this.pulseModulationUi.initPresetControls)
+          this.pulseModulationUi.initPresetControls(this.presetManager);
+      }
+    } catch (e) {
+      console.error("Error initializing UI components:", e);
+      // Continue execution even if UI component initialization fails
+    }
+  }
 }
