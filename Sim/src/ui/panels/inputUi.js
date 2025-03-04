@@ -1192,13 +1192,11 @@ export class InputUi extends BaseUi {
   }
 
   initWithPresetManager(presetManager) {
-    if (presetManager) {
-      this.initMicPresetControls(presetManager);
-    } else {
-      console.warn(
-        "PresetManager not provided to InputUi.initWithPresetManager"
-      );
-    }
+    this.presetManager = presetManager;
+    console.log("InputUi initialized with preset manager");
+
+    // For now, we'll skip the complex preset UI
+    // We'll add it back once the core functionality is working
   }
 
   // Add a helper method to toggle preset controls visibility
@@ -1467,5 +1465,11 @@ export class InputUi extends BaseUi {
         modulator._bandVisual.bar.style.backgroundColor = "#4f4"; // Green for low levels
       }
     });
+  }
+
+  // Also add this method to ensure compatibility with ModulatorManager
+  updateControllerDisplays() {
+    // This method intentionally does nothing for now
+    // Will be implemented later to update UI when modulation occurs
   }
 }

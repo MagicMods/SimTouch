@@ -517,11 +517,11 @@ export class LeftUi extends BaseUi {
           }
         }
 
-        console.log(
-          `GetControllerForTarget ${targetName}: Range ${result.min} - ${
-            result.max
-          }, Current value: ${controller.getValue()}`
-        );
+        // console.log(
+        //   `GetControllerForTarget ${targetName}: Range ${result.min} - ${
+        //     result.max
+        //   }, Current value: ${controller.getValue()}`
+        // );
       } catch (e) {
         console.error(`Error extracting range for ${targetName}:`, e);
 

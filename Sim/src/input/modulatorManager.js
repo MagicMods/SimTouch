@@ -102,18 +102,6 @@ export class ModulatorManager {
   }
 
   /**
-   * Legacy alias for createPulseModulator to maintain compatibility
-   * @returns {PulseModulator} The created pulse modulator
-   * @deprecated Use createPulseModulator instead
-   */
-  createModulator() {
-    console.warn(
-      "createModulator() is deprecated. Use createPulseModulator() instead."
-    );
-    return this.createPulseModulator();
-  }
-
-  /**
    * Remove a modulator by index
    * @param {number} index - Index of modulator to remove
    * @returns {boolean} Success

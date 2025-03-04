@@ -121,7 +121,7 @@ export class PulseModulationUi extends BaseUi {
       return null;
     }
 
-    const modulator = this.pulseModManager.createModulator();
+    const modulator = this.pulseModManager.createPulseModulator();
 
     // Create folder for this modulator
     const index = this.pulseModManager.modulators.length - 1;
