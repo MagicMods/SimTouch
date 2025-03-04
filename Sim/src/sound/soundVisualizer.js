@@ -234,23 +234,47 @@ export class SoundVisualizer {
       this.metrics.volumeHistory.push(analyzer.volume);
       this.metrics.volumeHistory.shift();
 
-      // Draw selected visualizations
+      // Calculate available height and distribution
+      const totalVisualizations = this.options.visualizations.length;
+      const totalPaddingSpace = padding * (totalVisualizations + 1);
+      const availableHeight = this.canvas.height - totalPaddingSpace;
+
+      // Define relative heights for different visualization types (proportions)
+      const heightRatios = {
+        spectrum: 3,
+        waveform: 2,
+        volume: 1,
+        bands: 2,
+        history: 2,
+      };
+
+      // Calculate total ratio units
+      let totalRatioUnits = 0;
       for (const type of this.options.visualizations) {
+        totalRatioUnits += heightRatios[type] || 1;
+      }
+
+      // Draw selected visualizations with dynamic heights
+      for (const type of this.options.visualizations) {
+        // Calculate proportional height for this visualization
+        const ratio = heightRatios[type] || 1;
+        const height = Math.floor((ratio / totalRatioUnits) * availableHeight);
+
         switch (type) {
           case "spectrum":
-            yOffset += this.drawSpectrum(yOffset, padding);
+            yOffset += this.drawSpectrum(yOffset, padding, height);
             break;
           case "waveform":
-            yOffset += this.drawWaveform(yOffset, padding);
+            yOffset += this.drawWaveform(yOffset, padding, height);
             break;
           case "volume":
-            yOffset += this.drawVolumeBar(yOffset, padding);
+            yOffset += this.drawVolumeBar(yOffset, padding, height);
             break;
           case "bands":
-            yOffset += this.drawFrequencyBands(yOffset, padding);
+            yOffset += this.drawFrequencyBands(yOffset, padding, height);
             break;
           case "history":
-            yOffset += this.drawVolumeHistory(yOffset, padding);
+            yOffset += this.drawVolumeHistory(yOffset, padding, height);
             break;
         }
       }
@@ -280,12 +304,10 @@ export class SoundVisualizer {
     // Request next frame
     this.animationId = requestAnimationFrame(this.draw);
   }
-
   /**
    * Draw frequency spectrum visualization
    */
-  drawSpectrum(yOffset, padding) {
-    const height = 100;
+  drawSpectrum(yOffset, padding, height) {
     const analyzer = this.options.analyzer;
 
     if (!analyzer || !analyzer.frequencyData) return 0;
@@ -349,14 +371,13 @@ export class SoundVisualizer {
 
     this.ctx.restore();
 
-    return height + padding * 2;
+    return height + padding;
   }
 
   /**
    * Draw time domain waveform visualization
    */
-  drawWaveform(yOffset, padding) {
-    const height = 70;
+  drawWaveform(yOffset, padding, height) {
     const analyzer = this.options.analyzer;
 
     if (!analyzer || !analyzer.timeData) return 0;
@@ -413,14 +434,13 @@ export class SoundVisualizer {
 
     this.ctx.restore();
 
-    return height + padding * 2;
+    return height + padding;
   }
 
   /**
    * Draw volume level bar
    */
-  drawVolumeBar(yOffset, padding) {
-    const height = 40;
+  drawVolumeBar(yOffset, padding, height) {
     const analyzer = this.options.analyzer;
 
     if (!analyzer) return 0;
@@ -481,14 +501,13 @@ export class SoundVisualizer {
 
     this.ctx.restore();
 
-    return height + padding * 2;
+    return height + padding;
   }
 
   /**
    * Draw frequency bands visualization
    */
-  drawFrequencyBands(yOffset, padding) {
-    const height = 60;
+  drawFrequencyBands(yOffset, padding, height) {
     const analyzer = this.options.analyzer;
 
     if (!analyzer || !analyzer.bands) return 0;
@@ -551,14 +570,13 @@ export class SoundVisualizer {
 
     this.ctx.restore();
 
-    return height + padding * 2;
+    return height + padding;
   }
 
   /**
    * Draw volume history
    */
-  drawVolumeHistory(yOffset, padding) {
-    const height = 50;
+  drawVolumeHistory(yOffset, padding, height) {
     const analyzer = this.options.analyzer;
 
     if (!analyzer) return 0;
@@ -624,7 +642,7 @@ export class SoundVisualizer {
 
     this.ctx.restore();
 
-    return height + padding * 2;
+    return height + padding;
   }
 
   /**
@@ -722,41 +740,6 @@ export class SoundVisualizer {
     }
 
     return this;
-  }
-
-  showVisualizer() {
-    if (!this.visualizer) return false;
-
-    // Track that we want the visualizer to be visible
-    this.visualizerVisible = true;
-
-    // Only proceed if analyzer is enabled
-    if (!this.analyzer || !this.analyzer.isEnabled) {
-      // We'll show it when the analyzer is enabled
-      return false;
-    }
-
-    // Initialize if not already initialized
-    if (!this.visualizer.container) {
-      this.visualizer.initialize();
-    }
-
-    this.visualizer.show();
-    return true;
-  }
-
-  // Hide audio visualizer
-  hideVisualizer() {
-    if (!this.visualizer) return false;
-
-    // Track that we want the visualizer to be hidden
-    this.visualizerVisible = false;
-
-    if (this.visualizer.isVisible) {
-      this.visualizer.hide();
-    }
-
-    return true;
   }
 
   /**
