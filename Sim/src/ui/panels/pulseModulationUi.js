@@ -1,5 +1,5 @@
 import { BaseUi } from "./baseUi.js";
-import { PulseModulatorManager } from "../../input/pulseModulator.js";
+import { ModulatorManager } from "../../input/modulatorManager.js";
 
 export class PulseModulationUi extends BaseUi {
   constructor(main, container) {
@@ -10,7 +10,7 @@ export class PulseModulationUi extends BaseUi {
     this.gui.title("Pulse Modulation");
 
     // Create pulse modulator manager
-    this.pulseModManager = new PulseModulatorManager();
+    this.pulseModManager = new ModulatorManager();
 
     // Store folders for modulators
     this.modulatorFolders = [];

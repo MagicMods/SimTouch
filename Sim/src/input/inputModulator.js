@@ -1,20 +1,28 @@
 /**
- * A pulse modulator that can modify a parameter over time
+ * An input modulator that can modify a parameter based on input signals
+ * such as microphone audio, EMU sensors, or external inputs
  */
-class PulseModulator {
+export class InputModulator {
   constructor(manager) {
     this.manager = manager;
     this.enabled = false;
     this.targetName = "";
-    this.type = "sine";
-    this.frequency = 1.0;
-    this.sync = true; // Add sync property
-    this.phase = 0;
-    this.min = 0;
-    this.max = 1;
-    this.time = 0;
     this.targetController = null;
     this.originalValue = null; // Store original value to restore when disabled
+
+    // Modulation range
+    this.min = 0;
+    this.max = 1;
+    this.sensitivity = 1.0;
+
+    // Input source configuration
+    this.inputSource = "mic"; // "mic", "emu", "external"
+    this.frequencyBand = "none"; // For mic: "none", "sub", "bass", etc.
+
+    // Processing settings
+    this.smoothing = 0.8;
+    this.currentInputValue = 0;
+    this.lastOutputValue = 0;
   }
 
   /**
@@ -79,82 +87,79 @@ class PulseModulator {
   }
 
   /**
+   * Set the input source
+   * @param {string} source - "mic", "emu", or "external"
+   */
+  setInputSource(source) {
+    if (["mic", "emu", "external"].includes(source)) {
+      this.inputSource = source;
+    }
+  }
+
+  /**
+   * Set the frequency band for mic input
+   * @param {string} band - "none", "sub", "bass", "lowMid", etc.
+   */
+  setFrequencyBand(band) {
+    this.frequencyBand = band;
+  }
+
+  /**
+   * Set the current raw input value
+   * @param {number} value - Raw input value (0-1)
+   */
+  setInputValue(value) {
+    this.currentInputValue = Math.max(0, Math.min(1, value));
+  }
+
+  /**
+   * Process the current input value with smoothing and sensitivity
+   * @returns {number} Processed value (0-1)
+   */
+  processInput() {
+    // Apply sensitivity to make the response more or less dramatic
+    let value = Math.min(1, this.currentInputValue * this.sensitivity);
+
+    // Apply smoothing between this and the last value
+    if (this.smoothing > 0) {
+      value =
+        this.lastOutputValue * this.smoothing + value * (1 - this.smoothing);
+    }
+
+    // Store for next frame
+    this.lastOutputValue = value;
+
+    return value;
+  }
+
+  /**
    * Update the modulator
    * @param {number} deltaTime - Time since last update in seconds
    */
   update(deltaTime) {
     if (!this.targetController || !this.enabled) return;
 
-    this.time += deltaTime;
-
     try {
-      // Calculate modulation and apply to target
-      // Use master frequency if sync is enabled
-      const effectiveFrequency = this.sync
-        ? this.manager.masterFrequency
-        : this.frequency;
-      const value = this.calculateModulation(this.time, effectiveFrequency);
+      // Get the processed input value (0-1)
+      const normalizedValue = this.processInput();
 
       // Map from 0-1 to min-max
-      const mappedValue = this.min + value * (this.max - this.min);
+      const mappedValue = this.min + normalizedValue * (this.max - this.min);
 
+      // Apply to target
       this.targetController.setValue(mappedValue);
 
-      // Make sure to call updateDisplay after setting value
+      // Update display if available
       if (this.targetController.updateDisplay) {
         this.targetController.updateDisplay();
       }
     } catch (e) {
-      console.error(`Error updating modulator for ${this.targetName}:`, e);
+      console.error(
+        `Error updating input modulator for ${this.targetName}:`,
+        e
+      );
       this.enabled = false; // Disable on error
     }
-  }
-
-  /**
-   * Calculate the modulation value based on time and settings
-   * @param {number} time - Current time in seconds
-   * @param {number} frequency - Frequency to use (could be master or local)
-   * @returns {number} Modulation value 0-1
-   */
-  calculateModulation(time, frequency = null) {
-    // If no frequency provided, use the appropriate one based on sync setting
-    if (frequency === null) {
-      frequency = this.sync ? this.manager.masterFrequency : this.frequency;
-    }
-
-    const t = time * frequency * Math.PI * 2 + this.phase;
-
-    let value = 0;
-    switch (this.type) {
-      case "sine":
-        value = Math.sin(t) * 0.5 + 0.5; // Map to 0-1
-        break;
-      case "square":
-        value = Math.sin(t) >= 0 ? 1 : 0;
-        break;
-      case "triangle":
-        value = Math.abs(((t / Math.PI) % 2) - 1); // Map to 0-1
-        break;
-      case "sawtooth":
-        value = ((t / Math.PI) % 2) / 2 + 0.5; // Map to 0-1
-        break;
-      case "sustainedPulse":
-        // Calculate position in the cycle (0 to 1)
-        const position = (t % (Math.PI * 2)) / (Math.PI * 2);
-
-        if (position < 0.5) {
-          // First half of cycle: maintain at max value (1.0)
-          value = 1.0;
-        } else {
-          // Second half of cycle: linear ramp from max (1.0) to min (0.0)
-          value = 1.0 - (position - 0.5) * 2; // Maps position 0.5->1.0 to value 1.0->0.0
-        }
-        break;
-      default:
-        value = Math.sin(t) * 0.5 + 0.5;
-    }
-
-    return value; // Return 0-1 value
   }
 
   /**
@@ -165,4 +170,3 @@ class PulseModulator {
     this.resetToOriginal(); // Reset to original value when disabled
   }
 }
-export { PulseModulator };
