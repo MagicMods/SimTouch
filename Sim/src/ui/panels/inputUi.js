@@ -8,6 +8,22 @@ export class InputUi extends BaseUi {
     this.gui.title("Inputs");
 
     this.initInputControls();
+
+    // Create a single interval for updating all band visualizations
+    this.bandVisualizationInterval = setInterval(() => {
+      this.updateAllBandVisualizations();
+    }, 50);
+  }
+
+  dispose() {
+    // Clear the band visualization interval
+    if (this.bandVisualizationInterval) {
+      clearInterval(this.bandVisualizationInterval);
+      this.bandVisualizationInterval = null;
+    }
+
+    // Call parent dispose
+    super.dispose();
   }
 
   initInputControls() {
@@ -624,6 +640,9 @@ export class InputUi extends BaseUi {
     }
     this.micModulatorFolders.push(folder);
 
+    // Store modulator reference in the folder for easy access
+    folder._modulator = modulator;
+
     // Get control targets - THIS CHANGE IS CRITICAL
     const targets = this.getControlTargets();
 
@@ -812,6 +831,62 @@ export class InputUi extends BaseUi {
     // Open the folder by default
     folder.open();
 
+    // Add a small band visualization to show the frequency band activity
+    const bandVisualContainer = document.createElement("div");
+    bandVisualContainer.style.margin = "8px 0";
+    bandVisualContainer.style.padding = "0";
+    bandVisualContainer.style.position = "relative";
+
+    // Create band level visualization
+    const bandVisual = document.createElement("div");
+    bandVisual.style.height = "16px";
+    bandVisual.style.backgroundColor = "#333";
+    bandVisual.style.borderRadius = "3px";
+    bandVisual.style.overflow = "hidden";
+    bandVisual.style.position = "relative";
+
+    // Create the level bar
+    const bandLevelBar = document.createElement("div");
+    bandLevelBar.style.height = "100%";
+    bandLevelBar.style.backgroundColor = "#4f4";
+    bandLevelBar.style.width = "0%";
+    bandLevelBar.style.position = "absolute";
+    bandLevelBar.style.left = "0";
+    bandLevelBar.style.top = "0";
+    bandLevelBar.style.transition = "width 0.05s ease-out";
+
+    // Create label that shows band name and level
+    const bandLabel = document.createElement("div");
+    bandLabel.style.position = "absolute";
+    bandLabel.style.left = "5px";
+    bandLabel.style.top = "0";
+    bandLabel.style.color = "#fff";
+    bandLabel.style.fontSize = "10px";
+    bandLabel.style.lineHeight = "16px";
+    bandLabel.style.textShadow = "1px 1px 1px rgba(0,0,0,0.5)";
+    bandLabel.style.whiteSpace = "nowrap";
+    bandLabel.style.overflow = "hidden";
+    bandLabel.textContent = "Band: 0%";
+
+    // Add elements to container
+    bandVisual.appendChild(bandLevelBar);
+    bandVisual.appendChild(bandLabel);
+    bandVisualContainer.appendChild(bandVisual);
+
+    // Add to the folder's DOM
+    folder.domElement
+      .querySelector(".children")
+      .appendChild(bandVisualContainer);
+
+    // Store references for updating
+    modulator._bandVisual = {
+      container: bandVisualContainer,
+      bar: bandLevelBar,
+      label: bandLabel,
+      lastUpdate: 0,
+      currentValue: 0,
+    };
+
     return modulator;
   }
 
@@ -939,6 +1014,20 @@ export class InputUi extends BaseUi {
         if (bandController) {
           bandController.setValue(matchingBand);
           bandController.updateDisplay();
+        }
+
+        // Also update the visual label to match the selected band
+        if (modulator._bandVisual && modulator._bandVisual.label) {
+          let bandName = matchingBand === "none" ? "Full Range" : matchingBand;
+
+          // Format the band name to look nice
+          if (bandName !== "Full Range") {
+            bandName = bandName.charAt(0).toUpperCase() + bandName.slice(1);
+            if (bandName === "LowMid") bandName = "Low Mid";
+            if (bandName === "HighMid") bandName = "High Mid";
+          }
+
+          modulator._bandVisual.label.textContent = `${bandName}: 0%`;
         }
       }
     });
@@ -1292,5 +1381,91 @@ export class InputUi extends BaseUi {
 
     // Pass these constraints to the external input manager
     this.main.externalInput.setAudioInputDevice(constraints);
+  }
+
+  // Add this method to update all band visualizations at once
+  updateAllBandVisualizations() {
+    if (
+      !this.micModulatorFolders ||
+      !this.main.externalInput?.micForces?.enabled
+    ) {
+      return;
+    }
+
+    const micForces = this.main.externalInput.micForces;
+    const now = performance.now();
+
+    // Find all modulators with band visualizations
+    this.micModulatorFolders.forEach((folder) => {
+      // Find modulator object associated with this folder
+      const modulator = folder._modulator;
+      if (!modulator || !modulator._bandVisual || !modulator._activeController)
+        return;
+
+      // Limit update frequency for performance
+      if (now - modulator._bandVisual.lastUpdate < 50) return;
+      modulator._bandVisual.lastUpdate = now;
+
+      let bandValue = 0;
+      let bandName = "Full Range";
+
+      if (
+        modulator.frequencyBand !== "none" &&
+        micForces.analyzer &&
+        micForces.analyzer.bands[modulator.frequencyBand]
+      ) {
+        // Get the selected band range
+        const band = micForces.analyzer.bands[modulator.frequencyBand];
+
+        // Get energy in this frequency band
+        bandValue = micForces.analyzer.getFrequencyRangeValue(
+          band.min,
+          band.max
+        );
+
+        // Apply baseline subtraction and sensitivity
+        bandValue = Math.max(
+          0,
+          (bandValue - micForces.baselineAmplitude) *
+            micForces.sensitivity *
+            modulator.sensitivity
+        );
+
+        // Get friendly name for the band
+        bandName =
+          modulator.frequencyBand.charAt(0).toUpperCase() +
+          modulator.frequencyBand.slice(1);
+
+        // Format the band name to look nice
+        if (bandName === "LowMid") bandName = "Low Mid";
+        if (bandName === "HighMid") bandName = "High Mid";
+      } else {
+        // Full range mode - use overall volume
+        bandValue = Math.max(
+          0,
+          (micForces.smoothedAmplitude - micForces.baselineAmplitude) *
+            micForces.sensitivity *
+            modulator.sensitivity
+        );
+      }
+
+      // Update the visual
+      const level = Math.min(100, Math.max(0, bandValue * 100));
+      modulator._bandVisual.bar.style.width = `${level}%`;
+
+      // Update label with band name and value percentage
+      modulator._bandVisual.label.textContent = `${bandName}: ${Math.round(
+        level
+      )}%`;
+
+      // Color the bar based on level
+      if (level > 80) {
+        modulator._bandVisual.bar.style.backgroundColor = "#f44"; // Red for high levels
+      } else if (level > 50) {
+        modulator._bandVisual.bar.style.backgroundColor = "#ff4"; // Yellow for medium levels
+      } else {
+        modulator._bandVisual.bar.style.backgroundColor = "#4f4"; // Green for low levels
+      }
+    });
   }
 }
