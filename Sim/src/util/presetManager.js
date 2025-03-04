@@ -83,7 +83,7 @@ class PresetManager {
 
     // Get microphone settings if available
     let micSettings = null;
-    if (this.rightGui.main.externalInput?.micForces) {
+    if (this.rightGui.main?.externalInput?.micForces) {
       const micForces = this.rightGui.main.externalInput.micForces;
       micSettings = {
         sensitivity: micForces.sensitivity,
