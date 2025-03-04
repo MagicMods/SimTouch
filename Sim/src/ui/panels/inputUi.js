@@ -385,118 +385,144 @@ export class InputUi extends BaseUi {
     return null;
   }
 
-  updateMicInputDisplay() {
-    if (!this.main.externalInput?.micForces) return;
-
-    const micForces = this.main.externalInput.micForces;
-
-    // Update sensitivity controller
-    if (this.micSensitivityController) {
-      this.micSensitivityController.setValue(micForces.sensitivity);
-      this.micSensitivityController.updateDisplay();
-    }
-
-    // Update smoothing controller
-    if (this.micSmoothingController) {
-      this.micSmoothingController.setValue(micForces.smoothing);
-      this.micSmoothingController.updateDisplay();
-    }
-
-    // Update target controller if present
-    if (this.micTargetController && micForces.targetControllers.size > 0) {
-      // Get the first target info
-      const [controller, config] = Array.from(
-        micForces.targetControllers.entries()
-      )[0];
-
-      // Find target name based on controller
-      const targetName = this.findTargetNameByController(controller);
-      if (targetName) {
-        this.micTargetController.setValue(targetName);
-        this.micTargetController.updateDisplay();
-
-        // Update min/max controllers
-        if (this.micMinController) {
-          this.micMinController.setValue(config.min);
-          this.micMinController.updateDisplay();
-        }
-
-        if (this.micMaxController) {
-          this.micMaxController.setValue(config.max);
-          this.micMaxController.updateDisplay();
-        }
-      }
-    }
-  }
-
   findTargetNameByController(controller) {
+    if (!controller) {
+      console.warn("Null controller provided to findTargetNameByController");
+      return null;
+    }
+
+    // Log the controller we're trying to find
+    console.log("Finding target name for controller:", controller.property);
+
+    // Try exact controller matching first
     const targets = this.getControlTargets();
     for (const targetName of targets) {
+      if (targetName === "None") continue;
+
       const info = this.getControllerForTarget(targetName);
       if (info?.controller === controller) {
+        console.log(`Found exact match for controller: ${targetName}`);
         return targetName;
       }
     }
-    return "None";
+
+    // If no exact match, try matching by property
+    const propertyName = controller.property;
+    if (propertyName) {
+      // Log all available target properties for debugging
+      console.log("Available target properties:");
+      for (const targetName of targets) {
+        if (targetName === "None") continue;
+
+        const info = this.getControllerForTarget(targetName);
+        if (info?.controller) {
+          console.log(`- ${targetName}: ${info.controller.property}`);
+        }
+      }
+
+      // Try to find a match by property
+      for (const targetName of targets) {
+        if (targetName === "None") continue;
+
+        const info = this.getControllerForTarget(targetName);
+        if (info?.controller?.property === propertyName) {
+          console.log(`Found property match for controller: ${targetName}`);
+          return targetName;
+        }
+      }
+
+      // As a last resort, try matching by similar property name
+      for (const targetName of targets) {
+        if (targetName === "None") continue;
+
+        // If target name contains the property or vice versa
+        if (
+          targetName.toLowerCase().includes(propertyName.toLowerCase()) ||
+          propertyName.toLowerCase().includes(targetName.toLowerCase())
+        ) {
+          console.log(`Found partial name match for controller: ${targetName}`);
+          return targetName;
+        }
+      }
+    }
+
+    console.warn(
+      `Could not find target name for controller: ${propertyName || "unknown"}`
+    );
+    return null;
   }
 
   // Add a new method to create mic modulators
   addMicModulator() {
-    if (!this.main.externalInput?.micForces) return null;
-
-    const externalInput = this.main.externalInput;
-    const micForces = externalInput.micForces;
-
-    // Create a modulator index
-    const index = this.micModulatorFolders
-      ? this.micModulatorFolders.length + 1
-      : 1;
-    if (!this.micModulatorFolders) this.micModulatorFolders = [];
-
-    // Create the modulator data
-    const modulator = {
-      target: "None",
-      min: 0,
-      max: 1,
-      sensitivity: 1.0,
-      frequencyMin: 0,
-      frequencyMax: 20000,
-      // Store the active controller reference
-      _activeController: null,
-    };
-
-    // Create a folder for this modulator
-    const folder = this.micInputFolder.addFolder(`Mic Modulator ${index}`);
-    this.micModulatorFolders.push(folder);
-
-    // Set initial visibility based on mic enabled state
-    const isEnabled = this.main.externalInput?.micForces?.enabled || false;
-    if (!isEnabled) {
-      folder.domElement.style.display = "none";
+    if (!this.main.externalInput?.micForces) {
+      console.error("No mic forces available");
+      return null;
     }
 
-    // Target selection
+    const micForces = this.main.externalInput.micForces;
+
+    // Create a new modulator object
+    const modulator = {
+      target: "None",
+      sensitivity: 1.0,
+      min: 0,
+      max: 1,
+      frequencyMin: 0,
+      frequencyMax: 20000,
+    };
+
+    // Create a new folder for this modulator
+    const index = this.micModulatorFolders
+      ? this.micModulatorFolders.length
+      : 0;
+    const folder = this.micInputFolder.addFolder(`Modulator ${index + 1}`);
+
+    if (!this.micModulatorFolders) {
+      this.micModulatorFolders = [];
+    }
+    this.micModulatorFolders.push(folder);
+
+    // Get control targets - THIS CHANGE IS CRITICAL
     const targets = this.getControlTargets();
 
+    // Create a key-based array of target options (with "None")
+    const targetOptions = ["None", ...Object.keys(targets)];
+
+    console.log("Available targets for mic modulator:", targetOptions);
+
+    // Add target selector - FIXED to use string names instead of objects
     const targetController = folder
-      .add(modulator, "target", targets)
+      .add(modulator, "target", targetOptions)
       .name("Target Parameter")
-      .onChange((value) => {
+      .onChange((targetName) => {
+        // Log the actual targetName string
+        console.log(`Mic modulator: selected target "${targetName}"`);
+
         // Remove previous target if one exists
         if (modulator._activeController) {
           micForces.removeTarget(modulator._activeController);
           modulator._activeController = null;
         }
 
-        if (value === "None") {
+        if (targetName === "None") {
           return;
         }
 
-        const controlInfo = this.getControllerForTarget(value);
+        // Get controller info using the string name
+        const controlInfo = this.getControllerForTarget(targetName);
+        console.log(
+          `Mic modulator: got control info for "${targetName}":`,
+          controlInfo
+        );
+
         if (controlInfo && controlInfo.controller) {
           // Update min/max based on the controller's range
           modulator.min = controlInfo.min;
           modulator.max = controlInfo.max;
+
+          console.log(
+            `Mic modulator: setting range for ${targetName}: ${controlInfo.min} - ${controlInfo.max}`
+          );
 
           // Update the UI sliders
           minController.min(controlInfo.min * 0.5);
@@ -520,8 +546,16 @@ export class InputUi extends BaseUi {
             }
           );
 
+          console.log(
+            `Mic modulator: successfully added target for ${targetName}`
+          );
+
           // Store the active controller reference for cleanup
           modulator._activeController = controlInfo.controller;
+        } else {
+          console.warn(
+            `Mic modulator: could not find controller for ${targetName}`
+          );
         }
       });
 
@@ -624,76 +658,95 @@ export class InputUi extends BaseUi {
 
     // Update global controls
     if (this.micSensitivityController) {
-      this.micSensitivityController.setValue(micForces.sensitivity);
+      this.micSensitivityController.setValue(micForces.sensitivity || 1.0);
       this.micSensitivityController.updateDisplay();
     }
 
     if (this.micSmoothingController) {
-      this.micSmoothingController.setValue(micForces.smoothing);
+      this.micSmoothingController.setValue(micForces.smoothing || 0.8);
       this.micSmoothingController.updateDisplay();
     }
 
     // Clear existing modulators
-    if (this.micModulatorFolders) {
-      this.micModulatorFolders.forEach((folder) => folder.destroy());
+    if (this.micModulatorFolders && this.micModulatorFolders.length > 0) {
+      console.log("Clearing existing microphone modulators");
+
+      // Remove all GUI folders
+      for (let i = this.micModulatorFolders.length - 1; i >= 0; i--) {
+        if (this.micModulatorFolders[i]) {
+          this.micModulatorFolders[i].destroy();
+        }
+      }
       this.micModulatorFolders = [];
     }
 
-    // Recreate modulators based on targets in micForces
-    if (micForces.targetControllers.size > 0) {
-      Array.from(micForces.targetControllers.entries()).forEach(
-        ([controller, config]) => {
-          // Find target name for this controller
-          const targetName = this.findTargetNameByController(controller);
-          if (!targetName || targetName === "None") return;
+    // Get all active controllers from micForces
+    const activeControllers = Array.from(micForces.targetControllers.entries());
+    console.log(
+      `Found ${activeControllers.length} active mic controllers to recreate`
+    );
 
-          // Create new modulator
-          const modulator = this.addMicModulator();
+    // Get all control targets by name (not the controllers themselves)
+    const targetNames = ["None", ...Object.keys(this.getControlTargets())];
 
-          // Set values
-          const folder =
-            this.micModulatorFolders[this.micModulatorFolders.length - 1];
+    // For each active controller, find its matching target name
+    activeControllers.forEach(([controller, config], index) => {
+      // Create new modulator
+      const modulator = this.addMicModulator();
+      if (!modulator) return;
 
-          // Update the modulator to store the controller reference
-          modulator._activeController = controller;
+      // Get folder
+      const folder =
+        this.micModulatorFolders[this.micModulatorFolders.length - 1];
+      if (!folder) return;
 
-          // Set target (this triggers onChange which sets up the controller)
-          folder.controllers[0].setValue(targetName);
+      // Store controller reference
+      modulator._activeController = controller;
 
-          // Update other values directly without triggering onChange
-          if (config.sensitivity) {
-            modulator.sensitivity = config.sensitivity;
-            folder.controllers[1].updateDisplay();
-          }
+      // Find target name by property matching
+      const propertyName = controller.property;
+      let matchingTargetName = null;
 
-          modulator.min = config.min;
-          folder.controllers[2].updateDisplay();
+      // Use property name to find matching target
+      for (const targetName of targetNames) {
+        if (targetName === "None") continue;
 
-          modulator.max = config.max;
-          folder.controllers[3].updateDisplay();
-
-          if (config.frequency) {
-            modulator.frequencyMin = config.frequency.min || 0;
-            folder.controllers[4].updateDisplay();
-
-            modulator.frequencyMax = config.frequency.max || 20000;
-            folder.controllers[5].updateDisplay();
-          }
+        const info = this.getControllerForTarget(targetName);
+        if (info?.controller?.property === propertyName) {
+          matchingTargetName = targetName;
+          break;
         }
-      );
-    }
-  }
-
-  findTargetNameByController(controller) {
-    const targets = this.getControlTargets();
-    for (const targetName of targets) {
-      if (targetName === "None") continue;
-      const info = this.getControllerForTarget(targetName);
-      if (info?.controller === controller) {
-        return targetName;
       }
+
+      // Set values on modulator
+      modulator.min = config.min;
+      modulator.max = config.max;
+      modulator.sensitivity = config.sensitivity || 1.0;
+
+      // Set the target dropdown with the string name
+      if (matchingTargetName) {
+        console.log(`Setting target dropdown to "${matchingTargetName}"`);
+
+        // Get target controller (first controller in folder)
+        const targetController = folder.controllers[0];
+
+        // Set value and explicitly call its callbacks
+        targetController.setValue(matchingTargetName);
+        targetController._callbacks.forEach((cb) => cb(matchingTargetName));
+      }
+
+      // Update displays for the other controllers
+      for (let i = 1; i < folder.controllers.length; i++) {
+        folder.controllers[i].updateDisplay();
+      }
+    });
+
+    // Update UI input enabled state
+    if (this.micEnableController) {
+      const isEnabled = micForces.enabled || false;
+      this.micEnableController.setValue(isEnabled);
+      this.toggleAllMicControlsVisibility(isEnabled);
     }
-    return null;
   }
 
   // Add preset control methods

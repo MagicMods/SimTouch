@@ -773,29 +773,121 @@ class PresetManager {
 
   // Add helper methods to PresetManager
   findControllerPath(controller) {
-    // Traverse the GUI structure to find the path to this controller
-    // This is a simplified approach - you'll need a more robust implementation
+    // Create a more robust identifier that includes hierarchy and property info
     const guiName = controller.parent?._title || "unknown";
     const propName = controller.property || "unknown";
-    return `${guiName}.${propName}`;
+    const objectPath =
+      controller.object && controller.object.constructor
+        ? controller.object.constructor.name
+        : "unknown";
+
+    // Store more information to help locate the controller
+    return `${guiName}.${propName}.${objectPath}`;
   }
 
   findControllerByPath(path) {
-    // Find controller by the stored path
-    const [guiName, propName] = path.split(".");
+    if (!path) {
+      console.warn("Empty controller path provided");
+      return null;
+    }
 
-    // Search in leftGui and rightGui
-    const allGuis = [this.leftGui, this.rightGui];
-    for (const gui of allGuis) {
-      const folder = gui.folders.find((f) => f._title === guiName);
-      if (folder) {
-        const controller = folder.controllers.find(
-          (c) => c.property === propName
-        );
-        if (controller) return controller;
+    // Parse the enhanced path components
+    const [guiName, propName, objectPath] = path.split(".");
+
+    if (!guiName || !propName) {
+      console.warn(`Invalid controller path: ${path}`);
+      return null;
+    }
+
+    console.log(`Finding controller for path: ${path} (property: ${propName})`);
+
+    // Try a direct shortcut first for common controllers
+    if (this.leftUi) {
+      // Check if this is a common controller in leftUi
+      const directController = this.leftUi.getControllerForTarget(propName);
+      if (directController && directController.controller) {
+        console.log(`Found controller using direct lookup: ${propName}`);
+        return directController.controller;
       }
     }
 
+    // Function to recursively search for a controller in a GUI
+    const findInGui = (gui) => {
+      // Look through all controllers in this GUI
+      for (const controller of gui.controllers) {
+        if (controller.property === propName) {
+          console.log(`Found matching property: ${propName}`);
+          return controller;
+        }
+      }
+
+      // Check in all folders
+      for (const folder of gui.folders) {
+        // Check if the folder name matches
+        if (folder._title === guiName) {
+          // Look in this folder first as it's the most likely match
+          for (const controller of folder.controllers) {
+            if (controller.property === propName) {
+              console.log(
+                `Found controller in matching folder: ${guiName}.${propName}`
+              );
+              return controller;
+            }
+          }
+        }
+
+        // Check in subfolders regardless of name
+        for (const controller of folder.controllers) {
+          if (controller.property === propName) {
+            console.log(
+              `Found controller in folder: ${folder._title}.${propName}`
+            );
+            return controller;
+          }
+        }
+
+        // Recursively search nested folders
+        const result = findInGui(folder);
+        if (result) return result;
+      }
+
+      return null;
+    };
+
+    // Search in both left and right GUIs
+    const allGuis = [this.leftGui, this.rightGui];
+    for (const gui of allGuis) {
+      if (!gui) continue;
+
+      const result = findInGui(gui);
+      if (result) return result;
+    }
+
+    // Last resort: look for controller by property name alone
+    console.warn(
+      `Controller not found by path. Trying property name only: ${propName}`
+    );
+
+    for (const gui of allGuis) {
+      if (!gui) continue;
+
+      // Collect all controllers recursively
+      const allControllers = [];
+      const collectControllers = (g) => {
+        allControllers.push(...g.controllers);
+        g.folders.forEach(collectControllers);
+      };
+      collectControllers(gui);
+
+      // Find by property name
+      const controller = allControllers.find((c) => c.property === propName);
+      if (controller) {
+        console.log(`Found controller by property name: ${propName}`);
+        return controller;
+      }
+    }
+
+    console.warn(`Controller not found for path: ${path}`);
     return null;
   }
 
@@ -885,60 +977,230 @@ class PresetManager {
 
   loadMicPreset(presetName, inputUi) {
     const preset = this.micPresets[presetName];
-    if (!preset || !preset.mic) return false;
-
-    console.log("Loading microphone preset:", preset.mic);
-
-    const micForces = inputUi.main.externalInput?.micForces;
-    if (!micForces) {
-      console.warn("MicForces not available");
+    if (!preset || !preset.mic) {
+      console.warn(`Mic preset "${presetName}" not found or invalid`);
       return false;
+    }
+
+    console.log(`Loading mic preset "${presetName}":`, preset.mic);
+
+    // Make sure we have the mic forces and input UI
+    if (!inputUi || !this.rightGui.main?.externalInput?.micForces) {
+      console.warn("Input UI or mic forces not available");
+      return false;
+    }
+
+    const micForces = this.rightGui.main.externalInput.micForces;
+
+    // First, clear all existing mic targets
+    console.log("Clearing existing mic targets");
+    micForces.clearTargets();
+
+    // Clear the UI modulators as well
+    if (inputUi.micModulatorFolders && inputUi.micModulatorFolders.length > 0) {
+      for (let i = inputUi.micModulatorFolders.length - 1; i >= 0; i--) {
+        if (inputUi.micModulatorFolders[i]) {
+          inputUi.micModulatorFolders[i].destroy();
+        }
+      }
+      inputUi.micModulatorFolders = [];
     }
 
     // Apply global settings
     if (preset.mic.settings) {
-      micForces.setSensitivity(preset.mic.settings.sensitivity || 1.0);
-      micForces.setSmoothing(preset.mic.settings.smoothing || 0.8);
+      console.log("Applying mic global settings:", preset.mic.settings);
+      micForces.sensitivity = preset.mic.settings.sensitivity || 1.0;
+      micForces.smoothing = preset.mic.settings.smoothing || 0.8;
       micForces.baselineAmplitude =
         preset.mic.settings.baselineAmplitude || 0.05;
     }
 
-    // Clear existing modulators
-    micForces.clearTargets();
-
-    // Add modulators from preset
+    // Then recreate modulators from the preset
     if (
       preset.mic.modulators &&
       Array.isArray(preset.mic.modulators) &&
       preset.mic.modulators.length > 0
     ) {
-      preset.mic.modulators.forEach((modData) => {
+      console.log(
+        `Creating ${preset.mic.modulators.length} mic modulators from preset`
+      );
+
+      // Create new modulators one by one
+      preset.mic.modulators.forEach((modData, index) => {
+        console.log(`Setting up mic modulator ${index + 1}:`, modData);
+
+        // Create a new modulator UI element
+        const modulator = inputUi.addMicModulator();
+        if (!modulator) return;
+
+        // Find the controller using path
         const controller = this.findControllerByPath(modData.controllerPath);
-        if (controller) {
-          micForces.addTarget(
-            controller,
-            modData.min,
-            modData.max,
-            null,
-            modData.sensitivity,
-            modData.frequency
+        if (!controller) {
+          console.warn(
+            `Could not find controller for path: ${modData.controllerPath}`
           );
+          return;
+        }
+
+        // Get the folder for this modulator
+        const folder =
+          inputUi.micModulatorFolders[inputUi.micModulatorFolders.length - 1];
+        if (!folder) return;
+
+        // Find the target name for this controller
+        const targetName = this._findTargetNameForController(controller);
+        if (!targetName) {
+          console.warn(
+            `Could not identify target name for controller: ${modData.controllerPath}`
+          );
+          return;
+        }
+
+        console.log(
+          `Found target name ${targetName} for controller path ${modData.controllerPath}`
+        );
+
+        // Store the controller reference so the onChange can use it
+        modulator._activeController = controller;
+
+        // Set values on the modulator
+        modulator.min = modData.min;
+        modulator.max = modData.max;
+        modulator.sensitivity = modData.sensitivity || 1.0;
+
+        if (modData.frequency) {
+          modulator.frequencyMin =
+            modData.frequency.min !== undefined ? modData.frequency.min : 0;
+          modulator.frequencyMax =
+            modData.frequency.max !== undefined ? modData.frequency.max : 20000;
+        }
+
+        // Get the target selector controller (first in the folder)
+        const targetController = folder.controllers[0];
+
+        // CRITICAL STEP: Set the target dropdown value AND trigger its onChange handler
+        targetController.setValue(targetName);
+
+        // Force update all other controllers in the folder
+        for (let i = 0; i < folder.controllers.length; i++) {
+          if (i !== 0) {
+            // Skip the target controller as it was just set
+            folder.controllers[i].updateDisplay();
+          }
         }
       });
     }
 
-    // Update UI
+    // Update mic UI
     inputUi.updateMicInputDisplay();
 
+    // Update the selected preset
     this.selectedMicPreset = presetName;
-    console.log(`Loaded microphone preset "${presetName}"`);
+    console.log(`Successfully loaded mic preset "${presetName}"`);
     return true;
+  }
+
+  // Helper to find target name for a controller
+  _findTargetNameForController(controller) {
+    if (!controller) return null;
+
+    // Try using LeftUI's findTargetNameByController if available
+    if (
+      this.leftUi &&
+      typeof this.leftUi.findTargetNameByController === "function"
+    ) {
+      return this.leftUi.findTargetNameByController(controller);
+    }
+
+    // Use InputUi's method if available and leftUi doesn't have it
+    if (
+      this.inputUi &&
+      typeof this.inputUi.findTargetNameByController === "function"
+    ) {
+      return this.inputUi.findTargetNameByController(controller);
+    }
+
+    // Fallback: try to match by property name
+    const propName = controller.property || "";
+
+    // Try to find matching target in LeftUI
+    if (this.leftUi) {
+      const targets = this.leftUi.getControlTargets();
+      for (const targetName in targets) {
+        if (targets[targetName]?.property === propName) {
+          return targetName;
+        }
+      }
+    }
+
+    return null;
   }
 
   getSelectedMicPreset() {
     return this.selectedMicPreset;
   }
   //#endregion
+
+  // Add this method to the PresetManager class
+  dumpControllerPaths() {
+    console.log("=== Available Controller Paths ===");
+
+    // Check controllers in leftGui
+    if (this.leftGui) {
+      console.log("Left GUI controllers:");
+      this._dumpGuiControllers(this.leftGui);
+    }
+
+    // Check controllers in rightGui
+    if (this.rightGui) {
+      console.log("Right GUI controllers:");
+      this._dumpGuiControllers(this.rightGui);
+    }
+
+    console.log("=== End Controller Paths ===");
+  }
+
+  // Helper method to recursively dump controllers
+  _dumpGuiControllers(gui, path = "") {
+    // Log controllers in this GUI
+    gui.controllers.forEach((controller) => {
+      const name = controller.property || "unknown";
+      const fullPath = path ? `${path}.${name}` : name;
+      console.log(`- ${fullPath}: ${controller.getValue()}`);
+    });
+
+    // Recursively check folders
+    gui.folders.forEach((folder) => {
+      const folderName = folder._title || "unknown";
+      const folderPath = path ? `${path}.${folderName}` : folderName;
+      console.log(`Folder: ${folderPath}`);
+      this._dumpGuiControllers(folder, folderPath);
+    });
+  }
+
+  // Add this method to the PresetManager class
+  debugControllerLookup() {
+    console.log("=== Controller Lookup Debug ===");
+
+    // Check leftUi
+    console.log("LeftUI controllers:");
+    if (this.leftUi) {
+      const targets = this.leftUi.getControlTargets();
+      for (const targetName of targets) {
+        const info = this.leftUi.getControllerForTarget(targetName);
+        if (info && info.controller) {
+          const path = this.findControllerPath(info.controller);
+          console.log(`- ${targetName}: ${path} (${info.min}-${info.max})`);
+        } else {
+          console.log(`- ${targetName}: No controller info`);
+        }
+      }
+    } else {
+      console.log("No leftUi available");
+    }
+
+    console.log("=== End Debug Info ===");
+  }
 }
 
 export { PresetManager };
