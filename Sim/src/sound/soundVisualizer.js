@@ -314,13 +314,17 @@ export class SoundVisualizer {
 
     this.ctx.save();
 
+    // Calculate the actual drawable area
+    const drawableWidth = this.canvas.width - padding * 2;
+    const drawableHeight = height;
+
     // Draw background
     this.ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
     this.ctx.fillRect(
       padding,
       yOffset + padding,
-      this.canvas.width - padding * 2,
-      height
+      drawableWidth,
+      drawableHeight
     );
 
     // Draw horizontal grid lines
@@ -328,9 +332,9 @@ export class SoundVisualizer {
     this.ctx.lineWidth = 1;
     this.ctx.beginPath();
     for (let i = 0; i < 4; i++) {
-      const y = yOffset + padding + (height / 4) * i;
+      const y = yOffset + padding + (drawableHeight / 4) * i;
       this.ctx.moveTo(padding, y);
-      this.ctx.lineTo(this.canvas.width - padding, y);
+      this.ctx.lineTo(padding + drawableWidth, y);
     }
     this.ctx.stroke();
 
@@ -339,7 +343,7 @@ export class SoundVisualizer {
       0,
       yOffset + padding,
       0,
-      yOffset + padding + height
+      yOffset + padding + drawableHeight
     );
     gradient.addColorStop(0, this.colors.secondary);
     gradient.addColorStop(0.5, this.colors.primary);
@@ -347,31 +351,33 @@ export class SoundVisualizer {
 
     this.ctx.fillStyle = gradient;
 
-    // Calculate available width
-    const availableWidth = this.canvas.width - padding * 2;
-
-    // Draw frequency spectrum with logarithmic frequency scale for better visualization
-    // This emphasizes lower frequencies which are more perceptually important
+    // Get frequency data
     const frequencyData = analyzer.frequencyData;
-    const binCount = frequencyData.length;
 
-    // Use frequency bins more effectively - emphasize lower frequencies with log scale
-    const barWidth = Math.max(1, availableWidth / (binCount * 0.75)); // Only show ~75% of the bins
+    // Define a fixed number of bars to display
+    const numBars = 128; // We'll show 128 bars regardless of FFT size
 
-    // New approach: Use logarithmic mapping to display more low-end detail
-    for (let i = 0; i < binCount; i++) {
-      // Apply logarithmic mapping to bin index to focus on lower frequencies
-      const logIndex = Math.round(Math.pow(i / binCount, 0.5) * binCount);
-      if (logIndex >= binCount) continue;
+    // Calculate bar width to fill the entire drawable width
+    const barWidth = (drawableWidth * 3) / numBars;
 
-      const value = frequencyData[logIndex] / 255; // Normalize to 0-1
-      const barHeight = value * height;
+    // Draw bars using the full width
+    for (let i = 0; i < numBars; i++) {
+      // Map bar index to the frequency data array
+      // This ensures we sample the full range of the frequency data
+      const dataIndex = Math.floor((i / numBars) * frequencyData.length);
 
-      // Position bars evenly across full width
-      const barX = padding + (i / binCount) * availableWidth;
-      const y = yOffset + padding + height - barHeight;
+      // Get the value for this bar
+      const value = frequencyData[dataIndex] / 255; // Normalize to 0-1
 
-      this.ctx.fillRect(barX, y, barWidth, barHeight);
+      // Calculate bar height
+      const barHeight = value * drawableHeight;
+
+      // Calculate bar position
+      const x = padding + i * barWidth;
+      const y = yOffset + padding + drawableHeight - barHeight;
+
+      // Draw bar with full width (no gap)
+      this.ctx.fillRect(x, y, barWidth, barHeight);
     }
 
     // Label
@@ -384,7 +390,6 @@ export class SoundVisualizer {
 
     return height + padding;
   }
-
   /**
    * Draw time domain waveform visualization
    */
