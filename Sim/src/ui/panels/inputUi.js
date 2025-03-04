@@ -240,12 +240,28 @@ export class InputUi extends BaseUi {
       .onChange((value) => {
         if (value) {
           externalInput.enableMic();
+
+          // If visualizer is supposed to be visible, it will show now
+          if (externalInput.micForces.visualizerVisible) {
+            // Give a short delay to ensure audio is initialized
+            setTimeout(() => {
+              externalInput.micForces.showVisualizer();
+
+              // Ensure checkbox is synced
+              if (this.visualizerToggle) {
+                this.visualizerToggle.setValue(true);
+              }
+            }, 100);
+          }
+
           // Refresh device list when enabled
           if (this.audioInputDeviceSelect) {
             this.populateAudioDevices();
           }
         } else {
           externalInput.disableMic();
+
+          // No need to hide visualizer here as disableMic already does that
         }
 
         // Toggle visibility of all other controls
@@ -404,10 +420,10 @@ export class InputUi extends BaseUi {
     this.micControllers.push(visualizerFolder);
 
     // Toggle visualizer
-    const vizState = { show: true };
+    const vizState = { show: true }; // Default is true
 
-    // Toggle visualizer
-    visualizerFolder
+    // Create the controller
+    const visualizerToggle = visualizerFolder
       .add(vizState, "show")
       .name("Show Visualizer")
       .onChange((value) => {
@@ -419,6 +435,9 @@ export class InputUi extends BaseUi {
           }
         }
       });
+
+    // Store reference to update later
+    this.visualizerToggle = visualizerToggle;
 
     // Theme selector
     visualizerFolder
