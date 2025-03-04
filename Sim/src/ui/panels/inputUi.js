@@ -404,15 +404,18 @@ export class InputUi extends BaseUi {
     this.micControllers.push(visualizerFolder);
 
     // Toggle visualizer
+    const vizState = { show: false };
+
+    // Toggle visualizer
     visualizerFolder
-      .add({ show: false }, "show")
+      .add(vizState, "show")
       .name("Show Visualizer")
       .onChange((value) => {
-        if (externalInput.micForces) {
+        if (this.main.externalInput?.micForces) {
           if (value) {
-            externalInput.micForces.showVisualizer();
+            this.main.externalInput.micForces.showVisualizer();
           } else {
-            externalInput.micForces.hideVisualizer();
+            this.main.externalInput.micForces.hideVisualizer();
           }
         }
       });

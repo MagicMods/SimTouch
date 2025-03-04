@@ -84,13 +84,19 @@ export class SoundVisualizer {
    * Initialize the visualizer
    */
   initialize() {
-    // Create container if needed
-    if (!this.container) {
+    // Check if container already exists, if so, clean it up first
+    if (this.container) {
+      // If we already have a container, just clear its contents
+      while (this.container.firstChild) {
+        this.container.removeChild(this.container.firstChild);
+      }
+    } else {
+      // Create container if needed
       this.container = document.createElement("div");
       this.container.className = "sound-visualizer-container";
       this.container.style.position = "fixed";
       this.container.style.bottom = "20px";
-      this.container.style.right = "20px";
+      this.container.style.left = "20px"; // Changed from 'right' to 'left'
       this.container.style.zIndex = "1000";
       this.container.style.borderRadius = "8px";
       this.container.style.overflow = "hidden";
@@ -120,7 +126,6 @@ export class SoundVisualizer {
 
     return this;
   }
-
   /**
    * Start visualization
    */
@@ -717,6 +722,41 @@ export class SoundVisualizer {
     }
 
     return this;
+  }
+
+  showVisualizer() {
+    if (!this.visualizer) return false;
+
+    // Track that we want the visualizer to be visible
+    this.visualizerVisible = true;
+
+    // Only proceed if analyzer is enabled
+    if (!this.analyzer || !this.analyzer.isEnabled) {
+      // We'll show it when the analyzer is enabled
+      return false;
+    }
+
+    // Initialize if not already initialized
+    if (!this.visualizer.container) {
+      this.visualizer.initialize();
+    }
+
+    this.visualizer.show();
+    return true;
+  }
+
+  // Hide audio visualizer
+  hideVisualizer() {
+    if (!this.visualizer) return false;
+
+    // Track that we want the visualizer to be hidden
+    this.visualizerVisible = false;
+
+    if (this.visualizer.isVisible) {
+      this.visualizer.hide();
+    }
+
+    return true;
   }
 
   /**
