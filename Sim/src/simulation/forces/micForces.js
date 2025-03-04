@@ -34,8 +34,8 @@ export class MicInputForces {
     this.smoothedAmplitude = 0;
     this.dataArray = null; // Will be filled by analyzer
 
-    // Visualization state
-    this.visualizerVisible = false;
+    // Visualization state - set to true by default
+    this.visualizerVisible = true;
 
     // Bind methods for analyzer callbacks
     this.processAudioData = this.processAudioData.bind(this);
@@ -59,7 +59,7 @@ export class MicInputForces {
       this.enabled = true;
       console.log("Microphone input enabled");
 
-      // Show visualizer if it was visible before
+      // Show visualizer if it's supposed to be visible (default is true)
       if (this.visualizerVisible) {
         this.showVisualizer();
       }
@@ -168,6 +168,13 @@ export class MicInputForces {
   showVisualizer() {
     if (!this.visualizer) return false;
 
+    // Only show if input is enabled
+    if (!this.enabled) {
+      // Just mark that we want it visible when enabled
+      this.visualizerVisible = true;
+      return false;
+    }
+
     this.visualizer.initialize();
     this.visualizer.show();
     this.visualizerVisible = true;
@@ -189,7 +196,8 @@ export class MicInputForces {
     max,
     folder = null,
     sensitivity = 1.0,
-    frequency = null
+    frequency = null,
+    frequencyBand = "none"
   ) {
     if (controller && typeof controller.setValue === "function") {
       // Check if this controller is already a target, and if so, remove it first
@@ -204,6 +212,7 @@ export class MicInputForces {
         folder,
         sensitivity: sensitivity || 1.0,
         frequency: frequency || { min: 0, max: 20000 },
+        frequencyBand: frequencyBand || "none",
       });
 
       console.log("Added mic target:", {
@@ -211,6 +220,7 @@ export class MicInputForces {
         max,
         sensitivity,
         folder: folder?._title,
+        frequencyBand,
       });
     }
     return this;

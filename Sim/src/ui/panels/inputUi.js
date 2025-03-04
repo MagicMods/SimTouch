@@ -404,7 +404,7 @@ export class InputUi extends BaseUi {
     this.micControllers.push(visualizerFolder);
 
     // Toggle visualizer
-    const vizState = { show: false };
+    const vizState = { show: true };
 
     // Toggle visualizer
     visualizerFolder
@@ -719,29 +719,52 @@ export class InputUi extends BaseUi {
         }
       });
 
-    // Frequency filtering
-    folder
-      .add(modulator, "frequencyMin", 0, 20000, 10)
-      .name("Min Frequency")
-      .onChange((value) => {
-        if (modulator._activeController) {
-          micForces.updateTargetFrequencyRange(
-            modulator._activeController,
-            value,
-            modulator.frequencyMax
-          );
-        }
-      });
+    // Add frequency band selector instead of min/max frequency sliders
+    const bandOptions = {
+      "None (Full Range)": "none",
+      "Sub Bass (20-60 Hz)": "sub",
+      "Bass (60-250 Hz)": "bass",
+      "Low Mid (250-500 Hz)": "lowMid",
+      "Mid Range (500-2k Hz)": "mid",
+      "High Mid (2k-4k Hz)": "highMid",
+      "Presence (4k-6k Hz)": "presence",
+      "Brilliance (6k-20k Hz)": "brilliance",
+    };
+
+    // Add band selection to modulator object
+    modulator.frequencyBand = "none";
 
     folder
-      .add(modulator, "frequencyMax", 0, 20000, 10)
-      .name("Max Frequency")
-      .onChange((value) => {
-        if (modulator._activeController) {
+      .add(modulator, "frequencyBand", bandOptions)
+      .name("Frequency Band")
+      .onChange((bandKey) => {
+        if (!micForces || !modulator._activeController) return;
+
+        if (bandKey === "none") {
+          // Full range
+          modulator.frequencyMin = 0;
+          modulator.frequencyMax = 20000;
           micForces.updateTargetFrequencyRange(
             modulator._activeController,
-            modulator.frequencyMin,
-            value
+            0,
+            20000
+          );
+          console.log("Set frequency band to full range");
+        } else if (micForces.analyzer && micForces.analyzer.bands[bandKey]) {
+          // Get band range from analyzer
+          const band = micForces.analyzer.bands[bandKey];
+          modulator.frequencyMin = band.min;
+          modulator.frequencyMax = band.max;
+
+          // Update the target frequency range
+          micForces.updateTargetFrequencyRange(
+            modulator._activeController,
+            band.min,
+            band.max
+          );
+
+          console.log(
+            `Set frequency band to ${bandKey}: ${band.min}-${band.max} Hz`
           );
         }
       });
@@ -861,6 +884,43 @@ export class InputUi extends BaseUi {
       // Update displays for the other controllers
       for (let i = 1; i < folder.controllers.length; i++) {
         folder.controllers[i].updateDisplay();
+      }
+
+      // Inside the updateMicInputDisplay method, after setting sensitivity:
+      // Add code to restore frequency band selection based on frequency range
+
+      // Find the matching band for this frequency range
+      if (config.frequency) {
+        const min = config.frequency.min;
+        const max = config.frequency.max;
+
+        // Find matching band
+        let matchingBand = "none";
+
+        if (micForces.analyzer && micForces.analyzer.bands) {
+          // Look through bands to find a matching one
+          for (const [bandKey, bandRange] of Object.entries(
+            micForces.analyzer.bands
+          )) {
+            if (
+              Math.abs(bandRange.min - min) < 10 &&
+              Math.abs(bandRange.max - max) < 10
+            ) {
+              matchingBand = bandKey;
+              break;
+            }
+          }
+        }
+
+        // Set band in modulator object
+        modulator.frequencyBand = matchingBand;
+
+        // Update band dropdown (usually 3rd controller in folder)
+        const bandController = folder.controllers[2]; // After target and sensitivity
+        if (bandController) {
+          bandController.setValue(matchingBand);
+          bandController.updateDisplay();
+        }
       }
     });
 
