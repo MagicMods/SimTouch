@@ -468,6 +468,15 @@ export class InputUi extends BaseUi {
     // Close these folders by default
     analyzerFolder.open(false);
     visualizerFolder.open(false);
+
+    // Make sure initial state is correct
+    if (this.main.externalInput?.micForces?.enabled) {
+      // If already enabled, make sure folders are visible
+      this.toggleAllMicControlsVisibility(true);
+    } else {
+      // Otherwise hide them
+      this.toggleAllMicControlsVisibility(false);
+    }
   }
 
   // Add these methods to the InputUi class
@@ -1046,6 +1055,21 @@ export class InputUi extends BaseUi {
           if (controller.domElement) {
             // Regular dat.gui controller
             controller.domElement.style.display = show ? "block" : "none";
+
+            // Special handling for folders
+            if (controller._title) {
+              // Folders have a _title property
+              // For folders, we need to toggle the entire folder element
+              const folderElement = controller.domElement.parentElement;
+              if (folderElement && folderElement.classList.contains("folder")) {
+                folderElement.style.display = show ? "block" : "none";
+              }
+
+              // Also close folders when hiding
+              if (!show && controller.closed === false) {
+                controller.close();
+              }
+            }
           } else if (controller instanceof HTMLElement) {
             // Direct DOM element like our device container
             controller.style.display = show ? "block" : "none";
@@ -1058,7 +1082,18 @@ export class InputUi extends BaseUi {
     if (this.micModulatorFolders) {
       for (const folder of this.micModulatorFolders) {
         if (folder && folder.domElement) {
-          folder.domElement.style.display = show ? "block" : "none";
+          // For folders, we need to toggle the entire folder element
+          const folderElement = folder.domElement.parentElement;
+          if (folderElement && folderElement.classList.contains("folder")) {
+            folderElement.style.display = show ? "block" : "none";
+          } else {
+            folder.domElement.style.display = show ? "block" : "none";
+          }
+
+          // Close folders when hiding
+          if (!show && folder.closed === false) {
+            folder.close();
+          }
         }
       }
     }

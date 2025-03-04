@@ -334,11 +334,6 @@ export class SoundVisualizer {
     }
     this.ctx.stroke();
 
-    // Draw spectrum
-    const binWidth =
-      (this.canvas.width - padding * 2) / analyzer.frequencyData.length;
-    const binWidthScaled = Math.max(1, binWidth); // Ensure at least 1px width
-
     // Create gradient
     const gradient = this.ctx.createLinearGradient(
       0,
@@ -352,15 +347,31 @@ export class SoundVisualizer {
 
     this.ctx.fillStyle = gradient;
 
-    // Draw frequency bins
-    for (let i = 0; i < analyzer.frequencyData.length; i++) {
-      const value = analyzer.frequencyData[i] / 255; // Normalize to 0-1
+    // Calculate available width
+    const availableWidth = this.canvas.width - padding * 2;
+
+    // Draw frequency spectrum with logarithmic frequency scale for better visualization
+    // This emphasizes lower frequencies which are more perceptually important
+    const frequencyData = analyzer.frequencyData;
+    const binCount = frequencyData.length;
+
+    // Use frequency bins more effectively - emphasize lower frequencies with log scale
+    const barWidth = Math.max(1, availableWidth / (binCount * 0.75)); // Only show ~75% of the bins
+
+    // New approach: Use logarithmic mapping to display more low-end detail
+    for (let i = 0; i < binCount; i++) {
+      // Apply logarithmic mapping to bin index to focus on lower frequencies
+      const logIndex = Math.round(Math.pow(i / binCount, 0.5) * binCount);
+      if (logIndex >= binCount) continue;
+
+      const value = frequencyData[logIndex] / 255; // Normalize to 0-1
       const barHeight = value * height;
 
-      const x = padding + i * binWidth;
+      // Position bars evenly across full width
+      const barX = padding + (i / binCount) * availableWidth;
       const y = yOffset + padding + height - barHeight;
 
-      this.ctx.fillRect(x, y, binWidthScaled, barHeight);
+      this.ctx.fillRect(barX, y, barWidth, barHeight);
     }
 
     // Label
