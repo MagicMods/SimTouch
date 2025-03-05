@@ -470,75 +470,7 @@ export class LeftUi extends BaseUi {
 
     return targets;
   }
-  /**
-   * Get controller and range information for a specific target
-   * @param {string} targetName - Name of the target
-   * @returns {object|null} Controller info or null if not found
-   */
-  getControllerForTarget(targetName) {
-    // First check if the target is in our direct controller map
-    const targets = this.getControlTargets();
-    const controller = targets[targetName];
 
-    if (controller) {
-      // Initialize result object with controller reference
-      const result = {
-        controller,
-        property: controller.property,
-      };
-
-      // Try to get min/max values using specific approaches for lil-gui
-      try {
-        // For lil-gui controls
-        if (typeof controller._min !== "undefined") {
-          result.min = Number(controller._min);
-          result.max = Number(controller._max);
-
-          if (typeof controller._step !== "undefined") {
-            result.step = Number(controller._step);
-          }
-        }
-        // Try alternative property names
-        else if (typeof controller.__min !== "undefined") {
-          result.min = Number(controller.__min);
-          result.max = Number(controller.__max);
-
-          if (typeof controller.__step !== "undefined") {
-            result.step = Number(controller.__step);
-          }
-        }
-        // Try function calls if available
-        else if (typeof controller.min === "function") {
-          result.min = Number(controller.min());
-          result.max = Number(controller.max());
-
-          if (typeof controller.step === "function") {
-            result.step = Number(controller.step());
-          }
-        }
-
-        // console.log(
-        //   `GetControllerForTarget ${targetName}: Range ${result.min} - ${
-        //     result.max
-        //   }, Current value: ${controller.getValue()}`
-        // );
-      } catch (e) {
-        console.error(`Error extracting range for ${targetName}:`, e);
-
-        // Provide default range based on the current value
-        const value = controller.getValue();
-        if (typeof value === "number") {
-          result.min = 0;
-          result.max = Math.max(1, value * 2);
-          result.step = 0.01;
-        }
-      }
-
-      return result;
-    }
-
-    return null;
-  }
   /**
    * Force update the display of all controllers that might be affected by modulators
    */

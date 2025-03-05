@@ -221,8 +221,7 @@ export class ModulatorManager {
         return;
       }
 
-      // Continue with registration
-      // Reset targets before registering to avoid duplication
+      // Reset targets before registering
       this.targets = {};
 
       // Register from left UI
@@ -230,7 +229,9 @@ export class ModulatorManager {
         const leftTargets = leftUi.getControlTargets();
 
         Object.keys(leftTargets).forEach((name) => {
-          const targetInfo = leftUi.getControllerForTarget(name);
+          const controller = leftTargets[name];
+          // Use the centralized method to get controller info
+          const targetInfo = this.getControllerInfo(controller, name);
           if (targetInfo && targetInfo.controller) {
             this.addTargetWithRangeFull(
               name,
@@ -248,7 +249,9 @@ export class ModulatorManager {
         const rightTargets = rightUi.getControlTargets();
 
         Object.keys(rightTargets).forEach((name) => {
-          const targetInfo = rightUi.getControllerForTarget(name);
+          const controller = rightTargets[name];
+          // Use the same centralized method for right UI
+          const targetInfo = this.getControllerInfo(controller, name);
           if (targetInfo && targetInfo.controller) {
             this.addTargetWithRangeFull(
               name,
@@ -267,6 +270,86 @@ export class ModulatorManager {
       );
     } catch (e) {
       console.error("Error registering targets in ModulatorManager:", e);
+    }
+  }
+
+  /**
+   * Get controller and range information for a specific target
+   * @param {string} targetName - Name of the target
+   * @param {object} controller - The controller object
+   * @returns {object} Controller info with min/max/step
+   */
+  getControllerInfo(controller, targetName) {
+    // Create result object with controller reference
+    const result = {
+      controller,
+      property: controller.property,
+    };
+
+    try {
+      // For lil-gui controls
+      if (typeof controller._min !== "undefined") {
+        result.min = Number(controller._min);
+        result.max = Number(controller._max);
+        result.step =
+          controller._step !== undefined ? Number(controller._step) : 0.01;
+      }
+      // Alternative property names
+      else if (typeof controller.__min !== "undefined") {
+        result.min = Number(controller.__min);
+        result.max = Number(controller.__max);
+        result.step =
+          controller.__step !== undefined ? Number(controller.__step) : 0.01;
+      }
+      // Function calls if available
+      else if (typeof controller.min === "function") {
+        result.min = Number(controller.min());
+        result.max = Number(controller.max());
+        result.step =
+          typeof controller.step === "function"
+            ? Number(controller.step())
+            : 0.01;
+      }
+      // Special known targets
+      else {
+        result.min = 0;
+        result.max = 1;
+        result.step = 0.01;
+
+        // Provide hardcoded ranges for specific targets
+        const knownRanges = {
+          "Turbulence Strength": { min: 0, max: 10, step: 0.01 },
+          "Turbulence Scale": { min: 0.1, max: 10, step: 0.01 },
+          "Turbulence Speed": { min: 0, max: 20, step: 0.01 },
+          "Scale Strength": { min: 0, max: 1, step: 0.01 },
+          "Inward Pull": { min: 0, max: 5, step: 0.01 },
+          "Turbulence Decay": { min: 0.9, max: 1, step: 0.001 },
+          "Voronoi Strength": { min: 0, max: 10, step: 0.01 },
+          "Cell Speed": { min: 0, max: 4, step: 0.01 },
+          "Edge Width": { min: 0.1, max: 50, step: 0.1 },
+          Attraction: { min: 0, max: 8, step: 0.01 },
+          "Cell Count": { min: 1, max: 10, step: 1 },
+          Force: { min: 0, max: 5, step: 0.01 },
+          "Fluid Radius": { min: 5, max: 50, step: 1 },
+          "Surface Tension": { min: 0, max: 1, step: 0.01 },
+          Viscosity: { min: 0, max: 1, step: 0.01 },
+          // Add more known ranges as needed
+        };
+
+        if (knownRanges[targetName]) {
+          Object.assign(result, knownRanges[targetName]);
+        }
+      }
+
+      return result;
+    } catch (e) {
+      console.error(`Error extracting range for ${targetName}:`, e);
+      return {
+        controller,
+        min: 0,
+        max: 1,
+        step: 0.01,
+      };
     }
   }
 }
