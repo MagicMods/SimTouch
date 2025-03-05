@@ -6,6 +6,7 @@ import { NetworkUi } from "./panels/networkUi.js";
 import { PulseModulationUi } from "./panels/pulseModulationUi.js";
 import { PresetManager } from "../util/presetManager.js";
 import Stats from "../util/statsModule.js";
+import { ModulatorManager } from "../input/modulatorManager.js"; // Add this import
 
 export class UiManager {
   constructor(main) {
@@ -23,7 +24,10 @@ export class UiManager {
     // Initialize UI panels
     this.leftUi = new LeftUi(main, this.leftContainer);
     this.rightUi = new RightUi(main, this.rightContainer);
-    this.pulseModUi = new PulseModulationUi(main, this.pulseModContainer);
+    this.pulseModulationUi = new PulseModulationUi(
+      main,
+      this.pulseModContainer
+    );
     this.presetUi = new PresetUi(main, this.presetContainer);
     this.networkUi = new NetworkUi(main, this.networkContainer);
     this.inputUi = new InputUi(main, this.inputContainer);
@@ -32,7 +36,7 @@ export class UiManager {
     this.presetManager = new PresetManager(
       this.leftUi.gui,
       this.rightUi.gui,
-      this.pulseModUi,
+      this.pulseModulationUi,
       this.inputUi
     );
 
@@ -42,11 +46,11 @@ export class UiManager {
     // Pass PresetManager to panels
     this.presetUi.setPresetManager(this.presetManager);
     this.rightUi.setPresetManager(this.presetManager);
-    this.pulseModUi.initWithPresetManager(this.presetManager);
+    this.pulseModulationUi.initWithPresetManager(this.presetManager);
     this.inputUi.initWithPresetManager(this.presetManager); // Initialize mic presets UI
 
-    // Initialize the pulse modulation UI with references to other panels
-    this.pulseModUi.initializeWithUiPanels(this.leftUi, this.rightUi);
+    // THIS IS THE KEY CHANGE: Initialize UI components with shared ModulatorManager and targets
+    this.initializeUiComponents();
 
     // Initialize stats
     this.stats = new Stats();
@@ -93,16 +97,18 @@ export class UiManager {
 
   initializeUiComponents() {
     // Create a shared ModulatorManager
+    console.log("UiManager: Creating shared ModulatorManager");
     this.modulatorManager = new ModulatorManager();
 
-    console.log("UiManager: Initializing UI components");
+    // Store UI panels for auto-registration
+    this.modulatorManager.storeUiPanelsForAutoRegistration(
+      this.leftUi,
+      this.rightUi
+    );
 
-    // First initialize all UI panels without targets
-    // (existing panel initialization code)
+    console.log("UiManager: Setting shared ModulatorManager in UI components");
 
-    console.log("UiManager: Setting shared ModulatorManager");
-
-    // Share the ModulatorManager with UI components that need it
+    // Set shared manager in UI components
     if (this.inputUi) {
       this.inputUi.setModulatorManager(this.modulatorManager);
     }
@@ -111,20 +117,24 @@ export class UiManager {
       this.pulseModulationUi.setModulatorManager(this.modulatorManager);
     }
 
-    console.log("UiManager: Registering targets");
+    console.log("UiManager: Registering targets from UI panels");
 
-    // Register targets from UI panels
+    // Register targets
     this.modulatorManager.registerTargetsFromUi(this.leftUi, this.rightUi);
 
-    console.log("UiManager: Initializing cross-references");
+    console.log("UiManager: Initializing UI component cross-references");
 
-    // Now initialize UI components with panel references
+    // Initialize UI components with panels and targets
     if (this.inputUi) {
-      this.inputUi.initializeWithUiPanels(this.leftUi, this.rightUi);
+      this.inputUi.initializeWithUiPanels(this.leftUi, this.rightUi, true);
     }
 
     if (this.pulseModulationUi) {
-      this.pulseModulationUi.initializeWithUiPanels(this.leftUi, this.rightUi);
+      this.pulseModulationUi.initializeWithUiPanels(
+        this.leftUi,
+        this.rightUi,
+        true
+      );
     }
 
     console.log("UiManager: All UI components initialized");

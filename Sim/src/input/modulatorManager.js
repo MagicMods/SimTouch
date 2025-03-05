@@ -130,7 +130,30 @@ export class ModulatorManager {
    * @returns {string[]} Array of target names
    */
   getTargetNames() {
+    // Check if targets exist, and if not, try to register them if UI panels are available
+    if (
+      Object.keys(this.targets).length === 0 &&
+      this._uiPanelsForAutoRegister
+    ) {
+      console.log("ModulatorManager: No targets found, auto-registering");
+      this.registerTargetsFromUi(
+        this._uiPanelsForAutoRegister.leftUi,
+        this._uiPanelsForAutoRegister.rightUi
+      );
+    }
+
     return Object.keys(this.targets);
+  }
+
+  /**
+   * Store UI panels for auto-registration if needed
+   * @param {Object} leftUi - Left UI panel
+   * @param {Object} rightUi - Right UI panel
+   */
+  storeUiPanelsForAutoRegistration(leftUi, rightUi) {
+    if (leftUi && rightUi) {
+      this._uiPanelsForAutoRegister = { leftUi, rightUi };
+    }
   }
 
   /**

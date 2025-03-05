@@ -70,19 +70,15 @@ export class PulseModulationUi extends BaseUi {
     }
   }
 
-  // Fix the initializeWithUiPanels method
-  initializeWithUiPanels(leftUi, rightUi) {
+  // Update the initializeWithUiPanels method to accept a targetsRegistered flag
+  initializeWithUiPanels(leftUi, rightUi, targetsRegistered = false) {
     console.log("PulseModulationUi initializing with UI panels");
 
-    // Store references to UI panels
+    // Store UI references
     this.leftUi = leftUi;
     this.rightUi = rightUi;
 
-    // Make sure modulatorManager exists
-    if (!this.modulatorManager) {
-      this.modulatorManager = new ModulatorManager();
-      this.pulseModManager = this.modulatorManager;
-    }
+    // No need to register targets since they're registered by UiManager
 
     console.log("PulseModulationUi initialized with UI panels");
   }
