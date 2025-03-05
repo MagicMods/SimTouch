@@ -65,17 +65,17 @@ class OrganicBehavior {
     this.debug = false;
     this.debugEnabled = false;
 
-    console.log(
-      "OrganicBehavior initialized:",
-      JSON.stringify(
-        {
-          currentBehavior: this.currentBehavior,
-          params: this.params,
-        },
-        null,
-        2
-      )
-    );
+    // console.log(
+    //   "OrganicBehavior initialized:",
+    //   JSON.stringify(
+    //     {
+    //       currentBehavior: this.currentBehavior,
+    //       params: this.params,
+    //     },
+    //     null,
+    //     2
+    //   )
+    // );
   }
 
   updateParticles(particleSystem, dt) {

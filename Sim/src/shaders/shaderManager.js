@@ -3,7 +3,7 @@ class ShaderManager {
     this.gl = gl;
     this.programs = new Map();
     this.currentProgram = null;
-    console.log("ShaderManager created");
+    // console.log("ShaderManager created");
   }
 
   async init() {
@@ -92,7 +92,7 @@ class ShaderManager {
         uniforms: this.getUniforms(program),
       });
 
-      console.log(`Created shader program: ${name}`);
+      // console.log(`Created shader program: ${name}`);
       return this.programs.get(name);
     } catch (error) {
       console.error(`Failed to create shader program ${name}:`, error);

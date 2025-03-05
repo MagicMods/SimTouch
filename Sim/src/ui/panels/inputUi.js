@@ -842,8 +842,10 @@ export class InputUi extends BaseUi {
     // Add device selector right after the enable toggle
     this.addAudioDeviceSelector();
 
-    // Register available targets from other UI panels
-    this.registerAvailableTargets();
+    // Only try to register targets if we're not deferring registration
+    if (!this.deferTargetRegistration) {
+      this.registerAvailableTargets();
+    }
 
     // Global sensitivity control
     this.micSensitivityController = this.micInputFolder
@@ -1123,285 +1125,285 @@ export class InputUi extends BaseUi {
     return null;
   }
 
-  // Add a new method to create mic modulators
-  addMicModulator_Old() {
-    if (!this.main.externalInput?.micForces) {
-      console.error("No mic forces available");
-      return null;
-    }
+  // // Add a new method to create mic modulators
+  // addMicModulator_Old() {
+  //   if (!this.main.externalInput?.micForces) {
+  //     console.error("No mic forces available");
+  //     return null;
+  //   }
 
-    const micForces = this.main.externalInput.micForces;
+  //   const micForces = this.main.externalInput.micForces;
 
-    // Create a new modulator object
-    const modulator = {
-      target: "None",
-      sensitivity: 1.0,
-      min: 0,
-      max: 1,
-      frequencyMin: 0,
-      frequencyMax: 20000,
-    };
+  //   // Create a new modulator object
+  //   const modulator = {
+  //     target: "None",
+  //     sensitivity: 1.0,
+  //     min: 0,
+  //     max: 1,
+  //     frequencyMin: 0,
+  //     frequencyMax: 20000,
+  //   };
 
-    // Create a new folder for this modulator
-    const index = this.micModulatorFolders
-      ? this.micModulatorFolders.length
-      : 0;
-    const folder = this.micInputFolder.addFolder(`Modulator ${index + 1}`);
+  //   // Create a new folder for this modulator
+  //   const index = this.micModulatorFolders
+  //     ? this.micModulatorFolders.length
+  //     : 0;
+  //   const folder = this.micInputFolder.addFolder(`Modulator ${index + 1}`);
 
-    if (!this.micModulatorFolders) {
-      this.micModulatorFolders = [];
-    }
-    this.micModulatorFolders.push(folder);
+  //   if (!this.micModulatorFolders) {
+  //     this.micModulatorFolders = [];
+  //   }
+  //   this.micModulatorFolders.push(folder);
 
-    // Store modulator reference in the folder for easy access
-    folder._modulator = modulator;
+  //   // Store modulator reference in the folder for easy access
+  //   folder._modulator = modulator;
 
-    // Get control targets - THIS CHANGE IS CRITICAL
-    const targets = this.getControlTargets();
+  //   // Get control targets - THIS CHANGE IS CRITICAL
+  //   const targets = this.getControlTargets();
 
-    // Create a key-based array of target options (with "None")
-    const targetOptions = ["None", ...Object.keys(targets)];
+  //   // Create a key-based array of target options (with "None")
+  //   const targetOptions = ["None", ...Object.keys(targets)];
 
-    console.log("Available targets for mic modulator:", targetOptions);
+  //   console.log("Available targets for mic modulator:", targetOptions);
 
-    // Add target selector - FIXED to use string names instead of objects
-    const targetController = folder
-      .add(modulator, "target", targetOptions)
-      .name("Target Parameter")
-      .onChange((targetName) => {
-        // Log the actual targetName string
-        console.log(`Mic modulator: selected target "${targetName}"`);
+  //   // Add target selector - FIXED to use string names instead of objects
+  //   const targetController = folder
+  //     .add(modulator, "target", targetOptions)
+  //     .name("Target Parameter")
+  //     .onChange((targetName) => {
+  //       // Log the actual targetName string
+  //       console.log(`Mic modulator: selected target "${targetName}"`);
 
-        // Remove previous target if one exists
-        if (modulator._activeController) {
-          micForces.removeTarget(modulator._activeController);
-          modulator._activeController = null;
-        }
+  //       // Remove previous target if one exists
+  //       if (modulator._activeController) {
+  //         micForces.removeTarget(modulator._activeController);
+  //         modulator._activeController = null;
+  //       }
 
-        if (targetName === "None") {
-          return;
-        }
+  //       if (targetName === "None") {
+  //         return;
+  //       }
 
-        // Get controller info using the string name
-        const controlInfo = this.getControllerForTarget(targetName);
-        console.log(
-          `Mic modulator: got control info for "${targetName}":`,
-          controlInfo
-        );
+  //       // Get controller info using the string name
+  //       const controlInfo = this.getControllerForTarget(targetName);
+  //       console.log(
+  //         `Mic modulator: got control info for "${targetName}":`,
+  //         controlInfo
+  //       );
 
-        if (controlInfo && controlInfo.controller) {
-          // Update min/max based on the controller's range
-          modulator.min = controlInfo.min;
-          modulator.max = controlInfo.max;
+  //       if (controlInfo && controlInfo.controller) {
+  //         // Update min/max based on the controller's range
+  //         modulator.min = controlInfo.min;
+  //         modulator.max = controlInfo.max;
 
-          console.log(
-            `Mic modulator: setting range for ${targetName}: ${controlInfo.min} - ${controlInfo.max}`
-          );
+  //         console.log(
+  //           `Mic modulator: setting range for ${targetName}: ${controlInfo.min} - ${controlInfo.max}`
+  //         );
 
-          // Update the UI sliders
-          minController.min(controlInfo.min * 0.5);
-          minController.max(controlInfo.max * 1.5);
-          maxController.min(controlInfo.min * 0.5);
-          maxController.max(controlInfo.max * 1.5);
+  //         // Update the UI sliders
+  //         minController.min(controlInfo.min * 0.5);
+  //         minController.max(controlInfo.max * 1.5);
+  //         maxController.min(controlInfo.min * 0.5);
+  //         maxController.max(controlInfo.max * 1.5);
 
-          minController.setValue(controlInfo.min);
-          maxController.setValue(controlInfo.max);
+  //         minController.setValue(controlInfo.min);
+  //         maxController.setValue(controlInfo.max);
 
-          // Add/update the target in micForces
-          micForces.addTarget(
-            controlInfo.controller,
-            modulator.min,
-            modulator.max,
-            folder,
-            modulator.sensitivity,
-            {
-              min: modulator.frequencyMin,
-              max: modulator.frequencyMax,
-            }
-          );
+  //         // Add/update the target in micForces
+  //         micForces.addTarget(
+  //           controlInfo.controller,
+  //           modulator.min,
+  //           modulator.max,
+  //           folder,
+  //           modulator.sensitivity,
+  //           {
+  //             min: modulator.frequencyMin,
+  //             max: modulator.frequencyMax,
+  //           }
+  //         );
 
-          console.log(
-            `Mic modulator: successfully added target for ${targetName}`
-          );
+  //         console.log(
+  //           `Mic modulator: successfully added target for ${targetName}`
+  //         );
 
-          // Store the active controller reference for cleanup
-          modulator._activeController = controlInfo.controller;
-        } else {
-          console.warn(
-            `Mic modulator: could not find controller for ${targetName}`
-          );
-        }
-      });
+  //         // Store the active controller reference for cleanup
+  //         modulator._activeController = controlInfo.controller;
+  //       } else {
+  //         console.warn(
+  //           `Mic modulator: could not find controller for ${targetName}`
+  //         );
+  //       }
+  //     });
 
-    // Sensitivity for this specific modulator
-    folder
-      .add(modulator, "sensitivity", 0.1, 2.0, 0.01)
-      .name("Sensitivity")
-      .onChange((value) => {
-        if (modulator._activeController) {
-          micForces.updateTargetSensitivity(modulator._activeController, value);
-        }
-      });
+  //   // Sensitivity for this specific modulator
+  //   folder
+  //     .add(modulator, "sensitivity", 0.1, 2.0, 0.01)
+  //     .name("Sensitivity")
+  //     .onChange((value) => {
+  //       if (modulator._activeController) {
+  //         micForces.updateTargetSensitivity(modulator._activeController, value);
+  //       }
+  //     });
 
-    // Min/max range controls
-    const minController = folder
-      .add(modulator, "min", 0, 1, 0.01)
-      .name("Min Value")
-      .onChange((value) => {
-        if (modulator._activeController) {
-          micForces.updateTargetRange(
-            modulator._activeController,
-            value,
-            modulator.max
-          );
-        }
-      });
+  //   // Min/max range controls
+  //   const minController = folder
+  //     .add(modulator, "min", 0, 1, 0.01)
+  //     .name("Min Value")
+  //     .onChange((value) => {
+  //       if (modulator._activeController) {
+  //         micForces.updateTargetRange(
+  //           modulator._activeController,
+  //           value,
+  //           modulator.max
+  //         );
+  //       }
+  //     });
 
-    const maxController = folder
-      .add(modulator, "max", 0, 1, 0.01)
-      .name("Max Value")
-      .onChange((value) => {
-        if (modulator._activeController) {
-          micForces.updateTargetRange(
-            modulator._activeController,
-            modulator.min,
-            value
-          );
-        }
-      });
+  //   const maxController = folder
+  //     .add(modulator, "max", 0, 1, 0.01)
+  //     .name("Max Value")
+  //     .onChange((value) => {
+  //       if (modulator._activeController) {
+  //         micForces.updateTargetRange(
+  //           modulator._activeController,
+  //           modulator.min,
+  //           value
+  //         );
+  //       }
+  //     });
 
-    // Add frequency band selector instead of min/max frequency sliders
-    const bandOptions = {
-      "None (Full Range)": "none",
-      "Sub Bass (20-60 Hz)": "sub",
-      "Bass (60-250 Hz)": "bass",
-      "Low Mid (250-500 Hz)": "lowMid",
-      "Mid Range (500-2k Hz)": "mid",
-      "High Mid (2k-4k Hz)": "highMid",
-      "Presence (4k-6k Hz)": "presence",
-      "Brilliance (6k-20k Hz)": "brilliance",
-    };
+  //   // Add frequency band selector instead of min/max frequency sliders
+  //   const bandOptions = {
+  //     "None (Full Range)": "none",
+  //     "Sub Bass (20-60 Hz)": "sub",
+  //     "Bass (60-250 Hz)": "bass",
+  //     "Low Mid (250-500 Hz)": "lowMid",
+  //     "Mid Range (500-2k Hz)": "mid",
+  //     "High Mid (2k-4k Hz)": "highMid",
+  //     "Presence (4k-6k Hz)": "presence",
+  //     "Brilliance (6k-20k Hz)": "brilliance",
+  //   };
 
-    // Add band selection to modulator object
-    modulator.frequencyBand = "none";
+  //   // Add band selection to modulator object
+  //   modulator.frequencyBand = "none";
 
-    folder
-      .add(modulator, "frequencyBand", bandOptions)
-      .name("Frequency Band")
-      .onChange((bandKey) => {
-        if (!micForces || !modulator._activeController) return;
+  //   folder
+  //     .add(modulator, "frequencyBand", bandOptions)
+  //     .name("Frequency Band")
+  //     .onChange((bandKey) => {
+  //       if (!micForces || !modulator._activeController) return;
 
-        if (bandKey === "none") {
-          // Full range
-          modulator.frequencyMin = 0;
-          modulator.frequencyMax = 20000;
-          micForces.updateTargetFrequencyRange(
-            modulator._activeController,
-            0,
-            20000
-          );
-          console.log("Set frequency band to full range");
-        } else if (micForces.analyzer && micForces.analyzer.bands[bandKey]) {
-          // Get band range from analyzer
-          const band = micForces.analyzer.bands[bandKey];
-          modulator.frequencyMin = band.min;
-          modulator.frequencyMax = band.max;
+  //       if (bandKey === "none") {
+  //         // Full range
+  //         modulator.frequencyMin = 0;
+  //         modulator.frequencyMax = 20000;
+  //         micForces.updateTargetFrequencyRange(
+  //           modulator._activeController,
+  //           0,
+  //           20000
+  //         );
+  //         console.log("Set frequency band to full range");
+  //       } else if (micForces.analyzer && micForces.analyzer.bands[bandKey]) {
+  //         // Get band range from analyzer
+  //         const band = micForces.analyzer.bands[bandKey];
+  //         modulator.frequencyMin = band.min;
+  //         modulator.frequencyMax = band.max;
 
-          // Update the target frequency range
-          micForces.updateTargetFrequencyRange(
-            modulator._activeController,
-            band.min,
-            band.max
-          );
+  //         // Update the target frequency range
+  //         micForces.updateTargetFrequencyRange(
+  //           modulator._activeController,
+  //           band.min,
+  //           band.max
+  //         );
 
-          console.log(
-            `Set frequency band to ${bandKey}: ${band.min}-${band.max} Hz`
-          );
-        }
-      });
+  //         console.log(
+  //           `Set frequency band to ${bandKey}: ${band.min}-${band.max} Hz`
+  //         );
+  //       }
+  //     });
 
-    // Remove button
-    const removeControl = {
-      remove: () => {
-        // First remove from MicForces
-        if (modulator._activeController) {
-          micForces.removeTarget(modulator._activeController);
-        }
+  //   // Remove button
+  //   const removeControl = {
+  //     remove: () => {
+  //       // First remove from MicForces
+  //       if (modulator._activeController) {
+  //         micForces.removeTarget(modulator._activeController);
+  //       }
 
-        // Remove folder from UI
-        folder.destroy();
+  //       // Remove folder from UI
+  //       folder.destroy();
 
-        // Remove from tracking array
-        const folderIndex = this.micModulatorFolders.indexOf(folder);
-        if (folderIndex > -1) {
-          this.micModulatorFolders.splice(folderIndex, 1);
-        }
-      },
-    };
+  //       // Remove from tracking array
+  //       const folderIndex = this.micModulatorFolders.indexOf(folder);
+  //       if (folderIndex > -1) {
+  //         this.micModulatorFolders.splice(folderIndex, 1);
+  //       }
+  //     },
+  //   };
 
-    folder.add(removeControl, "remove").name("Remove");
+  //   folder.add(removeControl, "remove").name("Remove");
 
-    // Open the folder by default
-    folder.open();
+  //   // Open the folder by default
+  //   folder.open();
 
-    // Add a small band visualization to show the frequency band activity
-    const bandVisualContainer = document.createElement("div");
-    bandVisualContainer.style.margin = "8px 0";
-    bandVisualContainer.style.padding = "0";
-    bandVisualContainer.style.position = "relative";
+  //   // Add a small band visualization to show the frequency band activity
+  //   const bandVisualContainer = document.createElement("div");
+  //   bandVisualContainer.style.margin = "8px 0";
+  //   bandVisualContainer.style.padding = "0";
+  //   bandVisualContainer.style.position = "relative";
 
-    // Create band level visualization
-    const bandVisual = document.createElement("div");
-    bandVisual.style.height = "16px";
-    bandVisual.style.backgroundColor = "#333";
-    bandVisual.style.borderRadius = "3px";
-    bandVisual.style.overflow = "hidden";
-    bandVisual.style.position = "relative";
+  //   // Create band level visualization
+  //   const bandVisual = document.createElement("div");
+  //   bandVisual.style.height = "16px";
+  //   bandVisual.style.backgroundColor = "#333";
+  //   bandVisual.style.borderRadius = "3px";
+  //   bandVisual.style.overflow = "hidden";
+  //   bandVisual.style.position = "relative";
 
-    // Create the level bar
-    const bandLevelBar = document.createElement("div");
-    bandLevelBar.style.height = "100%";
-    bandLevelBar.style.backgroundColor = "#4f4";
-    bandLevelBar.style.width = "0%";
-    bandLevelBar.style.position = "absolute";
-    bandLevelBar.style.left = "0";
-    bandLevelBar.style.top = "0";
-    bandLevelBar.style.transition = "width 0.05s ease-out";
+  //   // Create the level bar
+  //   const bandLevelBar = document.createElement("div");
+  //   bandLevelBar.style.height = "100%";
+  //   bandLevelBar.style.backgroundColor = "#4f4";
+  //   bandLevelBar.style.width = "0%";
+  //   bandLevelBar.style.position = "absolute";
+  //   bandLevelBar.style.left = "0";
+  //   bandLevelBar.style.top = "0";
+  //   bandLevelBar.style.transition = "width 0.05s ease-out";
 
-    // Create label that shows band name and level
-    const bandLabel = document.createElement("div");
-    bandLabel.style.position = "absolute";
-    bandLabel.style.left = "5px";
-    bandLabel.style.top = "0";
-    bandLabel.style.color = "#fff";
-    bandLabel.style.fontSize = "10px";
-    bandLabel.style.lineHeight = "16px";
-    bandLabel.style.textShadow = "1px 1px 1px rgba(0,0,0,0.5)";
-    bandLabel.style.whiteSpace = "nowrap";
-    bandLabel.style.overflow = "hidden";
-    bandLabel.textContent = "Band: 0%";
+  //   // Create label that shows band name and level
+  //   const bandLabel = document.createElement("div");
+  //   bandLabel.style.position = "absolute";
+  //   bandLabel.style.left = "5px";
+  //   bandLabel.style.top = "0";
+  //   bandLabel.style.color = "#fff";
+  //   bandLabel.style.fontSize = "10px";
+  //   bandLabel.style.lineHeight = "16px";
+  //   bandLabel.style.textShadow = "1px 1px 1px rgba(0,0,0,0.5)";
+  //   bandLabel.style.whiteSpace = "nowrap";
+  //   bandLabel.style.overflow = "hidden";
+  //   bandLabel.textContent = "Band: 0%";
 
-    // Add elements to container
-    bandVisual.appendChild(bandLevelBar);
-    bandVisual.appendChild(bandLabel);
-    bandVisualContainer.appendChild(bandVisual);
+  //   // Add elements to container
+  //   bandVisual.appendChild(bandLevelBar);
+  //   bandVisual.appendChild(bandLabel);
+  //   bandVisualContainer.appendChild(bandVisual);
 
-    // Add to the folder's DOM
-    folder.domElement
-      .querySelector(".children")
-      .appendChild(bandVisualContainer);
+  //   // Add to the folder's DOM
+  //   folder.domElement
+  //     .querySelector(".children")
+  //     .appendChild(bandVisualContainer);
 
-    // Store references for updating
-    modulator._bandVisual = {
-      container: bandVisualContainer,
-      bar: bandLevelBar,
-      label: bandLabel,
-      lastUpdate: 0,
-      currentValue: 0,
-    };
+  //   // Store references for updating
+  //   modulator._bandVisual = {
+  //     container: bandVisualContainer,
+  //     bar: bandLevelBar,
+  //     label: bandLabel,
+  //     lastUpdate: 0,
+  //     currentValue: 0,
+  //   };
 
-    return modulator;
-  }
+  //   return modulator;
+  // }
 
   addMicModulator_New() {
     // Create a new input modulator

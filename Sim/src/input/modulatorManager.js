@@ -56,20 +56,20 @@ export class ModulatorManager {
     };
   }
 
-  /**
-   * Add a target controller with range information
-   * @param {string} name - Name of the target
-   * @param {object} controller - Controller object that can be modulated
-   * @param {number} min - Minimum value (optional)
-   * @param {number} max - Maximum value (optional)
-   */
-  addTargetWithRange(name, controller, min = 0, max = 1) {
-    this.addTarget(name, controller);
-    if (this.targets[name]) {
-      this.targets[name].min = min;
-      this.targets[name].max = max;
-    }
-  }
+  // /**
+  //  * Add a target controller with range information
+  //  * @param {string} name - Name of the target
+  //  * @param {object} controller - Controller object that can be modulated
+  //  * @param {number} min - Minimum value (optional)
+  //  * @param {number} max - Maximum value (optional)
+  //  */
+  // addTargetWithRange(name, controller, min = 0, max = 1) {
+  //   this.addTarget(name, controller);
+  //   if (this.targets[name]) {
+  //     this.targets[name].min = min;
+  //     this.targets[name].max = max;
+  //   }
+  // }
 
   /**
    * Add a target with full range specifications
@@ -85,9 +85,9 @@ export class ModulatorManager {
       this.targets[name].min = min;
       this.targets[name].max = max;
       this.targets[name].step = step;
-      console.log(
-        `Added target ${name} with range: ${min} - ${max}, step: ${step}`
-      );
+      // console.log(
+      //   `Added target ${name} with range: ${min} - ${max}, step: ${step}`
+      // );
     }
   }
 

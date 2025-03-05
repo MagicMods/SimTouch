@@ -35,21 +35,21 @@ class GridRenderModes {
     this.modes = GridField;
     this.currentMode = this.modes.PROXIMITY; // Start with Density mode
 
-    console.log(
-      "GridRenderModes initialized with new params:",
-      JSON.stringify(
-        {
-          cells: gridParams.target,
-          dimensions: {
-            cols: gridParams.cols,
-            rows: gridParams.rows,
-          },
-          smoothing: this.smoothing,
-        },
-        null,
-        2
-      )
-    );
+    // console.log(
+    //   "GridRenderModes initialized with new params:",
+    //   JSON.stringify(
+    //     {
+    //       cells: gridParams.target,
+    //       dimensions: {
+    //         cols: gridParams.cols,
+    //         rows: gridParams.rows,
+    //       },
+    //       smoothing: this.smoothing,
+    //     },
+    //     null,
+    //     2
+    //   )
+    // );
   }
 
   updateGrid({ gridParams, gridGeometry, gridMap }) {
