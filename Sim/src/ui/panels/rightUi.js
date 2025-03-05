@@ -649,17 +649,169 @@ class RightUi extends BaseUi {
 
     if (!controller) return null;
 
-    // Extract min, max and step values from the controller if available
-    const min = controller.__min !== undefined ? controller.__min : 0;
-    const max = controller.__max !== undefined ? controller.__max : 1;
-    const step = controller.__step !== undefined ? controller.__step : 0.01;
-
-    return {
+    // Create result object with controller reference
+    const result = {
       controller,
-      min,
-      max,
-      step,
+      property: controller.property,
     };
+
+    try {
+      // Extract min/max/step values using multiple approaches for compatibility
+
+      // For lil-gui controls - try different property patterns
+      if (typeof controller._min !== "undefined") {
+        result.min = Number(controller._min);
+        result.max = Number(controller._max);
+        result.step =
+          controller._step !== undefined ? Number(controller._step) : 0.01;
+      }
+      // Alternative property names used in some versions
+      else if (typeof controller.__min !== "undefined") {
+        result.min = Number(controller.__min);
+        result.max = Number(controller.__max);
+        result.step =
+          controller.__step !== undefined ? Number(controller.__step) : 0.01;
+      }
+      // Try function calls if available
+      else if (typeof controller.min === "function") {
+        result.min = Number(controller.min());
+        result.max = Number(controller.max());
+        result.step =
+          typeof controller.step === "function"
+            ? Number(controller.step())
+            : 0.01;
+      }
+      // Last resort - check the controller's object properties
+      else if (controller.object && controller.property) {
+        // For Turbulence controls - check their specific ranges in the code
+        if (targetName === "Turbulence Strength") {
+          result.min = 0;
+          result.max = 10; // This matches your UI definition
+          result.step = 0.01;
+        } else if (targetName === "Turbulence Scale") {
+          result.min = 0.1;
+          result.max = 10;
+          result.step = 0.01;
+        } else if (targetName === "Turbulence Speed") {
+          result.min = 0;
+          result.max = 20;
+          result.step = 0.01;
+        }
+        // For other controllers, try to get range from controller's UI definition
+        else {
+          // Look for manually defined ranges in the controller object
+          const obj = controller.object;
+          const prop = controller.property;
+
+          // Extract numerical values
+          if (typeof obj[`${prop}Min`] !== "undefined") {
+            result.min = Number(obj[`${prop}Min`]);
+            result.max = Number(obj[`${prop}Max`]);
+            result.step = obj[`${prop}Step`] || 0.01;
+          }
+        }
+      }
+
+      // If still no specific range found, provide better defaults
+      if (result.min === undefined || result.max === undefined) {
+        console.warn(`Using backup ranges for ${targetName}`);
+        switch (targetName) {
+          case "Turbulence Strength":
+            result.min = 0;
+            result.max = 10;
+            result.step = 0.01;
+            break;
+          case "Turbulence Scale":
+            result.min = 0.1;
+            result.max = 10;
+            result.step = 0.01;
+            break;
+          case "Turbulence Speed":
+            result.min = 0;
+            result.max = 20;
+            result.step = 0.01;
+            break;
+          case "Scale Strength":
+            result.min = 0;
+            result.max = 1;
+            result.step = 0.01;
+            break;
+          case "Inward Pull":
+            result.min = 0;
+            result.max = 5;
+            result.step = 0.01;
+            break;
+          case "Turbulence Decay":
+            result.min = 0.9;
+            result.max = 1;
+            result.step = 0.001;
+            break;
+          case "Voronoi Strength":
+            result.min = 0;
+            result.max = 10;
+            result.step = 0.01;
+            break;
+          case "Cell Speed":
+            result.min = 0;
+            result.max = 4;
+            result.step = 0.01;
+            break;
+          case "Edge Width":
+            result.min = 0.1;
+            result.max = 50;
+            result.step = 0.1;
+            break;
+          case "Attraction":
+            result.min = 0;
+            result.max = 8;
+            result.step = 0.01;
+            break;
+          case "Cell Count":
+            result.min = 1;
+            result.max = 10;
+            result.step = 1;
+            break;
+          case "Force":
+            result.min = 0;
+            result.max = 5;
+            result.step = 0.01;
+            break;
+          case "Fluid Radius":
+            result.min = 5;
+            result.max = 50;
+            result.step = 1;
+            break;
+          case "Surface Tension":
+            result.min = 0;
+            result.max = 1;
+            result.step = 0.01;
+            break;
+          case "Viscosity":
+            result.min = 0;
+            result.max = 1;
+            result.step = 0.01;
+            break;
+          default:
+            result.min = 0;
+            result.max = 1;
+            result.step = 0.01;
+        }
+      }
+
+      console.log(
+        `Range for ${targetName}: ${result.min} - ${result.max}, step: ${result.step}`
+      );
+      return result;
+    } catch (e) {
+      console.error(`Error extracting range for ${targetName}:`, e);
+      // Provide default range
+      return {
+        controller,
+        min: 0,
+        max: 1,
+        step: 0.01,
+      };
+    }
   }
 
   updateControllerDisplays() {

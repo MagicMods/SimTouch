@@ -141,18 +141,18 @@ export class InputModulator {
       // Map from 0-1 to min-max
       const mappedValue = this.min + normalizedValue * (this.max - this.min);
 
-      // Debug logging to track values
-      if (Math.random() < 0.01) {
-        // Log only occasionally to avoid flooding console
-        console.log(
-          `InputModulator(${
-            this.targetName
-          }): input=${this.currentInputValue.toFixed(3)}, ` +
-            `normalized=${normalizedValue.toFixed(
-              3
-            )}, mapped=${mappedValue.toFixed(3)}`
-        );
-      }
+      // // Debug logging to track values
+      // if (Math.random() < 0.01) {
+      //   // Log only occasionally to avoid flooding console
+      //   console.log(
+      //     `InputModulator(${
+      //       this.targetName
+      //     }): input=${this.currentInputValue.toFixed(3)}, ` +
+      //       `normalized=${normalizedValue.toFixed(
+      //         3
+      //       )}, mapped=${mappedValue.toFixed(3)}`
+      //   );
+      // }
 
       // Apply to target
       this.targetController.setValue(mappedValue);

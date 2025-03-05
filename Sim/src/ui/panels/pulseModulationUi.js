@@ -430,49 +430,58 @@ export class PulseModulationUi extends BaseUi {
     });
   }
 
+  // Fix the updateRangeForTarget method
   updateRangeForTarget(modulator, minController, maxController) {
     const targetName = modulator.targetName;
-    if (!targetName) return;
+    if (!targetName) {
+      console.warn("No target name specified for auto-range");
+      return;
+    }
 
-    // Get target info from our manager
-    const targetInfo = this.modulatorManager.getTargetInfo(targetName);
+    // Directly access the target from ModulatorManager
+    const targetController = this.modulatorManager.targets[targetName];
+    if (!targetController) {
+      console.warn(`Target "${targetName}" not found for auto-range`);
+      return;
+    }
 
-    if (targetInfo && !isNaN(targetInfo.min) && !isNaN(targetInfo.max)) {
-      // Use valid numeric values only
-      const min = targetInfo.min;
-      const max = targetInfo.max;
-      const step = targetInfo.step || 0.01;
+    // Extract min and max directly from the target controller
+    const min = targetController.min;
+    const max = targetController.max;
+    const step = targetController.step || 0.01;
 
-      // Update the modulator's min/max
+    // Check if we have valid numeric values
+    if (min !== undefined && max !== undefined && !isNaN(min) && !isNaN(max)) {
+      console.log(
+        `Auto-ranging ${targetName} from ${min} to ${max}, step ${step}`
+      );
+
+      // Update modulator's min/max
       modulator.min = min;
       modulator.max = max;
-
-      console.log(
-        `Set range for ${targetName}: both sliders now have range ${min} to ${max}`
-      );
 
       // Update controller ranges
       if (minController) {
         minController.min(min);
         minController.max(max);
-        minController.step(step);
         minController.setValue(min);
+        minController.step(step);
         minController.updateDisplay();
       }
 
       if (maxController) {
         maxController.min(min);
         maxController.max(max);
-        maxController.step(step);
         maxController.setValue(max);
+        maxController.step(step);
         maxController.updateDisplay();
       }
     } else {
       console.warn(
-        `Invalid range for target ${targetName}: min=${targetInfo?.min}, max=${targetInfo?.max}`
+        `Invalid range for target ${targetName}: min=${min}, max=${max}`
       );
 
-      // Set default values that always work
+      // Set default values as fallback
       modulator.min = 0;
       modulator.max = 1;
 
