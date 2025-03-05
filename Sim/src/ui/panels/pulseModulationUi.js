@@ -200,10 +200,10 @@ export class PulseModulationUi extends BaseUi {
         // Remove the folder using the correct method for lil-gui
         folder.destroy();
 
-        // Remove from our tracking array
-        const folderIndex = this.modulatorFolders.indexOf(folder);
+        // Fix: Use this.folders instead of this.modulatorFolders
+        const folderIndex = this.folders.indexOf(folder);
         if (folderIndex > -1) {
-          this.modulatorFolders.splice(folderIndex, 1);
+          this.folders.splice(folderIndex, 1);
         }
       },
     };
@@ -391,11 +391,11 @@ export class PulseModulationUi extends BaseUi {
   // Add this method to the PulseModulationUi class
   updateModulatorDisplays() {
     // Update all modulator UI controllers to reflect current values
-    if (!this.pulseModManager || !this.modulatorFolders) return;
+    if (!this.pulseModManager || !this.folders) return; // Changed from this.modulatorFolders
 
     this.pulseModManager.modulators.forEach((modulator, index) => {
       // Find the folder for this modulator
-      const folder = this.modulatorFolders[index];
+      const folder = this.folders[index]; // Changed from this.modulatorFolders
       if (!folder) return;
 
       // Update all controllers in the folder
@@ -454,10 +454,11 @@ export class PulseModulationUi extends BaseUi {
     const targetNames = this.pulseModManager?.getTargetNames() || [];
 
     // Skip if we don't have modulators or target names
-    if (!this.modulatorFolders || !targetNames.length) return;
+    if (!this.folders || !targetNames.length) return; // Changed from this.modulatorFolders
 
     // Update each modulator folder's target dropdown
-    this.modulatorFolders.forEach((folder) => {
+    this.folders.forEach((folder) => {
+      // Changed from this.modulatorFolders
       // Find the target controller (usually the second controller in the folder)
       const targetController = folder.controllers.find(
         (c) => c.property === "targetName"

@@ -92,65 +92,41 @@ export class UiManager {
   }
 
   initializeUiComponents() {
-    try {
-      // Create UI panels
-      this.leftUi = new LeftUi(this.main, this.leftContainer);
-      this.rightUi = new RightUi(this.main, this.rightContainer);
-      this.presetUi = new PresetUi(this.main, this.presetContainer);
-      this.networkUi = new NetworkUi(this.main, this.networkContainer);
+    // Create a shared ModulatorManager
+    this.modulatorManager = new ModulatorManager();
 
-      // Create pulse modulation UI - this should be created after leftUi and rightUi
-      this.pulseModUi = new PulseModulationUi(
-        this.main,
-        this.pulseModContainer
-      );
-      this.pulseModUi.initializeWithUiPanels(this.leftUi, this.rightUi);
+    console.log("UiManager: Initializing UI components");
 
-      // Create input UI after leftUi and rightUi
-      this.inputUi = new InputUi(this.main, this.inputContainer);
+    // First initialize all UI panels without targets
+    // (existing panel initialization code)
 
-      // Register with PresetManager if available
-      if (this.presetManager) {
-        this.leftUi.setPresetManager(this.presetManager);
-        this.rightUi.setPresetManager(this.presetManager);
-        this.pulseModUi.initWithPresetManager(this.presetManager);
-        // this.inputUi.initWithPresetManager(this.presetManager);
-      }
+    console.log("UiManager: Setting shared ModulatorManager");
 
-      // Set up cross-panel connections
-      if (this.pulseModulationUi && this.leftUi && this.rightUi) {
-        this.pulseModulationUi.initializeWithUiPanels(
-          this.leftUi,
-          this.rightUi
-        );
-      } else {
-        console.warn("Some UI panels not initialized, skipping connections");
-      }
-
-      // Initialize preset managers if they exist
-      if (this.presetManager) {
-        if (this.rightUi) this.rightUi.setPresetManager(this.presetManager);
-        if (this.inputUi && this.inputUi.initWithPresetManager)
-          this.inputUi.initWithPresetManager(this.presetManager);
-        if (this.pulseModulationUi && this.pulseModulationUi.initPresetControls)
-          this.pulseModulationUi.initPresetControls(this.presetManager);
-      }
-
-      // Initialize cross-panel interactions after all UI components are created
-      if (this.inputUi) {
-        this.inputUi.initializeWithUiPanels(this.leftUi, this.rightUi);
-      }
-
-      // PulseModulationUi should be initialized after InputUi
-      if (this.pulseModulationUi) {
-        this.pulseModulationUi.initializeWithUiPanels(
-          this.leftUi,
-          this.rightUi
-        );
-      }
-    } catch (e) {
-      console.error("Error initializing UI components:", e);
-      // Continue execution even if UI component initialization fails
+    // Share the ModulatorManager with UI components that need it
+    if (this.inputUi) {
+      this.inputUi.setModulatorManager(this.modulatorManager);
     }
+
+    if (this.pulseModulationUi) {
+      this.pulseModulationUi.setModulatorManager(this.modulatorManager);
+    }
+
+    console.log("UiManager: Registering targets");
+
+    // Register targets from UI panels
+    this.modulatorManager.registerTargetsFromUi(this.leftUi, this.rightUi);
+
+    console.log("UiManager: Initializing cross-references");
+
+    // Now initialize UI components with panel references
+    if (this.inputUi) {
+      this.inputUi.initializeWithUiPanels(this.leftUi, this.rightUi);
+    }
+
+    if (this.pulseModulationUi) {
+      this.pulseModulationUi.initializeWithUiPanels(this.leftUi, this.rightUi);
+    }
+
+    console.log("UiManager: All UI components initialized");
   }
 }

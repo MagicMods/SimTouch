@@ -8,14 +8,18 @@ export class InputUi extends BaseUi {
     // Initialize arrays
     this.audioDevices = [];
     this.modulatorFolders = [];
-    this.micControllers = []; // Add this line to initialize the array
+    this.micControllers = [];
 
-    // Create a ModulatorManager for input modulators
+    // Create a ModulatorManager for input modulators - will be replaced by the shared one
     this.modulatorManager = new ModulatorManager();
+
+    // Flag to prevent early target registration
+    this.deferTargetRegistration = true;
 
     // Change the GUI title
     this.gui.title("Inputs");
 
+    // Use the original initialization flow
     this.initInputControls();
 
     // Create a single interval for updating all band visualizations
@@ -33,6 +37,466 @@ export class InputUi extends BaseUi {
 
     // Call parent dispose
     super.dispose();
+  }
+
+  // Set the shared ModulatorManager
+  setModulatorManager(manager) {
+    this.modulatorManager = manager;
+    console.log("InputUi using shared ModulatorManager");
+  }
+
+  // Initialize with UI panels just like PulseModulationUi
+  initializeWithUiPanels(leftUi, rightUi) {
+    console.log("InputUi initializing with UI panels");
+
+    // Store UI references
+    this.leftUi = leftUi;
+    this.rightUi = rightUi;
+
+    // Allow target registration now
+    this.deferTargetRegistration = false;
+
+    // Now register targets
+    this.registerAvailableTargets();
+
+    console.log("InputUi initialized with UI panels");
+  }
+
+  // Add this method to scan available controllers from leftUi and rightUi
+  registerAvailableTargets() {
+    console.log("InputUi delegating target registration to ModulatorManager");
+
+    // If deferring, don't register targets yet
+    if (this.deferTargetRegistration) {
+      console.log(
+        "InputUi deferring target registration until UI panels are ready"
+      );
+      return;
+    }
+
+    // No need to call this directly since UiManager handles it now with the shared manager
+    if (this.leftUi && this.rightUi) {
+      this.modulatorManager.registerTargetsFromUi(this.leftUi, this.rightUi);
+    } else if (this.main.ui) {
+      // Fallback to using main.ui references
+      this.modulatorManager.registerTargetsFromUi(
+        this.main.ui.leftUi,
+        this.main.ui.rightUi
+      );
+    } else {
+      console.warn("InputUi could not find UI panels for target registration");
+    }
+  }
+
+  // Main update method to handle audio input modulation
+  update() {
+    if (!this.main.audioAnalyzer) return;
+
+    // Update all modulators with their respective frequency band data
+    for (const modulator of this.modulatorManager.modulators) {
+      if (modulator.inputSource === "mic") {
+        const analyzer = this.main.audioAnalyzer;
+        let value = 0;
+
+        // Get the appropriate frequency band value
+        if (analyzer) {
+          try {
+            switch (modulator.frequencyBand) {
+              case "sub":
+                value = analyzer.getAverageEnergy("sub");
+                break;
+              case "bass":
+                value = analyzer.getAverageEnergy("bass");
+                break;
+              case "lowMid":
+                value = analyzer.getAverageEnergy("lowMid");
+                break;
+              case "mid":
+                value = analyzer.getAverageEnergy("mid");
+                break;
+              case "highMid":
+                value = analyzer.getAverageEnergy("highMid");
+                break;
+              case "treble":
+                value = analyzer.getAverageEnergy("treble");
+                break;
+              case "none":
+              default:
+                // Try various methods to get volume
+                if (typeof analyzer.getVolumeNormalized === "function") {
+                  value = analyzer.getVolumeNormalized();
+                } else if (typeof analyzer.getVolume === "function") {
+                  value = analyzer.getVolume();
+                } else if (
+                  this.main.externalInput?.micForces?.smoothedAmplitude !==
+                  undefined
+                ) {
+                  value = this.main.externalInput.micForces.smoothedAmplitude;
+                }
+                break;
+            }
+          } catch (e) {
+            console.warn(
+              `Error getting audio data for ${modulator.frequencyBand}:`,
+              e
+            );
+            value = 0;
+          }
+        }
+
+        // Set the input value for the modulator
+        modulator.setInputValue(value);
+      }
+    }
+
+    // Update all modulators through the manager
+    this.modulatorManager.update();
+  }
+
+  // Update band visualizations in the UI
+  updateAllBandVisualizations() {
+    if (
+      !this.main.audioAnalyzer ||
+      !this.main.externalInput?.micForces?.enabled
+    )
+      return;
+
+    const analyzer = this.main.audioAnalyzer;
+    const micForces = this.main.externalInput.micForces;
+    const now = performance.now();
+
+    // Update modulators with visual elements
+    if (this.modulatorFolders) {
+      this.modulatorManager.modulators.forEach((modulator) => {
+        // Skip if no visualization or not time to update yet
+        if (
+          !modulator._bandVisual ||
+          now - modulator._bandVisual.lastUpdate < 50
+        )
+          return;
+        modulator._bandVisual.lastUpdate = now;
+
+        // Update the visualization based on frequency band
+        this.updateSingleBandVisualization(modulator, analyzer, micForces);
+      });
+    }
+  }
+
+  // Helper method to update a single band visualization
+  updateSingleBandVisualization(modulator, analyzer, micForces) {
+    let rawValue = 0;
+    let bandName = "All";
+
+    // Method to safely check for function existence and call if it exists
+    const safeCall = (obj, methodName, ...args) => {
+      if (obj && typeof obj[methodName] === "function") {
+        return obj[methodName](...args);
+      }
+      return 0;
+    };
+
+    if (modulator.frequencyBand !== "none" && analyzer) {
+      // Get the appropriate frequency band value
+      switch (modulator.frequencyBand) {
+        case "sub":
+          rawValue =
+            safeCall(analyzer, "getAverageEnergy", "sub") ||
+            safeCall(micForces, "getBandEnergy", "sub") ||
+            0;
+          bandName = "Sub Bass";
+          break;
+        case "bass":
+          rawValue =
+            safeCall(analyzer, "getAverageEnergy", "bass") ||
+            safeCall(micForces, "getBandEnergy", "bass") ||
+            0;
+          bandName = "Bass";
+          break;
+        case "lowMid":
+          rawValue =
+            safeCall(analyzer, "getAverageEnergy", "lowMid") ||
+            safeCall(micForces, "getBandEnergy", "lowMid") ||
+            0;
+          bandName = "Low Mid";
+          break;
+        case "mid":
+          rawValue =
+            safeCall(analyzer, "getAverageEnergy", "mid") ||
+            safeCall(micForces, "getBandEnergy", "mid") ||
+            0;
+          bandName = "Mid";
+          break;
+        case "highMid":
+          rawValue =
+            safeCall(analyzer, "getAverageEnergy", "highMid") ||
+            safeCall(micForces, "getBandEnergy", "highMid") ||
+            0;
+          bandName = "High Mid";
+          break;
+        case "treble":
+          rawValue =
+            safeCall(analyzer, "getAverageEnergy", "treble") ||
+            safeCall(micForces, "getBandEnergy", "treble") ||
+            0;
+          bandName = "Treble";
+          break;
+        default:
+          // Instead of calling getVolumeNormalized directly, try multiple possible methods
+          rawValue =
+            safeCall(analyzer, "getVolumeLevel") ||
+            safeCall(analyzer, "getVolume") ||
+            safeCall(micForces, "getSmoothedAmplitude") ||
+            micForces.smoothedAmplitude ||
+            0;
+          bandName = "All";
+          break;
+      }
+    } else {
+      // Full range mode - try multiple volume access methods
+      rawValue =
+        safeCall(analyzer, "getVolumeLevel") ||
+        safeCall(analyzer, "getVolume") ||
+        safeCall(micForces, "getSmoothedAmplitude") ||
+        micForces.smoothedAmplitude ||
+        0;
+    }
+
+    // Apply sensitivity and smoothing
+    let bandValue = rawValue * modulator.sensitivity;
+
+    // Normalize to 0-1 range for visualization
+    bandValue = Math.min(1.0, Math.max(0, bandValue));
+
+    // Update the visual (0-100%)
+    const level = bandValue * 100;
+    modulator._bandVisual.bar.style.width = `${level}%`;
+
+    // Update label with band name and value percentage
+    modulator._bandVisual.label.textContent = `${bandName}: ${Math.round(
+      level
+    )}%`;
+
+    // Color the bar based on level
+    if (level > 80) {
+      modulator._bandVisual.bar.style.backgroundColor = "#f44"; // Red for high levels
+    } else if (level > 50) {
+      modulator._bandVisual.bar.style.backgroundColor = "#ff4"; // Yellow for medium levels
+    } else {
+      modulator._bandVisual.bar.style.backgroundColor = "#4f4"; // Green for low levels
+    }
+  }
+
+  // Keep the core method to add a modulator
+  addMicModulator() {
+    // Create a new input modulator
+    const modulator = this.modulatorManager.createInputModulator();
+
+    // Create a folder for this modulator
+    const index = this.modulatorFolders.length;
+    const folder = this.micInputFolder.addFolder(`Mic Modulator ${index + 1}`);
+
+    // Add this folder to our tracking array
+    this.modulatorFolders.push(folder);
+
+    // Add UI controls for the modulator
+    folder
+      .add(modulator, "enabled")
+      .name("Enabled")
+      .onChange((value) => {
+        // If disabled, reset to original value
+        if (!value) modulator.resetToOriginal();
+      });
+
+    // Add target selector
+    const targetNames = this.modulatorManager.getTargetNames();
+
+    // Get references to range controllers for updating later
+    let minController, maxController;
+
+    folder
+      .add(modulator, "targetName", targetNames)
+      .name("Target")
+      .onChange((value) => {
+        // Set the target
+        modulator.setTarget(value);
+        this.updateRangeForTarget(modulator, minController, maxController);
+      });
+
+    // Add frequency band selector
+    const bands = {
+      "All (Volume)": "none",
+      "Sub Bass": "sub",
+      Bass: "bass",
+      "Low Mid": "lowMid",
+      Mid: "mid",
+      "High Mid": "highMid",
+      Treble: "treble",
+    };
+    folder.add(modulator, "frequencyBand", bands).name("Frequency Band");
+
+    // Add sensitivity slider
+    folder.add(modulator, "sensitivity", 0.1, 5, 0.1).name("Sensitivity");
+
+    // Add smoothing slider
+    folder.add(modulator, "smoothing", 0, 0.99, 0.01).name("Smoothing");
+
+    // Add range controls
+    minController = folder.add(modulator, "min", 0, 1, 0.01).name("Min Value");
+    maxController = folder.add(modulator, "max", 0, 1, 0.01).name("Max Value");
+
+    // Add auto-range button
+    const autoRangeControl = {
+      autoRange: () => {
+        this.updateRangeForTarget(modulator, minController, maxController);
+      },
+    };
+    folder.add(autoRangeControl, "autoRange").name("Auto Range");
+
+    // Add remove button
+    const removeObj = {
+      remove: () => {
+        // Disable modulator to reset target
+        if (modulator.enabled) {
+          modulator.enabled = false;
+          modulator.resetToOriginal();
+        }
+
+        // Remove from manager
+        this.modulatorManager.modulators =
+          this.modulatorManager.modulators.filter((m) => m !== modulator);
+
+        // Remove folder - use destroy() instead of removeFolder()
+        folder.destroy();
+
+        // Remove from tracking array
+        const idx = this.modulatorFolders.indexOf(folder);
+        if (idx !== -1) {
+          this.modulatorFolders.splice(idx, 1);
+        }
+      },
+    };
+    folder.add(removeObj, "remove").name("Remove");
+
+    // Add visualization
+    this.addVisualizationToModulator(modulator, folder);
+
+    // Set default target and auto-range
+    if (targetNames.length > 0) {
+      modulator.setTarget(targetNames[0]);
+      autoRangeControl.autoRange();
+    }
+
+    // Open the folder by default
+    folder.open();
+
+    return modulator;
+  }
+
+  // Add this helper method just like in PulseModulationUi
+  updateRangeForTarget(modulator, minController, maxController) {
+    const targetName = modulator.targetName;
+    if (!targetName) return;
+
+    // Get target info from ModulatorManager
+    const targetInfo = this.modulatorManager.getTargetInfo(targetName);
+
+    if (
+      targetInfo &&
+      targetInfo.min !== undefined &&
+      targetInfo.max !== undefined
+    ) {
+      const min = targetInfo.min;
+      const max = targetInfo.max;
+      const step = targetInfo.step || 0.01;
+
+      // Update the modulator's min/max
+      modulator.min = min;
+      modulator.max = max;
+
+      // Update controller ranges
+      if (minController) {
+        minController.min(min);
+        minController.max(max);
+        minController.setValue(min);
+        minController.step(step);
+        minController.updateDisplay();
+      }
+
+      if (maxController) {
+        maxController.min(min);
+        maxController.max(max);
+        maxController.setValue(max);
+        maxController.step(step);
+        maxController.updateDisplay();
+      }
+
+      console.log(`Auto-ranged for target ${targetName}: ${min} - ${max}`);
+    }
+  }
+
+  // Keep the visualization creation helper
+  addVisualizationToModulator(modulator, folder) {
+    // Add a band visualization to show the frequency band activity
+    const bandVisualContainer = document.createElement("div");
+    bandVisualContainer.style.margin = "8px 0";
+    bandVisualContainer.style.padding = "0";
+    bandVisualContainer.style.position = "relative";
+
+    // Create band level visualization
+    const bandVisual = document.createElement("div");
+    bandVisual.style.height = "16px";
+    bandVisual.style.backgroundColor = "#333";
+    bandVisual.style.borderRadius = "3px";
+    bandVisual.style.overflow = "hidden";
+    bandVisual.style.position = "relative";
+
+    // Create the level bar
+    const bandLevelBar = document.createElement("div");
+    bandLevelBar.style.height = "100%";
+    bandLevelBar.style.backgroundColor = "#4f4";
+    bandLevelBar.style.width = "0%";
+    bandLevelBar.style.position = "absolute";
+    bandLevelBar.style.left = "0";
+    bandLevelBar.style.top = "0";
+    bandLevelBar.style.transition = "width 0.05s ease-out";
+
+    // Create label that shows band name and level
+    const bandLabel = document.createElement("div");
+    bandLabel.style.position = "absolute";
+    bandLabel.style.left = "5px";
+    bandLabel.style.top = "0";
+    bandLabel.style.color = "#fff";
+    bandLabel.style.fontSize = "10px";
+    bandLabel.style.lineHeight = "16px";
+    bandLabel.style.textShadow = "1px 1px 1px rgba(0,0,0,0.5)";
+    bandLabel.style.whiteSpace = "nowrap";
+    bandLabel.style.overflow = "hidden";
+    bandLabel.textContent = "All: 0%";
+
+    // Add elements to container
+    bandVisual.appendChild(bandLevelBar);
+    bandVisual.appendChild(bandLabel);
+    bandVisualContainer.appendChild(bandVisual);
+
+    // Add to the folder's DOM
+    folder.domElement
+      .querySelector(".children")
+      .appendChild(bandVisualContainer);
+
+    // Store references for updating
+    modulator._bandVisual = {
+      container: bandVisualContainer,
+      bar: bandLevelBar,
+      label: bandLabel,
+      lastUpdate: 0,
+      currentValue: 0,
+    };
+  }
+
+  // Essential compatibility method for ModulatorManager
+  updateControllerDisplays() {
+    // This method is for compatibility with ModulatorManager
+    // It will be populated later if needed
   }
 
   initInputControls() {
@@ -986,7 +1450,7 @@ export class InputUi extends BaseUi {
           this.modulatorManager.modulators.filter((m) => m !== modulator);
 
         // Remove the folder
-        this.micInputFolder.removeFolder(folder);
+        folder.destroy();
 
         // Remove from our tracking array
         const idx = this.modulatorFolders.indexOf(folder);
@@ -1964,8 +2428,8 @@ export class InputUi extends BaseUi {
         this.modulatorManager.modulators =
           this.modulatorManager.modulators.filter((m) => m !== modulator);
 
-        // Remove folder
-        this.micInputFolder.removeFolder(folder);
+        // Remove folder - use destroy() instead of removeFolder()
+        folder.destroy();
 
         // Remove from tracking array
         const idx = this.modulatorFolders.indexOf(folder);
