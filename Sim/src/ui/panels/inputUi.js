@@ -104,59 +104,82 @@ export class InputUi extends BaseUi {
     if (!this.main.audioAnalyzer) return;
 
     // Update all modulators with their respective frequency band data
-    for (const modulator of this.modulatorManager.modulators) {
+    for (let i = 0; i < this.modulatorManager.modulators.length; i++) {
+      const modulator = this.modulatorManager.modulators[i];
       if (modulator.inputSource === "mic") {
         const analyzer = this.main.audioAnalyzer;
+        const micForces = this.main.externalInput?.micForces;
         let value = 0;
 
-        // Get the appropriate frequency band value
-        if (analyzer) {
-          try {
-            switch (modulator.frequencyBand) {
-              case "sub":
-                value = analyzer.getAverageEnergy("sub");
-                break;
-              case "bass":
-                value = analyzer.getAverageEnergy("bass");
-                break;
-              case "lowMid":
-                value = analyzer.getAverageEnergy("lowMid");
-                break;
-              case "mid":
-                value = analyzer.getAverageEnergy("mid");
-                break;
-              case "highMid":
-                value = analyzer.getAverageEnergy("highMid");
-                break;
-              case "treble":
-                value = analyzer.getAverageEnergy("treble");
-                break;
-              case "none":
-              default:
-                // Try various methods to get volume
-                if (typeof analyzer.getVolumeNormalized === "function") {
-                  value = analyzer.getVolumeNormalized();
-                } else if (typeof analyzer.getVolume === "function") {
-                  value = analyzer.getVolume();
-                } else if (
-                  this.main.externalInput?.micForces?.smoothedAmplitude !==
-                  undefined
-                ) {
-                  value = this.main.externalInput.micForces.smoothedAmplitude;
-                }
-                break;
-            }
-          } catch (e) {
-            console.warn(
-              `Error getting audio data for ${modulator.frequencyBand}:`,
-              e
-            );
-            value = 0;
+        try {
+          // Get the appropriate frequency band value
+          switch (modulator.frequencyBand) {
+            case "sub":
+              value =
+                typeof analyzer.getAverageEnergy === "function"
+                  ? analyzer.getAverageEnergy("sub")
+                  : 0;
+              break;
+            case "bass":
+              value =
+                typeof analyzer.getAverageEnergy === "function"
+                  ? analyzer.getAverageEnergy("bass")
+                  : 0;
+              break;
+            case "lowMid":
+              value =
+                typeof analyzer.getAverageEnergy === "function"
+                  ? analyzer.getAverageEnergy("lowMid")
+                  : 0;
+              break;
+            case "mid":
+              value =
+                typeof analyzer.getAverageEnergy === "function"
+                  ? analyzer.getAverageEnergy("mid")
+                  : 0;
+              break;
+            case "highMid":
+              value =
+                typeof analyzer.getAverageEnergy === "function"
+                  ? analyzer.getAverageEnergy("highMid")
+                  : 0;
+              break;
+            case "treble":
+              value =
+                typeof analyzer.getAverageEnergy === "function"
+                  ? analyzer.getAverageEnergy("treble")
+                  : 0;
+              break;
+            case "none":
+            default:
+              // Use whatever volume method is available on the analyzer
+              if (typeof analyzer.getVolume === "function") {
+                value = analyzer.getVolume();
+              } else if (typeof analyzer.volume !== "undefined") {
+                value = analyzer.volume;
+              } else if (micForces?.smoothedAmplitude !== undefined) {
+                value = micForces.smoothedAmplitude;
+              } else {
+                value = 0;
+              }
+              break;
           }
-        }
 
-        // Set the input value for the modulator
-        modulator.setInputValue(value);
+          // Add occasional logging to debug
+          if (Math.random() < 0.01) {
+            console.log(
+              `Audio data (${modulator.frequencyBand}): ${value.toFixed(4)}`
+            );
+          }
+
+          // Set the input value for the modulator
+          modulator.setInputValue(value);
+        } catch (e) {
+          console.warn(
+            `Error getting audio data for ${modulator.frequencyBand}:`,
+            e
+          );
+        }
       }
     }
 
@@ -301,6 +324,7 @@ export class InputUi extends BaseUi {
   addMicModulator() {
     // Create a new input modulator
     const modulator = this.modulatorManager.createInputModulator();
+    modulator.inputSource = "mic"; // Explicitly set the input source to mic
 
     // Create a folder for this modulator
     const index = this.modulatorFolders.length;
@@ -314,145 +338,104 @@ export class InputUi extends BaseUi {
       .add(modulator, "enabled")
       .name("Enabled")
       .onChange((value) => {
-        // If disabled, reset to original value
         if (!value) modulator.resetToOriginal();
       });
 
     // Get the LATEST target names directly from the manager
-    let targetNames = this.modulatorManager.getTargetNames();
+    const targetNames = this.modulatorManager.getTargetNames();
     console.log(
       `Adding mic modulator with ${targetNames.length} available targets`
     );
 
-    // Auto-refresh targets if none are found
-    if (targetNames.length === 0 && this.leftUi && this.rightUi) {
-      console.log("No targets found, auto-refreshing target list");
-      this.registerAvailableTargets();
-      targetNames = this.modulatorManager.getTargetNames();
-      console.log(
-        `After auto-refresh: ${targetNames.length} targets available`
-      );
-    }
+    // Get references to range controllers for updating later
+    let minController, maxController;
 
-    // If no targets available, add a message and a refresh button
-    if (targetNames.length === 0) {
-      folder
-        .add({ message: "No targets available" }, "message")
-        .name("WARNING");
-
-      const refreshControl = {
-        refreshTargets: () => {
-          console.log("Manually refreshing target list");
-          this.registerAvailableTargets();
-          this.updateTargetDropdowns();
-
-          // Check if targets are now available
-          const updatedTargets = this.modulatorManager.getTargetNames();
-          if (updatedTargets.length > 0) {
-            // Remove this folder and create a new one with targets
-            folder.destroy();
-            const idx = this.modulatorFolders.indexOf(folder);
-            if (idx !== -1) {
-              this.modulatorFolders.splice(idx, 1);
-            }
-
-            // Create a new modulator with the targets
-            this.addMicModulator();
-          }
-        },
-      };
-
-      folder.add(refreshControl, "refreshTargets").name("Refresh Targets");
-    } else {
-      // Continue with normal setup now that targets are available
-      // Get references to range controllers for updating later
-      let minController, maxController;
-
-      // Add target selector with all available targets
-      const targetController = folder
-        .add(modulator, "targetName", targetNames)
-        .name("Target")
-        .onChange((value) => {
-          // Set the target
+    // Add target selector with all available targets - IMPORTANT: Start with no selection
+    const targetController = folder
+      .add(modulator, "targetName", ["None", ...targetNames])
+      .name("Target")
+      .onChange((value) => {
+        // Only set target if it's not "None"
+        if (value && value !== "None") {
+          console.log(`Setting target to ${value}`);
           modulator.setTarget(value);
           this.updateRangeForTarget(modulator, minController, maxController);
-        });
+        } else {
+          // Disable modulation if "None" is selected
+          modulator.targetName = null;
+          modulator.target = null;
+          modulator.targetController = null;
+        }
+      });
 
-      // Add frequency band selector
-      const bands = {
-        "All (Volume)": "none",
-        "Sub Bass": "sub",
-        Bass: "bass",
-        "Low Mid": "lowMid",
-        Mid: "mid",
-        "High Mid": "highMid",
-        Treble: "treble",
-      };
-      folder.add(modulator, "frequencyBand", bands).name("Frequency Band");
+    // Set the initial value to "None"
+    targetController.setValue("None");
 
-      // Add sensitivity slider
-      folder.add(modulator, "sensitivity", 0.1, 5, 0.1).name("Sensitivity");
+    // Add frequency band selector
+    const bands = {
+      "All (Volume)": "none",
+      "Sub Bass": "sub",
+      Bass: "bass",
+      "Low Mid": "lowMid",
+      Mid: "mid",
+      "High Mid": "highMid",
+      Treble: "treble",
+    };
+    folder.add(modulator, "frequencyBand", bands).name("Frequency Band");
 
-      // Add smoothing slider
-      folder.add(modulator, "smoothing", 0, 0.99, 0.01).name("Smoothing");
+    // Add sensitivity slider
+    folder.add(modulator, "sensitivity", 0.1, 5, 0.1).name("Sensitivity");
 
-      // Add range controls
-      minController = folder
-        .add(modulator, "min", 0, 1, 0.01)
-        .name("Min Value");
-      maxController = folder
-        .add(modulator, "max", 0, 1, 0.01)
-        .name("Max Value");
+    // Add smoothing slider
+    folder.add(modulator, "smoothing", 0, 0.99, 0.01).name("Smoothing");
 
-      // Add auto-range button
-      const autoRangeControl = {
-        autoRange: () => {
-          this.updateRangeForTarget(modulator, minController, maxController);
-        },
-      };
-      folder.add(autoRangeControl, "autoRange").name("Auto Range");
+    // Add range controls
+    minController = folder.add(modulator, "min", 0, 1, 0.01).name("Min Value");
+    maxController = folder.add(modulator, "max", 0, 1, 0.01).name("Max Value");
 
-      // Add remove button
-      const removeObj = {
-        remove: () => {
-          // Disable modulator to reset target
-          if (modulator.enabled) {
-            modulator.enabled = false;
-            modulator.resetToOriginal();
-          }
+    // Add auto-range button
+    const autoRangeControl = {
+      autoRange: () => {
+        this.updateRangeForTarget(modulator, minController, maxController);
+      },
+    };
+    folder.add(autoRangeControl, "autoRange").name("Auto Range");
 
-          // Remove from manager
-          this.modulatorManager.modulators =
-            this.modulatorManager.modulators.filter((m) => m !== modulator);
+    // Add remove button
+    const removeObj = {
+      remove: () => {
+        // Disable modulator to reset target
+        if (modulator.enabled) {
+          modulator.enabled = false;
+          modulator.resetToOriginal();
+        }
 
-          // Remove folder - use destroy() instead of removeFolder()
-          folder.destroy();
+        // Remove from manager
+        this.modulatorManager.modulators =
+          this.modulatorManager.modulators.filter((m) => m !== modulator);
 
-          // Remove from tracking array
-          const idx = this.modulatorFolders.indexOf(folder);
-          if (idx !== -1) {
-            this.modulatorFolders.splice(idx, 1);
-          }
-        },
-      };
-      folder.add(removeObj, "remove").name("Remove");
+        // Remove folder
+        folder.destroy();
 
-      // Add visualization
-      this.addVisualizationToModulator(modulator, folder);
+        // Remove from tracking array
+        const idx = this.modulatorFolders.indexOf(folder);
+        if (idx !== -1) {
+          this.modulatorFolders.splice(idx, 1);
+        }
+      },
+    };
+    folder.add(removeObj, "remove").name("Remove");
 
-      // Set default target and auto-range
-      if (targetNames.length > 0) {
-        modulator.setTarget(targetNames[0]);
-        autoRangeControl.autoRange();
-      }
-    }
+    // Add visualization
+    this.addVisualizationToModulator(modulator, folder);
+
+    // DO NOT set a default target here - require user to select one
 
     // Open the folder by default
     folder.open();
 
     return modulator;
   }
-
   // Add this helper method just like in PulseModulationUi
   updateRangeForTarget(modulator, minController, maxController) {
     const targetName = modulator.targetName;
@@ -2179,40 +2162,82 @@ export class InputUi extends BaseUi {
       const modulator = this.modulatorManager.modulators[i];
       if (modulator.inputSource === "mic") {
         const analyzer = this.main.audioAnalyzer;
+        const micForces = this.main.externalInput?.micForces;
         let value = 0;
 
-        // Get the appropriate frequency band value
-        switch (modulator.frequencyBand) {
-          case "sub":
-            value = analyzer.getAverageEnergy("sub");
-            break;
-          case "bass":
-            value = analyzer.getAverageEnergy("bass");
-            break;
-          case "lowMid":
-            value = analyzer.getAverageEnergy("lowMid");
-            break;
-          case "mid":
-            value = analyzer.getAverageEnergy("mid");
-            break;
-          case "highMid":
-            value = analyzer.getAverageEnergy("highMid");
-            break;
-          case "treble":
-            value = analyzer.getAverageEnergy("treble");
-            break;
-          case "none":
-          default:
-            value = analyzer.getVolumeNormalized();
-            break;
-        }
+        try {
+          // Get the appropriate frequency band value
+          switch (modulator.frequencyBand) {
+            case "sub":
+              value =
+                typeof analyzer.getAverageEnergy === "function"
+                  ? analyzer.getAverageEnergy("sub")
+                  : 0;
+              break;
+            case "bass":
+              value =
+                typeof analyzer.getAverageEnergy === "function"
+                  ? analyzer.getAverageEnergy("bass")
+                  : 0;
+              break;
+            case "lowMid":
+              value =
+                typeof analyzer.getAverageEnergy === "function"
+                  ? analyzer.getAverageEnergy("lowMid")
+                  : 0;
+              break;
+            case "mid":
+              value =
+                typeof analyzer.getAverageEnergy === "function"
+                  ? analyzer.getAverageEnergy("mid")
+                  : 0;
+              break;
+            case "highMid":
+              value =
+                typeof analyzer.getAverageEnergy === "function"
+                  ? analyzer.getAverageEnergy("highMid")
+                  : 0;
+              break;
+            case "treble":
+              value =
+                typeof analyzer.getAverageEnergy === "function"
+                  ? analyzer.getAverageEnergy("treble")
+                  : 0;
+              break;
+            case "none":
+            default:
+              // Use whatever volume method is available on the analyzer
+              if (typeof analyzer.getVolume === "function") {
+                value = analyzer.getVolume();
+              } else if (typeof analyzer.volume !== "undefined") {
+                value = analyzer.volume;
+              } else if (micForces?.smoothedAmplitude !== undefined) {
+                value = micForces.smoothedAmplitude;
+              } else {
+                value = 0;
+              }
+              break;
+          }
 
-        // Set the input value for the modulator
-        modulator.setInputValue(value);
+          // // Add occasional logging to debug
+          // if (Math.random() < 0.01) {
+          //   console.log(
+          //     `Audio data (${modulator.frequencyBand}): ${value.toFixed(4)}`
+          //   );
+          // }
+
+          // Set the input value for the modulator
+          modulator.setInputValue(value);
+        } catch (e) {
+          console.warn(
+            `Error getting audio data for ${modulator.frequencyBand}:`,
+            e
+          );
+        }
       }
     }
 
-    // Update all modulators
+    // Update all modulators through the manager
     this.modulatorManager.update();
   }
 
@@ -2234,89 +2259,11 @@ export class InputUi extends BaseUi {
     }
   }
 
-  // Add this new method to handle default targets
-  addDefaultTargets() {
-    // Add default targets with controllers that should always be available
-    const particleSystem = this.main.particleSystem;
-
-    // Particle Size
-    this.modulatorManager.addTargetWithRangeFull(
-      "Particle Size",
-      {
-        object: particleSystem,
-        property: "particleRadius",
-        getValue: () => particleSystem.particleRadius,
-        setValue: (value) => {
-          particleSystem.particleRadius = value;
-          if (particleSystem.collisionSystem) {
-            particleSystem.collisionSystem.particleRadius = value * 2;
-          }
-          if (particleSystem.particleRadii) {
-            particleSystem.particleRadii.fill(value);
-          }
-        },
-        updateDisplay: () => {},
-      },
-      0.005,
-      0.03,
-      0.001
-    );
-
-    // Animation Speed
-    this.modulatorManager.addTargetWithRangeFull(
-      "Animation Speed",
-      {
-        object: particleSystem,
-        property: "timeScale",
-        getValue: () => particleSystem.timeScale,
-        setValue: (value) => (particleSystem.timeScale = value),
-        updateDisplay: () => {},
-      },
-      0,
-      2,
-      0.01
-    );
-
-    // Gravity Strength
-    if (particleSystem.gravity) {
-      this.modulatorManager.addTargetWithRangeFull(
-        "Gravity Strength",
-        {
-          object: particleSystem.gravity,
-          property: "strength",
-          getValue: () => particleSystem.gravity.strength,
-          setValue: (value) => particleSystem.gravity.setStrength(value),
-          updateDisplay: () => {},
-        },
-        0,
-        20,
-        0.1
-      );
-    }
-
-    // Repulsion
-    if (particleSystem.collisionSystem) {
-      this.modulatorManager.addTargetWithRangeFull(
-        "Repulsion",
-        {
-          object: particleSystem.collisionSystem,
-          property: "repulsion",
-          getValue: () => particleSystem.collisionSystem.repulsion,
-          setValue: (value) =>
-            (particleSystem.collisionSystem.repulsion = value),
-          updateDisplay: () => {},
-        },
-        0,
-        5,
-        0.01
-      );
-    }
-  }
-
   // Add this method to create a new input modulator with UI controls
   addMicModulator() {
     // Create a new input modulator
     const modulator = this.modulatorManager.createInputModulator();
+    modulator.inputSource = "mic";
 
     // Create a folder for this modulator
     const index = this.modulatorFolders.length;
@@ -2330,7 +2277,6 @@ export class InputUi extends BaseUi {
       .add(modulator, "enabled")
       .name("Enabled")
       .onChange((value) => {
-        // If disabled, reset to original value
         if (!value) modulator.resetToOriginal();
       });
 
@@ -2340,118 +2286,89 @@ export class InputUi extends BaseUi {
       `Adding mic modulator with ${targetNames.length} available targets`
     );
 
-    // If no targets available, add a message and a refresh button
-    if (targetNames.length === 0) {
-      folder
-        .add({ message: "No targets available" }, "message")
-        .name("WARNING");
+    // Get references to range controllers for updating later
+    let minController, maxController;
 
-      const refreshControl = {
-        refreshTargets: () => {
-          console.log("Manually refreshing target list");
-          this.registerAvailableTargets();
-          this.updateTargetDropdowns();
-
-          // Check if targets are now available
-          const updatedTargets = this.modulatorManager.getTargetNames();
-          if (updatedTargets.length > 0) {
-            // Remove this folder and create a new one with targets
-            folder.destroy();
-            const idx = this.modulatorFolders.indexOf(folder);
-            if (idx !== -1) {
-              this.modulatorFolders.splice(idx, 1);
-            }
-
-            // Create a new modulator with the targets
-            this.addMicModulator();
-          }
-        },
-      };
-
-      folder.add(refreshControl, "refreshTargets").name("Refresh Targets");
-    } else {
-      // Continue with normal setup now that targets are available
-      // Get references to range controllers for updating later
-      let minController, maxController;
-
-      // Add target selector with all available targets
-      const targetController = folder
-        .add(modulator, "targetName", targetNames)
-        .name("Target")
-        .onChange((value) => {
-          // Set the target
+    // Add target selector with all available targets - IMPORTANT: Start with no selection
+    const targetController = folder
+      .add(modulator, "targetName", ["None", ...targetNames])
+      .name("Target")
+      .onChange((value) => {
+        // Only set target if it's not "None"
+        if (value && value !== "None") {
+          console.log(`Setting target to ${value}`);
           modulator.setTarget(value);
           this.updateRangeForTarget(modulator, minController, maxController);
-        });
+        } else {
+          // Disable modulation if "None" is selected
+          modulator.targetName = null;
+          modulator.target = null;
+          modulator.targetController = null;
+        }
+      });
 
-      // Add frequency band selector
-      const bands = {
-        "All (Volume)": "none",
-        "Sub Bass": "sub",
-        Bass: "bass",
-        "Low Mid": "lowMid",
-        Mid: "mid",
-        "High Mid": "highMid",
-        Treble: "treble",
-      };
-      folder.add(modulator, "frequencyBand", bands).name("Frequency Band");
+    // Set the initial value to "None"
+    targetController.setValue("None");
 
-      // Add sensitivity slider
-      folder.add(modulator, "sensitivity", 0.1, 5, 0.1).name("Sensitivity");
+    // Add frequency band selector
+    const bands = {
+      "All (Volume)": "none",
+      "Sub Bass": "sub",
+      Bass: "bass",
+      "Low Mid": "lowMid",
+      Mid: "mid",
+      "High Mid": "highMid",
+      Treble: "treble",
+    };
+    folder.add(modulator, "frequencyBand", bands).name("Frequency Band");
 
-      // Add smoothing slider
-      folder.add(modulator, "smoothing", 0, 0.99, 0.01).name("Smoothing");
+    // Add sensitivity slider
+    folder.add(modulator, "sensitivity", 0.1, 5, 0.1).name("Sensitivity");
 
-      // Add range controls
-      minController = folder
-        .add(modulator, "min", 0, 1, 0.01)
-        .name("Min Value");
-      maxController = folder
-        .add(modulator, "max", 0, 1, 0.01)
-        .name("Max Value");
+    // Add smoothing slider
+    folder.add(modulator, "smoothing", 0, 0.99, 0.01).name("Smoothing");
 
-      // Add auto-range button
-      const autoRangeControl = {
-        autoRange: () => {
-          this.updateRangeForTarget(modulator, minController, maxController);
-        },
-      };
-      folder.add(autoRangeControl, "autoRange").name("Auto Range");
+    // Add range controls
+    minController = folder.add(modulator, "min", 0, 1, 0.01).name("Min Value");
+    maxController = folder.add(modulator, "max", 0, 1, 0.01).name("Max Value");
 
-      // Add remove button
-      const removeObj = {
-        remove: () => {
-          // Disable modulator to reset target
-          if (modulator.enabled) {
-            modulator.enabled = false;
-            modulator.resetToOriginal();
-          }
+    // Add auto-range button
+    const autoRangeControl = {
+      autoRange: () => {
+        this.updateRangeForTarget(modulator, minController, maxController);
+      },
+    };
+    folder.add(autoRangeControl, "autoRange").name("Auto Range");
 
-          // Remove from manager
-          this.modulatorManager.modulators =
-            this.modulatorManager.modulators.filter((m) => m !== modulator);
+    // Add remove button
+    const removeObj = {
+      remove: () => {
+        // Disable modulator to reset target
+        if (modulator.enabled) {
+          modulator.enabled = false;
+          modulator.resetToOriginal();
+        }
 
-          // Remove folder - use destroy() instead of removeFolder()
-          folder.destroy();
+        // Remove from manager
+        this.modulatorManager.modulators =
+          this.modulatorManager.modulators.filter((m) => m !== modulator);
 
-          // Remove from tracking array
-          const idx = this.modulatorFolders.indexOf(folder);
-          if (idx !== -1) {
-            this.modulatorFolders.splice(idx, 1);
-          }
-        },
-      };
-      folder.add(removeObj, "remove").name("Remove");
+        // Remove folder
+        folder.destroy();
 
-      // Add visualization
-      this.addVisualizationToModulator(modulator, folder);
+        // Remove from tracking array
+        const idx = this.modulatorFolders.indexOf(folder);
+        if (idx !== -1) {
+          this.modulatorFolders.splice(idx, 1);
+        }
+      },
+    };
+    folder.add(removeObj, "remove").name("Remove");
 
-      // Set default target and auto-range
-      if (targetNames.length > 0) {
-        modulator.setTarget(targetNames[0]);
-        autoRangeControl.autoRange();
-      }
-    }
+    // Add visualization
+    this.addVisualizationToModulator(modulator, folder);
+
+    // DO NOT set a default target here - require user to select one
 
     // Open the folder by default
     folder.open();

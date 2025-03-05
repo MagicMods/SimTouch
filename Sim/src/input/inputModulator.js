@@ -3,18 +3,20 @@
  * such as microphone audio, EMU sensors, or external inputs
  */
 export class InputModulator {
+  // Update the constructor to not set any default target
   constructor(manager) {
     this.manager = manager;
-    this.enabled = true;
-    this.targetName = null;
-    this.target = null;
-    this.originalValue = null;
-    this.inputSource = "none"; // 'none', 'mic', 'emu', 'external'
-    this.frequencyBand = "none"; // 'none', 'bass', 'mid', 'treble', etc.
+    this.enabled = false; // Start disabled
+    this.inputSource = "mic";
+    this.frequencyBand = "none";
     this.sensitivity = 1.0;
-    this.smoothing = 0.5;
+    this.smoothing = 0.7;
     this.min = 0;
     this.max = 1;
+    this.targetName = null; // Start with no target
+    this.target = null; // No target object
+    this.targetController = null; // No target controller
+    this.originalValue = 0;
     this.currentInputValue = 0;
     this.lastOutputValue = 0;
   }
@@ -34,6 +36,9 @@ export class InputModulator {
       // Store target info
       this.targetName = targetName;
       this.target = target;
+
+      // CRITICAL FIX: Set the targetController property which is used in update()
+      this.targetController = target; // This line was missing!
 
       // Get current value and store as original
       this.originalValue = target.getValue();
@@ -117,12 +122,17 @@ export class InputModulator {
     return value;
   }
 
-  /**
-   * Update the modulator
-   * @param {number} deltaTime - Time since last update in seconds
-   */
+  // Fix the update method to really check if there's a target
   update(deltaTime) {
-    if (!this.targetController || !this.enabled) return;
+    // Skip if no target or not enabled
+    if (
+      !this.targetController ||
+      !this.target ||
+      !this.targetName ||
+      !this.enabled
+    ) {
+      return;
+    }
 
     try {
       // Get the processed input value (0-1)
@@ -130,6 +140,19 @@ export class InputModulator {
 
       // Map from 0-1 to min-max
       const mappedValue = this.min + normalizedValue * (this.max - this.min);
+
+      // Debug logging to track values
+      if (Math.random() < 0.01) {
+        // Log only occasionally to avoid flooding console
+        console.log(
+          `InputModulator(${
+            this.targetName
+          }): input=${this.currentInputValue.toFixed(3)}, ` +
+            `normalized=${normalizedValue.toFixed(
+              3
+            )}, mapped=${mappedValue.toFixed(3)}`
+        );
+      }
 
       // Apply to target
       this.targetController.setValue(mappedValue);

@@ -72,19 +72,6 @@ export class ModulatorManager {
   }
 
   /**
-   * Add a target controller with full range information
-   * @param {string} name - Name of the target
-   * @param {object} controller - Controller object that can be modulated
-   * @param {number} min - Minimum valid value
-   * @param {number} max - Maximum valid value
-   * @param {number} step - Step value for the controller
-   */
-  addTargetWithRangeFull(name, controller, min, max, step) {
-    this.addTarget(name, controller);
-    this.targetRanges[name] = { min, max, step };
-  }
-
-  /**
    * Add a target with full range specifications
    * @param {string} name - Name of the target
    * @param {object} controller - Controller object that can be modulated
@@ -114,15 +101,6 @@ export class ModulatorManager {
       controller: this.targets[name],
       ...(this.targetRanges[name] || {}),
     };
-  }
-
-  /**
-   * Get target information by name
-   * @param {string} name - Name of the target
-   * @returns {object|null} Target information or null if not found
-   */
-  getTargetInfo(name) {
-    return this.targets[name] || null;
   }
 
   /**

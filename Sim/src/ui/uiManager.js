@@ -76,10 +76,18 @@ export class UiManager {
   }
 
   update() {
-    if (this.pulseModUi) {
-      this.pulseModUi.update();
+    // First update input values from audio analyzer
+    if (this.inputUi && typeof this.inputUi.update === "function") {
+      this.inputUi.update();
     }
-    this.updateStats();
+
+    // Then update all modulators (both pulse and input)
+    if (this.modulatorManager) {
+      this.modulatorManager.update();
+    }
+
+    // Update stats display
+    if (this.stats) this.stats.update();
   }
 
   dispose() {

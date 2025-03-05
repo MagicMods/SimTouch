@@ -119,11 +119,18 @@ export class ExternalInputConnector {
     return this;
   }
 
+  // Add/update this method in your ExternalInput class
   setMicSensitivity(value) {
     if (this.micForces) {
-      this.micForces.setSensitivity(value);
+      this.micForces.sensitivity = value;
+
+      // Debug audio levels
+      console.log(
+        `Mic level: ${this.micForces.smoothedAmplitude.toFixed(
+          3
+        )} at sensitivity ${value}`
+      );
     }
-    return this;
   }
 
   setMicSmoothing(value) {
