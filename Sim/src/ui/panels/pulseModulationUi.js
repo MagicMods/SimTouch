@@ -26,7 +26,7 @@ export class PulseModulationUi extends BaseUi {
     this.presetController = null;
 
     // Initialize target controller map
-    this.initializeTargetControllerMap();
+    this.targetControllerMap = new Map();
   }
 
   initBasicControls() {
@@ -401,70 +401,6 @@ export class PulseModulationUi extends BaseUi {
           controller.updateDisplay();
         }
       });
-    });
-  }
-
-  // Add this method to maintain a mapping between target names and their GUI controllers
-  initializeTargetControllerMap() {
-    this.targetControllerMap = new Map();
-  }
-
-  // Add this helper method to find GUI controllers
-  findGuiControllerForTarget(name) {
-    // Check in leftUi
-    if (this.leftUi && this.leftUi.gui) {
-      for (const folder of this.leftUi.gui.folders) {
-        for (const controller of folder.controllers) {
-          if (controller.property === this.getPropertyForTargetName(name)) {
-            return controller;
-          }
-        }
-      }
-    }
-
-    // Check in rightUi
-    if (this.rightUi && this.rightUi.gui) {
-      for (const folder of this.rightUi.gui.folders) {
-        for (const controller of folder.controllers) {
-          if (controller.property === this.getPropertyForTargetName(name)) {
-            return controller;
-          }
-        }
-      }
-    }
-
-    return null;
-  }
-
-  // Helper to get property name from target name
-  getPropertyForTargetName(name) {
-    const target = this.leftUi.getControllerForTarget(name);
-    return target ? target.property : null;
-  }
-
-  /**
-   * Update target dropdown options in all modulator folders
-   */
-  updateTargetDropdowns() {
-    // Get the updated list of target names
-    const targetNames = this.pulseModManager?.getTargetNames() || [];
-
-    // Skip if we don't have modulators or target names
-    if (!this.folders || !targetNames.length) return; // Changed from this.modulatorFolders
-
-    // Update each modulator folder's target dropdown
-    this.folders.forEach((folder) => {
-      // Changed from this.modulatorFolders
-      // Find the target controller (usually the second controller in the folder)
-      const targetController = folder.controllers.find(
-        (c) => c.property === "targetName"
-      );
-
-      if (targetController && targetController.options) {
-        // Update available options
-        targetController.options(targetNames);
-        targetController.updateDisplay();
-      }
     });
   }
 
