@@ -113,72 +113,47 @@ export class InputUi extends BaseUi {
 
         try {
           // Get the appropriate frequency band value
-          switch (modulator.frequencyBand) {
-            case "sub":
-              value =
-                typeof analyzer.getAverageEnergy === "function"
-                  ? analyzer.getAverageEnergy("sub")
-                  : 0;
-              break;
-            case "bass":
-              value =
-                typeof analyzer.getAverageEnergy === "function"
-                  ? analyzer.getAverageEnergy("bass")
-                  : 0;
-              break;
-            case "lowMid":
-              value =
-                typeof analyzer.getAverageEnergy === "function"
-                  ? analyzer.getAverageEnergy("lowMid")
-                  : 0;
-              break;
-            case "mid":
-              value =
-                typeof analyzer.getAverageEnergy === "function"
-                  ? analyzer.getAverageEnergy("mid")
-                  : 0;
-              break;
-            case "highMid":
-              value =
-                typeof analyzer.getAverageEnergy === "function"
-                  ? analyzer.getAverageEnergy("highMid")
-                  : 0;
-              break;
-            case "treble":
-              value =
-                typeof analyzer.getAverageEnergy === "function"
-                  ? analyzer.getAverageEnergy("treble")
-                  : 0;
-              break;
-            case "none":
-            default:
-              // Use whatever volume method is available on the analyzer
-              if (typeof analyzer.getVolume === "function") {
-                value = analyzer.getVolume();
-              } else if (typeof analyzer.volume !== "undefined") {
-                value = analyzer.volume;
-              } else if (micForces?.smoothedAmplitude !== undefined) {
-                value = micForces.smoothedAmplitude;
-              } else {
-                value = 0;
-              }
-              break;
-          }
-
-          // Add occasional logging to debug
-          if (Math.random() < 0.01) {
-            console.log(
-              `Audio data (${modulator.frequencyBand}): ${value.toFixed(4)}`
-            );
+          if (modulator.frequencyBand !== "none" && analyzer) {
+            // Get band-specific volume
+            switch (modulator.frequencyBand) {
+              case "sub":
+                value = analyzer.calculateBandLevels().sub || 0;
+                break;
+              case "bass":
+                value = analyzer.calculateBandLevels().bass || 0;
+                break;
+              case "lowMid":
+                value = analyzer.calculateBandLevels().lowMid || 0;
+                break;
+              case "mid":
+                value = analyzer.calculateBandLevels().mid || 0;
+                break;
+              case "highMid":
+                value = analyzer.calculateBandLevels().highMid || 0;
+                break;
+              case "treble":
+                // Combine presence and brilliance for treble
+                const bands = analyzer.calculateBandLevels();
+                value = ((bands.presence || 0) + (bands.brilliance || 0)) / 2;
+                break;
+              default:
+                // Full volume
+                value = analyzer.smoothedVolume || 0;
+                break;
+            }
+          } else {
+            // Use overall volume for "none" band
+            value =
+              analyzer.smoothedVolume ||
+              (micForces && micForces.smoothedAmplitude
+                ? micForces.smoothedAmplitude
+                : 0);
           }
 
           // Set the input value for the modulator
           modulator.setInputValue(value);
         } catch (e) {
-          console.warn(
-            `Error getting audio data for ${modulator.frequencyBand}:`,
-            e
-          );
+          console.error("Error processing audio input for modulator:", e);
         }
       }
     }
@@ -192,8 +167,9 @@ export class InputUi extends BaseUi {
     if (
       !this.main.audioAnalyzer ||
       !this.main.externalInput?.micForces?.enabled
-    )
+    ) {
       return;
+    }
 
     const analyzer = this.main.audioAnalyzer;
     const micForces = this.main.externalInput.micForces;
@@ -202,16 +178,96 @@ export class InputUi extends BaseUi {
     // Update modulators with visual elements
     if (this.modulatorFolders) {
       this.modulatorManager.modulators.forEach((modulator) => {
-        // Skip if no visualization or not time to update yet
-        if (
-          !modulator._bandVisual ||
-          now - modulator._bandVisual.lastUpdate < 50
-        )
-          return;
+        if (!modulator._bandVisual) return;
+
+        // Limit update frequency for performance
+        if (now - modulator._bandVisual.lastUpdate < 50) return;
         modulator._bandVisual.lastUpdate = now;
 
-        // Update the visualization based on frequency band
-        this.updateSingleBandVisualization(modulator, analyzer, micForces);
+        let rawValue = 0;
+        let bandName = "All";
+
+        // Method to safely check for function existence and call if it exists
+        const safeCall = (obj, methodName, ...args) => {
+          if (obj && typeof obj[methodName] === "function") {
+            return obj[methodName](...args);
+          }
+          return 0;
+        };
+
+        if (modulator.frequencyBand !== "none" && analyzer) {
+          // Get the appropriate frequency band value
+          switch (modulator.frequencyBand) {
+            case "sub":
+              rawValue = analyzer.calculateBandLevels().sub || 0;
+              bandName = "Sub Bass";
+              break;
+            case "bass":
+              rawValue = analyzer.calculateBandLevels().bass || 0;
+              bandName = "Bass";
+              break;
+            case "lowMid":
+              rawValue = analyzer.calculateBandLevels().lowMid || 0;
+              bandName = "Low Mid";
+              break;
+            case "mid":
+              rawValue = analyzer.calculateBandLevels().mid || 0;
+              bandName = "Mid";
+              break;
+            case "highMid":
+              rawValue = analyzer.calculateBandLevels().highMid || 0;
+              bandName = "High Mid";
+              break;
+            case "treble":
+              // FIXED: Use presence + brilliance as treble, consistent with other methods
+              const bands = analyzer.calculateBandLevels();
+              rawValue = ((bands.presence || 0) + (bands.brilliance || 0)) / 2;
+              bandName = "Treble";
+              break;
+            default:
+              // Instead of calling getVolumeNormalized directly, try multiple possible methods
+              rawValue =
+                safeCall(analyzer, "getVolumeLevel") ||
+                analyzer.smoothedVolume ||
+                safeCall(micForces, "getSmoothedAmplitude") ||
+                micForces.smoothedAmplitude ||
+                0;
+              bandName = "All";
+              break;
+          }
+        } else {
+          // Full range mode - try multiple volume access methods
+          rawValue =
+            safeCall(analyzer, "getVolumeLevel") ||
+            analyzer.smoothedVolume ||
+            safeCall(micForces, "getSmoothedAmplitude") ||
+            micForces.smoothedAmplitude ||
+            0;
+        }
+
+        // Apply sensitivity and smoothing
+        let bandValue = rawValue * modulator.sensitivity;
+
+        // Normalize to 0-1 range for visualization
+        bandValue = Math.min(1.0, Math.max(0, bandValue));
+
+        // Update the visual (0-100%)
+        const level = bandValue * 100;
+        modulator._bandVisual.bar.style.width = `${level}%`;
+
+        // Update label with band name and value percentage
+        modulator._bandVisual.label.textContent = `${bandName}: ${Math.round(
+          level
+        )}%`;
+
+        // Color the bar based on level
+        if (level > 80) {
+          modulator._bandVisual.bar.style.backgroundColor = "#f44"; // Red for high levels
+        } else if (level > 50) {
+          modulator._bandVisual.bar.style.backgroundColor = "#ff4"; // Yellow for medium levels
+        } else {
+          modulator._bandVisual.bar.style.backgroundColor = "#4f4"; // Green for low levels
+        }
       });
     }
   }
@@ -233,45 +289,29 @@ export class InputUi extends BaseUi {
       // Get the appropriate frequency band value
       switch (modulator.frequencyBand) {
         case "sub":
-          rawValue =
-            safeCall(analyzer, "getAverageEnergy", "sub") ||
-            safeCall(micForces, "getBandEnergy", "sub") ||
-            0;
-          bandName = "Sub Bass";
+          rawValue = analyzer.calculateBandLevels().sub || 0;
+          bandName = "Sub";
           break;
         case "bass":
-          rawValue =
-            safeCall(analyzer, "getAverageEnergy", "bass") ||
-            safeCall(micForces, "getBandEnergy", "bass") ||
-            0;
+          rawValue = analyzer.calculateBandLevels().bass || 0;
           bandName = "Bass";
           break;
         case "lowMid":
-          rawValue =
-            safeCall(analyzer, "getAverageEnergy", "lowMid") ||
-            safeCall(micForces, "getBandEnergy", "lowMid") ||
-            0;
-          bandName = "Low Mid";
+          rawValue = analyzer.calculateBandLevels().lowMid || 0;
+          bandName = "LowMid";
           break;
         case "mid":
-          rawValue =
-            safeCall(analyzer, "getAverageEnergy", "mid") ||
-            safeCall(micForces, "getBandEnergy", "mid") ||
-            0;
+          rawValue = analyzer.calculateBandLevels().mid || 0;
           bandName = "Mid";
           break;
         case "highMid":
-          rawValue =
-            safeCall(analyzer, "getAverageEnergy", "highMid") ||
-            safeCall(micForces, "getBandEnergy", "highMid") ||
-            0;
-          bandName = "High Mid";
+          rawValue = analyzer.calculateBandLevels().highMid || 0;
+          bandName = "HighMid";
           break;
         case "treble":
-          rawValue =
-            safeCall(analyzer, "getAverageEnergy", "treble") ||
-            safeCall(micForces, "getBandEnergy", "treble") ||
-            0;
+          // Use presence + brilliance as treble
+          const bands = analyzer.calculateBandLevels();
+          rawValue = ((bands.presence || 0) + (bands.brilliance || 0)) / 2;
           bandName = "Treble";
           break;
         default:
@@ -2058,52 +2098,36 @@ export class InputUi extends BaseUi {
           // Get the appropriate frequency band value
           switch (modulator.frequencyBand) {
             case "sub":
-              rawValue =
-                safeCall(analyzer, "getAverageEnergy", "sub") ||
-                safeCall(micForces, "getBandEnergy", "sub") ||
-                0;
+              rawValue = analyzer.calculateBandLevels().sub || 0;
               bandName = "Sub Bass";
               break;
             case "bass":
-              rawValue =
-                safeCall(analyzer, "getAverageEnergy", "bass") ||
-                safeCall(micForces, "getBandEnergy", "bass") ||
-                0;
+              rawValue = analyzer.calculateBandLevels().bass || 0;
               bandName = "Bass";
               break;
             case "lowMid":
-              rawValue =
-                safeCall(analyzer, "getAverageEnergy", "lowMid") ||
-                safeCall(micForces, "getBandEnergy", "lowMid") ||
-                0;
+              rawValue = analyzer.calculateBandLevels().lowMid || 0;
               bandName = "Low Mid";
               break;
             case "mid":
-              rawValue =
-                safeCall(analyzer, "getAverageEnergy", "mid") ||
-                safeCall(micForces, "getBandEnergy", "mid") ||
-                0;
+              rawValue = analyzer.calculateBandLevels().mid || 0;
               bandName = "Mid";
               break;
             case "highMid":
-              rawValue =
-                safeCall(analyzer, "getAverageEnergy", "highMid") ||
-                safeCall(micForces, "getBandEnergy", "highMid") ||
-                0;
+              rawValue = analyzer.calculateBandLevels().highMid || 0;
               bandName = "High Mid";
               break;
             case "treble":
-              rawValue =
-                safeCall(analyzer, "getAverageEnergy", "treble") ||
-                safeCall(micForces, "getBandEnergy", "treble") ||
-                0;
+              // FIXED: Use presence + brilliance as treble, consistent with other methods
+              const bands = analyzer.calculateBandLevels();
+              rawValue = ((bands.presence || 0) + (bands.brilliance || 0)) / 2;
               bandName = "Treble";
               break;
             default:
               // Instead of calling getVolumeNormalized directly, try multiple possible methods
               rawValue =
                 safeCall(analyzer, "getVolumeLevel") ||
-                safeCall(analyzer, "getVolume") ||
+                analyzer.smoothedVolume ||
                 safeCall(micForces, "getSmoothedAmplitude") ||
                 micForces.smoothedAmplitude ||
                 0;
@@ -2114,7 +2138,7 @@ export class InputUi extends BaseUi {
           // Full range mode - try multiple volume access methods
           rawValue =
             safeCall(analyzer, "getVolumeLevel") ||
-            safeCall(analyzer, "getVolume") ||
+            analyzer.smoothedVolume ||
             safeCall(micForces, "getSmoothedAmplitude") ||
             micForces.smoothedAmplitude ||
             0;
@@ -2167,64 +2191,42 @@ export class InputUi extends BaseUi {
 
         try {
           // Get the appropriate frequency band value
-          switch (modulator.frequencyBand) {
-            case "sub":
-              value =
-                typeof analyzer.getAverageEnergy === "function"
-                  ? analyzer.getAverageEnergy("sub")
-                  : 0;
-              break;
-            case "bass":
-              value =
-                typeof analyzer.getAverageEnergy === "function"
-                  ? analyzer.getAverageEnergy("bass")
-                  : 0;
-              break;
-            case "lowMid":
-              value =
-                typeof analyzer.getAverageEnergy === "function"
-                  ? analyzer.getAverageEnergy("lowMid")
-                  : 0;
-              break;
-            case "mid":
-              value =
-                typeof analyzer.getAverageEnergy === "function"
-                  ? analyzer.getAverageEnergy("mid")
-                  : 0;
-              break;
-            case "highMid":
-              value =
-                typeof analyzer.getAverageEnergy === "function"
-                  ? analyzer.getAverageEnergy("highMid")
-                  : 0;
-              break;
-            case "treble":
-              value =
-                typeof analyzer.getAverageEnergy === "function"
-                  ? analyzer.getAverageEnergy("treble")
-                  : 0;
-              break;
-            case "none":
-            default:
-              // Use whatever volume method is available on the analyzer
-              if (typeof analyzer.getVolume === "function") {
-                value = analyzer.getVolume();
-              } else if (typeof analyzer.volume !== "undefined") {
-                value = analyzer.volume;
-              } else if (micForces?.smoothedAmplitude !== undefined) {
-                value = micForces.smoothedAmplitude;
-              } else {
-                value = 0;
-              }
-              break;
+          if (modulator.frequencyBand !== "none" && analyzer) {
+            // Get band-specific volume
+            switch (modulator.frequencyBand) {
+              case "sub":
+                value = analyzer.calculateBandLevels().sub || 0;
+                break;
+              case "bass":
+                value = analyzer.calculateBandLevels().bass || 0;
+                break;
+              case "lowMid":
+                value = analyzer.calculateBandLevels().lowMid || 0;
+                break;
+              case "mid":
+                value = analyzer.calculateBandLevels().mid || 0;
+                break;
+              case "highMid":
+                value = analyzer.calculateBandLevels().highMid || 0;
+                break;
+              case "treble":
+                // Combine presence and brilliance for treble
+                const bands = analyzer.calculateBandLevels();
+                value = ((bands.presence || 0) + (bands.brilliance || 0)) / 2;
+                break;
+              default:
+                // Full volume
+                value = analyzer.smoothedVolume || 0;
+                break;
+            }
+          } else {
+            // Use overall volume for "none" band
+            value =
+              analyzer.smoothedVolume ||
+              (micForces && micForces.smoothedAmplitude
+                ? micForces.smoothedAmplitude
+                : 0);
           }
-
-          // // Add occasional logging to debug
-          // if (Math.random() < 0.01) {
-          //   console.log(
-          //     `Audio data (${modulator.frequencyBand}): ${value.toFixed(4)}`
-          //   );
-          // }
 
           // Set the input value for the modulator
           modulator.setInputValue(value);
