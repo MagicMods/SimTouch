@@ -114,7 +114,7 @@ export class UiManager {
         this.leftUi.setPresetManager(this.presetManager);
         this.rightUi.setPresetManager(this.presetManager);
         this.pulseModUi.initWithPresetManager(this.presetManager);
-        this.inputUi.initWithPresetManager(this.presetManager);
+        // this.inputUi.initWithPresetManager(this.presetManager);
       }
 
       // Set up cross-panel connections
@@ -134,6 +134,19 @@ export class UiManager {
           this.inputUi.initWithPresetManager(this.presetManager);
         if (this.pulseModulationUi && this.pulseModulationUi.initPresetControls)
           this.pulseModulationUi.initPresetControls(this.presetManager);
+      }
+
+      // Initialize cross-panel interactions after all UI components are created
+      if (this.inputUi) {
+        this.inputUi.initializeWithUiPanels(this.leftUi, this.rightUi);
+      }
+
+      // PulseModulationUi should be initialized after InputUi
+      if (this.pulseModulationUi) {
+        this.pulseModulationUi.initializeWithUiPanels(
+          this.leftUi,
+          this.rightUi
+        );
       }
     } catch (e) {
       console.error("Error initializing UI components:", e);

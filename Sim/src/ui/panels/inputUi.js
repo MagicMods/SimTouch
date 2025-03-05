@@ -1,8 +1,17 @@
 import { BaseUi } from "./baseUi.js";
+import { ModulatorManager } from "../../input/modulatorManager.js";
 
 export class InputUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
+
+    // Initialize arrays
+    this.audioDevices = [];
+    this.modulatorFolders = [];
+    this.micControllers = []; // Add this line to initialize the array
+
+    // Create a ModulatorManager for input modulators
+    this.modulatorManager = new ModulatorManager();
 
     // Change the GUI title
     this.gui.title("Inputs");
@@ -240,10 +249,10 @@ export class InputUi extends BaseUi {
   }
 
   initMicInputControls() {
-    if (!this.main.externalInput?.micForces) return;
+    if (!this.main.audioAnalyzer) return;
 
+    const analyzer = this.main.audioAnalyzer;
     const externalInput = this.main.externalInput;
-    const micForces = externalInput.micForces;
 
     // Store mic modulators folders
     this.micModulatorFolders = [];
@@ -251,8 +260,8 @@ export class InputUi extends BaseUi {
 
     // Enable toggle at ROOT level
     this.micEnableController = this.micInputFolder
-      .add({ enabled: false }, "enabled")
-      .name("Enable Audio Input") // Updated label to be more generic
+      .add({ enabled: externalInput?.micForces?.enabled || false }, "enabled")
+      .name("Enable Audio Input")
       .onChange((value) => {
         if (value) {
           externalInput.enableMic();
@@ -276,8 +285,6 @@ export class InputUi extends BaseUi {
           }
         } else {
           externalInput.disableMic();
-
-          // No need to hide visualizer here as disableMic already does that
         }
 
         // Toggle visibility of all other controls
@@ -287,11 +294,13 @@ export class InputUi extends BaseUi {
     // Add device selector right after the enable toggle
     this.addAudioDeviceSelector();
 
-    // Continue with the rest of the existing code
+    // Register available targets from other UI panels
+    this.registerAvailableTargets();
+
     // Global sensitivity control
     this.micSensitivityController = this.micInputFolder
       .add(
-        { sensitivity: micForces.sensitivity || 1.0 },
+        { sensitivity: externalInput?.micForces?.sensitivity || 1.0 },
         "sensitivity",
         0.1,
         10.0,
@@ -299,23 +308,33 @@ export class InputUi extends BaseUi {
       )
       .name("Global Sensitivity")
       .onChange((value) => {
-        externalInput.setMicSensitivity(value);
+        if (externalInput) {
+          externalInput.setMicSensitivity(value);
+        }
       });
     this.micControllers.push(this.micSensitivityController);
 
     // Global smoothing control
     this.micSmoothingController = this.micInputFolder
-      .add({ smoothing: micForces.smoothing || 0.8 }, "smoothing", 0, 1, 0.01)
+      .add(
+        { smoothing: externalInput?.micForces?.smoothing || 0.8 },
+        "smoothing",
+        0,
+        1,
+        0.01
+      )
       .name("Smoothing")
       .onChange((value) => {
-        externalInput.setMicSmoothing(value);
+        if (externalInput) {
+          externalInput.setMicSmoothing(value);
+        }
       });
     this.micControllers.push(this.micSmoothingController);
 
     // Calibrate button
     const calibrationControl = {
       calibrate: () => {
-        if (externalInput.micForces && externalInput.micForces.enabled) {
+        if (externalInput?.micForces?.enabled) {
           externalInput.calibrateMic();
           alert("Microphone calibrated to current ambient level");
         } else {
@@ -357,28 +376,16 @@ export class InputUi extends BaseUi {
     levelElement.style.borderRadius = "3px";
     levelElement.style.transition = "width 0.05s ease-out";
 
-    // const levelLabel = document.createElement("div");
-    // levelLabel.textContent = "Audio Level";
-    // levelLabel.style.fontSize = "10px";
-    // levelLabel.style.color = "#aaa";
-    // levelLabel.style.position = "absolute";
-    // levelLabel.style.top = "-16px";
-    // levelLabel.style.left = "0";
-
     visualElement.appendChild(levelElement);
-    // visualElement.appendChild(levelLabel);
     this.micInputFolder.domElement.appendChild(visualElement);
     this.micVisualization = visualElement;
 
-    // Hide controls initially
-    this.toggleAllMicControlsVisibility(false);
-
     // Update visualization
     setInterval(() => {
-      if (micForces && micForces.enabled) {
+      if (externalInput?.micForces?.enabled) {
         const level = Math.min(
           100,
-          Math.max(0, micForces.smoothedAmplitude * 200)
+          Math.max(0, externalInput.micForces.smoothedAmplitude * 200)
         );
         levelElement.style.width = level + "%";
 
@@ -414,7 +421,7 @@ export class InputUi extends BaseUi {
       .add({ fftSize: "1024 (Default)" }, "fftSize", Object.keys(fftSizes))
       .name("FFT Resolution")
       .onChange((value) => {
-        if (externalInput.micForces) {
+        if (externalInput?.micForces) {
           externalInput.micForces.setFftSize(fftSizes[value]);
         }
       });
@@ -424,7 +431,7 @@ export class InputUi extends BaseUi {
       .add({ threshold: 1.5 }, "threshold", 1.1, 3.0, 0.1)
       .name("Beat Threshold")
       .onChange((value) => {
-        if (externalInput.micForces?.analyzer) {
+        if (externalInput?.micForces?.analyzer) {
           externalInput.micForces.analyzer.setBeatDetectionConfig({
             energyThreshold: value,
           });
@@ -436,18 +443,20 @@ export class InputUi extends BaseUi {
     this.micControllers.push(visualizerFolder);
 
     // Toggle visualizer
-    const vizState = { show: true }; // Default is true
+    const vizState = {
+      show: externalInput?.micForces?.visualizerVisible || false,
+    };
 
     // Create the controller
     const visualizerToggle = visualizerFolder
       .add(vizState, "show")
       .name("Show Visualizer")
       .onChange((value) => {
-        if (this.main.externalInput?.micForces) {
+        if (externalInput?.micForces) {
           if (value) {
-            this.main.externalInput.micForces.showVisualizer();
+            externalInput.micForces.showVisualizer();
           } else {
-            this.main.externalInput.micForces.hideVisualizer();
+            externalInput.micForces.hideVisualizer();
           }
         }
       });
@@ -460,7 +469,7 @@ export class InputUi extends BaseUi {
       .add({ theme: "dark" }, "theme", ["dark", "light", "neon"])
       .name("Visualizer Theme")
       .onChange((value) => {
-        if (externalInput.micForces) {
+        if (externalInput?.micForces) {
           externalInput.micForces.setVisualizerTheme(value);
         }
       });
@@ -494,7 +503,7 @@ export class InputUi extends BaseUi {
             .filter((key) => selectedVizs[key])
             .map((key) => vizTypes[key]);
 
-          if (externalInput.micForces?.visualizer) {
+          if (externalInput?.micForces?.visualizer) {
             externalInput.micForces.setVisualizations(selected);
           }
         });
@@ -504,14 +513,11 @@ export class InputUi extends BaseUi {
     analyzerFolder.open(false);
     visualizerFolder.open(false);
 
-    // Make sure initial state is correct
-    if (this.main.externalInput?.micForces?.enabled) {
-      // If already enabled, make sure folders are visible
-      this.toggleAllMicControlsVisibility(true);
-    } else {
-      // Otherwise hide them
-      this.toggleAllMicControlsVisibility(false);
-    }
+    // Hide controls initially (or show if already enabled)
+    const isEnabled = externalInput?.micForces?.enabled || false;
+    this.toggleAllMicControlsVisibility(isEnabled);
+
+    this.micInputFolder.open();
   }
 
   // Add these methods to the InputUi class
@@ -611,7 +617,7 @@ export class InputUi extends BaseUi {
   }
 
   // Add a new method to create mic modulators
-  addMicModulator() {
+  addMicModulator_Old() {
     if (!this.main.externalInput?.micForces) {
       console.error("No mic forces available");
       return null;
@@ -888,6 +894,172 @@ export class InputUi extends BaseUi {
     };
 
     return modulator;
+  }
+
+  addMicModulator_New() {
+    // Create a new input modulator
+    const modulator = this.modulatorManager.createInputModulator();
+
+    // Create a folder for this modulator
+    const index = this.modulatorFolders.length;
+    const folder = this.micInputFolder.addFolder(`Mic Modulator ${index + 1}`);
+
+    // Add this folder to our tracking array
+    this.modulatorFolders.push(folder);
+
+    // Add UI controls for the modulator
+    folder
+      .add(modulator, "enabled")
+      .name("Enabled")
+      .onChange((value) => {
+        // If disabled, reset to original value
+        if (!value) modulator.resetToOriginal();
+      });
+
+    // Add target selector
+    const targetNames = this.modulatorManager.getTargetNames();
+
+    // Get references to range controllers for updating later
+    let minController, maxController;
+
+    folder
+      .add(modulator, "targetName", targetNames)
+      .name("Target")
+      .onChange((value) => {
+        // Set the target
+        modulator.setTarget(value);
+
+        // Auto-range: Update min/max controllers
+        if (modulator.target) {
+          // Update the range controls with the target's min/max
+          const targetMin = modulator.target.min;
+          const targetMax = modulator.target.max;
+
+          // Update model values
+          modulator.min = targetMin;
+          modulator.max = targetMax;
+
+          // Update controller ranges and values
+          if (minController) {
+            minController.min(targetMin * 0.5);
+            minController.max(targetMax * 1.5);
+            minController.setValue(targetMin);
+            minController.updateDisplay();
+          }
+
+          if (maxController) {
+            maxController.min(targetMin * 0.5);
+            maxController.max(targetMax * 1.5);
+            maxController.setValue(targetMax);
+            maxController.updateDisplay();
+          }
+        }
+      });
+
+    // Add frequency band selector
+    const bands = {
+      "All (Volume)": "none",
+      "Sub Bass": "sub",
+      Bass: "bass",
+      "Low Mid": "lowMid",
+      Mid: "mid",
+      "High Mid": "highMid",
+      Treble: "treble",
+    };
+    folder.add(modulator, "frequencyBand", bands).name("Frequency Band");
+
+    // Add sensitivity slider
+    folder.add(modulator, "sensitivity", 0.1, 5, 0.1).name("Sensitivity");
+
+    // Add smoothing slider
+    folder.add(modulator, "smoothing", 0, 0.99, 0.01).name("Smoothing");
+
+    // Add range controls with empty ranges initially
+    minController = folder.add(modulator, "min", 0, 1, 0.01).name("Min Value");
+    maxController = folder.add(modulator, "max", 0, 1, 0.01).name("Max Value");
+
+    // Add remove button
+    const removeObj = {
+      remove: () => {
+        // Remove the modulator
+        this.modulatorManager.modulators =
+          this.modulatorManager.modulators.filter((m) => m !== modulator);
+
+        // Remove the folder
+        this.micInputFolder.removeFolder(folder);
+
+        // Remove from our tracking array
+        const idx = this.modulatorFolders.indexOf(folder);
+        if (idx !== -1) {
+          this.modulatorFolders.splice(idx, 1);
+        }
+      },
+    };
+    folder.add(removeObj, "remove").name("Remove");
+
+    // Add a small band visualization to show the frequency band activity
+    const bandVisualContainer = document.createElement("div");
+    bandVisualContainer.style.margin = "8px 0";
+    bandVisualContainer.style.padding = "0";
+    bandVisualContainer.style.position = "relative";
+
+    // Create band level visualization
+    const bandVisual = document.createElement("div");
+    bandVisual.style.height = "16px";
+    bandVisual.style.backgroundColor = "#333";
+    bandVisual.style.borderRadius = "3px";
+    bandVisual.style.overflow = "hidden";
+    bandVisual.style.position = "relative";
+
+    // Create the level bar
+    const bandLevelBar = document.createElement("div");
+    bandLevelBar.style.height = "100%";
+    bandLevelBar.style.backgroundColor = "#4f4";
+    bandLevelBar.style.width = "0%";
+    bandLevelBar.style.position = "absolute";
+    bandLevelBar.style.left = "0";
+    bandLevelBar.style.top = "0";
+    bandLevelBar.style.transition = "width 0.05s ease-out";
+
+    // Create label that shows band name and level
+    const bandLabel = document.createElement("div");
+    bandLabel.style.position = "absolute";
+    bandLabel.style.left = "5px";
+    bandLabel.style.top = "0";
+    bandLabel.style.color = "#fff";
+    bandLabel.style.fontSize = "10px";
+    bandLabel.style.lineHeight = "16px";
+    bandLabel.style.textShadow = "1px 1px 1px rgba(0,0,0,0.5)";
+    bandLabel.style.whiteSpace = "nowrap";
+    bandLabel.style.overflow = "hidden";
+    bandLabel.textContent = "All: 0%";
+
+    // Add elements to container
+    bandVisual.appendChild(bandLevelBar);
+    bandVisual.appendChild(bandLabel);
+    bandVisualContainer.appendChild(bandVisual);
+
+    // Add to the folder's DOM
+    folder.domElement
+      .querySelector(".children")
+      .appendChild(bandVisualContainer);
+
+    // Store references for updating
+    modulator._bandVisual = {
+      container: bandVisualContainer,
+      bar: bandLevelBar,
+      label: bandLabel,
+      lastUpdate: 0,
+      currentValue: 0,
+    };
+
+    return modulator;
+  }
+
+  // Add a new method to create mic modulators
+  addMicModulator() {
+    // Use the new implementation by default
+    return this.addMicModulator_New();
   }
 
   // Update the microphone UI display from preset
@@ -1273,6 +1445,10 @@ export class InputUi extends BaseUi {
   ////////
 
   addAudioDeviceSelector() {
+    if (!this.audioDevices) {
+      this.audioDevices = [];
+    }
+
     if (!this.micInputFolder) return;
 
     // Container for device selection
@@ -1359,6 +1535,7 @@ export class InputUi extends BaseUi {
           device.label ||
           `Audio Input ${audioInputDevices.indexOf(device) + 1}`;
         this.audioInputDeviceSelect.appendChild(option);
+        this.audioDevices.push(device);
       });
     } catch (err) {
       console.error("Error enumerating audio devices:", err);
@@ -1385,86 +1562,127 @@ export class InputUi extends BaseUi {
 
   updateAllBandVisualizations() {
     if (
-      !this.micModulatorFolders ||
+      !this.main.audioAnalyzer ||
       !this.main.externalInput?.micForces?.enabled
     ) {
       return;
     }
 
+    const analyzer = this.main.audioAnalyzer;
     const micForces = this.main.externalInput.micForces;
     const now = performance.now();
 
-    // Find all modulators with band visualizations
-    this.micModulatorFolders.forEach((folder) => {
-      // Find modulator object associated with this folder
-      const modulator = folder._modulator;
-      if (!modulator || !modulator._bandVisual || !modulator._activeController)
-        return;
+    // Update modulators with visual elements
+    if (this.modulatorFolders) {
+      this.modulatorManager.modulators.forEach((modulator) => {
+        if (!modulator._bandVisual) return;
 
-      // Limit update frequency for performance
-      if (now - modulator._bandVisual.lastUpdate < 50) return;
-      modulator._bandVisual.lastUpdate = now;
+        // Limit update frequency for performance
+        if (now - modulator._bandVisual.lastUpdate < 50) return;
+        modulator._bandVisual.lastUpdate = now;
 
-      let rawValue = 0;
-      let bandName = "Full Range";
+        let rawValue = 0;
+        let bandName = "All";
 
-      if (
-        modulator.frequencyBand !== "none" &&
-        micForces.analyzer &&
-        micForces.analyzer.bands[modulator.frequencyBand]
-      ) {
-        // Get the selected band range
-        const band = micForces.analyzer.bands[modulator.frequencyBand];
+        // Method to safely check for function existence and call if it exists
+        const safeCall = (obj, methodName, ...args) => {
+          if (obj && typeof obj[methodName] === "function") {
+            return obj[methodName](...args);
+          }
+          return 0;
+        };
 
-        // Get energy in this frequency band
-        rawValue = micForces.analyzer.getFrequencyRangeValue(
-          band.min,
-          band.max
-        );
+        if (modulator.frequencyBand !== "none" && analyzer) {
+          // Get the appropriate frequency band value
+          switch (modulator.frequencyBand) {
+            case "sub":
+              rawValue =
+                safeCall(analyzer, "getAverageEnergy", "sub") ||
+                safeCall(micForces, "getBandEnergy", "sub") ||
+                0;
+              bandName = "Sub Bass";
+              break;
+            case "bass":
+              rawValue =
+                safeCall(analyzer, "getAverageEnergy", "bass") ||
+                safeCall(micForces, "getBandEnergy", "bass") ||
+                0;
+              bandName = "Bass";
+              break;
+            case "lowMid":
+              rawValue =
+                safeCall(analyzer, "getAverageEnergy", "lowMid") ||
+                safeCall(micForces, "getBandEnergy", "lowMid") ||
+                0;
+              bandName = "Low Mid";
+              break;
+            case "mid":
+              rawValue =
+                safeCall(analyzer, "getAverageEnergy", "mid") ||
+                safeCall(micForces, "getBandEnergy", "mid") ||
+                0;
+              bandName = "Mid";
+              break;
+            case "highMid":
+              rawValue =
+                safeCall(analyzer, "getAverageEnergy", "highMid") ||
+                safeCall(micForces, "getBandEnergy", "highMid") ||
+                0;
+              bandName = "High Mid";
+              break;
+            case "treble":
+              rawValue =
+                safeCall(analyzer, "getAverageEnergy", "treble") ||
+                safeCall(micForces, "getBandEnergy", "treble") ||
+                0;
+              bandName = "Treble";
+              break;
+            default:
+              // Instead of calling getVolumeNormalized directly, try multiple possible methods
+              rawValue =
+                safeCall(analyzer, "getVolumeLevel") ||
+                safeCall(analyzer, "getVolume") ||
+                safeCall(micForces, "getSmoothedAmplitude") ||
+                micForces.smoothedAmplitude ||
+                0;
+              bandName = "All";
+              break;
+          }
+        } else {
+          // Full range mode - try multiple volume access methods
+          rawValue =
+            safeCall(analyzer, "getVolumeLevel") ||
+            safeCall(analyzer, "getVolume") ||
+            safeCall(micForces, "getSmoothedAmplitude") ||
+            micForces.smoothedAmplitude ||
+            0;
+        }
 
-        // Apply baseline subtraction
-        rawValue = Math.max(0, rawValue - micForces.baselineAmplitude);
+        // Apply sensitivity and smoothing
+        let bandValue = rawValue * modulator.sensitivity;
 
-        // Get friendly name for the band
-        bandName =
-          modulator.frequencyBand.charAt(0).toUpperCase() +
-          modulator.frequencyBand.slice(1);
+        // Normalize to 0-1 range for visualization
+        bandValue = Math.min(1.0, Math.max(0, bandValue));
 
-        // Format the band name to look nice
-        if (bandName === "LowMid") bandName = "Low Mid";
-        if (bandName === "HighMid") bandName = "High Mid";
-      } else {
-        // Full range mode - use overall volume
-        rawValue = Math.max(
-          0,
-          micForces.smoothedAmplitude - micForces.baselineAmplitude
-        );
-      }
+        // Update the visual (0-100%)
+        const level = bandValue * 100;
+        modulator._bandVisual.bar.style.width = `${level}%`;
 
-      // Apply sensitivity (affects responsiveness)
-      let bandValue = rawValue * micForces.sensitivity * modulator.sensitivity;
+        // Update label with band name and value percentage
+        modulator._bandVisual.label.textContent = `${bandName}: ${Math.round(
+          level
+        )}%`;
 
-      // Normalize to 0-1 range for visualization
-      bandValue = Math.min(1.0, Math.max(0, bandValue));
-
-      // Update the visual (0-100%)
-      const level = bandValue * 100;
-      modulator._bandVisual.bar.style.width = `${level}%`;
-
-      // Update label with band name and value percentage
-      modulator._bandVisual.label.textContent = `${bandName}: ${Math.round(
-        level
-      )}%`;
-
-      // Color the bar based on level
-      if (level > 80) {
-        modulator._bandVisual.bar.style.backgroundColor = "#f44"; // Red for high levels
-      } else if (level > 50) {
-        modulator._bandVisual.bar.style.backgroundColor = "#ff4"; // Yellow for medium levels
-      } else {
-        modulator._bandVisual.bar.style.backgroundColor = "#4f4"; // Green for low levels
-      }
-    });
+        // Color the bar based on level
+        if (level > 80) {
+          modulator._bandVisual.bar.style.backgroundColor = "#f44"; // Red for high levels
+        } else if (level > 50) {
+          modulator._bandVisual.bar.style.backgroundColor = "#ff4"; // Yellow for medium levels
+        } else {
+          modulator._bandVisual.bar.style.backgroundColor = "#4f4"; // Green for low levels
+        }
+      });
+    }
   }
 
   // Also add this method to ensure compatibility with ModulatorManager
@@ -1517,5 +1735,334 @@ export class InputUi extends BaseUi {
 
     // Update all modulators
     this.modulatorManager.update();
+  }
+
+  // Add this method to scan available controllers from leftUi and rightUi
+  registerAvailableTargets() {
+    console.log("InputUi delegating target registration to ModulatorManager");
+
+    // Use the centralized method in ModulatorManager
+    if (this.leftUi && this.rightUi) {
+      this.modulatorManager.registerTargetsFromUi(this.leftUi, this.rightUi);
+    } else if (this.main.ui) {
+      // Fallback to using main.ui references
+      this.modulatorManager.registerTargetsFromUi(
+        this.main.ui.leftUi,
+        this.main.ui.rightUi
+      );
+    } else {
+      console.warn("InputUi could not find UI panels for target registration");
+    }
+  }
+
+  // Add this new method to handle default targets
+  addDefaultTargets() {
+    // Add default targets with controllers that should always be available
+    const particleSystem = this.main.particleSystem;
+
+    // Particle Size
+    this.modulatorManager.addTargetWithRangeFull(
+      "Particle Size",
+      {
+        object: particleSystem,
+        property: "particleRadius",
+        getValue: () => particleSystem.particleRadius,
+        setValue: (value) => {
+          particleSystem.particleRadius = value;
+          if (particleSystem.collisionSystem) {
+            particleSystem.collisionSystem.particleRadius = value * 2;
+          }
+          if (particleSystem.particleRadii) {
+            particleSystem.particleRadii.fill(value);
+          }
+        },
+        updateDisplay: () => {},
+      },
+      0.005,
+      0.03,
+      0.001
+    );
+
+    // Animation Speed
+    this.modulatorManager.addTargetWithRangeFull(
+      "Animation Speed",
+      {
+        object: particleSystem,
+        property: "timeScale",
+        getValue: () => particleSystem.timeScale,
+        setValue: (value) => (particleSystem.timeScale = value),
+        updateDisplay: () => {},
+      },
+      0,
+      2,
+      0.01
+    );
+
+    // Gravity Strength
+    if (particleSystem.gravity) {
+      this.modulatorManager.addTargetWithRangeFull(
+        "Gravity Strength",
+        {
+          object: particleSystem.gravity,
+          property: "strength",
+          getValue: () => particleSystem.gravity.strength,
+          setValue: (value) => particleSystem.gravity.setStrength(value),
+          updateDisplay: () => {},
+        },
+        0,
+        20,
+        0.1
+      );
+    }
+
+    // Repulsion
+    if (particleSystem.collisionSystem) {
+      this.modulatorManager.addTargetWithRangeFull(
+        "Repulsion",
+        {
+          object: particleSystem.collisionSystem,
+          property: "repulsion",
+          getValue: () => particleSystem.collisionSystem.repulsion,
+          setValue: (value) =>
+            (particleSystem.collisionSystem.repulsion = value),
+          updateDisplay: () => {},
+        },
+        0,
+        5,
+        0.01
+      );
+    }
+  }
+
+  // Add this method to create a new input modulator with UI controls
+  addMicModulator() {
+    // Create a new input modulator
+    const modulator = this.modulatorManager.createInputModulator();
+
+    // Create a folder for this modulator
+    const index = this.modulatorFolders.length;
+    const folder = this.micInputFolder.addFolder(`Mic Modulator ${index + 1}`);
+
+    // Add this folder to our tracking array
+    this.modulatorFolders.push(folder);
+
+    // Add UI controls for the modulator
+    folder
+      .add(modulator, "enabled")
+      .name("Enabled")
+      .onChange((value) => {
+        // If disabled, reset to original value
+        if (!value) modulator.resetToOriginal();
+      });
+
+    // Add target selector
+    const targetNames = this.modulatorManager.getTargetNames();
+
+    // Get references to range controllers for updating later
+    let minController, maxController;
+
+    folder
+      .add(modulator, "targetName", targetNames)
+      .name("Target")
+      .onChange((value) => {
+        // Set the target
+        modulator.setTarget(value);
+
+        // Auto-range: Update min/max controllers to match target range
+        if (modulator.target) {
+          const targetMin = modulator.target.min;
+          const targetMax = modulator.target.max;
+
+          // Update controller ranges and values
+          if (minController && maxController) {
+            // Update controller ranges
+            minController.min(targetMin);
+            minController.max(targetMax);
+            maxController.min(targetMin);
+            maxController.max(targetMax);
+
+            // Set values to match target range
+            modulator.min = targetMin;
+            modulator.max = targetMax;
+            minController.setValue(targetMin);
+            maxController.setValue(targetMax);
+
+            // Update displays
+            minController.updateDisplay();
+            maxController.updateDisplay();
+
+            console.log(
+              `Auto-ranged for target ${value}: ${targetMin} - ${targetMax}`
+            );
+          }
+        }
+      });
+
+    // Add frequency band selector
+    const bands = {
+      "All (Volume)": "none",
+      "Sub Bass": "sub",
+      Bass: "bass",
+      "Low Mid": "lowMid",
+      Mid: "mid",
+      "High Mid": "highMid",
+      Treble: "treble",
+    };
+    folder.add(modulator, "frequencyBand", bands).name("Frequency Band");
+
+    // Add sensitivity slider
+    folder.add(modulator, "sensitivity", 0.1, 5, 0.1).name("Sensitivity");
+
+    // Add smoothing slider
+    folder.add(modulator, "smoothing", 0, 0.99, 0.01).name("Smoothing");
+
+    // Add range controls
+    minController = folder.add(modulator, "min", 0, 1, 0.01).name("Min Value");
+    maxController = folder.add(modulator, "max", 0, 1, 0.01).name("Max Value");
+
+    // Add auto-range button like in PulseModulationUi
+    const autoRangeControl = {
+      autoRange: () => {
+        if (modulator.target) {
+          const targetMin = modulator.target.min;
+          const targetMax = modulator.target.max;
+
+          // Update controller ranges and values
+          minController.min(targetMin);
+          minController.max(targetMax);
+          maxController.min(targetMin);
+          maxController.max(targetMax);
+
+          // Set values
+          modulator.min = targetMin;
+          modulator.max = targetMax;
+          minController.setValue(targetMin);
+          maxController.setValue(targetMax);
+
+          // Update displays
+          minController.updateDisplay();
+          maxController.updateDisplay();
+
+          console.log(
+            `Auto-ranged for target ${modulator.targetName}: ${targetMin} - ${targetMax}`
+          );
+        }
+      },
+    };
+    folder.add(autoRangeControl, "autoRange").name("Auto Range");
+
+    // Add remove button
+    const removeObj = {
+      remove: () => {
+        // Disable modulator to reset target
+        if (modulator.enabled) {
+          modulator.enabled = false;
+          modulator.resetToOriginal();
+        }
+
+        // Remove from manager
+        this.modulatorManager.modulators =
+          this.modulatorManager.modulators.filter((m) => m !== modulator);
+
+        // Remove folder
+        this.micInputFolder.removeFolder(folder);
+
+        // Remove from tracking array
+        const idx = this.modulatorFolders.indexOf(folder);
+        if (idx !== -1) {
+          this.modulatorFolders.splice(idx, 1);
+        }
+      },
+    };
+    folder.add(removeObj, "remove").name("Remove");
+
+    // Add visualization
+    this.addVisualizationToModulator(modulator, folder);
+
+    // Set default target
+    if (targetNames.length > 0) {
+      modulator.setTarget(targetNames[0]);
+
+      // Auto-range for initial target
+      autoRangeControl.autoRange();
+    }
+
+    // Open the folder by default
+    folder.open();
+
+    return modulator;
+  }
+
+  // Extract visualization creation to a separate method
+  addVisualizationToModulator(modulator, folder) {
+    // Add a small band visualization to show the frequency band activity
+    const bandVisualContainer = document.createElement("div");
+    bandVisualContainer.style.margin = "8px 0";
+    bandVisualContainer.style.padding = "0";
+    bandVisualContainer.style.position = "relative";
+
+    // Create band level visualization
+    const bandVisual = document.createElement("div");
+    bandVisual.style.height = "16px";
+    bandVisual.style.backgroundColor = "#333";
+    bandVisual.style.borderRadius = "3px";
+    bandVisual.style.overflow = "hidden";
+    bandVisual.style.position = "relative";
+
+    // Create the level bar
+    const bandLevelBar = document.createElement("div");
+    bandLevelBar.style.height = "100%";
+    bandLevelBar.style.backgroundColor = "#4f4";
+    bandLevelBar.style.width = "0%";
+    bandLevelBar.style.position = "absolute";
+    bandLevelBar.style.left = "0";
+    bandLevelBar.style.top = "0";
+    bandLevelBar.style.transition = "width 0.05s ease-out";
+
+    // Create label that shows band name and level
+    const bandLabel = document.createElement("div");
+    bandLabel.style.position = "absolute";
+    bandLabel.style.left = "5px";
+    bandLabel.style.top = "0";
+    bandLabel.style.color = "#fff";
+    bandLabel.style.fontSize = "10px";
+    bandLabel.style.lineHeight = "16px";
+    bandLabel.style.textShadow = "1px 1px 1px rgba(0,0,0,0.5)";
+    bandLabel.style.whiteSpace = "nowrap";
+    bandLabel.style.overflow = "hidden";
+    bandLabel.textContent = "All: 0%";
+
+    // Add elements to container
+    bandVisual.appendChild(bandLevelBar);
+    bandVisual.appendChild(bandLabel);
+    bandVisualContainer.appendChild(bandVisual);
+
+    // Add to the folder's DOM
+    folder.domElement
+      .querySelector(".children")
+      .appendChild(bandVisualContainer);
+
+    // Store references for updating
+    modulator._bandVisual = {
+      container: bandVisualContainer,
+      bar: bandLevelBar,
+      label: bandLabel,
+      lastUpdate: 0,
+      currentValue: 0,
+    };
+  }
+
+  // Add the initialization method similar to PulseModulationUi
+  initializeWithUiPanels(leftUi, rightUi) {
+    // Store UI references
+    this.leftUi = leftUi;
+    this.rightUi = rightUi;
+
+    console.log("InputUi initialized with UI panels");
+  }
+
+  // Add this method to InputUi class
+  setModulatorManager(manager) {
+    this.modulatorManager = manager;
   }
 }

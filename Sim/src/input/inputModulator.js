@@ -5,22 +5,16 @@
 export class InputModulator {
   constructor(manager) {
     this.manager = manager;
-    this.enabled = false;
-    this.targetName = "";
-    this.targetController = null;
-    this.originalValue = null; // Store original value to restore when disabled
-
-    // Modulation range
+    this.enabled = true;
+    this.targetName = null;
+    this.target = null;
+    this.originalValue = null;
+    this.inputSource = "none"; // 'none', 'mic', 'emu', 'external'
+    this.frequencyBand = "none"; // 'none', 'bass', 'mid', 'treble', etc.
+    this.sensitivity = 1.0;
+    this.smoothing = 0.5;
     this.min = 0;
     this.max = 1;
-    this.sensitivity = 1.0;
-
-    // Input source configuration
-    this.inputSource = "mic"; // "mic", "emu", "external"
-    this.frequencyBand = "none"; // For mic: "none", "sub", "bass", etc.
-
-    // Processing settings
-    this.smoothing = 0.8;
     this.currentInputValue = 0;
     this.lastOutputValue = 0;
   }
@@ -30,41 +24,32 @@ export class InputModulator {
    * @param {string} targetName - Name of the target to modulate
    */
   setTarget(targetName) {
-    // If changing targets, reset the previous one
-    if (this.targetController && this.enabled) {
-      this.resetToOriginal();
+    const target = this.manager.targets[targetName];
+    if (!target) {
+      console.warn(`Target "${targetName}" not found`);
+      return;
     }
 
-    this.targetName = targetName;
-    this.targetController = this.manager.targets[targetName];
+    try {
+      // Store target info
+      this.targetName = targetName;
+      this.target = target;
 
-    // Store the original value when first targeting
-    if (this.targetController) {
-      try {
-        this.originalValue = this.targetController.getValue();
-        console.log(
-          `Stored original value ${this.originalValue} for ${targetName}`
-        );
-      } catch (e) {
-        console.warn("Could not store original value:", e);
-        this.originalValue = null;
-      }
+      // Get current value and store as original
+      this.originalValue = target.getValue();
+
+      // Update min and max to match target's range (autorange)
+      this.min = target.min;
+      this.max = target.max;
+
+      console.log(
+        `Set target ${targetName} with range: ${target.min} - ${target.max}`
+      );
+    } catch (e) {
+      console.warn("Could not store original value:", e);
+      // Set default value as fallback
+      this.originalValue = 0;
     }
-
-    // Set min/max from target range if available
-    const targetInfo = this.manager.getTargetInfo(targetName);
-    if (
-      targetInfo &&
-      targetInfo.min !== undefined &&
-      targetInfo.max !== undefined
-    ) {
-      this.min = targetInfo.min;
-      this.max = targetInfo.max;
-    }
-
-    console.log(
-      `Set target ${targetName} with range: ${this.min} - ${this.max}`
-    );
   }
 
   /**

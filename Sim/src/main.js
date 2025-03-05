@@ -72,6 +72,13 @@ class Main {
   async init() {
     try {
       await this.shaderManager.init();
+
+      // Initialize audio analyzer if needed
+      if (this.micForces && this.micForces.analyzer) {
+        this.audioAnalyzer = this.micForces.analyzer;
+        console.log("Audio analyzer referenced from micForces");
+      }
+
       this.ui = new UiManager(this); // Use UiManager instead of UI
       this.animate();
       return true;
@@ -100,18 +107,6 @@ class Main {
     // Apply EMU forces if enabled
     if (this.emuForces) {
       this.emuForces.apply(this.particleSystem.timeStep);
-    }
-
-    // Update audio analyzer (if exists)
-    if (this.audioAnalyzer) {
-      this.audioAnalyzer.update();
-    }
-    if (
-      this.micForces &&
-      this.micForces.enabled &&
-      typeof this.micForces.apply === "function"
-    ) {
-      this.micForces.apply(this.particleSystem.timeStep);
     }
 
     this.turbulenceField.update(this.particleSystem.timeStep);

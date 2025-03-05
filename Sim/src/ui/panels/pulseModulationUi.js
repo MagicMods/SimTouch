@@ -4,20 +4,21 @@ import { ModulatorManager } from "../../input/modulatorManager.js";
 export class PulseModulationUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-    this.main = main;
+
+    // Initialize the ModulatorManager (correct the variable name)
+    this.modulatorManager = new ModulatorManager();
+
+    // For backward compatibility with existing code
+    this.pulseModManager = this.modulatorManager;
+
+    // Initialize arrays
+    this.folders = [];
+    this.presets = [];
 
     // Change the GUI title
     this.gui.title("Pulse Modulation");
 
-    // Create pulse modulator manager
-    this.pulseModManager = new ModulatorManager();
-
-    // Store folders for modulators
-    this.modulatorFolders = [];
-
-    // Initialize the target controller map
-    this.targetControllerMap = new Map();
-    // Add basic controls
+    // Initialize basic controls
     this.initBasicControls();
 
     // PresetManager will be initialized later when available
@@ -44,68 +45,46 @@ export class PulseModulationUi extends BaseUi {
     this.gui.open(false);
   }
 
-  // Called after other UI panels are initialized
-  initializeWithUiPanels(leftUi, rightUi) {
-    this.leftUi = leftUi;
-    this.rightUi = rightUi;
+  // Replace registerAvailableTargets with this simplified version
+  registerAvailableTargets() {
+    console.log(
+      "PulseModulationUi delegating target registration to ModulatorManager"
+    );
 
-    // Check if we have the getControlTargets method
-    if (this.leftUi && typeof this.leftUi.getControlTargets === "function") {
-      // Register available targets based on LeftUI's implementation
-      this.registerAvailableTargets();
+    // Make sure the manager exists
+    if (!this.modulatorManager) {
+      this.modulatorManager = new ModulatorManager();
+      this.pulseModManager = this.modulatorManager;
+      console.warn(
+        "Had to create a new ModulatorManager during target registration"
+      );
+    }
+
+    // Use the centralized method from ModulatorManager
+    if (this.leftUi && this.rightUi) {
+      this.modulatorManager.registerTargetsFromUi(this.leftUi, this.rightUi);
     } else {
       console.warn(
-        "Left UI doesn't have getControlTargets method - using direct implementation"
+        "PulseModulationUi missing UI panel references for target registration"
       );
     }
   }
 
-  // Register available targets from other UI panels
-  registerAvailableTargets() {
-    try {
-      // Get left panel targets
-      const leftTargets = this.leftUi ? this.leftUi.getControlTargets() : {};
-      // Get right panel targets
-      const rightTargets = this.rightUi ? this.rightUi.getControlTargets() : {};
+  // Fix the initializeWithUiPanels method
+  initializeWithUiPanels(leftUi, rightUi) {
+    console.log("PulseModulationUi initializing with UI panels");
 
-      // Add targets from both panels
-      if (leftTargets) {
-        const leftTargetNames = Object.keys(leftTargets);
-        leftTargetNames.forEach((name) => {
-          const targetInfo = this.leftUi.getControllerForTarget(name);
-          if (targetInfo && targetInfo.controller) {
-            this.pulseModManager.addTargetWithRangeFull(
-              name,
-              targetInfo.controller,
-              targetInfo.min,
-              targetInfo.max,
-              targetInfo.step
-            );
-          }
-        });
-      }
+    // Store references to UI panels
+    this.leftUi = leftUi;
+    this.rightUi = rightUi;
 
-      if (rightTargets) {
-        const rightTargetNames = Object.keys(rightTargets);
-        rightTargetNames.forEach((name) => {
-          const targetInfo = this.rightUi.getControllerForTarget(name);
-          if (targetInfo && targetInfo.controller) {
-            this.pulseModManager.addTargetWithRangeFull(
-              name,
-              targetInfo.controller,
-              targetInfo.min,
-              targetInfo.max,
-              targetInfo.step
-            );
-          }
-        });
-      }
-
-      // Update the UI with available targets
-      this.updateTargetDropdowns();
-    } catch (e) {
-      console.error("Error registering targets:", e);
+    // Make sure modulatorManager exists
+    if (!this.modulatorManager) {
+      this.modulatorManager = new ModulatorManager();
+      this.pulseModManager = this.modulatorManager;
     }
+
+    console.log("PulseModulationUi initialized with UI panels");
   }
 
   // Add a new pulse modulator
@@ -121,14 +100,19 @@ export class PulseModulationUi extends BaseUi {
       return null;
     }
 
+    // Make sure folders array is initialized
+    if (!this.folders) {
+      this.folders = [];
+    }
+
     const modulator = this.pulseModManager.createPulseModulator();
 
     // Create folder for this modulator
-    const index = this.pulseModManager.modulators.length - 1;
+    const index = this.folders.length;
     const folder = this.gui.addFolder(`Modulator ${index + 1}`);
 
     // Store the folder reference
-    this.modulatorFolders.push(folder);
+    this.folders.push(folder);
 
     // Add enable/disable toggle
     folder
@@ -232,270 +216,6 @@ export class PulseModulationUi extends BaseUi {
   }
 
   // Find the actual controller for a given target name - directly from the LeftUi implementation
-  getControllerForTarget(targetName) {
-    switch (targetName) {
-      // Existing controls
-      case "Particle Size":
-        return {
-          controller: {
-            object: this.main.particleSystem,
-            property: "particleRadius",
-            getValue: () => this.main.particleSystem.particleRadius,
-            setValue: (value) => {
-              this.main.particleSystem.particleRadius = value;
-              this.main.particleSystem.collisionSystem.particleRadius =
-                value * 2;
-              this.main.particleSystem.particleRadii.fill(value);
-            },
-            updateDisplay: () => {},
-          },
-          property: "particleRadius",
-          min: 0.005,
-          max: 0.03,
-        };
-
-      case "Gravity Strength":
-        return {
-          controller: {
-            object: this.main.particleSystem.gravity,
-            property: "strength",
-            getValue: () => this.main.particleSystem.gravity.strength,
-            setValue: (value) =>
-              this.main.particleSystem.gravity.setStrength(value),
-            updateDisplay: () => {},
-          },
-          property: "strength",
-          min: 0,
-          max: 20,
-        };
-
-      case "Repulsion":
-        return {
-          controller: {
-            object: this.main.particleSystem.collisionSystem,
-            property: "repulsion",
-            getValue: () => this.main.particleSystem.collisionSystem.repulsion,
-            setValue: (value) =>
-              (this.main.particleSystem.collisionSystem.repulsion = value),
-            updateDisplay: () => {},
-          },
-          property: "repulsion",
-          min: 0,
-          max: 5,
-        };
-
-      // Global section
-      case "Max Density":
-        return {
-          controller: {
-            object: this.main.gridRenderer,
-            property: "maxDensity",
-            updateDisplay: () => {},
-          },
-          property: "maxDensity",
-          min: 0.1,
-          max: 10,
-        };
-
-      case "Animation Speed":
-        return {
-          controller: {
-            object: this.main.particleSystem,
-            property: "timeScale",
-            updateDisplay: () => {},
-          },
-          property: "timeScale",
-          min: 0,
-          max: 2,
-        };
-
-      // Boundary section
-      case "Boundary Size":
-        return {
-          controller: {
-            object: this.main.particleSystem.boundary,
-            property: "radius",
-            updateDisplay: () => {
-              // Update the boundary visually when radius changes
-              this.main.particleSystem.boundary.update({
-                radius: this.main.particleSystem.boundary.radius,
-              });
-            },
-          },
-          property: "radius",
-          min: 0.3,
-          max: 0.55,
-        };
-
-      case "Wall Repulsion":
-        return {
-          controller: {
-            object: this.main.particleSystem.boundary,
-            property: "boundaryRepulsion",
-            updateDisplay: () => {},
-          },
-          property: "boundaryRepulsion",
-          min: 0,
-          max: 20,
-        };
-
-      // Turbulence section
-      case "Turbulence Strength":
-        return {
-          controller: {
-            object: this.main.turbulenceField,
-            property: "strength",
-            updateDisplay: () => {},
-          },
-          property: "strength",
-          min: 0,
-          max: 10,
-        };
-
-      case "Turbulence Speed":
-        return {
-          controller: {
-            object: this.main.turbulenceField,
-            property: "speed",
-            updateDisplay: () => {},
-          },
-          property: "speed",
-          min: 0,
-          max: 20,
-        };
-
-      case "Scale Strength":
-        return {
-          controller: {
-            object: this.main.turbulenceField,
-            property: "scaleStrength",
-            updateDisplay: () => {},
-          },
-          property: "scaleStrength",
-          min: 0,
-          max: 1,
-        };
-
-      case "Inward Pull":
-        return {
-          controller: {
-            object: this.main.turbulenceField,
-            property: "inwardFactor",
-            updateDisplay: () => {},
-          },
-          property: "inwardFactor",
-          min: 0,
-          max: 5,
-        };
-
-      // Voronoi section
-      case "Voronoi Strength":
-        return {
-          controller: {
-            object: this.main.voronoiField,
-            property: "strength",
-            updateDisplay: () => {},
-          },
-          property: "strength",
-          min: 0,
-          max: 10,
-        };
-
-      case "Edge Width":
-        return {
-          controller: {
-            object: this.main.voronoiField,
-            property: "edgeWidth",
-            updateDisplay: () => {},
-          },
-          property: "edgeWidth",
-          min: 0.1,
-          max: 50,
-        };
-
-      case "Attraction":
-        return {
-          controller: {
-            object: this.main.voronoiField,
-            property: "attractionFactor",
-            updateDisplay: () => {},
-          },
-          property: "attractionFactor",
-          min: 0,
-          max: 8,
-        };
-
-      case "Cell Count":
-        return {
-          controller: {
-            object: this.main.voronoiField,
-            property: "cellCount",
-            updateDisplay: () => {
-              // Regenerate cells when count changes
-              if (this.main.voronoiField.regenerateCells) {
-                this.main.voronoiField.regenerateCells();
-              }
-            },
-          },
-          property: "cellCount",
-          min: 1,
-          max: 10,
-        };
-
-      case "Cell Speed":
-        return {
-          controller: {
-            object: this.main.voronoiField,
-            property: "cellMovementSpeed",
-            updateDisplay: () => {},
-          },
-          property: "cellMovementSpeed",
-          min: 0,
-          max: 4,
-        };
-
-      // Force controls
-      case "Fluid Force":
-        return {
-          controller: {
-            object: this.main.particleSystem.organicBehavior.forceScales.Fluid,
-            property: "base",
-            updateDisplay: () => {},
-          },
-          property: "base",
-          min: 0,
-          max: 5,
-        };
-
-      case "Swarm Force":
-        return {
-          controller: {
-            object: this.main.particleSystem.organicBehavior.forceScales.Swarm,
-            property: "base",
-            updateDisplay: () => {},
-          },
-          property: "base",
-          min: 0,
-          max: 5,
-        };
-
-      case "Automata Force":
-        return {
-          controller: {
-            object:
-              this.main.particleSystem.organicBehavior.forceScales.Automata,
-            property: "base",
-            updateDisplay: () => {},
-          },
-          property: "base",
-          min: 0,
-          max: 5,
-        };
-
-      default:
-        return null;
-    }
-  }
 
   update() {
     if (this.pulseModManager) {
@@ -507,6 +227,12 @@ export class PulseModulationUi extends BaseUi {
         typeof this.rightUi.updateControllerDisplays === "function"
       ) {
         this.rightUi.updateControllerDisplays();
+      }
+      if (
+        this.leftUi &&
+        typeof this.leftUi.updateControllerDisplays === "function"
+      ) {
+        this.leftUi.updateControllerDisplays();
       }
 
       // Update our own modulator displays as well
@@ -745,12 +471,6 @@ export class PulseModulationUi extends BaseUi {
     });
   }
 
-  /**
-   * Update min/max sliders range based on the target's range
-   * @param {PulseModulator} modulator - The modulator to update
-   * @param {Controller} minController - The min value slider controller
-   * @param {Controller} maxController - The max value slider controller
-   */
   updateRangeForTarget(modulator, minController, maxController) {
     const targetName = modulator.targetName;
     if (!targetName) return;
@@ -805,5 +525,11 @@ export class PulseModulationUi extends BaseUi {
     } else {
       console.warn(`No range information available for target: ${targetName}`);
     }
+  }
+
+  // Add this method to PulseModulationUi class
+  setModulatorManager(manager) {
+    this.modulatorManager = manager;
+    this.pulseModManager = manager; // For backward compatibility
   }
 }

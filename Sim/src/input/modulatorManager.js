@@ -19,33 +19,56 @@ export class ModulatorManager {
    * @param {object} controller - Controller object that can be modulated
    */
   addTarget(name, controller) {
-    // Make sure the controller has getValue and setValue methods
-    if (!controller.getValue) {
-      controller.getValue = function () {
-        return this.object[this.property];
-      };
-    }
-
-    if (!controller.setValue) {
-      controller.setValue = function (value) {
-        this.object[this.property] = value;
-        if (this.updateDisplay) this.updateDisplay();
-      };
-    }
-
-    this.targets[name] = controller;
+    this.targets[name] = {
+      controller: controller,
+      min: 0,
+      max: 1,
+      getValue: () => {
+        if (typeof controller.getValue === "function") {
+          return controller.getValue();
+        } else if (controller.value !== undefined) {
+          return controller.value;
+        } else {
+          console.warn(
+            `No getValue method or value property for target "${name}"`
+          );
+          return 0;
+        }
+      },
+      setValue: (value) => {
+        try {
+          if (typeof controller.setValue === "function") {
+            controller.setValue(value);
+            if (typeof controller.updateDisplay === "function") {
+              controller.updateDisplay();
+            }
+          } else if (controller.value !== undefined) {
+            controller.value = value;
+          } else {
+            console.warn(
+              `No setValue method or value property for target "${name}"`
+            );
+          }
+        } catch (e) {
+          console.warn(`Error setting value for target "${name}":`, e);
+        }
+      },
+    };
   }
 
   /**
    * Add a target controller with range information
    * @param {string} name - Name of the target
    * @param {object} controller - Controller object that can be modulated
-   * @param {number} min - Minimum valid value
-   * @param {number} max - Maximum valid value
+   * @param {number} min - Minimum value (optional)
+   * @param {number} max - Maximum value (optional)
    */
-  addTargetWithRange(name, controller, min, max) {
+  addTargetWithRange(name, controller, min = 0, max = 1) {
     this.addTarget(name, controller);
-    this.targetRanges[name] = { min, max };
+    if (this.targets[name]) {
+      this.targets[name].min = min;
+      this.targets[name].max = max;
+    }
   }
 
   /**
@@ -62,6 +85,26 @@ export class ModulatorManager {
   }
 
   /**
+   * Add a target with full range specifications
+   * @param {string} name - Name of the target
+   * @param {object} controller - Controller object that can be modulated
+   * @param {number} min - Minimum value
+   * @param {number} max - Maximum value
+   * @param {number} step - Step value
+   */
+  addTargetWithRangeFull(name, controller, min = 0, max = 1, step = 0.01) {
+    this.addTarget(name, controller);
+    if (this.targets[name]) {
+      this.targets[name].min = min;
+      this.targets[name].max = max;
+      this.targets[name].step = step;
+      console.log(
+        `Added target ${name} with range: ${min} - ${max}, step: ${step}`
+      );
+    }
+  }
+
+  /**
    * Get information about a target including its range
    * @param {string} name - Target name
    * @returns {object} Target information
@@ -71,6 +114,15 @@ export class ModulatorManager {
       controller: this.targets[name],
       ...(this.targetRanges[name] || {}),
     };
+  }
+
+  /**
+   * Get target information by name
+   * @param {string} name - Name of the target
+   * @returns {object|null} Target information or null if not found
+   */
+  getTargetInfo(name) {
+    return this.targets[name] || null;
   }
 
   /**
@@ -97,6 +149,7 @@ export class ModulatorManager {
    */
   createInputModulator() {
     const modulator = new InputModulator(this);
+    modulator.inputSource = "mic"; // Default to mic input
     this.modulators.push(modulator);
     return modulator;
   }
@@ -126,16 +179,83 @@ export class ModulatorManager {
 
   /**
    * Update all modulators
+   * @param {number} deltaTime - Time since last update in seconds
    */
-  update() {
+  update(deltaTime) {
     const now = Date.now();
-    const deltaTime = (now - this.lastUpdateTime) / 1000; // seconds
+    const dt = deltaTime || (now - this.lastUpdateTime) / 1000; // seconds
     this.lastUpdateTime = now;
 
     for (const modulator of this.modulators) {
       if (modulator.enabled) {
-        modulator.update(deltaTime);
+        modulator.update(dt);
       }
+    }
+  }
+
+  /**
+   * Register all available targets from UI components
+   * @param {Object} leftUi - Left UI panel
+   * @param {Object} rightUi - Right UI panel
+   */
+  registerTargetsFromUi(leftUi, rightUi) {
+    console.log("ModulatorManager registering targets from UI panels");
+
+    try {
+      // Check if we already have targets registered to avoid duplication
+      if (Object.keys(this.targets).length > 0) {
+        console.log(
+          "ModulatorManager already has targets registered. Skipping registration."
+        );
+        return;
+      }
+
+      // Continue with registration
+      // Reset targets before registering to avoid duplication
+      this.targets = {};
+
+      // Register from left UI
+      if (leftUi && typeof leftUi.getControlTargets === "function") {
+        const leftTargets = leftUi.getControlTargets();
+
+        Object.keys(leftTargets).forEach((name) => {
+          const targetInfo = leftUi.getControllerForTarget(name);
+          if (targetInfo && targetInfo.controller) {
+            this.addTargetWithRangeFull(
+              name,
+              targetInfo.controller,
+              targetInfo.min,
+              targetInfo.max,
+              targetInfo.step
+            );
+          }
+        });
+      }
+
+      // Register from right UI
+      if (rightUi && typeof rightUi.getControlTargets === "function") {
+        const rightTargets = rightUi.getControlTargets();
+
+        Object.keys(rightTargets).forEach((name) => {
+          const targetInfo = rightUi.getControllerForTarget(name);
+          if (targetInfo && targetInfo.controller) {
+            this.addTargetWithRangeFull(
+              name,
+              targetInfo.controller,
+              targetInfo.min,
+              targetInfo.max,
+              targetInfo.step
+            );
+          }
+        });
+      }
+
+      console.log(
+        "ModulatorManager registered targets:",
+        this.getTargetNames()
+      );
+    } catch (e) {
+      console.error("Error registering targets in ModulatorManager:", e);
     }
   }
 }
