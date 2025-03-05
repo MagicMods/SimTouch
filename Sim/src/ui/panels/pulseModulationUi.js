@@ -4,12 +4,9 @@ import { ModulatorManager } from "../../input/modulatorManager.js";
 export class PulseModulationUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-
+    this.masterFrequency = 1.0; // For pulse modulators
     // Initialize the ModulatorManager (correct the variable name)
     this.modulatorManager = new ModulatorManager();
-
-    // For backward compatibility with existing code
-    this.pulseModManager = this.modulatorManager;
 
     // Initialize arrays
     this.folders = [];
@@ -36,11 +33,21 @@ export class PulseModulationUi extends BaseUi {
 
     // Add master frequency slider
     this.gui
-      .add(this.pulseModManager, "masterFrequency", 0.01, 3, 0.01)
+      .add(this, "masterFrequency", 0.01, 3, 0.01) // Fixed: Use this instead of this.
       .name("Master Frequency (Hz)")
-      .onChange(() => {
+      .onChange((value) => {
         // When master frequency changes, update all modulators that are synced
-        this.updateModulatorDisplays();
+        this.modulatorManager.modulators.forEach((mod) => {
+          if (mod.sync) {
+            mod.frequency = value;
+            console.log(`Updating synced modulator to frequency: ${value}Hz`);
+          }
+        });
+
+        // Update displays after changing values
+        if (typeof this.updateModulatorDisplays === "function") {
+          this.updateModulatorDisplays();
+        }
       });
     this.gui.open(false);
   }
@@ -54,7 +61,6 @@ export class PulseModulationUi extends BaseUi {
     // Make sure the manager exists
     if (!this.modulatorManager) {
       this.modulatorManager = new ModulatorManager();
-      this.pulseModManager = this.modulatorManager;
       console.warn(
         "Had to create a new ModulatorManager during target registration"
       );
@@ -89,7 +95,7 @@ export class PulseModulationUi extends BaseUi {
     this.registerAvailableTargets();
 
     // Check if we have any targets
-    const targetNames = this.pulseModManager.getTargetNames();
+    const targetNames = this.modulatorManager.getTargetNames();
     if (targetNames.length === 0) {
       console.warn("No targets available for modulation");
       alert("No modulatable targets found. Please check console for details.");
@@ -101,7 +107,7 @@ export class PulseModulationUi extends BaseUi {
       this.folders = [];
     }
 
-    const modulator = this.pulseModManager.createPulseModulator();
+    const modulator = this.modulatorManager.createPulseModulator();
 
     // Create folder for this modulator
     const index = this.folders.length;
@@ -139,22 +145,37 @@ export class PulseModulationUi extends BaseUi {
       .name("Wave Type");
 
     // Add sync control
+
     folder
       .add(modulator, "sync")
       .name("Sync with Master")
       .onChange((value) => {
         // Show/hide the frequency control based on sync state
+        if (frequencyController) {
+          frequencyController.domElement.style.display = value ? "none" : "";
+        }
+
+        // When enabling sync, immediately update frequency to match master
         if (value) {
-          // When sync is true, hide the frequency controller
-          frequencyController.domElement.style.display = "none";
-          // When enabling sync, update displays
-          this.updateModulatorDisplays();
-        } else {
-          // When sync is false, show the frequency controller
-          frequencyController.domElement.style.display = "";
+          // Get the master frequency, ensure it's a valid number
+          const masterFreq = this.masterFrequency || 1.0;
+
+          // Update the modulator's frequency
+          modulator.frequency = masterFreq;
+
+          // Also ensure phase is aligned consistently
+          modulator.currentPhase = 0;
+
+          console.log(
+            `Syncing modulator ${index} to master frequency: ${masterFreq}Hz`
+          );
+
+          // Force update the visuals
+          if (frequencyController) {
+            frequencyController.updateDisplay();
+          }
         }
       });
-
     // Add frequency control
     const frequencyController = folder
       .add(modulator, "frequency", 0.01, 3, 0.01)
@@ -191,7 +212,7 @@ export class PulseModulationUi extends BaseUi {
         modulator.disable();
 
         // Remove the modulator from the manager
-        this.pulseModManager.removeModulator(index);
+        this.modulatorManager.removeModulator(index);
 
         // Remove the folder using the correct method for lil-gui
         folder.destroy();
@@ -214,8 +235,13 @@ export class PulseModulationUi extends BaseUi {
   // Find the actual controller for a given target name - directly from the LeftUi implementation
 
   update() {
-    if (this.pulseModManager) {
-      this.pulseModManager.update();
+    this.modulatorManager.modulators.forEach((modulator) => {
+      if (modulator.sync) {
+        modulator.frequency = this.masterFrequency;
+      }
+    });
+    if (this.modulatorManager) {
+      this.modulatorManager.update();
 
       // After modulations are applied, update all potential target displays
       if (
@@ -284,7 +310,7 @@ export class PulseModulationUi extends BaseUi {
     saveButton.addEventListener("click", () => {
       const presetName = prompt("Enter pulse modulation preset name:");
       if (
-        this.presetManager.savePulsePreset(presetName, this.pulseModManager)
+        this.presetManager.savePulsePreset(presetName, this.modulatorManager)
       ) {
         this.updatePresetDropdown(presetSelect);
         presetSelect.value = this.presetManager.getSelectedPulsePreset();
@@ -387,9 +413,9 @@ export class PulseModulationUi extends BaseUi {
   // Add this method to the PulseModulationUi class
   updateModulatorDisplays() {
     // Update all modulator UI controllers to reflect current values
-    if (!this.pulseModManager || !this.folders) return; // Changed from this.modulatorFolders
+    if (!this.modulatorManager || !this.folders) return; // Changed from this.modulatorFolders
 
-    this.pulseModManager.modulators.forEach((modulator, index) => {
+    this.modulatorManager.modulators.forEach((modulator, index) => {
       // Find the folder for this modulator
       const folder = this.folders[index]; // Changed from this.modulatorFolders
       if (!folder) return;
@@ -408,61 +434,64 @@ export class PulseModulationUi extends BaseUi {
     const targetName = modulator.targetName;
     if (!targetName) return;
 
-    // Get target info from either UI panel
-    let controllerInfo = null;
-    if (this.leftUi) {
-      controllerInfo = this.leftUi.getControllerForTarget(targetName);
-    }
+    // Get target info from our manager
+    const targetInfo = this.modulatorManager.getTargetInfo(targetName);
 
-    if (!controllerInfo && this.rightUi) {
-      controllerInfo = this.rightUi.getControllerForTarget(targetName);
-    }
+    if (targetInfo && !isNaN(targetInfo.min) && !isNaN(targetInfo.max)) {
+      // Use valid numeric values only
+      const min = targetInfo.min;
+      const max = targetInfo.max;
+      const step = targetInfo.step || 0.01;
 
-    if (
-      controllerInfo &&
-      controllerInfo.min !== undefined &&
-      controllerInfo.max !== undefined
-    ) {
-      // Get the target's min and max
-      const min = controllerInfo.min;
-      const max = controllerInfo.max;
-
-      // Use the actual min/max from the target as the modulator's min/max
+      // Update the modulator's min/max
       modulator.min = min;
       modulator.max = max;
-
-      // Set both min/max slider ranges to exactly match the target's range
-      minController.min(min);
-      minController.max(max);
-      maxController.min(min);
-      maxController.max(max);
-
-      // Also set the actual values to match the target's range
-      // This ensures the sliders display sensible values within the new range
-      minController.setValue(min);
-      maxController.setValue(max);
-
-      // Set step value for precision
-      if (controllerInfo.step !== undefined) {
-        minController.step(controllerInfo.step);
-        maxController.step(controllerInfo.step);
-      }
 
       console.log(
         `Set range for ${targetName}: both sliders now have range ${min} to ${max}`
       );
 
-      // Update controller displays
-      minController.updateDisplay();
-      maxController.updateDisplay();
+      // Update controller ranges
+      if (minController) {
+        minController.min(min);
+        minController.max(max);
+        minController.step(step);
+        minController.setValue(min);
+        minController.updateDisplay();
+      }
+
+      if (maxController) {
+        maxController.min(min);
+        maxController.max(max);
+        maxController.step(step);
+        maxController.setValue(max);
+        maxController.updateDisplay();
+      }
     } else {
-      console.warn(`No range information available for target: ${targetName}`);
+      console.warn(
+        `Invalid range for target ${targetName}: min=${targetInfo?.min}, max=${targetInfo?.max}`
+      );
+
+      // Set default values that always work
+      modulator.min = 0;
+      modulator.max = 1;
+
+      if (minController) {
+        minController.min(0);
+        minController.max(1);
+        minController.setValue(0);
+      }
+
+      if (maxController) {
+        maxController.min(0);
+        maxController.max(1);
+        maxController.setValue(1);
+      }
     }
   }
 
   // Add this method to PulseModulationUi class
   setModulatorManager(manager) {
     this.modulatorManager = manager;
-    this.pulseModManager = manager; // For backward compatibility
   }
 }

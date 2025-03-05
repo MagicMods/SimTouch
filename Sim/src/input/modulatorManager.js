@@ -10,7 +10,7 @@ export class ModulatorManager {
     this.targets = {};
     this.targetRanges = {}; // Store min/max ranges for targets
     this.lastUpdateTime = Date.now();
-    this.masterFrequency = 1.0; // For pulse modulators
+    // this.masterFrequency = 1.0; // For pulse modulators
   }
 
   /**

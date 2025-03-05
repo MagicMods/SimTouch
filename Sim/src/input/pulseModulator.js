@@ -15,6 +15,7 @@ class PulseModulator {
     this.time = 0;
     this.targetController = null;
     this.originalValue = null; // Store original value to restore when disabled
+    this.currentPhase = 0; // Add currentPhase property
   }
 
   /**
@@ -22,37 +23,28 @@ class PulseModulator {
    * @param {string} targetName - Name of the target to modulate
    */
   setTarget(targetName) {
-    // If changing targets, reset the previous one
-    if (this.targetController && this.enabled) {
-      this.resetToOriginal();
+    const target = this.manager.targets[targetName];
+    if (!target) {
+      console.warn(`Target "${targetName}" not found`);
+      return;
     }
 
+    // Store target info
     this.targetName = targetName;
-    this.targetController = this.manager.targets[targetName];
+    this.target = target;
+    this.targetController = target;
 
-    // Store the original value when first targeting
-    if (this.targetController) {
-      try {
-        this.originalValue = this.targetController.getValue();
-        console.log(
-          `Stored original value ${this.originalValue} for ${targetName}`
-        );
-      } catch (e) {
-        console.warn("Could not store original value:", e);
-        this.originalValue = null;
-      }
+    // Get current value and store as original
+    try {
+      this.originalValue = target.getValue();
+    } catch (e) {
+      console.warn("Could not get target value:", e);
+      this.originalValue = 0;
     }
 
-    // Set min/max from target range if available
-    const targetInfo = this.manager.getTargetInfo(targetName);
-    if (
-      targetInfo &&
-      targetInfo.min !== undefined &&
-      targetInfo.max !== undefined
-    ) {
-      this.min = targetInfo.min;
-      this.max = targetInfo.max;
-    }
+    // Update min and max to match target's range with NaN protection
+    this.min = !isNaN(target.min) ? target.min : 0;
+    this.max = !isNaN(target.max) ? target.max : 1;
 
     console.log(
       `Set target ${targetName} with range: ${this.min} - ${this.max}`
@@ -83,30 +75,68 @@ class PulseModulator {
    * @param {number} deltaTime - Time since last update in seconds
    */
   update(deltaTime) {
-    if (!this.targetController || !this.enabled) return;
+    if (!this.enabled || !this.targetController) return;
 
-    this.time += deltaTime;
+    // Check if sync is enabled and update frequency
+    if (
+      this.sync &&
+      this.manager &&
+      typeof this.manager.masterFrequency === "number"
+    ) {
+      this.frequency = this.manager.masterFrequency;
+    }
 
-    try {
-      // Calculate modulation and apply to target
-      // Use master frequency if sync is enabled
-      const effectiveFrequency = this.sync
-        ? this.manager.masterFrequency
-        : this.frequency;
-      const value = this.calculateModulation(this.time, effectiveFrequency);
+    // Increment phase based on frequency
+    this.currentPhase += deltaTime * this.frequency * Math.PI * 2;
 
-      // Map from 0-1 to min-max
-      const mappedValue = this.min + value * (this.max - this.min);
+    // Keep phase in sensible range
+    while (this.currentPhase > Math.PI * 2) {
+      this.currentPhase -= Math.PI * 2;
+    }
 
+    // Get oscillation value (-1 to 1) based on wave type
+    let value = 0;
+
+    switch (this.waveType) {
+      case "sine":
+        value = Math.sin(this.currentPhase);
+        break;
+      case "triangle":
+        value =
+          1 -
+          4 *
+            Math.abs(
+              Math.floor(this.currentPhase / Math.PI + 0.5) -
+                this.currentPhase / Math.PI
+            );
+        break;
+      case "square":
+        value = this.currentPhase < Math.PI * 2 * this.pwm ? 1 : -1;
+        break;
+      default:
+        value = Math.sin(this.currentPhase); // Default to sine
+    }
+
+    // Map from -1/1 to min/max
+    // FIX: Add validation to prevent NaN values
+    const range = isNaN(this.max - this.min) ? 1 : this.max - this.min;
+    const baseValue = isNaN(this.min) ? 0 : this.min;
+    let mappedValue = baseValue + (value * 0.5 + 0.5) * range;
+
+    // Protection against NaN
+    if (isNaN(mappedValue)) {
+      console.warn(
+        `Mapped value is NaN for ${this.targetName}, using defaults`
+      );
+      mappedValue = baseValue || 0;
+    }
+
+    // Apply to target
+    if (
+      this.targetController &&
+      typeof this.targetController.setValue === "function"
+    ) {
       this.targetController.setValue(mappedValue);
-
-      // Make sure to call updateDisplay after setting value
-      if (this.targetController.updateDisplay) {
-        this.targetController.updateDisplay();
-      }
-    } catch (e) {
-      console.error(`Error updating modulator for ${this.targetName}:`, e);
-      this.enabled = false; // Disable on error
     }
   }
 
