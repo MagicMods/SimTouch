@@ -92,14 +92,24 @@ export class ModulatorManager {
   }
 
   /**
-   * Get information about a target including its range
-   * @param {string} name - Target name
-   * @returns {object} Target information
+   * Get information about a specific target
+   * @param {string} targetName - The name of the target
+   * @returns {Object|null} Target information or null if not found
    */
-  getTargetInfo(name) {
+  getTargetInfo(targetName) {
+    const target = this.targets[targetName];
+    if (!target) {
+      console.warn(`Target "${targetName}" not found in ModulatorManager`);
+      return null;
+    }
+
+    // Return a properly structured target info object
     return {
-      controller: this.targets[name],
-      ...(this.targetRanges[name] || {}),
+      name: targetName,
+      min: target.min,
+      max: target.max,
+      step: target.step,
+      controller: target,
     };
   }
 
