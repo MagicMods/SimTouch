@@ -93,6 +93,30 @@ export class UiManager {
 
   initializeUiComponents() {
     try {
+      // Create UI panels
+      this.leftUi = new LeftUi(this.main, this.leftContainer);
+      this.rightUi = new RightUi(this.main, this.rightContainer);
+      this.presetUi = new PresetUi(this.main, this.presetContainer);
+      this.networkUi = new NetworkUi(this.main, this.networkContainer);
+
+      // Create pulse modulation UI - this should be created after leftUi and rightUi
+      this.pulseModUi = new PulseModulationUi(
+        this.main,
+        this.pulseModContainer
+      );
+      this.pulseModUi.initializeWithUiPanels(this.leftUi, this.rightUi);
+
+      // Create input UI after leftUi and rightUi
+      this.inputUi = new InputUi(this.main, this.inputContainer);
+
+      // Register with PresetManager if available
+      if (this.presetManager) {
+        this.leftUi.setPresetManager(this.presetManager);
+        this.rightUi.setPresetManager(this.presetManager);
+        this.pulseModUi.initWithPresetManager(this.presetManager);
+        this.inputUi.initWithPresetManager(this.presetManager);
+      }
+
       // Set up cross-panel connections
       if (this.pulseModulationUi && this.leftUi && this.rightUi) {
         this.pulseModulationUi.initializeWithUiPanels(

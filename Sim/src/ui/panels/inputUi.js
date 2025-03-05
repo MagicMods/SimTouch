@@ -1472,4 +1472,50 @@ export class InputUi extends BaseUi {
     // This method intentionally does nothing for now
     // Will be implemented later to update UI when modulation occurs
   }
+
+  // Add or update the update() method to ensure it processes audio modulators
+  update() {
+    if (!this.main.audioAnalyzer) return;
+
+    // Update all modulators with their respective frequency band data
+    for (let i = 0; i < this.modulatorManager.modulators.length; i++) {
+      const modulator = this.modulatorManager.modulators[i];
+      if (modulator.inputSource === "mic") {
+        const analyzer = this.main.audioAnalyzer;
+        let value = 0;
+
+        // Get the appropriate frequency band value
+        switch (modulator.frequencyBand) {
+          case "sub":
+            value = analyzer.getAverageEnergy("sub");
+            break;
+          case "bass":
+            value = analyzer.getAverageEnergy("bass");
+            break;
+          case "lowMid":
+            value = analyzer.getAverageEnergy("lowMid");
+            break;
+          case "mid":
+            value = analyzer.getAverageEnergy("mid");
+            break;
+          case "highMid":
+            value = analyzer.getAverageEnergy("highMid");
+            break;
+          case "treble":
+            value = analyzer.getAverageEnergy("treble");
+            break;
+          case "none":
+          default:
+            value = analyzer.getVolumeNormalized();
+            break;
+        }
+
+        // Set the input value for the modulator
+        modulator.setInputValue(value);
+      }
+    }
+
+    // Update all modulators
+    this.modulatorManager.update();
+  }
 }

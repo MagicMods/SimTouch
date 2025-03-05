@@ -102,6 +102,18 @@ class Main {
       this.emuForces.apply(this.particleSystem.timeStep);
     }
 
+    // Update audio analyzer (if exists)
+    if (this.audioAnalyzer) {
+      this.audioAnalyzer.update();
+    }
+    if (
+      this.micForces &&
+      this.micForces.enabled &&
+      typeof this.micForces.apply === "function"
+    ) {
+      this.micForces.apply(this.particleSystem.timeStep);
+    }
+
     this.turbulenceField.update(this.particleSystem.timeStep);
     this.voronoiField.update(this.particleSystem.timeStep);
 
