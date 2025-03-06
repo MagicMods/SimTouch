@@ -344,25 +344,40 @@ class PresetManager {
     this.micPresets = this.micHandler.presets;
     this.selectedMicPreset = this.micHandler.selectedPreset;
 
+    if (result && this.inputUi && this.inputUi.updatePresetDropdown) {
+      this.inputUi.updatePresetDropdown();
+    }
+
     return result;
   }
 
   deleteMicPreset(presetName) {
+    if (this.enableDebugLogging) {
+      console.log(`Deleting mic preset: ${presetName}`);
+    }
+
     const result = this.micHandler.deleteMicPreset(presetName);
 
     // Update backward compatibility reference
     this.micPresets = this.micHandler.presets;
     this.selectedMicPreset = this.micHandler.selectedPreset;
 
+    if (result && this.inputUi && this.inputUi.updatePresetDropdown) {
+      this.inputUi.updatePresetDropdown();
+    }
+
     return result;
   }
 
-  loadMicPreset(presetName, inputUi) {
+  loadMicPreset(presetName, inputUi = null) {
     if (this.enableDebugLogging) {
       console.log(`Loading mic preset: ${presetName}`);
     }
 
-    const result = this.micHandler.loadMicPreset(presetName, inputUi);
+    const result = this.micHandler.loadMicPreset(
+      presetName,
+      inputUi || this.inputUi
+    );
 
     // Update backward compatibility reference
     this.selectedMicPreset = this.micHandler.selectedPreset;
