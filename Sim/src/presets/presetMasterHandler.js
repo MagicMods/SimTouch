@@ -2,17 +2,40 @@ import { PresetBaseHandler } from "./presetBaseHandler.js";
 
 export class PresetMasterHandler extends PresetBaseHandler {
   constructor(leftGui, rightGui, pulseModUi, inputUi) {
-    const defaultPresets = {
+    // Create default preset without immediately calling save() which might fail
+    let defaultPresets = {
       Default: {
-        left: leftGui ? leftGui.save() : {},
-        right: rightGui ? rightGui.save() : {},
+        left: {},
+        right: {},
         pulseModulation: null,
         micSettings: null,
-        autoPlay: false,
       },
     };
+
+    // Only try to get GUI states if the objects have save methods
+    try {
+      if (leftGui && typeof leftGui.save === "function") {
+        defaultPresets.Default.left = leftGui.save();
+      } else {
+        console.warn(
+          "PresetMasterHandler: leftGui missing or has no save method"
+        );
+      }
+
+      if (rightGui && typeof rightGui.save === "function") {
+        defaultPresets.Default.right = rightGui.save();
+      } else {
+        console.warn(
+          "PresetMasterHandler: rightGui missing or has no save method"
+        );
+      }
+    } catch (error) {
+      console.error("Error creating default preset:", error);
+    }
+
     super("savedPresets", defaultPresets);
 
+    // Store references to UI components
     this.leftGui = leftGui;
     this.rightGui = rightGui;
     this.pulseModUi = pulseModUi;
@@ -22,7 +45,6 @@ export class PresetMasterHandler extends PresetBaseHandler {
     this.defaultPreset = "Default";
     this.autoPlayEnabled = false;
   }
-
   extractDataFromUI() {
     try {
       // Get GUI states

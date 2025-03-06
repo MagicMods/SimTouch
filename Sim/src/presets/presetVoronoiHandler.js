@@ -142,4 +142,13 @@ export class PresetVoronoiHandler extends PresetBaseHandler {
   setDebug(enabled) {
     this.debug = enabled;
   }
+
+  /**
+   * Set direct reference to the voronoi field
+   * @param {Object} voronoiField - The voronoi field object
+   */
+  setVoronoiField(voronoiField) {
+    this.voronoiField = voronoiField;
+    console.log("PresetVoronoiHandler: VoronoiField reference set");
+  }
 }
