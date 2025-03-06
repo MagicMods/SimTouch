@@ -124,12 +124,13 @@ export class InputModulator {
 
   // Fix the update method to really check if there's a target
   update(deltaTime) {
-    // Skip if no target or not enabled
+    // Skip if no target, not enabled, or sensitivity is zero
     if (
       !this.targetController ||
       !this.target ||
       !this.targetName ||
-      !this.enabled
+      !this.enabled ||
+      this.sensitivity === 0
     ) {
       return;
     }

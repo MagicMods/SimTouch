@@ -374,12 +374,6 @@ export class InputUi extends BaseUi {
     this.modulatorFolders.push(folder);
 
     // Add UI controls for the modulator
-    folder
-      .add(modulator, "enabled")
-      .name("Enabled")
-      .onChange((value) => {
-        if (!value) modulator.resetToOriginal();
-      });
 
     // Get the LATEST target names directly from the manager
     const targetNames = this.modulatorManager.getTargetNames();
@@ -424,7 +418,18 @@ export class InputUi extends BaseUi {
     folder.add(modulator, "frequencyBand", bands).name("Frequency Band");
 
     // Add sensitivity slider
-    folder.add(modulator, "sensitivity", 0.1, 5, 0.1).name("Sensitivity");
+    folder
+      .add(modulator, "sensitivity", 0, 5, 0.1)
+      .name("Sensitivity")
+      .onChange((value) => {
+        // When sensitivity is set to 0, disable the modulator effect
+        if (value === 0) {
+          modulator.enabled = false;
+          modulator.resetToOriginal();
+        } else {
+          modulator.enabled = true;
+        }
+      });
 
     // Add smoothing slider
     folder.add(modulator, "smoothing", 0, 0.99, 0.01).name("Smoothing");
@@ -2000,12 +2005,6 @@ export class InputUi extends BaseUi {
     this.modulatorFolders.push(folder);
 
     // Add UI controls for the modulator
-    folder
-      .add(modulator, "enabled")
-      .name("Enabled")
-      .onChange((value) => {
-        if (!value) modulator.resetToOriginal();
-      });
 
     // Get the LATEST target names directly from the manager
     const targetNames = this.modulatorManager.getTargetNames();
@@ -2050,7 +2049,18 @@ export class InputUi extends BaseUi {
     folder.add(modulator, "frequencyBand", bands).name("Frequency Band");
 
     // Add sensitivity slider
-    folder.add(modulator, "sensitivity", 0.1, 5, 0.1).name("Sensitivity");
+    folder
+      .add(modulator, "sensitivity", 0, 5, 0.1)
+      .name("Sensitivity")
+      .onChange((value) => {
+        // When sensitivity is set to 0, disable the modulator effect
+        if (value === 0) {
+          modulator.enabled = false;
+          modulator.resetToOriginal();
+        } else {
+          modulator.enabled = true;
+        }
+      });
 
     // Add smoothing slider
     folder.add(modulator, "smoothing", 0, 0.99, 0.01).name("Smoothing");
