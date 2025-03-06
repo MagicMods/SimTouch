@@ -137,8 +137,9 @@ export class UiManager {
       this.inputUi.setModulatorManager(this.modulatorManager);
     }
 
-    if (this.pulseModulationUi) {
-      this.pulseModulationUi.setModulatorManager(this.modulatorManager);
+    // FIXED: Use pulseModUi, not pulseModulationUi
+    if (this.pulseModUi) {
+      this.pulseModUi.setModulatorManager(this.modulatorManager);
     }
 
     console.log("UiManager: Registering targets from UI panels");
@@ -153,14 +154,23 @@ export class UiManager {
       this.inputUi.initializeWithUiPanels(this.leftUi, this.rightUi, true);
     }
 
-    if (this.pulseModulationUi) {
-      this.pulseModulationUi.initializeWithUiPanels(
-        this.leftUi,
-        this.rightUi,
-        true
-      );
+    // FIXED: Use pulseModUi, not pulseModulationUi
+    if (this.pulseModUi) {
+      this.pulseModUi.initializeWithUiPanels(this.leftUi, this.rightUi, true);
     }
 
     console.log("UiManager: All UI components initialized");
+  }
+
+  initializeCrossReferences() {
+    console.log("UiManager: Initializing UI component cross-references");
+
+    // Initialize InputUi with panels (this likely exists already)
+    this.inputUi.initializeWithUiPanels(this.leftUi, this.rightUi);
+
+    // ADD THIS LINE to initialize PulseModulationUi with panels
+    this.pulseModulationUi.initializeWithUiPanels(this.leftUi, this.rightUi);
+
+    // Other initialization code...
   }
 }

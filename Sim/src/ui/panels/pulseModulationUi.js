@@ -5,8 +5,10 @@ export class PulseModulationUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
     this.masterFrequency = 1.0; // For pulse modulators
-    // Initialize the ModulatorManager (correct the variable name)
-    this.modulatorManager = new ModulatorManager();
+
+    // Don't create a new ModulatorManager here! It should be set by UiManager
+    // this.modulatorManager = new ModulatorManager();
+    this.modulatorManager = null; // Will be set by UiManager later
 
     // Initialize arrays
     this.folders = [];
@@ -92,6 +94,13 @@ export class PulseModulationUi extends BaseUi {
   // Add a new pulse modulator
   addPulseModulator() {
     // Refresh available targets before checking
+    if (!this.leftUi || !this.rightUi || !this.modulatorManager) {
+      console.error(
+        "Cannot add pulse modulator: UI panels or ModulatorManager not initialized"
+      );
+      alert("System not fully initialized. Please try again in a moment.");
+      return null;
+    }
     this.registerAvailableTargets();
 
     // Check if we have any targets

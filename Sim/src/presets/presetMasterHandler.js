@@ -182,6 +182,32 @@ export class PresetMasterHandler extends PresetBaseHandler {
   savePreset(presetName) {
     const data = this.extractDataFromUI();
     if (!data) return false;
+
+    // If mic settings are null but the same preset name exists in mic presets, use those
+    if (data.micSettings === null && this.inputUi) {
+      try {
+        // First try using existing methods
+        if (typeof this.inputUi.getCurrentMicSettings === "function") {
+          data.micSettings = this.inputUi.getCurrentMicSettings();
+        } else if (typeof this.inputUi.getActiveMicSettings === "function") {
+          data.micSettings = this.inputUi.getActiveMicSettings();
+        }
+
+        // If still null AND if the input UI has access to micPresets, try to find one with matching name
+        if (
+          data.micSettings === null &&
+          typeof this.inputUi.getMicPresetByName === "function"
+        ) {
+          data.micSettings = this.inputUi.getMicPresetByName(presetName);
+        }
+      } catch (error) {
+        console.warn(
+          `Error retrieving mic settings for preset ${presetName}:`,
+          error
+        );
+      }
+    }
+
     return super.savePreset(presetName, data, this.protectedPresets);
   }
 
