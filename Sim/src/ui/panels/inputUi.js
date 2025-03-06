@@ -384,21 +384,42 @@ export class InputUi extends BaseUi {
     // Get references to range controllers for updating later
     let minController, maxController;
 
+    // Add a flag to the modulator to indicate if it's being loaded from a preset
+    modulator._loadingFromPreset = false;
+
     // Add target selector with all available targets - IMPORTANT: Start with no selection
     const targetController = folder
       .add(modulator, "targetName", ["None", ...targetNames])
       .name("Target")
       .onChange((value) => {
-        // Only set target if it's not "None"
-        if (value && value !== "None") {
-          console.log(`Setting target to ${value}`);
-          modulator.setTarget(value);
-          this.updateRangeForTarget(modulator, minController, maxController);
+        // Skip "None" option
+        if (value === "None") return;
+
+        // Get target info from the manager
+        const targetInfo = this.modulatorManager.getTargetInfo(value);
+        if (!targetInfo) return;
+
+        // Only auto-range if NOT loading from a preset
+        if (!modulator._loadingFromPreset) {
+          console.log(`Auto-ranging for target ${value}`);
+          if (
+            targetInfo &&
+            targetInfo.min !== undefined &&
+            targetInfo.max !== undefined
+          ) {
+            minController.setValue(targetInfo.min);
+            maxController.setValue(targetInfo.max);
+
+            // Update the modulator properties directly too
+            modulator.min = targetInfo.min;
+            modulator.max = targetInfo.max;
+          }
         } else {
-          // Disable modulation if "None" is selected
-          modulator.targetName = null;
-          modulator.target = null;
-          modulator.targetController = null;
+          console.log(
+            `Using preset values for target ${value}, skipping auto-range`
+          );
+          // Reset the flag after first use
+          modulator._loadingFromPreset = false;
         }
       });
 
@@ -437,14 +458,6 @@ export class InputUi extends BaseUi {
     // Add range controls
     minController = folder.add(modulator, "min", 0, 1, 0.01).name("Min Value");
     maxController = folder.add(modulator, "max", 0, 1, 0.01).name("Max Value");
-
-    // Add auto-range button
-    const autoRangeControl = {
-      autoRange: () => {
-        this.updateRangeForTarget(modulator, minController, maxController);
-      },
-    };
-    folder.add(autoRangeControl, "autoRange").name("Auto Range");
 
     // Add remove button
     const removeObj = {
@@ -2015,21 +2028,42 @@ export class InputUi extends BaseUi {
     // Get references to range controllers for updating later
     let minController, maxController;
 
+    // Add a flag to the modulator to indicate if it's being loaded from a preset
+    modulator._loadingFromPreset = false;
+
     // Add target selector with all available targets - IMPORTANT: Start with no selection
     const targetController = folder
       .add(modulator, "targetName", ["None", ...targetNames])
       .name("Target")
       .onChange((value) => {
-        // Only set target if it's not "None"
-        if (value && value !== "None") {
-          console.log(`Setting target to ${value}`);
-          modulator.setTarget(value);
-          this.updateRangeForTarget(modulator, minController, maxController);
+        // Skip "None" option
+        if (value === "None") return;
+
+        // Get target info from the manager
+        const targetInfo = this.modulatorManager.getTargetInfo(value);
+        if (!targetInfo) return;
+
+        // Only auto-range if NOT loading from a preset
+        if (!modulator._loadingFromPreset) {
+          console.log(`Auto-ranging for target ${value}`);
+          if (
+            targetInfo &&
+            targetInfo.min !== undefined &&
+            targetInfo.max !== undefined
+          ) {
+            minController.setValue(targetInfo.min);
+            maxController.setValue(targetInfo.max);
+
+            // Update the modulator properties directly too
+            modulator.min = targetInfo.min;
+            modulator.max = targetInfo.max;
+          }
         } else {
-          // Disable modulation if "None" is selected
-          modulator.targetName = null;
-          modulator.target = null;
-          modulator.targetController = null;
+          console.log(
+            `Using preset values for target ${value}, skipping auto-range`
+          );
+          // Reset the flag after first use
+          modulator._loadingFromPreset = false;
         }
       });
 
@@ -2068,14 +2102,6 @@ export class InputUi extends BaseUi {
     // Add range controls
     minController = folder.add(modulator, "min", 0, 1, 0.01).name("Min Value");
     maxController = folder.add(modulator, "max", 0, 1, 0.01).name("Max Value");
-
-    // Add auto-range button
-    const autoRangeControl = {
-      autoRange: () => {
-        this.updateRangeForTarget(modulator, minController, maxController);
-      },
-    };
-    folder.add(autoRangeControl, "autoRange").name("Auto Range");
 
     // Add remove button
     const removeObj = {

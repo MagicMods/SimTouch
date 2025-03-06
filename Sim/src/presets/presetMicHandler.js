@@ -242,6 +242,9 @@ export class PresetMicHandler extends PresetBaseHandler {
             return;
           }
 
+          // Set the loading flag BEFORE setting the target
+          mod._loadingFromPreset = true;
+
           console.log(`Modulator ${i + 1} created, setting properties...`);
 
           // Set target
