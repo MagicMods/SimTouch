@@ -230,22 +230,101 @@ class PresetManager {
     return result;
   }
 
+  /**
+   * Load a voronoi preset
+   * @param {string} presetName - Name of preset to load
+   * @param {Object} voronoiFolder - The dat.GUI folder to apply settings to
+   * @returns {boolean} Success/failure
+   */
   loadVoronoiPreset(presetName, voronoiFolder) {
     if (this.enableDebugLogging) {
-      console.log(`Loading voronoi preset: ${presetName}`);
+      console.log(`Loading voronoi preset in manager: ${presetName}`);
     }
 
+    // First apply the preset to the folder using the handler
     const result = this.voronoiHandler.loadVoronoiPreset(
       presetName,
       voronoiFolder
     );
 
-    // Update backward compatibility reference
-    this.selectedVoronoiPreset = this.voronoiHandler.selectedPreset;
+    // Only attempt to regenerate if the preset was successfully loaded
+    if (result) {
+      try {
+        // Try to find the voronoiField through multiple possible paths
+        let voronoiField = null;
 
-    // Special handling for Voronoi cell regeneration
-    if (result && this.rightGui.main.voronoiField) {
-      this.rightGui.main.voronoiField.regenerateCells();
+        // Try rightGui.main.voronoiField
+        if (this.rightGui?.main?.voronoiField) {
+          voronoiField = this.rightGui.main.voronoiField;
+          console.log("Found voronoiField through rightGui.main");
+        }
+        // Try directly from main if available
+        else if (window.app?.voronoiField) {
+          voronoiField = window.app.voronoiField;
+          console.log("Found voronoiField through window.app");
+        }
+        // Try through the voronoiFolder's object if available
+        else if (voronoiFolder?.object?.voronoiField) {
+          voronoiField = voronoiFolder.object.voronoiField;
+          console.log("Found voronoiField through voronoiFolder.object");
+        }
+        // Try through controller values
+        else if (voronoiFolder?.controllers) {
+          // Look for a controller that might have a reference to voronoiField
+          for (const ctrl of voronoiFolder.controllers) {
+            if (ctrl.object && typeof ctrl.object.__voronoiField === "object") {
+              voronoiField = ctrl.object.__voronoiField;
+              console.log("Found voronoiField through controller reference");
+              break;
+            }
+          }
+        }
+
+        // Now regenerate cells if we found the voronoiField
+        if (
+          voronoiField &&
+          typeof voronoiField.regenerateCells === "function"
+        ) {
+          console.log("Regenerating voronoi cells after preset load");
+          voronoiField.regenerateCells();
+        } else {
+          // Try alternative approach - get the cellCount from voronoiFolder and call
+          // a global regenerate function if available
+          let cellCount = 10; // Default
+
+          // Try to find the cell count controller
+          if (voronoiFolder?.controllers) {
+            const cellCountCtrl = voronoiFolder.controllers.find(
+              (c) => c.property === "cellCount" || c.property === "numCells"
+            );
+
+            if (cellCountCtrl) {
+              cellCount = cellCountCtrl.getValue();
+              console.log(`Found cellCount value: ${cellCount}`);
+
+              // Try to find global regenerate method
+              if (window.app?.regenerateVoronoiCells) {
+                console.log(
+                  `Calling global regenerateVoronoiCells with count: ${cellCount}`
+                );
+                window.app.regenerateVoronoiCells(cellCount);
+              } else if (window.regenerateVoronoiCells) {
+                console.log(
+                  `Calling window.regenerateVoronoiCells with count: ${cellCount}`
+                );
+                window.regenerateVoronoiCells(cellCount);
+              }
+            }
+          }
+
+          console.log(
+            "Could not regenerate voronoi cells - voronoiField not accessible"
+          );
+        }
+      } catch (error) {
+        console.error("Error regenerating voronoi cells:", error);
+        // Don't fail the preset load just because regeneration failed
+      }
     }
 
     return result;
@@ -253,6 +332,15 @@ class PresetManager {
 
   getSelectedVoronoiPreset() {
     return this.voronoiHandler.getSelectedPreset();
+  }
+
+  /**
+   * Set a direct reference to the voronoiField
+   * @param {Object} field - The voronoi field object
+   */
+  setVoronoiField(field) {
+    this.voronoiField = field;
+    console.log("Direct voronoiField reference set in PresetManager");
   }
 
   //#endregion

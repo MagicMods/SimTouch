@@ -236,16 +236,37 @@ class RightUi extends BaseUi {
     this.voronoiDecayRateController = this.voronoiFolder
       .add(voronoi, "decayRate", 0.9, 1)
       .name("Decay Rate");
+
+    // Store reference to voronoiField for preset management
+    if (this.main && this.main.voronoiField) {
+      // Store reference directly in the folder
+      this.voronoiFolder.object = this.voronoiFolder.object || {};
+      this.voronoiFolder.object.voronoiField = this.main.voronoiField;
+
+      // Also store in a property controllers can access
+      if (
+        this.voronoiFolder.controllers &&
+        this.voronoiFolder.controllers.length > 0
+      ) {
+        const firstController = this.voronoiFolder.controllers[0];
+        if (firstController && firstController.object) {
+          firstController.object.__voronoiField = this.main.voronoiField;
+        }
+      }
+
+      // If we have a preset manager, update its reference too
+      if (this.presetManager) {
+        this.presetManager.setVoronoiField(this.main.voronoiField);
+      }
+    }
   }
 
+  /**
+   * Initialize the Voronoi preset controls
+   */
   initVoronoiPresetControls() {
-    if (!this.presetManager) return;
-
-    // Find the correct container
-    const containerElement =
-      this.voronoiFolder.domElement.querySelector(".children");
-    if (!containerElement) {
-      console.error("Could not find container element in voronoi folder");
+    if (!this.presetManager) {
+      console.warn("No preset manager available for voronoi presets");
       return;
     }
 
@@ -254,38 +275,45 @@ class RightUi extends BaseUi {
     presetSelect.classList.add("preset-select");
     presetSelect.style.padding = "4px";
     presetSelect.style.margin = "5px 0";
+    presetSelect.style.width = "100%";
 
     this.updateVoronoiPresetDropdown(presetSelect);
 
     presetSelect.addEventListener("change", (e) => {
       const value = e.target.value;
-      console.log("Voronoi preset selector changed to:", value);
+      console.log(`Voronoi preset selector changed to: ${value}`);
+
+      // Load the selected preset - regeneration happens in the PresetManager
       this.presetManager.loadVoronoiPreset(value, this.voronoiFolder);
+
+      // No need to duplicate the regeneration logic here since it's in the PresetManager
     });
 
-    this.voronoiPresetControls = { selector: presetSelect };
+    this.voronoiPresetSelect = presetSelect;
 
     // Create action buttons container
     const actionsContainer = document.createElement("div");
     actionsContainer.style.display = "flex";
     actionsContainer.style.justifyContent = "space-between";
-    actionsContainer.style.margin = "5px 5px";
+    actionsContainer.style.margin = "5px 0";
     actionsContainer.style.width = "100%";
-    actionsContainer.style.flexWrap = "wrap"; // Allow wrapping if needed
 
     // SAVE BUTTON
     const saveButton = document.createElement("button");
     saveButton.textContent = "Save";
     saveButton.style.flex = "1";
-    saveButton.style.margin = "0 2px";
+    saveButton.style.marginRight = "5px";
     saveButton.addEventListener("click", () => {
       const presetName = prompt("Enter voronoi preset name:");
-      if (
-        this.presetManager.saveVoronoiPreset(presetName, this.voronoiFolder)
-      ) {
-        this.updateVoronoiPresetDropdown(presetSelect);
-        presetSelect.value = this.presetManager.getSelectedVoronoiPreset();
-        alert(`Voronoi preset "${presetName}" saved.`);
+      if (presetName) {
+        console.log(`Saving voronoi preset: ${presetName}`);
+        if (
+          this.presetManager.saveVoronoiPreset(presetName, this.voronoiFolder)
+        ) {
+          this.updateVoronoiPresetDropdown(presetSelect);
+          presetSelect.value = presetName;
+          alert(`Voronoi preset "${presetName}" saved.`);
+        }
       }
     });
 
@@ -293,14 +321,19 @@ class RightUi extends BaseUi {
     const deleteButton = document.createElement("button");
     deleteButton.textContent = "Delete";
     deleteButton.style.flex = "1";
-    deleteButton.style.margin = "0 2px";
     deleteButton.addEventListener("click", () => {
-      const current = this.presetManager.getSelectedVoronoiPreset();
-      console.log("Attempting to delete voronoi preset:", current);
-      if (this.presetManager.deleteVoronoiPreset(current)) {
-        this.updateVoronoiPresetDropdown(presetSelect);
-        presetSelect.value = this.presetManager.getSelectedVoronoiPreset();
-        alert(`Voronoi preset "${current}" deleted.`);
+      const selectedPreset = presetSelect.value;
+      if (selectedPreset && !["None", "Default"].includes(selectedPreset)) {
+        const confirmed = confirm(`Delete voronoi preset "${selectedPreset}"?`);
+        if (confirmed) {
+          console.log(`Deleting voronoi preset: ${selectedPreset}`);
+          if (this.presetManager.deleteVoronoiPreset(selectedPreset)) {
+            this.updateVoronoiPresetDropdown(presetSelect);
+            alert(`Voronoi preset "${selectedPreset}" deleted.`);
+          }
+        }
+      } else {
+        alert("Cannot delete protected presets.");
       }
     });
 
@@ -308,35 +341,37 @@ class RightUi extends BaseUi {
     actionsContainer.appendChild(saveButton);
     actionsContainer.appendChild(deleteButton);
 
-    // Insert elements at the beginning of the folder
-    this.voronoiFolder.domElement.insertBefore(
-      actionsContainer,
-      this.voronoiFolder.domElement.querySelector(".children")
-    );
+    // Insert controls at the top of the voronoi folder
+    if (this.voronoiFolder && this.voronoiFolder.domElement) {
+      const folderElement = this.voronoiFolder.domElement;
 
-    this.voronoiFolder.domElement.insertBefore(
-      presetSelect,
-      this.voronoiFolder.domElement.querySelector(".children")
-    );
+      // Insert dropdown and buttons
+      folderElement.insertBefore(
+        actionsContainer,
+        folderElement.querySelector(".children")
+      );
 
-    // Remove old dat.GUI controls if they exist
-    const oldSaveControls = this.voronoiFolder.controllers.filter(
-      (c) => c.property === "save"
-    );
-    const oldDeleteControls = this.voronoiFolder.controllers.filter(
-      (c) => c.property === "delete"
-    );
-
-    // Remove old controls
-    oldSaveControls.forEach((c) => this.voronoiFolder.remove(c));
-    oldDeleteControls.forEach((c) => this.voronoiFolder.remove(c));
+      folderElement.insertBefore(
+        presetSelect,
+        folderElement.querySelector(".children")
+      );
+    }
   }
 
+  /**
+   * Update the voronoi preset dropdown
+   */
   updateVoronoiPresetDropdown(selectElement) {
-    const options = this.presetManager.getVoronoiPresetOptions();
-    console.log("Updating voronoi preset dropdown with options:", options);
+    if (!selectElement || !this.presetManager) return;
 
+    // Clear existing options
     selectElement.innerHTML = "";
+
+    // Get preset options
+    const options = this.presetManager.getVoronoiPresetOptions() || [];
+    console.log(`Updating voronoi preset dropdown with options:`, options);
+
+    // Add options to dropdown
     options.forEach((preset) => {
       const option = document.createElement("option");
       option.value = preset;
@@ -344,7 +379,10 @@ class RightUi extends BaseUi {
       selectElement.appendChild(option);
     });
 
-    selectElement.value = this.presetManager.getSelectedVoronoiPreset();
+    // Select current preset
+    const currentPreset =
+      this.presetManager.getSelectedVoronoiPreset() || "None";
+    selectElement.value = currentPreset;
   }
   //#endregion
 
