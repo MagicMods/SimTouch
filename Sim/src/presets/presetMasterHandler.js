@@ -45,161 +45,115 @@ export class PresetMasterHandler extends PresetBaseHandler {
     this.defaultPreset = "Default";
     this.autoPlayEnabled = false;
   }
+  /**
+   * Extract data from all UI components
+   * @returns {Object} Combined UI data
+   */
   extractDataFromUI() {
+    const data = {
+      left: {},
+      right: {},
+      pulseModulation: null,
+      micSettings: null,
+    };
+
     try {
-      // Get GUI states
-      const leftGuiState = this.leftGui.save();
-      const rightGuiState = this.rightGui.save();
-
-      // Filter out non-persistent folders from leftGuiState
-      if (leftGuiState.folders) {
-        const filteredFolders = {};
-        for (const key in leftGuiState.folders) {
-          if (key !== "Debug" && key !== "UDP") {
-            filteredFolders[key] = leftGuiState.folders[key];
-          }
-        }
-        leftGuiState.folders = filteredFolders;
+      // Extract left GUI data
+      if (this.leftGui && typeof this.leftGui.save === "function") {
+        data.left = this.leftGui.save();
       }
 
-      // Get pulse modulation state if available
-      let pulseModState = null;
-      if (this.pulseModUi && this.pulseModUi.pulseModManager) {
-        pulseModState = this.pulseModUi.pulseModManager.modulators.map(
-          (mod) => ({
-            enabled: mod.enabled,
-            targetName: mod.targetName,
-            type: mod.type,
-            frequency: mod.frequency,
-            amplitude: mod.amplitude,
-            phase: mod.phase,
-            bias: mod.bias,
-            min: mod.min,
-            max: mod.max,
-          })
-        );
+      // Extract right GUI data
+      if (this.rightGui && typeof this.rightGui.save === "function") {
+        data.right = this.rightGui.save();
       }
 
-      // Get microphone settings if available
-      let micSettings = null;
-      if (this.rightGui.main?.externalInput?.micForces) {
-        const micForces = this.rightGui.main.externalInput.micForces;
-        micSettings = {
-          enabled: micForces.isEnabled(),
-          sensitivity: micForces.sensitivity || 1.0,
-        };
-
-        // Add mic modulators if available
-        if (this.inputUi && this.inputUi.modulatorManager) {
-          micSettings.modulators = this.inputUi.modulatorManager.modulators
-            .filter((mod) => mod.inputSource === "mic")
-            .map((mod) => ({
-              enabled: mod.enabled,
-              targetName: mod.targetName,
-              frequencyBand: mod.frequencyBand,
-              sensitivity: mod.sensitivity,
-              smoothing: mod.smoothing,
-              min: mod.min,
-              max: mod.max,
-            }));
+      // Extract pulse modulation data
+      if (this.pulseModUi) {
+        if (typeof this.pulseModUi.saveToData === "function") {
+          data.pulseModulation = this.pulseModUi.saveToData();
+        } else if (typeof this.pulseModUi.getModulatorsData === "function") {
+          data.pulseModulation = this.pulseModUi.getModulatorsData();
         }
       }
 
-      return {
-        left: leftGuiState,
-        right: rightGuiState,
-        pulseModulation: pulseModState,
-        micSettings: micSettings,
-        autoPlay: this.autoPlayEnabled,
-      };
+      // Extract mic settings data
+      if (this.inputUi && typeof this.inputUi.getMicSettings === "function") {
+        data.micSettings = this.inputUi.getMicSettings();
+      }
     } catch (error) {
-      console.error("Error extracting master preset data:", error);
-      return null;
+      console.error("Error extracting UI data:", error);
     }
+
+    return data;
   }
 
+  /**
+   * Apply preset data to the UI
+   * @param {string} presetName - Name of the preset to apply
+   * @returns {boolean} Success/failure
+   */
   applyDataToUI(presetName) {
-    const preset = this.presets[presetName];
-    if (!preset) {
-      console.warn(`Preset "${presetName}" not found`);
-      return false;
-    }
-
     try {
-      // Load GUI states
-      if (preset.left && this.leftGui) {
+      const preset = this.presets[presetName];
+      if (!preset) {
+        console.error(`Preset "${presetName}" not found`);
+        return false;
+      }
+
+      // Apply left and right GUI settings
+      if (
+        preset.left &&
+        this.leftGui &&
+        typeof this.leftGui.load === "function"
+      ) {
         this.leftGui.load(preset.left);
       }
 
-      if (preset.right && this.rightGui) {
+      if (
+        preset.right &&
+        this.rightGui &&
+        typeof this.rightGui.load === "function"
+      ) {
         this.rightGui.load(preset.right);
       }
 
-      // Load pulse modulation presets if available
+      // Clear existing modulators before applying new ones (if the method exists)
+      if (this.pulseModUi) {
+        // Check if the method exists before calling it
+        if (typeof this.pulseModUi.clearAllModulators === "function") {
+          this.pulseModUi.clearAllModulators();
+        } else if (typeof this.pulseModUi.clearModulators === "function") {
+          // Try alternative method name
+          this.pulseModUi.clearModulators();
+        } else {
+          console.warn(
+            "PulseModUi doesn't have clearAllModulators or clearModulators method"
+          );
+        }
+      }
+
+      // Apply pulse modulation settings if they exist
       if (preset.pulseModulation && this.pulseModUi) {
-        this.pulseModUi.clearAllModulators();
-
-        preset.pulseModulation.forEach((modData) => {
-          const mod = this.pulseModUi.addModulator();
-
-          if (modData.targetName) mod.setTarget(modData.targetName);
-          if (modData.type) mod.setWaveType(modData.type);
-          mod.frequency = modData.frequency || 0.5;
-          mod.amplitude = modData.amplitude || 0.5;
-          mod.phase = modData.phase || 0;
-          mod.bias = modData.bias || 0.5;
-          mod.min = modData.min || 0;
-          mod.max = modData.max || 1;
-          mod.enabled = !!modData.enabled;
-        });
-
-        this.pulseModUi.updateUI();
+        if (typeof this.pulseModUi.loadFromData === "function") {
+          this.pulseModUi.loadFromData(preset.pulseModulation);
+        } else if (typeof this.pulseModUi.loadModulators === "function") {
+          this.pulseModUi.loadModulators(preset.pulseModulation);
+        } else {
+          console.warn(
+            "PulseModUi doesn't have a method to load modulator data"
+          );
+        }
       }
 
-      // Load mic settings if available
+      // Apply mic settings if they exist
       if (preset.micSettings && this.inputUi) {
-        const settings = preset.micSettings;
-
-        // Clear all mic-related modulators
-        this.inputUi.clearMicModulators();
-
-        // Apply mic forces settings
-        if (this.rightGui.main?.externalInput?.micForces) {
-          const micForces = this.rightGui.main.externalInput.micForces;
-
-          if (settings.enabled) {
-            micForces.enable();
-          } else {
-            micForces.disable();
-          }
-
-          if (settings.sensitivity) {
-            micForces.setSensitivity(settings.sensitivity);
-          }
-        }
-
-        // Create modulators from preset
-        if (settings.modulators && Array.isArray(settings.modulators)) {
-          settings.modulators.forEach((modData) => {
-            const mod = this.inputUi.addInputModulator();
-
-            if (modData.targetName) mod.setTarget(modData.targetName);
-            mod.setInputSource("mic");
-            if (modData.frequencyBand)
-              mod.setFrequencyBand(modData.frequencyBand);
-            mod.sensitivity = modData.sensitivity || 1.0;
-            mod.smoothing = modData.smoothing || 0.7;
-            mod.min = modData.min || 0;
-            mod.max = modData.max || 1;
-            mod.enabled = !!modData.enabled;
-          });
-
-          this.inputUi.updateUI();
+        if (typeof this.inputUi.loadMicSettings === "function") {
+          this.inputUi.loadMicSettings(preset.micSettings);
+        } else {
+          console.warn("InputUi doesn't have loadMicSettings method");
         }
       }
-
-      // Set auto-play state
-      this.autoPlayEnabled = preset.autoPlay || false;
 
       this.selectedPreset = presetName;
       return true;

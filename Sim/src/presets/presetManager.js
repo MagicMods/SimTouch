@@ -6,44 +6,28 @@ import { PresetMicHandler } from "./presetMicHandler.js";
 
 class PresetManager {
   constructor(leftGui, rightGui, pulseModUi, inputUi) {
-    if (!leftGui || !rightGui) {
-      throw new Error("Both GUI instances required");
-    }
-
+    // Store UI references
     this.leftGui = leftGui;
     this.rightGui = rightGui;
     this.pulseModUi = pulseModUi;
     this.inputUi = inputUi;
 
-    // Create our specialized handlers
+    // Create preset handlers for specialized presets
     this.masterHandler = new PresetMasterHandler(
       leftGui,
       rightGui,
       pulseModUi,
       inputUi
     );
-    this.turbHandler = new PresetTurbulenceHandler();
+    this.turbulenceHandler = new PresetTurbulenceHandler();
     this.voronoiHandler = new PresetVoronoiHandler();
     this.pulseHandler = new PresetPulseHandler();
     this.micHandler = new PresetMicHandler();
 
-    // Set up backward compatibility references
-    this.presets = this.masterHandler.presets;
-    this.turbPresets = this.turbHandler.presets;
-    this.voronoiPresets = this.voronoiHandler.presets;
-    this.pulsePresets = this.pulseHandler.presets;
-    this.micPresets = this.micHandler.presets;
-
-    this.selectedPreset = this.masterHandler.selectedPreset;
-    this.selectedTurbPreset = this.turbHandler.selectedPreset;
-    this.selectedVoronoiPreset = this.voronoiHandler.selectedPreset;
-    this.selectedPulsePreset = this.pulseHandler.selectedPreset;
-    this.selectedMicPreset = this.micHandler.selectedPreset;
-
-    // For debugging - enable feature flag if needed
+    // Enable for debugging
     this.enableDebugLogging = false;
 
-    // Run compatibility check for old presets
+    // Attempt to migrate existing presets
     this._migrateExistingPresets();
   }
 
@@ -52,26 +36,55 @@ class PresetManager {
    * @private
    */
   _migrateExistingPresets() {
-    // TODO: Implement migration path from old format to new if needed
-    // This would check localStorage for old formats and convert them
+    // Check if there are legacy presets to migrate
+    try {
+      // Implement migration logic here if needed
+      // For now, just a placeholder
+    } catch (error) {
+      console.error("Error migrating presets:", error);
+    }
+  }
+
+  /**
+   * Enable/disable detailed debug logging
+   * @param {boolean} enabled - Whether to enable debug logs
+   */
+  setDebug(enabled) {
+    this.enableDebugLogging = !!enabled;
+    console.log(
+      `PresetManager debug logging: ${enabled ? "enabled" : "disabled"}`
+    );
   }
 
   //#region Master Preset Methods
 
+  /**
+   * Load master presets from storage
+   */
   loadPresetsFromStorage() {
-    // Forward to handler
-    return this.masterHandler.presets;
+    return this.masterHandler.loadFromStorage();
   }
 
+  /**
+   * Save master presets to storage
+   */
   savePresetsToStorage() {
-    // Forward to handler
     return this.masterHandler.saveToStorage();
   }
 
+  /**
+   * Get available master preset options
+   * @returns {Array<string>} Array of preset names
+   */
   getPresetOptions() {
     return this.masterHandler.getPresetOptions();
   }
 
+  /**
+   * Save current state as a master preset
+   * @param {string} presetName - Name for the preset
+   * @returns {boolean} Success/failure
+   */
   savePreset(presetName) {
     if (this.enableDebugLogging) {
       console.log(`Saving master preset: ${presetName}`);
@@ -79,130 +92,198 @@ class PresetManager {
 
     const result = this.masterHandler.savePreset(presetName);
 
-    // Update backward compatibility reference
-    this.presets = this.masterHandler.presets;
-    this.selectedPreset = this.masterHandler.selectedPreset;
+    if (result) {
+      this.masterHandler.saveToStorage();
+    }
 
     return result;
   }
 
+  /**
+   * Delete a master preset
+   * @param {string} presetName - Name of preset to delete
+   * @returns {boolean} Success/failure
+   */
   deletePreset(presetName) {
-    if (presetName === "Default") {
-      alert("Cannot delete the Default preset!");
-      return false;
+    if (this.enableDebugLogging) {
+      console.log(`Deleting master preset: ${presetName}`);
     }
 
     const result = this.masterHandler.deletePreset(presetName);
 
-    // Update backward compatibility reference
-    this.presets = this.masterHandler.presets;
-    this.selectedPreset = this.masterHandler.selectedPreset;
+    if (result) {
+      this.masterHandler.saveToStorage();
+    }
 
     return result;
   }
 
+  /**
+   * Load and apply a master preset
+   * @param {string} presetName - Name of preset to load
+   * @returns {boolean} Success/failure
+   */
   loadPreset(presetName) {
     if (this.enableDebugLogging) {
       console.log(`Loading master preset: ${presetName}`);
     }
 
-    const result = this.masterHandler.loadPreset(presetName);
-
-    // Update backward compatibility reference
-    this.selectedPreset = this.masterHandler.selectedPreset;
-
-    return result;
+    return this.masterHandler.applyDataToUI(presetName);
   }
 
+  /**
+   * Get the name of the currently selected master preset
+   * @returns {string} Preset name
+   */
   getSelectedPreset() {
     return this.masterHandler.getSelectedPreset();
   }
 
+  /**
+   * Set auto-play mode
+   * @param {boolean} enabled - Whether to enable auto-play
+   */
   setAutoPlay(enabled) {
-    return this.masterHandler.setAutoPlay(enabled);
+    if (this.masterHandler.setAutoPlay) {
+      this.masterHandler.setAutoPlay(enabled);
+    }
   }
 
+  /**
+   * Get auto-play status
+   * @returns {boolean} Whether auto-play is enabled
+   */
   isAutoPlay() {
-    return this.masterHandler.isAutoPlay();
+    return this.masterHandler.isAutoPlay
+      ? this.masterHandler.isAutoPlay()
+      : false;
   }
 
   //#endregion
 
   //#region Turbulence Preset Methods
 
+  /**
+   * Load turbulence presets from storage
+   */
   loadTurbPresetsFromStorage() {
-    // Forward to handler
-    return this.turbHandler.presets;
+    return this.turbulenceHandler.loadFromStorage();
   }
 
+  /**
+   * Save turbulence presets to storage
+   */
   saveTurbPresetsToStorage() {
-    // Forward to handler
-    return this.turbHandler.saveToStorage();
+    return this.turbulenceHandler.saveToStorage();
   }
 
+  /**
+   * Get available turbulence preset options
+   * @returns {Array<string>} Array of preset names
+   */
   getTurbPresetOptions() {
-    return this.turbHandler.getPresetOptions();
+    return this.turbulenceHandler.getPresetOptions();
   }
 
+  /**
+   * Save current state as a turbulence preset
+   * @param {string} presetName - Name for the preset
+   * @param {Object} turbFolder - The dat.GUI folder with turbulence settings
+   * @returns {boolean} Success/failure
+   */
   saveTurbPreset(presetName, turbFolder) {
     if (this.enableDebugLogging) {
       console.log(`Saving turbulence preset: ${presetName}`);
     }
 
-    const result = this.turbHandler.saveTurbPreset(presetName, turbFolder);
+    const result = this.turbulenceHandler.saveTurbPreset(
+      presetName,
+      turbFolder
+    );
 
-    // Update backward compatibility reference
-    this.turbPresets = this.turbHandler.presets;
-    this.selectedTurbPreset = this.turbHandler.selectedPreset;
+    if (result) {
+      this.turbulenceHandler.saveToStorage();
+    }
 
     return result;
   }
 
+  /**
+   * Delete a turbulence preset
+   * @param {string} presetName - Name of preset to delete
+   * @returns {boolean} Success/failure
+   */
   deleteTurbPreset(presetName) {
-    const result = this.turbHandler.deleteTurbPreset(presetName);
+    if (this.enableDebugLogging) {
+      console.log(`Deleting turbulence preset: ${presetName}`);
+    }
 
-    // Update backward compatibility reference
-    this.turbPresets = this.turbHandler.presets;
-    this.selectedTurbPreset = this.turbHandler.selectedPreset;
+    const result = this.turbulenceHandler.deleteTurbPreset(presetName);
+
+    if (result) {
+      this.turbulenceHandler.saveToStorage();
+    }
 
     return result;
   }
 
+  /**
+   * Load and apply a turbulence preset
+   * @param {string} presetName - Name of preset to load
+   * @param {Object} turbFolder - The dat.GUI folder to apply settings to
+   * @returns {boolean} Success/failure
+   */
   loadTurbPreset(presetName, turbFolder) {
     if (this.enableDebugLogging) {
       console.log(`Loading turbulence preset: ${presetName}`);
     }
 
-    const result = this.turbHandler.loadTurbPreset(presetName, turbFolder);
-
-    // Update backward compatibility reference
-    this.selectedTurbPreset = this.turbHandler.selectedPreset;
-
-    return result;
+    return this.turbulenceHandler.loadTurbPreset(presetName, turbFolder);
   }
 
+  /**
+   * Get the currently selected turbulence preset
+   * @returns {string} Preset name
+   */
   getSelectedTurbPreset() {
-    return this.turbHandler.getSelectedPreset();
+    return this.turbulenceHandler.getSelectedPreset();
   }
 
   //#endregion
 
   //#region Voronoi Preset Methods
 
-  loadVoronoiPresetsFromStorage() {
-    // Forward to handler
-    return this.voronoiHandler.presets;
+  /**
+   * Store a direct reference to the voronoi field for cell regeneration
+   * @param {Object} field - The voronoi field object
+   */
+  setVoronoiField(field) {
+    this.voronoiField = field;
+    console.log("PresetManager: VoronoiField reference set");
+
+    // Also set in the handler
+    if (
+      this.voronoiHandler &&
+      typeof this.voronoiHandler.setVoronoiField === "function"
+    ) {
+      this.voronoiHandler.setVoronoiField(field);
+    }
   }
 
-  saveVoronoiPresetsToStorage() {
-    // Forward to handler
-    return this.voronoiHandler.saveToStorage();
-  }
-
+  /**
+   * Get available voronoi preset options
+   * @returns {Array<string>} Array of preset names
+   */
   getVoronoiPresetOptions() {
     return this.voronoiHandler.getPresetOptions();
   }
 
+  /**
+   * Save current state as a voronoi preset
+   * @param {string} presetName - Name for the preset
+   * @param {Object} voronoiFolder - The dat.GUI folder with voronoi settings
+   * @returns {boolean} Success/failure
+   */
   saveVoronoiPreset(presetName, voronoiFolder) {
     if (this.enableDebugLogging) {
       console.log(`Saving voronoi preset: ${presetName}`);
@@ -213,25 +294,34 @@ class PresetManager {
       voronoiFolder
     );
 
-    // Update backward compatibility reference
-    this.voronoiPresets = this.voronoiHandler.presets;
-    this.selectedVoronoiPreset = this.voronoiHandler.selectedPreset;
-
-    return result;
-  }
-
-  deleteVoronoiPreset(presetName) {
-    const result = this.voronoiHandler.deleteVoronoiPreset(presetName);
-
-    // Update backward compatibility reference
-    this.voronoiPresets = this.voronoiHandler.presets;
-    this.selectedVoronoiPreset = this.voronoiHandler.selectedPreset;
+    if (result) {
+      this.voronoiHandler.saveToStorage();
+    }
 
     return result;
   }
 
   /**
-   * Load a voronoi preset
+   * Delete a voronoi preset
+   * @param {string} presetName - Name of preset to delete
+   * @returns {boolean} Success/failure
+   */
+  deleteVoronoiPreset(presetName) {
+    if (this.enableDebugLogging) {
+      console.log(`Deleting voronoi preset: ${presetName}`);
+    }
+
+    const result = this.voronoiHandler.deleteVoronoiPreset(presetName);
+
+    if (result) {
+      this.voronoiHandler.saveToStorage();
+    }
+
+    return result;
+  }
+
+  /**
+   * Load and apply a voronoi preset
    * @param {string} presetName - Name of preset to load
    * @param {Object} voronoiFolder - The dat.GUI folder to apply settings to
    * @returns {boolean} Success/failure
@@ -250,75 +340,19 @@ class PresetManager {
     // Only attempt to regenerate if the preset was successfully loaded
     if (result) {
       try {
-        // Try to find the voronoiField through multiple possible paths
-        let voronoiField = null;
-
-        // Try rightGui.main.voronoiField
-        if (this.rightGui?.main?.voronoiField) {
-          voronoiField = this.rightGui.main.voronoiField;
-          console.log("Found voronoiField through rightGui.main");
-        }
-        // Try directly from main if available
-        else if (window.app?.voronoiField) {
-          voronoiField = window.app.voronoiField;
-          console.log("Found voronoiField through window.app");
-        }
-        // Try through the voronoiFolder's object if available
-        else if (voronoiFolder?.object?.voronoiField) {
-          voronoiField = voronoiFolder.object.voronoiField;
-          console.log("Found voronoiField through voronoiFolder.object");
-        }
-        // Try through controller values
-        else if (voronoiFolder?.controllers) {
-          // Look for a controller that might have a reference to voronoiField
-          for (const ctrl of voronoiFolder.controllers) {
-            if (ctrl.object && typeof ctrl.object.__voronoiField === "object") {
-              voronoiField = ctrl.object.__voronoiField;
-              console.log("Found voronoiField through controller reference");
-              break;
-            }
-          }
-        }
-
-        // Now regenerate cells if we found the voronoiField
+        // Try direct reference first (most reliable)
         if (
-          voronoiField &&
-          typeof voronoiField.regenerateCells === "function"
+          this.voronoiField &&
+          typeof this.voronoiField.regenerateCells === "function"
         ) {
-          console.log("Regenerating voronoi cells after preset load");
-          voronoiField.regenerateCells();
+          console.log("Regenerating voronoi cells using direct reference");
+          this.voronoiField.regenerateCells();
+        } else if (this.voronoiHandler?.voronoiField?.regenerateCells) {
+          console.log("Regenerating voronoi cells using handler reference");
+          this.voronoiHandler.voronoiField.regenerateCells();
         } else {
-          // Try alternative approach - get the cellCount from voronoiFolder and call
-          // a global regenerate function if available
-          let cellCount = 10; // Default
-
-          // Try to find the cell count controller
-          if (voronoiFolder?.controllers) {
-            const cellCountCtrl = voronoiFolder.controllers.find(
-              (c) => c.property === "cellCount" || c.property === "numCells"
-            );
-
-            if (cellCountCtrl) {
-              cellCount = cellCountCtrl.getValue();
-              console.log(`Found cellCount value: ${cellCount}`);
-
-              // Try to find global regenerate method
-              if (window.app?.regenerateVoronoiCells) {
-                console.log(
-                  `Calling global regenerateVoronoiCells with count: ${cellCount}`
-                );
-                window.app.regenerateVoronoiCells(cellCount);
-              } else if (window.regenerateVoronoiCells) {
-                console.log(
-                  `Calling window.regenerateVoronoiCells with count: ${cellCount}`
-                );
-                window.regenerateVoronoiCells(cellCount);
-              }
-            }
-          }
-
           console.log(
-            "Could not regenerate voronoi cells - voronoiField not accessible"
+            "Cannot regenerate voronoi cells - voronoiField not available"
           );
         }
       } catch (error) {
@@ -330,426 +364,287 @@ class PresetManager {
     return result;
   }
 
+  /**
+   * Get the currently selected voronoi preset
+   * @returns {string} Preset name
+   */
   getSelectedVoronoiPreset() {
     return this.voronoiHandler.getSelectedPreset();
   }
 
-  /**
-   * Set a direct reference to the voronoiField
-   * @param {Object} field - The voronoi field object
-   */
-  setVoronoiField(field) {
-    this.voronoiField = field;
-    console.log("Direct voronoiField reference set in PresetManager");
-  }
-
   //#endregion
 
-  //#region Pulse Preset Methods
+  //#region Pulse Modulation Preset Methods
 
-  loadPulsePresetsFromStorage() {
-    // Forward to handler
-    return this.pulseHandler.presets;
-  }
-
-  savePulsePresetsToStorage() {
-    // Forward to handler
-    return this.pulseHandler.saveToStorage();
-  }
-
+  /**
+   * Get available pulse modulation preset options
+   * @returns {Array<string>} Array of preset names
+   */
   getPulsePresetOptions() {
     return this.pulseHandler.getPresetOptions();
   }
 
+  /**
+   * Save current state as a pulse modulation preset
+   * @param {string} presetName - Name for the preset
+   * @param {Object} pulseModUi - The UI component with pulse modulation settings
+   * @returns {boolean} Success/failure
+   */
   savePulsePreset(presetName, pulseModUi) {
     if (this.enableDebugLogging) {
-      console.log(`Saving pulse preset: ${presetName}`);
+      console.log(`Saving pulse modulation preset: ${presetName}`);
     }
 
-    // Pass the UI object directly instead of expecting pulseModManager
     const result = this.pulseHandler.savePulsePreset(presetName, pulseModUi);
 
-    // Update backward compatibility reference
-    this.pulsePresets = this.pulseHandler.presets;
-    this.selectedPulsePreset = this.pulseHandler.selectedPreset;
-
-    return result;
-  }
-
-  deletePulsePreset(presetName) {
-    const result = this.pulseHandler.deletePulsePreset(presetName);
-
-    // Update backward compatibility reference
-    this.pulsePresets = this.pulseHandler.presets;
-    this.selectedPulsePreset = this.pulseHandler.selectedPreset;
-
-    return result;
-  }
-
-  loadPulsePreset(presetName, pulseModUi) {
-    if (this.enableDebugLogging) {
-      console.log(`Loading pulse preset: ${presetName}`);
+    if (result) {
+      this.pulseHandler.saveToStorage();
     }
 
-    const result = this.pulseHandler.loadPulsePreset(presetName, pulseModUi);
+    return result;
+  }
 
-    // Update backward compatibility reference
-    this.selectedPulsePreset = this.pulseHandler.selectedPreset;
+  /**
+   * Delete a pulse modulation preset
+   * @param {string} presetName - Name of preset to delete
+   * @returns {boolean} Success/failure
+   */
+  deletePulsePreset(presetName) {
+    if (this.enableDebugLogging) {
+      console.log(`Deleting pulse modulation preset: ${presetName}`);
+    }
+
+    const result = this.pulseHandler.deletePulsePreset(presetName);
+
+    if (result) {
+      this.pulseHandler.saveToStorage();
+    }
 
     return result;
   }
 
+  /**
+   * Load and apply a pulse modulation preset
+   * @param {string} presetName - Name of preset to load
+   * @param {Object} pulseModUi - The UI component to apply settings to
+   * @returns {boolean} Success/failure
+   */
+  loadPulsePreset(presetName, pulseModUi) {
+    if (this.enableDebugLogging) {
+      console.log(`Loading pulse modulation preset: ${presetName}`);
+    }
+
+    return this.pulseHandler.loadPulsePreset(presetName, pulseModUi);
+  }
+
+  /**
+   * Get the currently selected pulse modulation preset
+   * @returns {string} Preset name
+   */
   getSelectedPulsePreset() {
     return this.pulseHandler.getSelectedPreset();
   }
 
   //#endregion
 
-  //#region Mic Preset Methods
+  //#region Microphone Preset Methods
 
-  loadMicPresetsFromStorage() {
-    // Forward to handler
-    return this.micHandler.presets;
-  }
-
-  saveMicPresetsToStorage() {
-    // Forward to handler
-    return this.micHandler.saveToStorage();
-  }
-
+  /**
+   * Get available microphone preset options
+   * @returns {Array<string>} Array of preset names
+   */
   getMicPresetOptions() {
     return this.micHandler.getPresetOptions();
   }
 
+  /**
+   * Save current state as a microphone preset
+   * @param {string} presetName - Name for the preset
+   * @param {Object} inputUi - The UI component with microphone settings
+   * @returns {boolean} Success/failure
+   */
   saveMicPreset(presetName, inputUi) {
     if (this.enableDebugLogging) {
-      console.log(`Saving mic preset: ${presetName}`);
+      console.log(`Saving microphone preset: ${presetName}`);
     }
 
     const result = this.micHandler.saveMicPreset(presetName, inputUi);
 
-    // Update backward compatibility reference
-    this.micPresets = this.micHandler.presets;
-    this.selectedMicPreset = this.micHandler.selectedPreset;
-
-    if (result && this.inputUi && this.inputUi.updatePresetDropdown) {
-      this.inputUi.updatePresetDropdown();
+    if (result) {
+      this.micHandler.saveToStorage();
     }
 
     return result;
   }
 
+  /**
+   * Delete a microphone preset
+   * @param {string} presetName - Name of preset to delete
+   * @returns {boolean} Success/failure
+   */
   deleteMicPreset(presetName) {
     if (this.enableDebugLogging) {
-      console.log(`Deleting mic preset: ${presetName}`);
+      console.log(`Deleting microphone preset: ${presetName}`);
     }
 
     const result = this.micHandler.deleteMicPreset(presetName);
 
-    // Update backward compatibility reference
-    this.micPresets = this.micHandler.presets;
-    this.selectedMicPreset = this.micHandler.selectedPreset;
-
-    if (result && this.inputUi && this.inputUi.updatePresetDropdown) {
-      this.inputUi.updatePresetDropdown();
+    if (result) {
+      this.micHandler.saveToStorage();
     }
 
     return result;
   }
 
-  loadMicPreset(presetName, inputUi = null) {
+  /**
+   * Load and apply a microphone preset
+   * @param {string} presetName - Name of preset to load
+   * @param {Object} inputUi - The UI component to apply settings to
+   * @returns {boolean} Success/failure
+   */
+  loadMicPreset(presetName, inputUi) {
     if (this.enableDebugLogging) {
-      console.log(`Loading mic preset: ${presetName}`);
+      console.log(`Loading microphone preset: ${presetName}`);
     }
 
-    const result = this.micHandler.loadMicPreset(
-      presetName,
-      inputUi || this.inputUi
-    );
-
-    // Update backward compatibility reference
-    this.selectedMicPreset = this.micHandler.selectedPreset;
-
-    return result;
+    return this.micHandler.loadMicPreset(presetName, inputUi);
   }
 
+  /**
+   * Get the currently selected microphone preset
+   * @returns {string} Preset name
+   */
   getSelectedMicPreset() {
     return this.micHandler.getSelectedPreset();
   }
 
   //#endregion
 
-  //#region Export/Import
+  //#region Preset Export/Import
 
-  // Export all presets (master, turbulence, voronoi, pulse, mic) to a JSON file
+  /**
+   * Export all presets to a downloadable JSON file
+   */
   exportPresets() {
-    const allPresets = {
-      version: 2, // Increment version to indicate the new format
-      presets: this.masterHandler.exportData(),
-      turbPresets: this.turbHandler.exportData(),
-      voronoiPresets: this.voronoiHandler.exportData(),
-      pulsePresets: this.pulseHandler.exportData(),
-      micPresets: this.micHandler.exportData(),
-    };
-
-    const dataStr = JSON.stringify(allPresets, null, 2);
-    const dataUri =
-      "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
-
-    const exportFileName = `svibe-presets-${new Date()
-      .toISOString()
-      .slice(0, 10)}.json`;
-
-    const linkElement = document.createElement("a");
-    linkElement.setAttribute("href", dataUri);
-    linkElement.setAttribute("download", exportFileName);
-    linkElement.style.display = "none";
-    document.body.appendChild(linkElement);
-    linkElement.click();
-    document.body.removeChild(linkElement);
-
-    console.log("Exported presets to file:", exportFileName);
-    return true;
-  }
-
-  // Import presets from a JSON file
-  importPresets(jsonData) {
     try {
-      const importedData = JSON.parse(jsonData);
-      let importCount = 0;
+      // Gather all preset data
+      const exportData = {
+        version: 1,
+        masterPresets: this.masterHandler.presets,
+        turbPresets: this.turbulenceHandler.presets,
+        voronoiPresets: this.voronoiHandler.presets,
+        pulsePresets: this.pulseHandler.presets,
+        micPresets: this.micHandler.presets,
+        timestamp: Date.now(),
+      };
 
-      // Check version and handle accordingly
-      const isNewFormat = importedData.version && importedData.version >= 2;
+      // Create a downloadable JSON file
+      const jsonString = JSON.stringify(exportData);
+      const blob = new Blob([jsonString], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
 
-      if (isNewFormat) {
-        // Import using the new format with handlers
-        if (importedData.presets) {
-          this.masterHandler.importData(importedData.presets);
-          this.presets = this.masterHandler.presets;
-          importCount++;
-        }
+      // Create a temporary link and trigger download
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Svibe_Presets_${new Date()
+        .toISOString()
+        .slice(0, 10)}.json`;
+      link.click();
 
-        if (importedData.turbPresets) {
-          this.turbHandler.importData(importedData.turbPresets);
-          this.turbPresets = this.turbHandler.presets;
-          importCount++;
-        }
+      // Clean up URL object
+      setTimeout(() => URL.revokeObjectURL(url), 100);
 
-        if (importedData.voronoiPresets) {
-          this.voronoiHandler.importData(importedData.voronoiPresets);
-          this.voronoiPresets = this.voronoiHandler.presets;
-          importCount++;
-        }
-
-        if (importedData.pulsePresets) {
-          this.pulseHandler.importData(importedData.pulsePresets);
-          this.pulsePresets = this.pulseHandler.presets;
-          importCount++;
-        }
-
-        if (importedData.micPresets) {
-          this.micHandler.importData(importedData.micPresets);
-          this.micPresets = this.micHandler.presets;
-          importCount++;
-        }
-      } else {
-        // Legacy format import
-        console.log("Importing legacy format presets");
-
-        // Import main presets
-        if (importedData.presets) {
-          Object.assign(this.presets, importedData.presets);
-          importCount++;
-        }
-
-        // Import turbulence presets
-        if (importedData.turbPresets) {
-          Object.assign(this.turbPresets, importedData.turbPresets);
-          importCount++;
-        }
-
-        // Import voronoi presets
-        if (importedData.voronoiPresets) {
-          Object.assign(this.voronoiPresets, importedData.voronoiPresets);
-          importCount++;
-        }
-
-        // Import pulse presets
-        if (importedData.pulsePresets) {
-          Object.assign(this.pulsePresets, importedData.pulsePresets);
-          importCount++;
-        }
-
-        // Import mic presets
-        if (importedData.micPresets) {
-          Object.assign(this.micPresets, importedData.micPresets);
-          importCount++;
-        }
-
-        // Save changes to storage
-        this.savePresetsToStorage();
-        this.saveTurbPresetsToStorage();
-        this.saveVoronoiPresetsToStorage();
-        this.savePulsePresetsToStorage();
-        this.saveMicPresetsToStorage();
-      }
-
-      console.log(`Successfully imported ${importCount} preset types`);
-      return importCount;
+      return true;
     } catch (error) {
-      console.error("Failed to import presets:", error);
+      console.error("Error exporting presets:", error);
       return false;
     }
   }
 
-  //#endregion
+  /**
+   * Import presets from a JSON string
+   * @param {string} jsonString - JSON string containing exported presets
+   * @returns {number} Number of preset categories imported
+   */
+  importPresets(jsonString) {
+    try {
+      // Parse the JSON string
+      const importData = JSON.parse(jsonString);
+      let importCount = 0;
 
-  //#region Controller Path Resolution (Simplified & Improved)
-
-  // Find controller path with better identification
-  findControllerPath(controller) {
-    if (!controller) return null;
-
-    // Create a more robust identifier
-    const guiName = controller.parent?._title || "unknown";
-    const propName = controller.property || "unknown";
-    const objectPath =
-      controller.object && controller.object.constructor
-        ? controller.object.constructor.name
-        : "unknown";
-
-    return `${guiName}.${propName}.${objectPath}`;
-  }
-
-  // Find controller by path with improved error handling
-  findControllerByPath(path) {
-    if (!path) {
-      console.warn("Empty controller path provided");
-      return null;
-    }
-
-    // Parse path components
-    const [guiName, propName, objectType] = path.split(".");
-
-    if (!guiName || !propName) {
-      console.warn(`Invalid controller path: ${path}`);
-      return null;
-    }
-
-    if (this.enableDebugLogging) {
-      console.log(`Finding controller: ${path}`);
-    }
-
-    // Helper function to search in a GUI recursively
-    const findInGui = (gui) => {
-      // Check controllers in current level
-      for (const controller of gui.controllers) {
-        if (controller.property === propName) {
-          // Further validate if we have object type info
-          if (
-            !objectType ||
-            (controller.object &&
-              controller.object.constructor &&
-              controller.object.constructor.name === objectType)
-          ) {
-            return controller;
-          }
-        }
+      // Check if the import data is valid
+      if (!importData || typeof importData !== "object") {
+        console.error("Invalid import data format");
+        return 0;
       }
 
-      // Search in folders
-      for (const folder of gui.folders) {
-        // Skip if folder name doesn't match (optimization)
-        if (guiName !== "unknown" && folder._title !== guiName) {
-          continue;
-        }
-
-        const result = findInGui(folder);
-        if (result) return result;
+      // Import master presets if available
+      if (
+        importData.masterPresets &&
+        typeof importData.masterPresets === "object"
+      ) {
+        this.masterHandler.presets = {
+          ...this.masterHandler.presets,
+          ...importData.masterPresets,
+        };
+        this.masterHandler.saveToStorage();
+        importCount++;
       }
 
-      return null;
-    };
+      // Import turbulence presets if available
+      if (
+        importData.turbPresets &&
+        typeof importData.turbPresets === "object"
+      ) {
+        this.turbulenceHandler.presets = {
+          ...this.turbulenceHandler.presets,
+          ...importData.turbPresets,
+        };
+        this.turbulenceHandler.saveToStorage();
+        importCount++;
+      }
 
-    // Try both GUIs
-    const allGuis = [this.leftGui, this.rightGui];
-    for (const gui of allGuis) {
-      if (!gui) continue;
+      // Import voronoi presets if available
+      if (
+        importData.voronoiPresets &&
+        typeof importData.voronoiPresets === "object"
+      ) {
+        this.voronoiHandler.presets = {
+          ...this.voronoiHandler.presets,
+          ...importData.voronoiPresets,
+        };
+        this.voronoiHandler.saveToStorage();
+        importCount++;
+      }
 
-      const result = findInGui(gui);
-      if (result) return result;
+      // Import pulse modulation presets if available
+      if (
+        importData.pulsePresets &&
+        typeof importData.pulsePresets === "object"
+      ) {
+        this.pulseHandler.presets = {
+          ...this.pulseHandler.presets,
+          ...importData.pulsePresets,
+        };
+        this.pulseHandler.saveToStorage();
+        importCount++;
+      }
+
+      // Import microphone presets if available
+      if (importData.micPresets && typeof importData.micPresets === "object") {
+        this.micHandler.presets = {
+          ...this.micHandler.presets,
+          ...importData.micPresets,
+        };
+        this.micHandler.saveToStorage();
+        importCount++;
+      }
+
+      return importCount;
+    } catch (error) {
+      console.error("Error importing presets:", error);
+      return 0;
     }
-
-    // If not found, try just by property name as last resort
-    for (const gui of allGuis) {
-      if (!gui) continue;
-
-      const findByProp = (g) => {
-        for (const controller of g.controllers) {
-          if (controller.property === propName) return controller;
-        }
-
-        for (const folder of g.folders) {
-          const result = findByProp(folder);
-          if (result) return result;
-        }
-
-        return null;
-      };
-
-      const result = findByProp(gui);
-      if (result) return result;
-    }
-
-    // Not found
-    if (this.enableDebugLogging) {
-      console.warn(`Controller not found: ${path}`);
-    }
-    return null;
-  }
-
-  //#endregion
-
-  //#region Debug Methods
-
-  // Enable or disable debug messages
-  setDebug(enabled) {
-    this.enableDebugLogging = enabled;
-  }
-
-  // Dump controller paths for debugging
-  dumpControllerPaths() {
-    console.log("=== Available Controller Paths ===");
-
-    if (this.leftGui) {
-      console.log("Left GUI controllers:");
-      this._dumpGuiControllers(this.leftGui);
-    }
-
-    if (this.rightGui) {
-      console.log("Right GUI controllers:");
-      this._dumpGuiControllers(this.rightGui);
-    }
-
-    console.log("=== End Controller Paths ===");
-  }
-
-  // Helper method to recursively dump controllers
-  _dumpGuiControllers(gui, path = "") {
-    // Log controllers in this GUI
-    gui.controllers.forEach((controller) => {
-      const name = controller.property || "unknown";
-      const fullPath = path ? `${path}.${name}` : name;
-      console.log(`- ${fullPath}: ${controller.getValue()}`);
-    });
-
-    // Recursively check folders
-    gui.folders.forEach((folder) => {
-      const folderName = folder._title || "unknown";
-      const folderPath = path ? `${path}.${folderName}` : folderName;
-      console.log(`Folder: ${folderPath}`);
-      this._dumpGuiControllers(folder, folderPath);
-    });
   }
 
   //#endregion

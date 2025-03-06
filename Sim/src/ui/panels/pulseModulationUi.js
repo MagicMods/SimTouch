@@ -627,4 +627,208 @@ export class PulseModulationUi extends BaseUi {
       this.update();
     }
   }
+
+  /**
+   * Clear all modulators from the UI
+   * This is called by the preset system before loading new modulators
+   */
+  clearAllModulators() {
+    console.log("PulseModulationUI: Clearing all modulators");
+
+    // Keep track of whether we successfully removed modulators
+    let cleared = false;
+
+    try {
+      // If we track our active modulators internally, use that
+      if (Array.isArray(this.activeModulators)) {
+        // Clone the array since we'll be modifying it while iterating
+        const modulatorsToRemove = [...this.activeModulators];
+
+        modulatorsToRemove.forEach((mod) => {
+          if (mod) {
+            // If we have a direct method to remove a modulator by ID
+            if (
+              mod.id &&
+              this.modulatorManager &&
+              typeof this.modulatorManager.removeModulator === "function"
+            ) {
+              this.modulatorManager.removeModulator(mod.id);
+            }
+
+            // If there's a disable method on the modulator itself
+            if (typeof mod.disable === "function") {
+              mod.disable();
+            }
+
+            // If there's a dispose method on the modulator
+            if (typeof mod.dispose === "function") {
+              mod.dispose();
+            }
+          }
+        });
+
+        // Clear the array
+        this.activeModulators = [];
+        cleared = true;
+      }
+
+      // Alternative method - remove by type if that method exists
+      if (
+        this.modulatorManager &&
+        typeof this.modulatorManager.removeModulatorsByType === "function"
+      ) {
+        this.modulatorManager.removeModulatorsByType("pulse");
+        cleared = true;
+      }
+
+      // If we have a method to remove all modulators, try that as a last resort
+      if (
+        !cleared &&
+        this.modulatorManager &&
+        typeof this.modulatorManager.clearModulators === "function"
+      ) {
+        this.modulatorManager.clearModulators("pulse");
+        cleared = true;
+      }
+    } catch (error) {
+      console.warn("Error while clearing modulators:", error);
+    }
+
+    // Clean up UI elements regardless of whether removing from manager succeeded
+    if (this.modulatorControls && Array.isArray(this.modulatorControls)) {
+      this.modulatorControls.forEach((control) => {
+        try {
+          if (control && control.domElement && control.domElement.parentNode) {
+            control.domElement.parentNode.removeChild(control.domElement);
+          }
+        } catch (e) {
+          console.warn("Error removing modulator control from DOM:", e);
+        }
+      });
+
+      // Clear controls array
+      this.modulatorControls = [];
+    }
+
+    // Update the UI to reflect the changes
+    if (typeof this.updateModulatorList === "function") {
+      this.updateModulatorList();
+    } else if (this.modulatorListElement) {
+      // Direct DOM manipulation fallback
+      this.modulatorListElement.innerHTML = "";
+    }
+
+    return true;
+  }
+
+  /**
+   * Load modulators from preset data
+   * @param {Array|Object} data - Modulator data from preset
+   */
+  loadFromData(data) {
+    console.log("PulseModulationUI: Loading modulators from preset data");
+
+    if (!data) {
+      console.log("No modulator data to load");
+      return false;
+    }
+
+    try {
+      // First clear existing modulators
+      this.clearAllModulators();
+
+      // Parse data if it's a string
+      const modulatorData = typeof data === "string" ? JSON.parse(data) : data;
+
+      // If it's an array, process each modulator
+      if (Array.isArray(modulatorData)) {
+        modulatorData.forEach((mod) => {
+          if (typeof this.addModulator === "function") {
+            this.addModulator(
+              mod.type || "sine",
+              mod.target || "Animation Speed",
+              {
+                frequency: mod.frequency || 1,
+                amplitude: mod.amplitude || 0.5,
+                phase: mod.phase || 0,
+                offset: mod.offset || 0.5,
+                enabled: mod.enabled !== undefined ? mod.enabled : true,
+              }
+            );
+          }
+        });
+      }
+      // If it's an object with a modulators property
+      else if (
+        modulatorData.modulators &&
+        Array.isArray(modulatorData.modulators)
+      ) {
+        modulatorData.modulators.forEach((mod) => {
+          if (typeof this.addModulator === "function") {
+            this.addModulator(
+              mod.type || "sine",
+              mod.target || "Animation Speed",
+              {
+                frequency: mod.frequency || 1,
+                amplitude: mod.amplitude || 0.5,
+                phase: mod.phase || 0,
+                offset: mod.offset || 0.5,
+                enabled: mod.enabled !== undefined ? mod.enabled : true,
+              }
+            );
+          }
+        });
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error loading pulse modulator data:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Alias for loadFromData to support multiple method names
+   */
+  loadModulators(data) {
+    return this.loadFromData(data);
+  }
+
+  /**
+   * Get modulator data for saving to preset
+   * @returns {Array} Array of modulator configuration objects
+   */
+  saveToData() {
+    const modulators = [];
+
+    try {
+      // If we track modulators internally
+      if (Array.isArray(this.activeModulators)) {
+        this.activeModulators.forEach((mod) => {
+          if (mod) {
+            modulators.push({
+              type: mod.type || "sine",
+              target: mod.target || "Animation Speed",
+              frequency: mod.frequency || 1,
+              amplitude: mod.amplitude || 0.5,
+              phase: mod.phase || 0,
+              offset: mod.offset || 0.5,
+              enabled: mod.enabled !== undefined ? mod.enabled : true,
+            });
+          }
+        });
+      }
+    } catch (error) {
+      console.error("Error extracting modulator data:", error);
+    }
+
+    return modulators;
+  }
+
+  /**
+   * Alias for saveToData to support multiple method names
+   */
+  getModulatorsData() {
+    return this.saveToData();
+  }
 }
