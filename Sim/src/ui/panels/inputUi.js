@@ -373,8 +373,6 @@ export class InputUi extends BaseUi {
     // Add this folder to our tracking array
     this.modulatorFolders.push(folder);
 
-    // Add UI controls for the modulator
-
     // Get the LATEST target names directly from the manager
     const targetNames = this.modulatorManager.getTargetNames();
     console.log(
@@ -387,61 +385,94 @@ export class InputUi extends BaseUi {
     // Add a flag to the modulator to indicate if it's being loaded from a preset
     modulator._loadingFromPreset = false;
 
-    // Add target selector with all available targets - IMPORTANT: Start with no selection
+    // Add enable/disable toggle
+    folder
+      .add(modulator, "enabled")
+      .name("Enabled")
+      .onChange((value) => {
+        if (!value) modulator.resetToOriginal();
+      });
+
+    // Add target selector
     const targetController = folder
       .add(modulator, "targetName", ["None", ...targetNames])
-      .name("Target");
-    targetController.onChange((value) => {
-      // Skip "None" option
-      if (value === "None") return;
+      .name("Target")
+      .onChange((value) => {
+        // Skip "None" option
+        if (value === "None") return;
 
-      // Get target info from the manager
-      const targetInfo = this.modulatorManager.getTargetInfo(value);
-      if (!targetInfo) return;
+        // Get target info from the manager
+        const targetInfo = this.modulatorManager.getTargetInfo(value);
+        if (!targetInfo) return;
 
-      // Always update the allowed range of the min/max controllers
-      if (
-        targetInfo &&
-        targetInfo.min !== undefined &&
-        targetInfo.max !== undefined
-      ) {
-        const min = targetInfo.min;
-        const max = targetInfo.max;
-        const step = targetInfo.step || 0.01;
-
-        // Update the controller RANGES (not values)
-        if (minController) {
-          minController.min(min);
-          minController.max(max);
-          minController.step(step);
-        }
-
-        if (maxController) {
-          maxController.min(min);
-          maxController.max(max);
-          maxController.step(step);
-        }
-
-        // Only update the VALUES if not loading from preset
-        if (!modulator._loadingFromPreset) {
-          console.log(`Auto-ranging for target ${value}`);
-
-          // Set controller values to min/max of target
-          minController.setValue(min);
-          maxController.setValue(max);
-
-          // Update modulator properties
-          modulator.min = min;
-          modulator.max = max;
+        // Connect the modulator to its target - IMPORTANT
+        if (typeof modulator.setTarget === "function") {
+          // Use the proper method to connect the modulator
+          modulator.setTarget(value);
         } else {
-          console.log(
-            `Using preset values for target ${value}, adjusting only input ranges`
-          );
-          // Reset the flag after first use
-          modulator._loadingFromPreset = false;
+          // Fallback if setTarget doesn't exist
+          modulator.targetName = value;
         }
-      }
-    });
+
+        // ALWAYS update the controllers' allowed range to match the target
+        if (
+          targetInfo &&
+          targetInfo.min !== undefined &&
+          targetInfo.max !== undefined
+        ) {
+          const min = targetInfo.min;
+          const max = targetInfo.max;
+          const step = targetInfo.step || 0.01;
+
+          console.log(
+            `Auto-range: Setting min/max controller ranges to ${min}-${max}`
+          );
+
+          // FORCE RECREATE the min/max controllers with new ranges
+          // Remove existing controllers
+          if (minController) {
+            folder.controllers.splice(
+              folder.controllers.indexOf(minController),
+              1
+            );
+            minController.destroy();
+          }
+
+          if (maxController) {
+            folder.controllers.splice(
+              folder.controllers.indexOf(maxController),
+              1
+            );
+            maxController.destroy();
+          }
+
+          // Create new controllers with the target's range
+          minController = folder
+            .add(modulator, "min", min, max, step)
+            .name("Min Value");
+
+          maxController = folder
+            .add(modulator, "max", min, max, step)
+            .name("Max Value");
+
+          // Only update VALUES of controllers if not loading from preset
+          if (!modulator._loadingFromPreset) {
+            console.log(`Auto-ranging values for target ${value}`);
+
+            // Set values to match target min/max
+            minController.setValue(min);
+            maxController.setValue(max);
+
+            // Update modulator properties directly too
+            modulator.min = min;
+            modulator.max = max;
+          } else {
+            console.log(`Using preset values for target ${value}`);
+            // Reset the flag after first use
+            modulator._loadingFromPreset = false;
+          }
+        }
+      });
 
     // Set the initial value to "None"
     targetController.setValue("None");
@@ -475,9 +506,13 @@ export class InputUi extends BaseUi {
     // Add smoothing slider
     folder.add(modulator, "smoothing", 0, 0.99, 0.01).name("Smoothing");
 
-    // Add range controls
-    minController = folder.add(modulator, "min", 0, 1, 0.01).name("Min Value");
-    maxController = folder.add(modulator, "max", 0, 1, 0.01).name("Max Value");
+    // Add range controls - START WITH WIDER RANGES LIKE PULSE MODULATOR
+    minController = folder
+      .add(modulator, "min", -10, 10, 0.01)
+      .name("Min Value");
+    maxController = folder
+      .add(modulator, "max", -10, 10, 0.01)
+      .name("Max Value");
 
     // Add remove button
     const removeObj = {
@@ -506,8 +541,6 @@ export class InputUi extends BaseUi {
 
     // Add visualization
     this.addVisualizationToModulator(modulator, folder);
-
-    // DO NOT set a default target here - require user to select one
 
     // Open the folder by default
     folder.open();
@@ -2063,27 +2096,72 @@ export class InputUi extends BaseUi {
         const targetInfo = this.modulatorManager.getTargetInfo(value);
         if (!targetInfo) return;
 
-        // Only auto-range if NOT loading from a preset
-        if (!modulator._loadingFromPreset) {
-          console.log(`Auto-ranging for target ${value}`);
-          if (
-            targetInfo &&
-            targetInfo.min !== undefined &&
-            targetInfo.max !== undefined
-          ) {
-            minController.setValue(targetInfo.min);
-            maxController.setValue(targetInfo.max);
-
-            // Update the modulator properties directly too
-            modulator.min = targetInfo.min;
-            modulator.max = targetInfo.max;
-          }
+        // Connect the modulator to its target - IMPORTANT
+        if (typeof modulator.setTarget === "function") {
+          // Use the proper method to connect the modulator
+          modulator.setTarget(value);
         } else {
+          // Fallback if setTarget doesn't exist
+          modulator.targetName = value;
+        }
+
+        // ALWAYS update the controllers' allowed range to match the target
+        if (
+          targetInfo &&
+          targetInfo.min !== undefined &&
+          targetInfo.max !== undefined
+        ) {
+          const min = targetInfo.min;
+          const max = targetInfo.max;
+          const step = targetInfo.step || 0.01;
+
           console.log(
-            `Using preset values for target ${value}, skipping auto-range`
+            `Auto-range: Setting min/max controller ranges to ${min}-${max}`
           );
-          // Reset the flag after first use
-          modulator._loadingFromPreset = false;
+
+          // FORCE RECREATE the min/max controllers with new ranges
+          // Remove existing controllers
+          if (minController) {
+            folder.controllers.splice(
+              folder.controllers.indexOf(minController),
+              1
+            );
+            minController.destroy();
+          }
+
+          if (maxController) {
+            folder.controllers.splice(
+              folder.controllers.indexOf(maxController),
+              1
+            );
+            maxController.destroy();
+          }
+
+          // Create new controllers with the target's range
+          minController = folder
+            .add(modulator, "min", min, max, step)
+            .name("Min Value");
+
+          maxController = folder
+            .add(modulator, "max", min, max, step)
+            .name("Max Value");
+
+          // Only update VALUES of controllers if not loading from preset
+          if (!modulator._loadingFromPreset) {
+            console.log(`Auto-ranging values for target ${value}`);
+
+            // Set values to match target min/max
+            minController.setValue(min);
+            maxController.setValue(max);
+
+            // Update modulator properties directly too
+            modulator.min = min;
+            modulator.max = max;
+          } else {
+            console.log(`Using preset values for target ${value}`);
+            // Reset the flag after first use
+            modulator._loadingFromPreset = false;
+          }
         }
       });
 

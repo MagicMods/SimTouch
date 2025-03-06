@@ -647,22 +647,38 @@ export class PulseModulationUi extends BaseUi {
   _clearAllModulators() {
     console.log("PulseModulationUi: Clearing all modulators");
 
-    // Initialize arrays if they don't exist
-    this.modulators = this.modulators || [];
-    this.folders = this.folders || [];
-    this.modulatorControllers = this.modulatorControllers || [];
+    // First disable all modulators to reset target values
+    if (this.modulatorManager && this.modulatorManager.modulators) {
+      // Create a copy of the array since we'll be modifying it
+      const modulatorsToRemove = [...this.modulatorManager.modulators];
 
-    // Remove all modulator folders from the GUI
-    this.folders.forEach((folder) => {
-      if (folder && this.gui) {
-        this.gui.removeFolder(folder);
-      }
-    });
+      // Disable and remove each modulator from the manager
+      modulatorsToRemove.forEach((modulator, index) => {
+        if (modulator) {
+          // Disable the modulator to reset target to original value
+          if (typeof modulator.disable === "function") {
+            modulator.disable();
+          } else {
+            modulator.enabled = false;
+          }
 
-    // Clear the arrays
-    this.modulators = [];
+          // Remove from the manager
+          this.modulatorManager.removeModulator(index);
+        }
+      });
+    }
+
+    // Remove all folders from the UI
+    if (this.folders && Array.isArray(this.folders)) {
+      this.folders.forEach((folder) => {
+        if (folder && typeof folder.destroy === "function") {
+          folder.destroy();
+        }
+      });
+    }
+
+    // Reset our tracking arrays
     this.folders = [];
-    this.modulatorControllers = [];
   }
 
   /**
