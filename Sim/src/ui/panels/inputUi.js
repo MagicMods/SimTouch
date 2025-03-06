@@ -390,38 +390,58 @@ export class InputUi extends BaseUi {
     // Add target selector with all available targets - IMPORTANT: Start with no selection
     const targetController = folder
       .add(modulator, "targetName", ["None", ...targetNames])
-      .name("Target")
-      .onChange((value) => {
-        // Skip "None" option
-        if (value === "None") return;
+      .name("Target");
+    targetController.onChange((value) => {
+      // Skip "None" option
+      if (value === "None") return;
 
-        // Get target info from the manager
-        const targetInfo = this.modulatorManager.getTargetInfo(value);
-        if (!targetInfo) return;
+      // Get target info from the manager
+      const targetInfo = this.modulatorManager.getTargetInfo(value);
+      if (!targetInfo) return;
 
-        // Only auto-range if NOT loading from a preset
+      // Always update the allowed range of the min/max controllers
+      if (
+        targetInfo &&
+        targetInfo.min !== undefined &&
+        targetInfo.max !== undefined
+      ) {
+        const min = targetInfo.min;
+        const max = targetInfo.max;
+        const step = targetInfo.step || 0.01;
+
+        // Update the controller RANGES (not values)
+        if (minController) {
+          minController.min(min);
+          minController.max(max);
+          minController.step(step);
+        }
+
+        if (maxController) {
+          maxController.min(min);
+          maxController.max(max);
+          maxController.step(step);
+        }
+
+        // Only update the VALUES if not loading from preset
         if (!modulator._loadingFromPreset) {
           console.log(`Auto-ranging for target ${value}`);
-          if (
-            targetInfo &&
-            targetInfo.min !== undefined &&
-            targetInfo.max !== undefined
-          ) {
-            minController.setValue(targetInfo.min);
-            maxController.setValue(targetInfo.max);
 
-            // Update the modulator properties directly too
-            modulator.min = targetInfo.min;
-            modulator.max = targetInfo.max;
-          }
+          // Set controller values to min/max of target
+          minController.setValue(min);
+          maxController.setValue(max);
+
+          // Update modulator properties
+          modulator.min = min;
+          modulator.max = max;
         } else {
           console.log(
-            `Using preset values for target ${value}, skipping auto-range`
+            `Using preset values for target ${value}, adjusting only input ranges`
           );
           // Reset the flag after first use
           modulator._loadingFromPreset = false;
         }
-      });
+      }
+    });
 
     // Set the initial value to "None"
     targetController.setValue("None");

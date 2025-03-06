@@ -316,29 +316,29 @@ export class ModulatorManager {
         result.max = 1;
         result.step = 0.01;
 
-        // Provide hardcoded ranges for specific targets
-        const knownRanges = {
-          "Turbulence Strength": { min: 0, max: 10, step: 0.01 },
-          "Turbulence Scale": { min: 0.1, max: 10, step: 0.01 },
-          "Turbulence Speed": { min: 0, max: 20, step: 0.01 },
-          "Scale Strength": { min: 0, max: 1, step: 0.01 },
-          "Inward Pull": { min: 0, max: 5, step: 0.01 },
-          "Turbulence Decay": { min: 0.9, max: 1, step: 0.001 },
-          "Voronoi Strength": { min: 0, max: 10, step: 0.01 },
-          "Cell Speed": { min: 0, max: 4, step: 0.01 },
-          "Edge Width": { min: 0.1, max: 50, step: 0.1 },
-          Attraction: { min: 0, max: 8, step: 0.01 },
-          "Cell Count": { min: 1, max: 10, step: 1 },
-          Force: { min: 0, max: 5, step: 0.01 },
-          "Fluid Radius": { min: 5, max: 50, step: 1 },
-          "Surface Tension": { min: 0, max: 1, step: 0.01 },
-          Viscosity: { min: 0, max: 1, step: 0.01 },
-          // Add more known ranges as needed
-        };
+        // // Provide hardcoded ranges for specific targets
+        // const knownRanges = {
+        //   "Turbulence Strength": { min: 0, max: 10, step: 0.01 },
+        //   "Turbulence Scale": { min: 0.1, max: 10, step: 0.01 },
+        //   "Turbulence Speed": { min: 0, max: 20, step: 0.01 },
+        //   "Scale Strength": { min: 0, max: 1, step: 0.01 },
+        //   "Inward Pull": { min: 0, max: 5, step: 0.01 },
+        //   "Turbulence Decay": { min: 0.9, max: 1, step: 0.001 },
+        //   "Voronoi Strength": { min: 0, max: 10, step: 0.01 },
+        //   "Cell Speed": { min: 0, max: 4, step: 0.01 },
+        //   "Edge Width": { min: 0.1, max: 50, step: 0.1 },
+        //   Attraction: { min: 0, max: 8, step: 0.01 },
+        //   "Cell Count": { min: 1, max: 10, step: 1 },
+        //   Force: { min: 0, max: 5, step: 0.01 },
+        //   "Fluid Radius": { min: 5, max: 50, step: 1 },
+        //   "Surface Tension": { min: 0, max: 1, step: 0.01 },
+        //   Viscosity: { min: 0, max: 1, step: 0.01 },
+        //   // Add more known ranges as needed
+        // };
 
-        if (knownRanges[targetName]) {
-          Object.assign(result, knownRanges[targetName]);
-        }
+        // if (knownRanges[targetName]) {
+        //   Object.assign(result, knownRanges[targetName]);
+        // }
       }
 
       return result;
