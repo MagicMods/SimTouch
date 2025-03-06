@@ -135,12 +135,42 @@ export class PulseModulationUi extends BaseUi {
 
     // Add target selector
     const targetController = folder
-      .add(modulator, "targetName", targetNames)
+      .add(modulator, "targetName", ["None", ...targetNames])
       .name("Target")
       .onChange((value) => {
-        modulator.setTarget(value);
-        this.updateRangeForTarget(modulator, minController, maxController);
+        // Skip "None" option
+        if (value === "None") return;
+
+        // Get target info from the manager
+        const targetInfo = this.modulatorManager.getTargetInfo(value);
+        if (!targetInfo) return;
+
+        // Only auto-range if NOT loading from a preset
+        if (!modulator._loadingFromPreset) {
+          console.log(`Auto-ranging for target ${value}`);
+          if (
+            targetInfo &&
+            targetInfo.min !== undefined &&
+            targetInfo.max !== undefined
+          ) {
+            minController.setValue(targetInfo.min);
+            maxController.setValue(targetInfo.max);
+
+            // Update the modulator properties directly too
+            modulator.min = targetInfo.min;
+            modulator.max = targetInfo.max;
+          }
+        } else {
+          console.log(
+            `Using preset values for target ${value}, skipping auto-range`
+          );
+          // Reset the flag after first use
+          modulator._loadingFromPreset = false;
+        }
       });
+
+    // Set the initial value to "None"
+    targetController.setValue("None");
 
     // Add modulation type
     folder
@@ -206,13 +236,13 @@ export class PulseModulationUi extends BaseUi {
     // Add phase control
     folder.add(modulator, "phase", 0, 3.9, 0.01).name("Phase");
 
-    // Add auto-range button
-    const autoRangeControl = {
-      autoRange: () => {
-        this.updateRangeForTarget(modulator, minController, maxController);
-      },
-    };
-    folder.add(autoRangeControl, "autoRange").name("Auto Range");
+    // // Add auto-range button
+    // const autoRangeControl = {
+    //   autoRange: () => {
+    //     this.updateRangeForTarget(modulator, minController, maxController);
+    //   },
+    // };
+    // folder.add(autoRangeControl, "autoRange").name("Auto Range");
 
     // Add remove button - FIXED using the correct method for lil-gui
     const removeButton = {
@@ -588,53 +618,22 @@ export class PulseModulationUi extends BaseUi {
   _clearAllModulators() {
     console.log("PulseModulationUi: Clearing all modulators");
 
-    // Make sure we have modulatorControllers
-    if (!Array.isArray(this.modulatorControllers)) {
-      console.warn("No modulatorControllers array found");
-      return;
-    }
+    // Initialize arrays if they don't exist
+    this.modulators = this.modulators || [];
+    this.folders = this.folders || [];
+    this.modulatorControllers = this.modulatorControllers || [];
 
-    // More robust approach to clear modulators:
-
-    // 1. Create a copy of the array to avoid modification issues during iteration
-    const controllers = [...this.modulatorControllers];
-    console.log(`Found ${controllers.length} modulators to remove`);
-
-    // 2. First try to disable all modulators (which may help with cleanup)
-    controllers.forEach((controller) => {
-      if (controller.object && controller.object.enabled !== undefined) {
-        controller.object.enabled = false;
+    // Remove all modulator folders from the GUI
+    this.folders.forEach((folder) => {
+      if (folder && this.gui) {
+        this.gui.removeFolder(folder);
       }
     });
 
-    // 3. Now remove each one
-    for (let i = controllers.length - 1; i >= 0; i--) {
-      try {
-        if (typeof this.removeModulator === "function") {
-          console.log(`Removing modulator ${i}`);
-          this.removeModulator(controllers[i]);
-        }
-      } catch (error) {
-        console.error(`Error removing modulator ${i}:`, error);
-      }
-    }
-
-    // 4. Verify and force clear if needed
-    if (this.modulatorControllers && this.modulatorControllers.length > 0) {
-      console.warn(
-        `Still have ${this.modulatorControllers.length} modulators after clearing. Forcing empty.`
-      );
-
-      // Force reset the array as last resort
-      if (Array.isArray(this.modulators)) {
-        this.modulators = [];
-      }
-    }
-
-    // 5. Update the UI after clearing
-    if (typeof this.update === "function") {
-      this.update();
-    }
+    // Clear the arrays
+    this.modulators = [];
+    this.folders = [];
+    this.modulatorControllers = [];
   }
 
   /**

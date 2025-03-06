@@ -22,29 +22,37 @@ export class PresetPulseHandler extends PresetBaseHandler {
       let modulators = [];
 
       if (Array.isArray(pulseModUI.modulatorControllers)) {
-        // Extract modulator objects from controllers
-        modulators = pulseModUI.modulatorControllers
-          .map((controller) => controller.object)
-          .filter(Boolean);
+        modulators = pulseModUI.modulatorControllers;
+      } else if (Array.isArray(pulseModUI.modulators)) {
+        modulators = pulseModUI.modulators;
+      } else if (typeof pulseModUI.getModulators === "function") {
+        modulators = pulseModUI.getModulators();
+      } else {
+        console.warn("No modulators found in pulseModUI");
+        return { modulators: [] };
       }
 
       // Extract data from modulators
-      const modulatorData = modulators.map((mod) => ({
-        enabled: Boolean(mod.enabled),
-        targetName: mod.targetName || null,
-        type: mod.type || mod.waveType || "sine",
-        frequency: Number(mod.frequency) || 0.5,
-        amplitude: Number(mod.amplitude) || 0.5,
-        phase: Number(mod.phase) || 0,
-        bias: Number(mod.bias) || 0.5,
-        min: Number(mod.min) || 0,
-        max: Number(mod.max) || 1,
-      }));
+      const modulatorData = modulators.map((mod) => {
+        console.log("Extracting pulse modulator data:", mod);
+        return {
+          enabled: Boolean(mod.enabled),
+          targetName: mod.targetName || null,
+          type: mod.type || mod.waveType || "sine",
+          frequency: Number(mod.frequency) || 0.5,
+          amplitude: Number(mod.amplitude) || 0.5,
+          phase: Number(mod.phase) || 0,
+          bias: Number(mod.bias) || 0.5,
+          min: Number(mod.min), // Ensure min value is extracted
+          max: Number(mod.max), // Ensure max value is extracted
+        };
+      });
 
+      console.log(`Extracted ${modulatorData.length} pulse modulators`);
       return { modulators: modulatorData };
     } catch (error) {
       console.error("Error extracting pulse modulation data:", error);
-      return null;
+      return { modulators: [] };
     }
   }
 
@@ -123,23 +131,31 @@ export class PresetPulseHandler extends PresetBaseHandler {
             return;
           }
 
-          // Apply modulator properties
+          // Set flag for loading from preset
+          mod._loadingFromPreset = true;
+
+          // Set min/max values explicitly before setting target
+          mod.min = modData.min !== undefined ? Number(modData.min) : 0;
+          mod.max = modData.max !== undefined ? Number(modData.max) : 1;
+
+          // Apply target (which might otherwise trigger auto-range)
           if (modData.targetName && typeof mod.setTarget === "function") {
             mod.setTarget(modData.targetName);
           }
 
+          // Apply remaining properties
           if (modData.type && typeof mod.setWaveType === "function") {
             mod.setWaveType(modData.type);
           }
 
-          // Apply basic properties
           mod.frequency = modData.frequency || 0.5;
           mod.amplitude = modData.amplitude || 0.5;
           mod.phase = modData.phase || 0;
           mod.bias = modData.bias || 0.5;
-          mod.min = modData.min || 0;
-          mod.max = modData.max || 1;
           mod.enabled = !!modData.enabled;
+
+          // Reset the loading flag
+          mod._loadingFromPreset = false;
         });
       } else {
         console.error(
