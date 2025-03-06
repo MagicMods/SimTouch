@@ -503,4 +503,128 @@ export class PulseModulationUi extends BaseUi {
   setModulatorManager(manager) {
     this.modulatorManager = manager;
   }
+
+  /**
+   * Load pulse modulators from preset data
+   * @param {Object} preset The preset data containing modulators
+   * @returns {boolean} True if successful
+   */
+  loadPresetData(preset) {
+    console.log("PulseModulationUi: Loading preset data directly");
+
+    try {
+      // Validate preset data
+      if (!preset || !preset.modulators || !Array.isArray(preset.modulators)) {
+        console.warn("Invalid preset data format");
+        return false;
+      }
+
+      // Clear existing modulators - use our own internal method
+      this._clearAllModulators();
+
+      // For "None" preset, just clear modulators and return
+      if (preset.modulators.length === 0) {
+        if (typeof this.update === "function") {
+          this.update();
+        }
+        return true;
+      }
+
+      // Create new modulators from preset data
+      preset.modulators.forEach((modData) => {
+        // Use addPulseModulator which is the correct method
+        const mod = this.addPulseModulator();
+
+        if (!mod) {
+          console.error("Failed to create modulator");
+          return;
+        }
+
+        // Apply target if specified
+        if (modData.targetName && typeof mod.setTarget === "function") {
+          mod.setTarget(modData.targetName);
+        }
+
+        // Apply wave type if specified
+        if (modData.type && typeof mod.setWaveType === "function") {
+          mod.setWaveType(modData.type);
+        }
+
+        // Apply basic properties
+        mod.frequency = modData.frequency || 0.5;
+        mod.amplitude = modData.amplitude || 0.5;
+        mod.phase = modData.phase || 0;
+        mod.bias = modData.bias || 0.5;
+        mod.min = modData.min || 0;
+        mod.max = modData.max || 1;
+        mod.enabled = !!modData.enabled;
+      });
+
+      // Use update() instead of updateUI()
+      if (typeof this.update === "function") {
+        this.update();
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error loading pulse preset data:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Internal method to clear all modulators
+   * @private
+   */
+  _clearAllModulators() {
+    console.log("PulseModulationUi: Clearing all modulators");
+
+    // Make sure we have modulatorControllers
+    if (!Array.isArray(this.modulatorControllers)) {
+      console.warn("No modulatorControllers array found");
+      return;
+    }
+
+    // More robust approach to clear modulators:
+
+    // 1. Create a copy of the array to avoid modification issues during iteration
+    const controllers = [...this.modulatorControllers];
+    console.log(`Found ${controllers.length} modulators to remove`);
+
+    // 2. First try to disable all modulators (which may help with cleanup)
+    controllers.forEach((controller) => {
+      if (controller.object && controller.object.enabled !== undefined) {
+        controller.object.enabled = false;
+      }
+    });
+
+    // 3. Now remove each one
+    for (let i = controllers.length - 1; i >= 0; i--) {
+      try {
+        if (typeof this.removeModulator === "function") {
+          console.log(`Removing modulator ${i}`);
+          this.removeModulator(controllers[i]);
+        }
+      } catch (error) {
+        console.error(`Error removing modulator ${i}:`, error);
+      }
+    }
+
+    // 4. Verify and force clear if needed
+    if (this.modulatorControllers && this.modulatorControllers.length > 0) {
+      console.warn(
+        `Still have ${this.modulatorControllers.length} modulators after clearing. Forcing empty.`
+      );
+
+      // Force reset the array as last resort
+      if (Array.isArray(this.modulators)) {
+        this.modulators = [];
+      }
+    }
+
+    // 5. Update the UI after clearing
+    if (typeof this.update === "function") {
+      this.update();
+    }
+  }
 }
