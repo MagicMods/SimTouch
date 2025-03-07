@@ -11,7 +11,7 @@ export class InputModulationUi extends BaseUi {
     this.micControllers = [];
 
     // Create a ModulatorManager for input modulators - will be replaced by the shared one
-    this.modulatorManager = new ModulatorManager();
+    this.modulatorManager = null;
 
     // Flag to prevent early target registration
     this.deferTargetRegistration = true;
@@ -1221,107 +1221,12 @@ export class InputModulationUi extends BaseUi {
   }
 
   getModulatorData() {
-    const modulatorData = [];
-
-    // Only proceed if we have modulator folders
-    if (
-      !Array.isArray(this.modulatorFolders) ||
-      this.modulatorFolders.length === 0
-    ) {
-      console.log("No modulator folders found");
-      return modulatorData;
+    if (!this.modulatorManager) {
+      return [];
     }
 
-    console.log(
-      `Collecting data from ${this.modulatorFolders.length} mic modulators`
-    );
-
-    // Extract data from each modulator
-    for (let i = 0; i < this.modulatorFolders.length; i++) {
-      const folder = this.modulatorFolders[i];
-      console.log(`Examining folder ${i}:`, folder);
-
-      // Look for the modulator object
-      let modulator = null;
-
-      // Try different possible locations for the modulator object
-      if (folder.modulator) {
-        modulator = folder.modulator;
-        console.log(`Found modulator in folder.modulator`);
-      } else if (folder._modulator) {
-        modulator = folder._modulator;
-        console.log(`Found modulator in folder._modulator`);
-      } else if (folder.object && folder.object.modulator) {
-        modulator = folder.object.modulator;
-        console.log(`Found modulator in folder.object.modulator`);
-      } else if (folder.controllers && folder.controllers.length > 0) {
-        // Try to find the modulator from the controllers
-        for (const ctrl of folder.controllers) {
-          if (
-            ctrl.object &&
-            typeof ctrl.object === "object" &&
-            ctrl.object.targetName &&
-            ctrl.object.frequencyBand !== undefined
-          ) {
-            modulator = ctrl.object;
-            console.log(`Found modulator in controller ${ctrl.property}`);
-            break;
-          }
-        }
-      }
-
-      // Last resort - look at all properties
-      if (!modulator) {
-        console.log(
-          "No modulator found yet, looking at all folder properties:"
-        );
-        for (const key in folder) {
-          const value = folder[key];
-          if (
-            value &&
-            typeof value === "object" &&
-            value.targetName &&
-            value.frequencyBand !== undefined
-          ) {
-            console.log(`Found modulator-like object in folder.${key}`);
-            modulator = value;
-            break;
-          }
-        }
-      }
-
-      // If we found a modulator, extract its data
-      if (modulator) {
-        const data = {
-          enabled: !!modulator.enabled,
-          targetName: modulator.targetName || null,
-          frequencyBand: modulator.frequencyBand || 0,
-          sensitivity: modulator.sensitivity || 1.0,
-          smoothing: modulator.smoothing || 0.7,
-          min: modulator.min !== undefined ? modulator.min : 0,
-          max: modulator.max !== undefined ? modulator.max : 1,
-        };
-
-        modulatorData.push(data);
-        console.log(
-          `Extracted modulator ${i}: target=${data.targetName}, band=${data.frequencyBand}`
-        );
-      } else {
-        console.warn(`Could not find modulator data in folder ${i}`);
-
-        // Debug output of the folder structure
-        console.log("Folder properties:", Object.keys(folder));
-        if (folder.controllers) {
-          console.log(
-            "Controller properties:",
-            folder.controllers.map((c) => c.property || "unnamed")
-          );
-        }
-      }
-    }
-
-    console.log(`Extracted ${modulatorData.length} modulators total`);
-    return modulatorData;
+    // Use the modulatorManager to get modulator states
+    return this.modulatorManager.getModulatorsState("input");
   }
 
   dispose() {
