@@ -29,10 +29,6 @@ export class PulseModulationUi extends BaseUi {
   }
 
   initBasicControls() {
-    // Add button to add a new modulator
-    const addButton = { add: () => this.addPulseModulator() };
-    this.gui.add(addButton, "add").name("Add Modulator");
-
     // Add master frequency slider
     this.gui
       .add(this, "masterFrequency", 0.01, 3, 0.01) // Fixed: Use this instead of this.
@@ -43,7 +39,10 @@ export class PulseModulationUi extends BaseUi {
           this.modulatorManager.setMasterFrequency(value);
         }
       });
-    this.gui.open(false);
+    // Add button to add a new modulator
+    const addButton = { add: () => this.addPulseModulator() };
+    this.gui.add(addButton, "add").name("Add Modulator");
+    this.gui.open(true);
   }
 
   // Update the initializeWithUiPanels method to accept a targetsRegistered flag
@@ -454,11 +453,6 @@ export class PulseModulationUi extends BaseUi {
     this.modulatorManager = manager;
   }
 
-  /**
-   * Load pulse modulators from preset data
-   * @param {Object} preset The preset data containing modulators
-   * @returns {boolean} True if successful
-   */
   loadPresetData(preset) {
     console.log("PulseModulationUi: Loading preset data");
 
@@ -582,10 +576,6 @@ export class PulseModulationUi extends BaseUi {
     }
   }
 
-  /**
-   * Clear all modulators from the UI
-   * This is called by the preset system before loading new modulators
-   */
   clearAllModulators() {
     console.log("PulseModulationUI: Clearing all modulators");
 
@@ -651,10 +641,6 @@ export class PulseModulationUi extends BaseUi {
     }
   }
 
-  /**
-   * Get modulator data for saving to preset
-   * @returns {Object} Object with modulators array
-   */
   saveToData() {
     if (!this.modulatorManager) {
       return { modulators: [] };
@@ -668,9 +654,6 @@ export class PulseModulationUi extends BaseUi {
     };
   }
 
-  /**
-   * Alias for saveToData to support multiple method names
-   */
   getModulatorsData() {
     return this.saveToData();
   }
