@@ -38,22 +38,27 @@ export class InputModulationUi extends BaseUi {
     this.leftUi = leftUi;
     this.rightUi = rightUi;
 
-    // Don't register targets if they're already registered
-    if (!targetsRegistered) {
-      console.log("InputUi registering targets (not pre-registered)");
-      this.registerAvailableTargets();
-    } else {
-      console.log("InputUi using pre-registered targets");
-      // No need to register, targets already available
-      this.deferTargetRegistration = false;
-    }
-
     // Verify targets are available
     const targetNames = this.modulatorManager.getTargetNames();
     console.log(`InputUi has ${targetNames.length} available targets`);
 
-    // Update all target dropdowns
-    this.updateTargetDropdowns();
+    // Update any existing modulator folders with current targets
+    if (this.modulatorFolders && this.modulatorFolders.length > 0) {
+      const allTargetNames = this.modulatorManager.getTargetNames();
+
+      this.modulatorFolders.forEach((folder) => {
+        const targetController = folder.controllers.find(
+          (c) => c.property === "targetName"
+        );
+        if (
+          targetController &&
+          typeof targetController.options === "function"
+        ) {
+          // Update dropdown options preserving "None" as first option
+          targetController.options(["None", ...allTargetNames]);
+        }
+      });
+    }
 
     console.log("InputUi initialized with UI panels");
   }
@@ -1222,169 +1227,4 @@ export class InputModulationUi extends BaseUi {
   }
 
   //#endregion
-
-  registerAvailableTargets() {
-    console.log("InputUi delegating target registration to ModulatorManager");
-
-    // If deferring, don't register targets yet
-    if (this.deferTargetRegistration) {
-      console.log(
-        "InputUi deferring target registration until UI panels are ready"
-      );
-      return;
-    }
-
-    // No need to call this directly since UiManager handles it now with the shared manager
-    if (this.leftUi && this.rightUi) {
-      this.modulatorManager.registerTargetsFromUi(this.leftUi, this.rightUi);
-    } else if (this.main.ui) {
-      // Fallback to using main.ui references
-      this.modulatorManager.registerTargetsFromUi(
-        this.main.ui.leftUi,
-        this.main.ui.rightUi
-      );
-    } else {
-      console.warn("InputUi could not find UI panels for target registration");
-    }
-  }
-
-  getControlTargets() {
-    // Access leftUi implementation if available
-    if (
-      this.main.ui &&
-      this.main.ui.leftUi &&
-      typeof this.main.ui.leftUi.getControlTargets === "function"
-    ) {
-      return this.main.ui.leftUi.getControlTargets();
-    }
-
-    // Fallback to a minimal implementation
-    return ["None", "Particle Size", "Gravity Strength", "Repulsion"];
-  }
-
-  getControllerForTarget(targetName) {
-    // Access leftUi implementation if available
-    if (
-      this.main.ui &&
-      this.main.ui.leftUi &&
-      typeof this.main.ui.leftUi.getControllerForTarget === "function"
-    ) {
-      return this.main.ui.leftUi.getControllerForTarget(targetName);
-    }
-
-    // Fallback to null
-    return null;
-  }
-
-  findTargetNameByController(controller) {
-    if (!controller) {
-      console.warn("Null controller provided to findTargetNameByController");
-      return null;
-    }
-
-    // Log the controller we're trying to find
-    console.log("Finding target name for controller:", controller.property);
-
-    // Try exact controller matching first
-    const targets = this.getControlTargets();
-    for (const targetName of targets) {
-      if (targetName === "None") continue;
-
-      const info = this.getControllerForTarget(targetName);
-      if (info?.controller === controller) {
-        console.log(`Found exact match for controller: ${targetName}`);
-        return targetName;
-      }
-    }
-
-    // If no exact match, try matching by property
-    const propertyName = controller.property;
-    if (propertyName) {
-      // Log all available target properties for debugging
-      console.log("Available target properties:");
-      for (const targetName of targets) {
-        if (targetName === "None") continue;
-
-        const info = this.getControllerForTarget(targetName);
-        if (info?.controller) {
-          console.log(`- ${targetName}: ${info.controller.property}`);
-        }
-      }
-
-      // Try to find a match by property
-      for (const targetName of targets) {
-        if (targetName === "None") continue;
-
-        const info = this.getControllerForTarget(targetName);
-        if (info?.controller?.property === propertyName) {
-          console.log(`Found property match for controller: ${targetName}`);
-          return targetName;
-        }
-      }
-
-      // As a last resort, try matching by similar property name
-      for (const targetName of targets) {
-        if (targetName === "None") continue;
-
-        // If target name contains the property or vice versa
-        if (
-          targetName.toLowerCase().includes(propertyName.toLowerCase()) ||
-          propertyName.toLowerCase().includes(targetName.toLowerCase())
-        ) {
-          console.log(`Found partial name match for controller: ${targetName}`);
-          return targetName;
-        }
-      }
-    }
-
-    console.warn(
-      `Could not find target name for controller: ${propertyName || "unknown"}`
-    );
-    return null;
-  }
-
-  updateTargetDropdowns() {
-    // Get the updated list of target names
-    const targetNames = this.modulatorManager.getTargetNames();
-
-    if (!targetNames || targetNames.length === 0) {
-      console.warn("No targets available for dropdown update");
-      return;
-    }
-
-    console.log(`Updating target dropdowns with ${targetNames.length} targets`);
-
-    // Update each modulator folder's target dropdown
-    if (this.modulatorFolders) {
-      this.modulatorFolders.forEach((folder) => {
-        // Find the target controller (usually the second controller in the folder)
-        const targetController = folder.controllers.find(
-          (c) => c.property === "targetName"
-        );
-
-        if (targetController && targetController.options) {
-          // Update available options
-          targetController.options(targetNames);
-          targetController.updateDisplay();
-
-          // If the target is already set, make sure it's still in the list
-          const modulator = this.modulatorManager.modulators.find((m) =>
-            folder.controllers.some((c) => c.object === m)
-          );
-
-          if (
-            modulator &&
-            modulator.targetName &&
-            !targetNames.includes(modulator.targetName)
-          ) {
-            // Target no longer exists, reset to first available target
-            if (targetNames.length > 0) {
-              modulator.setTarget(targetNames[0]);
-              targetController.updateDisplay();
-            }
-          }
-        }
-      });
-    }
-  }
 }
