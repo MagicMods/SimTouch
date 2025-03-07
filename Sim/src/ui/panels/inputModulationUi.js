@@ -320,7 +320,12 @@ export class InputModulationUi extends BaseUi {
 
   // Main update method to handle audio input modulation
   update() {
-    if (!this.main.audioAnalyzer) return;
+    if (
+      !this.main.audioAnalyzer ||
+      !this.main.externalInput.micForces.enabled
+    ) {
+      return;
+    }
 
     // Update all modulators with their respective frequency band data
     for (let i = 0; i < this.modulatorManager.modulators.length; i++) {
@@ -380,48 +385,6 @@ export class InputModulationUi extends BaseUi {
     // Update all modulators through the manager
     this.modulatorManager.update();
   }
-
-  // // Add this helper method just like in PulseModulationUi
-  // updateRangeForTarget(modulator, minController, maxController) {
-  //   const targetName = modulator.targetName;
-  //   if (!targetName) return;
-
-  //   // Get target info from ModulatorManager
-  //   const targetInfo = this.modulatorManager.getTargetInfo(targetName);
-
-  //   if (
-  //     targetInfo &&
-  //     targetInfo.min !== undefined &&
-  //     targetInfo.max !== undefined
-  //   ) {
-  //     const min = targetInfo.min;
-  //     const max = targetInfo.max;
-  //     const step = targetInfo.step || 0.01;
-
-  //     // Update the modulator's min/max
-  //     modulator.min = min;
-  //     modulator.max = max;
-
-  //     // Update controller ranges
-  //     if (minController) {
-  //       minController.min(min);
-  //       minController.max(max);
-  //       minController.setValue(min);
-  //       minController.step(step);
-  //       minController.updateDisplay();
-  //     }
-
-  //     if (maxController) {
-  //       maxController.min(min);
-  //       maxController.max(max);
-  //       maxController.setValue(max);
-  //       maxController.step(step);
-  //       maxController.updateDisplay();
-  //     }
-
-  //     console.log(`Auto-ranged for target ${targetName}: ${min} - ${max}`);
-  //   }
-  // }
 
   // Keep the visualization creation helper
   addVisualizationToModulator(modulator, folder) {
@@ -756,110 +719,111 @@ export class InputModulationUi extends BaseUi {
   //#endregion
   // Update the updateAllBandVisualizations method
 
+  /**
+   * Update all band visualizations including individual modulator visualizations
+   */
   updateAllBandVisualizations() {
+    // Skip if no audio system is available
     if (
-      !this.main.audioAnalyzer ||
-      !this.main.externalInput?.micForces?.enabled
+      !this.main ||
+      !this.main.externalInput ||
+      !this.main.externalInput.micForces
     ) {
       return;
     }
 
-    const analyzer = this.main.audioAnalyzer;
     const micForces = this.main.externalInput.micForces;
-    const now = performance.now();
 
-    // Update modulators with visual elements
-    if (this.modulatorFolders) {
-      this.modulatorManager.modulators.forEach((modulator) => {
-        if (!modulator._bandVisual) return;
-
-        // Limit update frequency for performance
-        if (now - modulator._bandVisual.lastUpdate < 50) return;
-        modulator._bandVisual.lastUpdate = now;
-
-        let rawValue = 0;
-        let bandName = "All";
-
-        // Method to safely check for function existence and call if it exists
-        const safeCall = (obj, methodName, ...args) => {
-          if (obj && typeof obj[methodName] === "function") {
-            return obj[methodName](...args);
-          }
-          return 0;
-        };
-
-        if (modulator.frequencyBand !== "none" && analyzer) {
-          // Get the appropriate frequency band value
-          switch (modulator.frequencyBand) {
-            case "sub":
-              rawValue = analyzer.calculateBandLevels().sub || 0;
-              bandName = "Sub Bass";
-              break;
-            case "bass":
-              rawValue = analyzer.calculateBandLevels().bass || 0;
-              bandName = "Bass";
-              break;
-            case "lowMid":
-              rawValue = analyzer.calculateBandLevels().lowMid || 0;
-              bandName = "Low Mid";
-              break;
-            case "mid":
-              rawValue = analyzer.calculateBandLevels().mid || 0;
-              bandName = "Mid";
-              break;
-            case "highMid":
-              rawValue = analyzer.calculateBandLevels().highMid || 0;
-              bandName = "High Mid";
-              break;
-            case "treble":
-              // FIXED: Use presence + brilliance as treble, consistent with other methods
-              const bands = analyzer.calculateBandLevels();
-              rawValue = ((bands.presence || 0) + (bands.brilliance || 0)) / 2;
-              bandName = "Treble";
-              break;
-            default:
-              // Instead of calling getVolumeNormalized directly, try multiple possible methods
-              rawValue =
-                safeCall(analyzer, "getVolumeLevel") ||
-                analyzer.smoothedVolume ||
-                safeCall(micForces, "getSmoothedAmplitude") ||
-                micForces.smoothedAmplitude ||
-                0;
-              bandName = "All";
-              break;
-          }
-        } else {
-          // Full range mode - try multiple volume access methods
-          rawValue =
-            safeCall(analyzer, "getVolumeLevel") ||
-            analyzer.smoothedVolume ||
-            safeCall(micForces, "getSmoothedAmplitude") ||
-            micForces.smoothedAmplitude ||
-            0;
+    // Update global mic controllers
+    if (this.micControllers && Array.isArray(this.micControllers)) {
+      this.micControllers.forEach((item) => {
+        // Skip invalid controllers
+        if (!item || !item.controller || !item.controller.object) {
+          return;
         }
 
-        // Apply sensitivity and smoothing
-        let bandValue = rawValue * modulator.sensitivity;
+        let value = 0;
 
-        // Normalize to 0-1 range for visualization
-        bandValue = Math.min(1.0, Math.max(0, bandValue));
-
-        // Update the visual (0-100%)
-        const level = bandValue * 100;
-        modulator._bandVisual.bar.style.width = `${level}%`;
-
-        // Update label with band name and value percentage
-        modulator._bandVisual.label.textContent = `${bandName}: ${Math.round(
-          level
-        )}%`;
-
-        // Color the bar based on level
-        if (level > 80) {
-          modulator._bandVisual.bar.style.backgroundColor = "#f44"; // Red for high levels
-        } else if (level > 50) {
-          modulator._bandVisual.bar.style.backgroundColor = "#ff4"; // Yellow for medium levels
+        if (item.band === "volume") {
+          // Try different methods to get the overall level
+          if (typeof micForces.getVolume === "function") {
+            value = micForces.getVolume();
+          } else if (typeof micForces.getLevel === "function") {
+            value = micForces.getLevel();
+          } else {
+            value = micForces.volume || 0;
+          }
         } else {
-          modulator._bandVisual.bar.style.backgroundColor = "#4f4"; // Green for low levels
+          // Try different methods to get band levels
+          if (typeof micForces.getBand === "function") {
+            value = micForces.getBand(item.band);
+          } else if (typeof micForces.getBandLevel === "function") {
+            value = micForces.getBandLevel(item.band);
+          } else if (micForces.bands && micForces.bands[item.band]) {
+            value = micForces.bands[item.band] || 0;
+          }
+        }
+
+        // Update the controller's object value
+        item.controller.object.level = value;
+      });
+    }
+
+    // ADD THIS PART: Update individual modulator visualizations
+    if (this.modulatorManager && this.modulatorManager.modulators) {
+      // Loop through all modulators with mic input
+      this.modulatorManager.modulators.forEach((modulator) => {
+        // Only process mic input modulators with visualization elements
+        if (modulator.inputSource === "mic" && modulator._bandVisual) {
+          try {
+            // Get the correct band level
+            let value = 0;
+
+            if (modulator.frequencyBand === "none") {
+              // Overall volume
+              if (typeof micForces.getVolume === "function") {
+                value = micForces.getVolume();
+              } else if (typeof micForces.getLevel === "function") {
+                value = micForces.getLevel();
+              } else {
+                // Try direct property access as fallback
+                value = micForces.volume || 0;
+              }
+            } else {
+              // Specific band
+              if (typeof micForces.getBandLevel === "function") {
+                value = micForces.getBandLevel(modulator.frequencyBand);
+              } else if (typeof micForces.getBand === "function") {
+                value = micForces.getBand(modulator.frequencyBand);
+              } else if (
+                micForces.bands &&
+                micForces.bands[modulator.frequencyBand]
+              ) {
+                value = micForces.bands[modulator.frequencyBand] || 0;
+              }
+            }
+
+            // Apply sensitivity
+            value = Math.min(1, value * modulator.sensitivity);
+
+            // Update bar width
+            if (modulator._bandVisual.bar) {
+              modulator._bandVisual.bar.style.width = `${value * 100}%`;
+            }
+
+            // Update label
+            if (modulator._bandVisual.label) {
+              const bandName =
+                modulator.frequencyBand === "none"
+                  ? "All"
+                  : modulator.frequencyBand;
+              modulator._bandVisual.label.textContent = `${bandName}: ${Math.round(
+                value * 100
+              )}%`;
+            }
+          } catch (err) {
+            // Silent error - visualization is non-critical
+          }
         }
       });
     }
@@ -1037,9 +1001,6 @@ export class InputModulationUi extends BaseUi {
     // Add visualization
     this.addVisualizationToModulator(modulator, folder);
 
-    // DO NOT set a default target here - require user to select one
-
-    // Open the folder by default
     folder.open();
 
     folder.modulator = modulator; // Add direct reference to the modulator for easier access
@@ -1728,6 +1689,67 @@ export class InputModulationUi extends BaseUi {
         item.controller.object.level = value;
       }
     });
+
+    // Add this part to update each modulator's visualization
+    if (this.modulatorManager && this.main?.externalInput?.micForces) {
+      const micForces = this.main.externalInput.micForces;
+
+      // Loop through all modulators with mic input
+      this.modulatorManager.modulators.forEach((modulator) => {
+        // Only process mic input modulators with visualization elements
+        if (modulator.inputSource === "mic" && modulator._bandVisual) {
+          try {
+            // Get the correct band level
+            let value = 0;
+
+            if (modulator.frequencyBand === "none") {
+              // Overall volume
+              if (typeof micForces.getVolume === "function") {
+                value = micForces.getVolume();
+              } else if (typeof micForces.getLevel === "function") {
+                value = micForces.getLevel();
+              } else {
+                // Try direct property access as fallback
+                value = micForces.volume || 0;
+              }
+            } else {
+              // Specific band
+              if (typeof micForces.getBandLevel === "function") {
+                value = micForces.getBandLevel(modulator.frequencyBand);
+              } else if (typeof micForces.getBand === "function") {
+                value = micForces.getBand(modulator.frequencyBand);
+              } else if (
+                micForces.bands &&
+                micForces.bands[modulator.frequencyBand]
+              ) {
+                value = micForces.bands[modulator.frequencyBand] || 0;
+              }
+            }
+
+            // Apply sensitivity
+            value = Math.min(1, value * modulator.sensitivity);
+
+            // Update bar width
+            if (modulator._bandVisual.bar) {
+              modulator._bandVisual.bar.style.width = `${value * 100}%`;
+            }
+
+            // Update label
+            if (modulator._bandVisual.label) {
+              const bandName =
+                modulator.frequencyBand === "none"
+                  ? "All"
+                  : modulator.frequencyBand;
+              modulator._bandVisual.label.textContent = `${bandName}: ${Math.round(
+                value * 100
+              )}%`;
+            }
+          } catch (err) {
+            // Silent error - visualization is non-critical
+          }
+        }
+      });
+    }
   }
   /**
    * Fix for the loadPresetData method to correct syntax errors
@@ -1870,5 +1892,61 @@ export class InputModulationUi extends BaseUi {
       console.error("Error loading mic preset data:", error);
       return false;
     }
+  }
+
+  /**
+   * Add visualization elements to a modulator
+   * @param {Object} modulator - The modulator to add visualization to
+   * @param {Object} folder - The GUI folder containing the modulator controls
+   */
+  addVisualizationToModulator(modulator, folder) {
+    // Create container for visualization
+    const visualContainer = document.createElement("div");
+    visualContainer.className = "band-visualization";
+    visualContainer.style.margin = "5px 0";
+    visualContainer.style.padding = "3px 0";
+
+    // Create label
+    const label = document.createElement("div");
+    label.textContent = "Level: 0%";
+    label.style.fontSize = "11px";
+    label.style.marginBottom = "2px";
+
+    // Create visualization bar container
+    const barContainer = document.createElement("div");
+    barContainer.style.backgroundColor = "#333";
+    barContainer.style.height = "10px";
+    barContainer.style.position = "relative";
+    barContainer.style.borderRadius = "2px";
+    barContainer.style.overflow = "hidden";
+
+    // Create the actual level bar
+    const bar = document.createElement("div");
+    bar.style.backgroundColor = "#5f9";
+    bar.style.width = "0%";
+    bar.style.height = "100%";
+    bar.style.position = "absolute";
+    bar.style.left = "0";
+    bar.style.top = "0";
+    bar.style.transition = "width 0.1s";
+
+    // Assemble the elements
+    barContainer.appendChild(bar);
+    visualContainer.appendChild(label);
+    visualContainer.appendChild(barContainer);
+
+    // Find the correct place in the DOM to add the visualization
+    const folderElement = folder.domElement;
+    const controllers = folderElement.querySelector(".children");
+    if (controllers) {
+      controllers.appendChild(visualContainer);
+    }
+
+    // Store references on the modulator for updating later
+    modulator._bandVisual = {
+      container: visualContainer,
+      bar: bar,
+      label: label,
+    };
   }
 }
