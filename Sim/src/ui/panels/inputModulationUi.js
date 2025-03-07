@@ -1173,9 +1173,9 @@ export class InputModulationUi extends BaseUi {
       }
 
       // Clean up UI folders
-      if (Array.isArray(this.folders)) {
+      if (Array.isArray(this.modulatorFolders)) {
         // Create a copy of the array since we'll be modifying it
-        const foldersToRemove = [...this.folders];
+        const foldersToRemove = [...this.modulatorFolders];
 
         foldersToRemove.forEach((folder) => {
           if (folder && typeof folder.destroy === "function") {
@@ -1184,7 +1184,7 @@ export class InputModulationUi extends BaseUi {
         });
 
         // Clear the folders array
-        this.folders = [];
+        this.modulatorFolders = [];
       }
 
       return true;
