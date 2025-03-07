@@ -1199,20 +1199,35 @@ export class InputModulationUi extends BaseUi {
   }
 
   saveToData() {
+    // Get mic settings
+    const micSettings = {
+      enabled: this.main?.externalInput?.micForces?.enabled || false,
+      sensitivity: this.main?.externalInput?.micForces?.sensitivity || 1.0,
+      smoothing: this.main?.externalInput?.micForces?.smoothing || 0.8,
+    };
+
     if (!this.modulatorManager) {
-      return { modulators: [] };
+      micSettings.modulators = [];
+      return micSettings;
     }
 
-    // Use the modulatorManager to get modulator states
-    const modulatorData = this.modulatorManager.getModulatorsState("pulse");
+    // Use the modulatorManager to get modulator states - with "input" type, not "pulse"
+    micSettings.modulators = this.modulatorManager.getModulatorsState("input");
+    console.log(
+      `saveToData: Found ${micSettings.modulators.length} input modulators`
+    );
 
-    return {
-      modulators: modulatorData,
-    };
+    return micSettings;
   }
 
+  // Keep this method for API compatibility
   getModulatorsData() {
     return this.saveToData();
+  }
+
+  // ADD THIS METHOD - which is what presetMicHandler actually looks for
+  getModulatorData() {
+    return this.saveToData().modulators || [];
   }
 
   dispose() {
