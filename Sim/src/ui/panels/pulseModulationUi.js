@@ -249,31 +249,35 @@ export class PulseModulationUi extends BaseUi {
   }
 
   update() {
-    this.modulatorManager.modulators.forEach((modulator) => {
-      if (modulator.sync) {
+    if (!this.modulatorManager) return;
+
+    // Update sync state with master frequency
+    this.modulatorManager.modulators
+      .filter((modulator) => modulator.type === "pulse" && modulator.sync)
+      .forEach((modulator) => {
         modulator.frequency = this.masterFrequency;
-      }
-    });
-    if (this.modulatorManager) {
-      this.modulatorManager.update();
+      });
 
-      // After modulations are applied, update all potential target displays
-      if (
-        this.rightUi &&
-        typeof this.rightUi.updateControllerDisplays === "function"
-      ) {
-        this.rightUi.updateControllerDisplays();
-      }
-      if (
-        this.leftUi &&
-        typeof this.leftUi.updateControllerDisplays === "function"
-      ) {
-        this.leftUi.updateControllerDisplays();
-      }
+    // Let the manager handle the actual updates
+    this.modulatorManager.update();
 
-      // Update our own modulator displays as well
-      this.updateModulatorDisplays();
+    // Update all UI displays
+    this.updateUIDisplays();
+  }
+
+  // Helper method to update all UI displays
+  updateUIDisplays() {
+    // Update target controller displays in left/right UI
+    if (this.rightUi?.updateControllerDisplays) {
+      this.rightUi.updateControllerDisplays();
     }
+
+    if (this.leftUi?.updateControllerDisplays) {
+      this.leftUi.updateControllerDisplays();
+    }
+
+    // Update modulator displays
+    this.updateModulatorDisplays();
   }
 
   initPresetControls(presetManager) {
@@ -415,13 +419,14 @@ export class PulseModulationUi extends BaseUi {
   }
 
   initWithPresetManager(presetManager) {
-    if (presetManager) {
-      this.initPresetControls(presetManager);
-    } else {
-      console.warn(
-        "PresetManager not provided to PulseModulationUi.initWithPresetManager"
-      );
+    if (!presetManager) {
+      console.warn("PresetManager not provided");
+      return;
     }
+
+    this.presetManager = presetManager;
+    this.initPresetControls(presetManager);
+    console.log(`${this.constructor.name} initialized with preset manager`);
   }
 
   // Add this method to the PulseModulationUi class
