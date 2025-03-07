@@ -42,13 +42,21 @@ class PulseModulator {
       this.originalValue = 0;
     }
 
-    // Update min and max to match target's range with NaN protection
-    this.min = !isNaN(target.min) ? target.min : 0;
-    this.max = !isNaN(target.max) ? target.max : 1;
+    // Only update min and max if we're NOT loading from preset
+    // This allows preset values to override the default target ranges
+    if (!this._loadingFromPreset) {
+      // Update min and max to match target's range with NaN protection
+      this.min = !isNaN(target.min) ? target.min : 0;
+      this.max = !isNaN(target.max) ? target.max : 1;
 
-    console.log(
-      `Set target ${targetName} with range: ${this.min} - ${this.max}`
-    );
+      console.log(
+        `Set target ${targetName} with range: ${this.min} - ${this.max}`
+      );
+    } else {
+      console.log(
+        `Set target ${targetName} keeping preset range: ${this.min} - ${this.max}`
+      );
+    }
   }
 
   /**

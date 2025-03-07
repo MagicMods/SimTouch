@@ -145,16 +145,14 @@ export class PulseModulationUi extends BaseUi {
         const targetInfo = this.modulatorManager.getTargetInfo(value);
         if (!targetInfo) return;
 
-        // Connect the modulator to its target - THIS IS THE KEY ADDITION
+        // Connect the modulator to its target
         if (typeof modulator.setTarget === "function") {
-          // Use the proper method to connect the modulator
           modulator.setTarget(value);
         } else {
-          // Fallback if setTarget doesn't exist
           modulator.targetName = value;
         }
 
-        // ALWAYS update the controllers' allowed range to match the target
+        // ALWAYS update the controllers' allowed RANGE to match the target
         if (
           targetInfo &&
           targetInfo.min !== undefined &&
@@ -177,23 +175,17 @@ export class PulseModulationUi extends BaseUi {
             maxController.step(step);
           }
 
-          // Only update VALUES of controllers if not loading from preset
+          // Only update VALUES if not loading from preset
           if (!modulator._loadingFromPreset) {
             console.log(`Auto-ranging for target ${value}`);
-
-            // Set values to match target min/max
             minController.setValue(min);
             maxController.setValue(max);
-
-            // Update modulator properties directly too
             modulator.min = min;
             modulator.max = max;
           } else {
             console.log(
               `Using preset values for target ${value}, updating only input ranges`
             );
-            // Reset the flag after first use
-            modulator._loadingFromPreset = false;
           }
         }
       });
@@ -291,8 +283,6 @@ export class PulseModulationUi extends BaseUi {
 
     return modulator;
   }
-
-  // Find the actual controller for a given target name - directly from the LeftUi implementation
 
   update() {
     this.modulatorManager.modulators.forEach((modulator) => {
@@ -570,7 +560,7 @@ export class PulseModulationUi extends BaseUi {
    * @returns {boolean} True if successful
    */
   loadPresetData(preset) {
-    console.log("PulseModulationUi: Loading preset data directly");
+    console.log("PulseModulationUi: Loading preset data");
 
     try {
       // Validate preset data
@@ -579,20 +569,17 @@ export class PulseModulationUi extends BaseUi {
         return false;
       }
 
-      // Clear existing modulators - use our own internal method
+      // Clear existing modulators
       this.clearAllModulators();
 
       // For "None" preset, just clear modulators and return
       if (preset.modulators.length === 0) {
-        if (typeof this.update === "function") {
-          this.update();
-        }
         return true;
       }
 
-      // Create new modulators from preset data
+      // Process each modulator in the preset data
       preset.modulators.forEach((modData) => {
-        // Use addPulseModulator which is the correct method
+        // Create a new modulator through our standard method
         const mod = this.addPulseModulator();
 
         if (!mod) {
@@ -600,30 +587,93 @@ export class PulseModulationUi extends BaseUi {
           return;
         }
 
-        // Apply target if specified
-        if (modData.targetName && typeof mod.setTarget === "function") {
-          mod.setTarget(modData.targetName);
+        // Set a flag to prevent auto-ranging from overriding preset values
+        mod._loadingFromPreset = true;
+
+        // Store the preset's min/max values first
+        const presetMin = modData.min !== undefined ? Number(modData.min) : 0;
+        const presetMax = modData.max !== undefined ? Number(modData.max) : 1;
+
+        // Set target (this may trigger auto-ranging in the target onChange handler)
+        if (modData.targetName && mod.targetName !== modData.targetName) {
+          // Find the target controller in the folder
+          const folder = this.folders[this.folders.length - 1];
+          const targetController = folder.controllers.find(
+            (c) => c.property === "targetName"
+          );
+          if (targetController) {
+            targetController.setValue(modData.targetName);
+          }
         }
 
-        // Apply wave type if specified
-        if (modData.type && typeof mod.setWaveType === "function") {
-          mod.setWaveType(modData.type);
+        // Now we need to find the min/max controllers and update them with preset values
+        const folder = this.folders[this.folders.length - 1];
+        const minController = folder.controllers.find(
+          (c) => c.property === "min"
+        );
+        const maxController = folder.controllers.find(
+          (c) => c.property === "max"
+        );
+
+        // Update the modulator values from preset
+        mod.min = presetMin;
+        mod.max = presetMax;
+
+        // Update other properties
+        if (modData.type) {
+          const typeController = folder.controllers.find(
+            (c) => c.property === "type"
+          );
+          if (typeController) typeController.setValue(modData.type);
         }
 
-        // Apply basic properties
-        mod.frequency = modData.frequency || 0.5;
-        mod.amplitude = modData.amplitude || 0.5;
-        mod.phase = modData.phase || 0;
-        mod.bias = modData.bias || 0.5;
-        mod.min = modData.min || 0;
-        mod.max = modData.max || 1;
+        if (modData.frequency !== undefined) {
+          mod.frequency = Number(modData.frequency);
+          const freqController = folder.controllers.find(
+            (c) => c.property === "frequency"
+          );
+          if (freqController) freqController.updateDisplay();
+        }
+
+        if (modData.phase !== undefined) {
+          mod.phase = Number(modData.phase);
+          const phaseController = folder.controllers.find(
+            (c) => c.property === "phase"
+          );
+          if (phaseController) phaseController.updateDisplay();
+        }
+
+        if (modData.sync !== undefined) {
+          mod.sync = Boolean(modData.sync);
+          const syncController = folder.controllers.find(
+            (c) => c.property === "sync"
+          );
+          if (syncController) {
+            syncController.setValue(mod.sync);
+            // Update frequency visibility
+            const freqController = folder.controllers.find(
+              (c) => c.property === "frequency"
+            );
+            if (freqController) {
+              freqController.domElement.style.display = mod.sync ? "none" : "";
+            }
+          }
+        }
+
+        // Apply stored min/max values AFTER all other properties are set
+        if (minController) minController.setValue(presetMin);
+        if (maxController) maxController.setValue(presetMax);
+
+        // Enable the modulator if it was enabled in the preset
         mod.enabled = !!modData.enabled;
-      });
+        const enabledController = folder.controllers.find(
+          (c) => c.property === "enabled"
+        );
+        if (enabledController) enabledController.setValue(mod.enabled);
 
-      // Use update() instead of updateUI()
-      if (typeof this.update === "function") {
-        this.update();
-      }
+        // Clear the loading flag
+        mod._loadingFromPreset = false;
+      });
 
       return true;
     } catch (error) {
@@ -722,56 +772,162 @@ export class PulseModulationUi extends BaseUi {
 
       // If it's an array, process each modulator
       if (Array.isArray(modulatorData)) {
-        modulatorData.forEach((mod) => {
-          if (typeof this.addModulator === "function") {
-            this.addModulator(
-              mod.type || "sine",
-              mod.target || "Animation Speed",
-              {
-                frequency: mod.frequency || 1,
-                amplitude: mod.amplitude || 0.5,
-                phase: mod.phase || 0,
-                offset: mod.offset || 0.5,
-                enabled: mod.enabled !== undefined ? mod.enabled : true,
-              }
-            );
-          }
-        });
-      }
-      // If it's an object with a modulators property
-      else if (
-        modulatorData.modulators &&
-        Array.isArray(modulatorData.modulators)
-      ) {
-        modulatorData.modulators.forEach((mod) => {
-          if (typeof this.addModulator === "function") {
-            this.addModulator(
-              mod.type || "sine",
-              mod.target || "Animation Speed",
-              {
-                frequency: mod.frequency || 1,
-                amplitude: mod.amplitude || 0.5,
-                phase: mod.phase || 0,
-                offset: mod.offset || 0.5,
-                enabled: mod.enabled !== undefined ? mod.enabled : true,
-              }
-            );
-          }
-        });
-      }
+        modulatorData.forEach((modData) => {
+          // Create new modulator
+          const modulator = new PulseModulator(this.modulatorManager);
 
-      return true;
+          // Set loading flag and preserve preset values BEFORE setting target
+          modulator._loadingFromPreset = true;
+
+          // Manually set min/max from preset data
+          if (modData.min !== undefined) modulator.min = Number(modData.min);
+          if (modData.max !== undefined) modulator.max = Number(modData.max);
+
+          // Set target (which determines slider constraints)
+          if (modData.targetName) {
+            modulator.setTarget(modData.targetName);
+          }
+
+          // Set other properties from preset
+          if (modData.type !== undefined) modulator.type = modData.type;
+          if (modData.frequency !== undefined)
+            modulator.frequency = Number(modData.frequency);
+          if (modData.sync !== undefined)
+            modulator.sync = Boolean(modData.sync);
+          if (modData.phase !== undefined)
+            modulator.phase = Number(modData.phase);
+
+          // Add to manager first so target is registered
+          this.modulatorManager.addModulator(modulator);
+
+          // Now create UI components with correct constraints and values
+          this.createModulatorUI(modulator);
+
+          // Enable the modulator if it was enabled in the preset
+          if (modData.enabled === true) {
+            modulator.enabled = true;
+          }
+        });
+
+        return true;
+      } else {
+        console.warn("Modulator data is not an array:", modulatorData);
+        return false;
+      }
     } catch (error) {
-      console.error("Error loading pulse modulator data:", error);
+      console.error("Error loading modulators:", error);
       return false;
     }
   }
 
   /**
-   * Alias for loadFromData to support multiple method names
+   * Create UI components for a modulator
+   * @param {PulseModulator} modulator - The modulator to create UI for
    */
-  loadModulators(data) {
-    return this.loadFromData(data);
+  createModulatorUI(modulator) {
+    // Create a new folder for this modulator
+    const folder = this.gui.addFolder(`Modulator ${this.folders.length + 1}`);
+    this.folders.push(folder);
+
+    // Get target names for dropdown
+    const targetNames = this.modulatorManager
+      ? Object.keys(this.modulatorManager.targets)
+      : [];
+
+    // Add target selection dropdown
+    const targetController = folder
+      .add(modulator, "targetName", ["None", ...targetNames])
+      .name("Target");
+
+    // Set the value without triggering onChange
+    targetController.setValue(modulator.targetName || "None");
+
+    // Add modulation type
+    folder
+      .add(modulator, "type", [
+        "sine",
+        "square",
+        "triangle",
+        "sawtooth",
+        "sustainedPulse",
+      ])
+      .name("Wave Type");
+
+    // Add sync control
+    const syncController = folder
+      .add(modulator, "sync")
+      .name("Sync with Master");
+
+    // Add frequency control
+    const frequencyController = folder
+      .add(modulator, "frequency", 0.01, 3, 0.01)
+      .name("Frequency (Hz)");
+
+    // Hide frequency if sync enabled
+    if (modulator.sync) {
+      frequencyController.domElement.style.display = "none";
+    }
+
+    // Get current target constraints for min/max sliders
+    let sliderMin = -10,
+      sliderMax = 10,
+      sliderStep = 0.01;
+
+    if (modulator.targetName && modulator.targetName !== "None") {
+      const targetInfo = this.modulatorManager.getTargetInfo(
+        modulator.targetName
+      );
+      if (targetInfo) {
+        sliderMin = targetInfo.min !== undefined ? targetInfo.min : -10;
+        sliderMax = targetInfo.max !== undefined ? targetInfo.max : 10;
+        sliderStep = targetInfo.step || 0.01;
+      }
+    }
+
+    // Add min/max controls with correct constraints from target
+    const minController = folder
+      .add(modulator, "min", sliderMin, sliderMax, sliderStep)
+      .name("Min Value");
+
+    const maxController = folder
+      .add(modulator, "max", sliderMin, sliderMax, sliderStep)
+      .name("Max Value");
+
+    // Add phase control
+    folder.add(modulator, "phase", 0, 3.9, 0.01).name("Phase");
+
+    // Add remove button
+    const removeButton = {
+      remove: () => {
+        // Implementation of remove functionality
+        modulator.disable();
+        this.modulatorManager.removeModulator(
+          this.modulatorManager.modulators.indexOf(modulator)
+        );
+        folder.destroy();
+        const folderIndex = this.folders.indexOf(folder);
+        if (folderIndex > -1) {
+          this.folders.splice(folderIndex, 1);
+        }
+      },
+    };
+    folder.add(removeButton, "remove").name("Remove");
+
+    // Open the folder by default
+    folder.open();
+
+    // Setup event handlers
+    syncController.onChange((value) => {
+      if (frequencyController) {
+        frequencyController.domElement.style.display = value ? "none" : "";
+      }
+
+      if (value && this.modulatorManager.masterFrequency !== undefined) {
+        modulator.frequency = this.modulatorManager.masterFrequency;
+      }
+    });
+
+    return folder;
   }
 
   /**
