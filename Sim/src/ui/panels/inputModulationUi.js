@@ -540,9 +540,11 @@ export class InputModulationUi extends BaseUi {
           modulator.resetToOriginal();
         }
 
-        // Remove from manager
-        this.modulatorManager.modulators =
-          this.modulatorManager.modulators.filter((m) => m !== modulator);
+        // IMPROVED: Use ModulatorManager's method instead of direct array manipulation
+        const index = this.modulatorManager.modulators.indexOf(modulator);
+        if (index !== -1) {
+          this.modulatorManager.removeModulator(index);
+        }
 
         // Remove folder
         folder.destroy();
@@ -1164,12 +1166,9 @@ export class InputModulationUi extends BaseUi {
           });
       }
 
-      // Remove modulators from the manager
+      // IMPROVED: Use ModulatorManager's method instead of direct array filtering
       if (this.modulatorManager) {
-        this.modulatorManager.modulators =
-          this.modulatorManager.modulators.filter(
-            (m) => m.inputSource !== "mic"
-          );
+        this.modulatorManager.removeModulatorsByType("input");
       }
 
       // Clean up UI folders
