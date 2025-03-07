@@ -906,7 +906,7 @@ export class InputModulationUi extends BaseUi {
       const settings = preset.micSettings;
 
       // Clear existing modulators - use our own internal method
-      this._clearAllModulators();
+      this.clearAllModulators();
 
       // Apply mic forces settings
       if (this.main?.externalInput?.micForces) {
@@ -1144,89 +1144,71 @@ export class InputModulationUi extends BaseUi {
     console.log("InputUi using shared ModulatorManager");
   }
 
-  _clearAllModulators() {
-    console.log("InputUi: Clearing all modulators");
+  clearAllModulators() {
+    console.log("InputModulationUi: Clearing all modulators");
 
-    // Make sure we have modulatorFolders
-    if (!this.modulatorFolders || this.modulatorFolders.length === 0) {
-      console.log("No modulators to clear");
-      return;
-    }
-
-    console.log(`Found ${this.modulatorFolders.length} modulators to remove`);
-
-    // Clear all modulators - make a copy of the array to avoid modification issues
-    const folders = [...this.modulatorFolders];
-
-    // Remove from last to first to avoid index issues
-    for (let i = folders.length - 1; i >= 0; i--) {
-      try {
-        const folder = folders[i];
-
-        // Find the remove button in the folder and trigger it
-        let removeButton = null;
-
-        // Look for the remove controller - usually the last one
-        if (folder.controllers) {
-          for (const controller of folder.controllers) {
-            if (controller.property === "remove") {
-              removeButton = controller;
-              break;
+    try {
+      // First, disable all existing modulators
+      if (
+        this.modulatorManager &&
+        Array.isArray(this.modulatorManager.modulators)
+      ) {
+        this.modulatorManager.modulators
+          .filter((mod) => mod.inputSource === "mic")
+          .forEach((modulator) => {
+            if (modulator && typeof modulator.disable === "function") {
+              modulator.disable();
+            } else if (modulator) {
+              modulator.enabled = false;
             }
-          }
-        }
-
-        if (removeButton && typeof removeButton.object?.remove === "function") {
-          // Call the remove function that was defined in the UI
-          removeButton.object.remove();
-        } else {
-          // Manual folder removal as fallback
-          console.log(`Manually removing folder ${i}`);
-
-          // If there's a modulator object, disable it first
-          if (folder._modulator && folder._modulator.enabled) {
-            folder._modulator.enabled = false;
-          }
-
-          // Remove folder from UI
-          folder.destroy();
-
-          // Remove from our tracking array
-          const idx = this.modulatorFolders.indexOf(folder);
-          if (idx !== -1) {
-            this.modulatorFolders.splice(idx, 1);
-          }
-        }
-      } catch (error) {
-        console.error(`Error removing modulator ${i}:`, error);
+          });
       }
-    }
 
-    // Verify everything was removed
-    if (this.modulatorFolders.length > 0) {
-      console.warn(
-        `Still have ${this.modulatorFolders.length} modulators after clearing. Forcing empty.`
-      );
-      this.modulatorFolders = [];
-    }
+      // Remove modulators from the manager
+      if (this.modulatorManager) {
+        this.modulatorManager.modulators =
+          this.modulatorManager.modulators.filter(
+            (m) => m.inputSource !== "mic"
+          );
+      }
 
-    // Also clear from the modulatorManager if it exists
-    if (this.modulatorManager) {
-      this.modulatorManager.modulators =
-        this.modulatorManager.modulators.filter((m) => m.inputSource !== "mic");
-    }
+      // Clean up UI folders
+      if (Array.isArray(this.folders)) {
+        // Create a copy of the array since we'll be modifying it
+        const foldersToRemove = [...this.folders];
 
-    // Update the UI
-    this.update();
+        foldersToRemove.forEach((folder) => {
+          if (folder && typeof folder.destroy === "function") {
+            folder.destroy();
+          }
+        });
+
+        // Clear the folders array
+        this.folders = [];
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error clearing modulators:", error);
+      return false;
+    }
   }
 
-  getModulatorData() {
+  saveToData() {
     if (!this.modulatorManager) {
-      return [];
+      return { modulators: [] };
     }
 
     // Use the modulatorManager to get modulator states
-    return this.modulatorManager.getModulatorsState("input");
+    const modulatorData = this.modulatorManager.getModulatorsState("pulse");
+
+    return {
+      modulators: modulatorData,
+    };
+  }
+
+  getModulatorsData() {
+    return this.saveToData();
   }
 
   dispose() {
