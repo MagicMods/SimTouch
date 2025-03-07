@@ -648,33 +648,19 @@ export class PulseModulationUi extends BaseUi {
 
   /**
    * Get modulator data for saving to preset
-   * @returns {Array} Array of modulator configuration objects
+   * @returns {Object} Object with modulators array
    */
   saveToData() {
-    const modulators = [];
-
-    try {
-      // If we track modulators internally
-      if (Array.isArray(this.activeModulators)) {
-        this.activeModulators.forEach((mod) => {
-          if (mod) {
-            modulators.push({
-              type: mod.type || "sine",
-              target: mod.target || "Animation Speed",
-              frequency: mod.frequency || 1,
-              amplitude: mod.amplitude || 0.5,
-              phase: mod.phase || 0,
-              offset: mod.offset || 0.5,
-              enabled: mod.enabled !== undefined ? mod.enabled : true,
-            });
-          }
-        });
-      }
-    } catch (error) {
-      console.error("Error extracting modulator data:", error);
+    if (!this.modulatorManager) {
+      return { modulators: [] };
     }
 
-    return modulators;
+    // Use the modulatorManager to get modulator states
+    const modulatorData = this.modulatorManager.getModulatorsState("pulse");
+
+    return {
+      modulators: modulatorData,
+    };
   }
 
   /**
