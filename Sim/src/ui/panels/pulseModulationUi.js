@@ -11,7 +11,7 @@ export class PulseModulationUi extends BaseUi {
     this.modulatorManager = null; // Will be set by UiManager later
 
     // Initialize arrays
-    this.folders = [];
+    this.modulatorFolders = [];
     this.presets = [];
 
     // Change the GUI title
@@ -193,19 +193,19 @@ export class PulseModulationUi extends BaseUi {
     }
 
     // Make sure folders array is initialized
-    if (!this.folders) {
-      this.folders = [];
+    if (!this.modulatorFolders) {
+      this.modulatorFolders = [];
     }
 
     // Create a new modulator through ModulatorManager
     const modulator = this.modulatorManager.createPulseModulator();
 
     // Create folder for this modulator
-    const index = this.folders.length;
+    const index = this.modulatorFolders.length;
     const folder = this.gui.addFolder(`Modulator ${index + 1}`);
 
     // Store the folder reference
-    this.folders.push(folder);
+    this.modulatorFolders.push(folder);
 
     // Add enable/disable toggle
     folder
@@ -351,10 +351,10 @@ export class PulseModulationUi extends BaseUi {
         // Remove the folder using the correct method for lil-gui
         folder.destroy();
 
-        // Fix: Use this.folders instead of this.modulatorFolders
-        const folderIndex = this.folders.indexOf(folder);
+        // Fix: Use this.modulatorFolders instead of this.modulatorFolders
+        const folderIndex = this.modulatorFolders.indexOf(folder);
         if (folderIndex > -1) {
-          this.folders.splice(folderIndex, 1);
+          this.modulatorFolders.splice(folderIndex, 1);
         }
       },
     };
@@ -402,11 +402,11 @@ export class PulseModulationUi extends BaseUi {
 
   updateModulatorDisplays() {
     // Update all modulator UI controllers to reflect current values
-    if (!this.modulatorManager || !this.folders) return; // Changed from this.modulatorFolders
+    if (!this.modulatorManager || !this.modulatorFolders) return; // Changed from this.modulatorFolders
 
     this.modulatorManager.modulators.forEach((modulator, index) => {
       // Find the folder for this modulator
-      const folder = this.folders[index]; // Changed from this.modulatorFolders
+      const folder = this.modulatorFolders[index]; // Changed from this.modulatorFolders
       if (!folder) return;
 
       // Update all controllers in the folder
@@ -490,7 +490,8 @@ export class PulseModulationUi extends BaseUi {
         // Set target (this may trigger auto-ranging in the target onChange handler)
         if (modData.targetName && mod.targetName !== modData.targetName) {
           // Find the target controller in the folder
-          const folder = this.folders[this.folders.length - 1];
+          const folder =
+            this.modulatorFolders[this.modulatorFolders.length - 1];
           const targetController = folder.controllers.find(
             (c) => c.property === "targetName"
           );
@@ -500,7 +501,7 @@ export class PulseModulationUi extends BaseUi {
         }
 
         // Now we need to find the min/max controllers and update them with preset values
-        const folder = this.folders[this.folders.length - 1];
+        const folder = this.modulatorFolders[this.modulatorFolders.length - 1];
         const minController = folder.controllers.find(
           (c) => c.property === "min"
         );
@@ -607,9 +608,9 @@ export class PulseModulationUi extends BaseUi {
       }
 
       // Clean up UI folders - this is the critical part that was missing
-      if (Array.isArray(this.folders)) {
+      if (Array.isArray(this.modulatorFolders)) {
         // Create a copy of the array since we'll be modifying it while iterating
-        const foldersToRemove = [...this.folders];
+        const foldersToRemove = [...this.modulatorFolders];
 
         foldersToRemove.forEach((folder) => {
           if (folder && typeof folder.destroy === "function") {
@@ -618,7 +619,7 @@ export class PulseModulationUi extends BaseUi {
         });
 
         // Clear the folders array
-        this.folders = [];
+        this.modulatorFolders = [];
       }
 
       // Also clean up any other tracked UI elements
