@@ -337,4 +337,217 @@ export class ModulatorManager {
       };
     }
   }
+
+  /**
+   * Get all modulators of a specific type
+   * @param {string} type - 'pulse' or 'input'
+   * @returns {Array} Array of modulators of the specified type
+   */
+  getModulatorsByType(type) {
+    return this.modulators.filter((mod) => {
+      if (type === "pulse") {
+        return mod instanceof PulseModulator;
+      } else if (type === "input") {
+        return mod instanceof InputModulator;
+      }
+      return false;
+    });
+  }
+
+  /**
+   * Remove all modulators of a specific type
+   * @param {string} type - 'pulse' or 'input'
+   * @returns {number} Number of modulators removed
+   */
+  removeModulatorsByType(type) {
+    const initialCount = this.modulators.length;
+
+    // First, disable all modulators of the specified type
+    const toRemove = this.getModulatorsByType(type);
+    toRemove.forEach((mod) => {
+      if (typeof mod.disable === "function") {
+        mod.disable();
+      } else {
+        mod.enabled = false;
+      }
+    });
+
+    // Then filter out modulators of that type
+    this.modulators = this.modulators.filter((mod) => {
+      if (type === "pulse") {
+        return !(mod instanceof PulseModulator);
+      } else if (type === "input") {
+        return !(mod instanceof InputModulator);
+      }
+      return true;
+    });
+
+    return initialCount - this.modulators.length;
+  }
+
+  /**
+   * Clear all modulators
+   */
+  clearAll() {
+    // Disable all modulators first to reset target values
+    this.modulators.forEach((mod) => {
+      if (typeof mod.disable === "function") {
+        mod.disable();
+      } else {
+        mod.enabled = false;
+      }
+    });
+
+    this.modulators = [];
+  }
+
+  /**
+   * Set master frequency for pulse modulators
+   * @param {number} frequency - The master frequency in Hz
+   */
+  setMasterFrequency(frequency) {
+    this.masterFrequency = frequency;
+
+    // Update all pulse modulators that are synced
+    this.getModulatorsByType("pulse").forEach((mod) => {
+      if (mod.sync) {
+        mod.frequency = frequency;
+      }
+    });
+  }
+
+  /**
+   * Get master frequency
+   * @returns {number} Current master frequency
+   */
+  getMasterFrequency() {
+    return this.masterFrequency || 1.0;
+  }
+
+  /**
+   * Auto-range a modulator based on its target
+   * @param {object} modulator - The modulator to auto-range
+   * @param {object} minController - Optional controller for min value UI
+   * @param {object} maxController - Optional controller for max value UI
+   */
+  autoRangeTarget(modulator, minController, maxController) {
+    if (!modulator || !modulator.targetName) return;
+
+    const targetInfo = this.getTargetInfo(modulator.targetName);
+    if (!targetInfo) return;
+
+    const min = targetInfo.min;
+    const max = targetInfo.max;
+    const step = targetInfo.step || 0.01;
+
+    if (min !== undefined && max !== undefined && !isNaN(min) && !isNaN(max)) {
+      // Update modulator's range
+      modulator.min = min;
+      modulator.max = max;
+
+      // Update UI controllers if provided
+      if (minController) {
+        minController.min(min);
+        minController.max(max);
+        minController.step(step);
+        minController.setValue(min);
+        minController.updateDisplay();
+      }
+
+      if (maxController) {
+        maxController.min(min);
+        maxController.max(max);
+        maxController.step(step);
+        maxController.setValue(max);
+        maxController.updateDisplay();
+      }
+    }
+  }
+
+  /**
+   * Get the state of all modulators (for preset saving)
+   * @param {string} type - Optional: 'pulse' or 'input' to get only that type
+   * @returns {Array} Array of modulator configuration objects
+   */
+  getModulatorsState(type) {
+    const modulators = type ? this.getModulatorsByType(type) : this.modulators;
+
+    return modulators.map((mod) => {
+      // Common properties
+      const state = {
+        enabled: !!mod.enabled,
+        targetName: mod.targetName,
+        min: mod.min,
+        max: mod.max,
+      };
+
+      // Type-specific properties
+      if (mod instanceof PulseModulator) {
+        state.type = "pulse";
+        state.waveType = mod.type;
+        state.frequency = mod.frequency;
+        state.phase = mod.phase;
+        state.sync = !!mod.sync;
+        if (mod.pwm !== undefined) state.pwm = mod.pwm;
+      } else if (mod instanceof InputModulator) {
+        state.type = "input";
+        state.inputSource = mod.inputSource;
+        state.frequencyBand = mod.frequencyBand;
+        state.sensitivity = mod.sensitivity;
+        state.smoothing = mod.smoothing;
+      }
+
+      return state;
+    });
+  }
+
+  /**
+   * Load modulator state (for preset loading)
+   * @param {Array} states - Array of modulator states
+   * @param {boolean} clearExisting - Whether to clear existing modulators first
+   * @returns {boolean} Success
+   */
+  loadModulatorsState(states, clearExisting = true) {
+    if (!Array.isArray(states)) return false;
+
+    if (clearExisting) {
+      this.clearAll();
+    }
+
+    states.forEach((state) => {
+      let modulator;
+
+      // Create the right type of modulator
+      if (state.type === "pulse") {
+        modulator = this.createPulseModulator();
+        modulator.type = state.waveType || "sine";
+        modulator.frequency = state.frequency || 1.0;
+        modulator.phase = state.phase || 0;
+        modulator.sync = !!state.sync;
+        if (state.pwm !== undefined) modulator.pwm = state.pwm;
+      } else if (state.type === "input") {
+        modulator = this.createInputModulator();
+        modulator.inputSource = state.inputSource || "mic";
+        modulator.frequencyBand = state.frequencyBand || "none";
+        modulator.sensitivity = state.sensitivity || 1.0;
+        modulator.smoothing = state.smoothing || 0.7;
+      } else {
+        return; // Skip if type is unknown
+      }
+
+      // Set common properties
+      if (state.targetName) {
+        modulator.targetName = state.targetName;
+        if (typeof modulator.setTarget === "function") {
+          modulator.setTarget(state.targetName);
+        }
+      }
+
+      modulator.min = state.min !== undefined ? state.min : 0;
+      modulator.max = state.max !== undefined ? state.max : 1;
+      modulator.enabled = !!state.enabled;
+    });
+
+    return true;
+  }
 }

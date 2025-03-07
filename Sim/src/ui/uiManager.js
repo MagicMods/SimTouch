@@ -93,7 +93,7 @@ export class UiManager {
 
   update() {
     // First update input values from audio analyzer
-    if (this.inputModUi && typeof this.inputModUi.update === "function") {
+    if (this.inputModUi) {
       this.inputModUi.update();
     }
 
