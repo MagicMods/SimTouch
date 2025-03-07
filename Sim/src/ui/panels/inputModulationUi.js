@@ -29,7 +29,8 @@ export class InputModulationUi extends BaseUi {
     }, 50);
   }
 
-  // Initialize with UI panels just like PulseModulationUi
+  //#region Ui
+
   initializeWithUiPanels(leftUi, rightUi, targetsRegistered = false) {
     console.log("InputUi initializing with UI panels");
 
@@ -286,566 +287,119 @@ export class InputModulationUi extends BaseUi {
     this.gui.open();
   }
 
-  // Set the shared ModulatorManager
-  setModulatorManager(manager) {
-    this.modulatorManager = manager;
-    console.log("InputUi using shared ModulatorManager");
-  }
-
-  // Add this method to scan available controllers from leftUi and rightUi
-  registerAvailableTargets() {
-    console.log("InputUi delegating target registration to ModulatorManager");
-
-    // If deferring, don't register targets yet
-    if (this.deferTargetRegistration) {
-      console.log(
-        "InputUi deferring target registration until UI panels are ready"
-      );
+  initPresetControls(presetManager) {
+    if (!presetManager) {
+      console.warn("No preset manager provided for InputUi");
       return;
     }
 
-    // No need to call this directly since UiManager handles it now with the shared manager
-    if (this.leftUi && this.rightUi) {
-      this.modulatorManager.registerTargetsFromUi(this.leftUi, this.rightUi);
-    } else if (this.main.ui) {
-      // Fallback to using main.ui references
-      this.modulatorManager.registerTargetsFromUi(
-        this.main.ui.leftUi,
-        this.main.ui.rightUi
-      );
-    } else {
-      console.warn("InputUi could not find UI panels for target registration");
-    }
-  }
+    // Save reference to the preset manager
+    this.presetManager = presetManager;
 
-  // Main update method to handle audio input modulation
-  update() {
-    if (
-      !this.main.audioAnalyzer ||
-      !this.main.externalInput.micForces.enabled
-    ) {
-      return;
-    }
+    // Create preset controls container
+    const presetContainer = document.createElement("div");
+    presetContainer.className = "preset-controls";
+    presetContainer.style.margin = "10px 0";
+    presetContainer.style.display = "flex";
+    presetContainer.style.alignItems = "center";
+    presetContainer.style.justifyContent = "space-between";
 
-    // Update all modulators with their respective frequency band data
-    for (let i = 0; i < this.modulatorManager.modulators.length; i++) {
-      const modulator = this.modulatorManager.modulators[i];
-      if (modulator.inputSource === "mic") {
-        const analyzer = this.main.audioAnalyzer;
-        const micForces = this.main.externalInput?.micForces;
-        let value = 0;
+    // Label for better context
+    const presetLabel = document.createElement("div");
+    presetLabel.textContent = "Mic Presets:";
+    presetLabel.style.marginRight = "8px";
 
-        try {
-          // Get the appropriate frequency band value
-          if (modulator.frequencyBand !== "none" && analyzer) {
-            // Get band-specific volume
-            switch (modulator.frequencyBand) {
-              case "sub":
-                value = analyzer.calculateBandLevels().sub || 0;
-                break;
-              case "bass":
-                value = analyzer.calculateBandLevels().bass || 0;
-                break;
-              case "lowMid":
-                value = analyzer.calculateBandLevels().lowMid || 0;
-                break;
-              case "mid":
-                value = analyzer.calculateBandLevels().mid || 0;
-                break;
-              case "highMid":
-                value = analyzer.calculateBandLevels().highMid || 0;
-                break;
-              case "treble":
-                // Combine presence and brilliance for treble
-                const bands = analyzer.calculateBandLevels();
-                value = ((bands.presence || 0) + (bands.brilliance || 0)) / 2;
-                break;
-              default:
-                // Full volume
-                value = analyzer.smoothedVolume || 0;
-                break;
-            }
-          } else {
-            // Use overall volume for "none" band
-            value =
-              analyzer.smoothedVolume ||
-              (micForces && micForces.smoothedAmplitude
-                ? micForces.smoothedAmplitude
-                : 0);
-          }
+    // Create preset selector
+    const presetSelect = document.createElement("select");
+    presetSelect.className = "preset-selector";
+    presetSelect.style.flexGrow = "1";
+    presetSelect.style.marginRight = "5px";
 
-          // Set the input value for the modulator
-          modulator.setInputValue(value);
-        } catch (e) {
-          console.error("Error processing audio input for modulator:", e);
-        }
-      }
-    }
+    // Create save button
+    const saveButton = document.createElement("button");
+    saveButton.textContent = "Save";
+    saveButton.className = "save-preset-btn";
+    saveButton.style.marginRight = "5px";
 
-    // Update all modulators through the manager
-    this.modulatorManager.update();
-  }
-
-  // Keep the visualization creation helper
-  addVisualizationToModulator(modulator, folder) {
-    // Add a band visualization to show the frequency band activity
-    const bandVisualContainer = document.createElement("div");
-    bandVisualContainer.style.margin = "8px 0";
-    bandVisualContainer.style.padding = "0";
-    bandVisualContainer.style.position = "relative";
-
-    // Create band level visualization
-    const bandVisual = document.createElement("div");
-    bandVisual.style.height = "16px";
-    bandVisual.style.backgroundColor = "#333";
-    bandVisual.style.borderRadius = "3px";
-    bandVisual.style.overflow = "hidden";
-    bandVisual.style.position = "relative";
-
-    // Create the level bar
-    const bandLevelBar = document.createElement("div");
-    bandLevelBar.style.height = "100%";
-    bandLevelBar.style.backgroundColor = "#4f4";
-    bandLevelBar.style.width = "0%";
-    bandLevelBar.style.position = "absolute";
-    bandLevelBar.style.left = "0";
-    bandLevelBar.style.top = "0";
-    bandLevelBar.style.transition = "width 0.05s ease-out";
-
-    // Create label that shows band name and level
-    const bandLabel = document.createElement("div");
-    bandLabel.style.position = "absolute";
-    bandLabel.style.left = "5px";
-    bandLabel.style.top = "0";
-    bandLabel.style.color = "#fff";
-    bandLabel.style.fontSize = "10px";
-    bandLabel.style.lineHeight = "16px";
-    bandLabel.style.textShadow = "1px 1px 1px rgba(0,0,0,0.5)";
-    bandLabel.style.whiteSpace = "nowrap";
-    bandLabel.style.overflow = "hidden";
-    bandLabel.textContent = "All: 0%";
+    // Create delete button
+    const deleteButton = document.createElement("button");
+    deleteButton.textContent = "Delete";
+    deleteButton.className = "delete-preset-btn";
 
     // Add elements to container
-    bandVisual.appendChild(bandLevelBar);
-    bandVisual.appendChild(bandLabel);
-    bandVisualContainer.appendChild(bandVisual);
+    presetContainer.appendChild(presetLabel);
+    presetContainer.appendChild(presetSelect);
+    presetContainer.appendChild(saveButton);
+    presetContainer.appendChild(deleteButton);
 
-    // Add to the folder's DOM
-    folder.domElement
-      .querySelector(".children")
-      .appendChild(bandVisualContainer);
-
-    // Store references for updating
-    modulator._bandVisual = {
-      container: bandVisualContainer,
-      bar: bandLevelBar,
-      label: bandLabel,
-      lastUpdate: 0,
-      currentValue: 0,
-    };
-  }
-
-  // Add these methods to the InputUi class
-  getControlTargets() {
-    // Access leftUi implementation if available
-    if (
-      this.main.ui &&
-      this.main.ui.leftUi &&
-      typeof this.main.ui.leftUi.getControlTargets === "function"
-    ) {
-      return this.main.ui.leftUi.getControlTargets();
+    // Get insertion point - right AFTER the enable mic checkbox
+    let insertPoint = null;
+    if (this.micEnableController && this.micEnableController.domElement) {
+      insertPoint = this.micEnableController.domElement.nextSibling;
     }
 
-    // Fallback to a minimal implementation
-    return ["None", "Particle Size", "Gravity Strength", "Repulsion"];
-  }
+    // Insert at the correct position
+    const targetElement =
+      this.micPanel?.domElement?.querySelector(".children") ||
+      this.gui?.domElement?.querySelector(".children");
 
-  getControllerForTarget(targetName) {
-    // Access leftUi implementation if available
-    if (
-      this.main.ui &&
-      this.main.ui.leftUi &&
-      typeof this.main.ui.leftUi.getControllerForTarget === "function"
-    ) {
-      return this.main.ui.leftUi.getControllerForTarget(targetName);
-    }
-
-    // Fallback to null
-    return null;
-  }
-
-  findTargetNameByController(controller) {
-    if (!controller) {
-      console.warn("Null controller provided to findTargetNameByController");
-      return null;
-    }
-
-    // Log the controller we're trying to find
-    console.log("Finding target name for controller:", controller.property);
-
-    // Try exact controller matching first
-    const targets = this.getControlTargets();
-    for (const targetName of targets) {
-      if (targetName === "None") continue;
-
-      const info = this.getControllerForTarget(targetName);
-      if (info?.controller === controller) {
-        console.log(`Found exact match for controller: ${targetName}`);
-        return targetName;
+    if (targetElement) {
+      if (insertPoint) {
+        targetElement.insertBefore(presetContainer, insertPoint);
+      } else {
+        targetElement.insertBefore(presetContainer, targetElement.firstChild);
       }
     }
 
-    // If no exact match, try matching by property
-    const propertyName = controller.property;
-    if (propertyName) {
-      // Log all available target properties for debugging
-      console.log("Available target properties:");
-      for (const targetName of targets) {
-        if (targetName === "None") continue;
+    // Store references
+    this.presetSelect = presetSelect;
+    this.savePresetButton = saveButton;
+    this.deletePresetButton = deleteButton;
+    this.presetContainer = presetContainer;
 
-        const info = this.getControllerForTarget(targetName);
-        if (info?.controller) {
-          console.log(`- ${targetName}: ${info.controller.property}`);
-        }
+    // Initially hide preset controls if mic input is disabled
+    const enabled = this.main?.externalInput?.micForces?.enabled || false;
+    this.presetContainer.style.display = enabled ? "block" : "none";
+
+    // Update dropdown with available presets
+    this.updatePresetDropdown();
+
+    // Add event listeners
+    presetSelect.addEventListener("change", () => {
+      const selectedPreset = presetSelect.value;
+      if (selectedPreset && this.presetManager) {
+        console.log(`Mic preset selector changed to: ${selectedPreset}`);
+        this.presetManager.loadMicPreset(selectedPreset, this);
       }
-
-      // Try to find a match by property
-      for (const targetName of targets) {
-        if (targetName === "None") continue;
-
-        const info = this.getControllerForTarget(targetName);
-        if (info?.controller?.property === propertyName) {
-          console.log(`Found property match for controller: ${targetName}`);
-          return targetName;
-        }
-      }
-
-      // As a last resort, try matching by similar property name
-      for (const targetName of targets) {
-        if (targetName === "None") continue;
-
-        // If target name contains the property or vice versa
-        if (
-          targetName.toLowerCase().includes(propertyName.toLowerCase()) ||
-          propertyName.toLowerCase().includes(targetName.toLowerCase())
-        ) {
-          console.log(`Found partial name match for controller: ${targetName}`);
-          return targetName;
-        }
-      }
-    }
-
-    console.warn(
-      `Could not find target name for controller: ${propertyName || "unknown"}`
-    );
-    return null;
-  }
-
-  // Updated method to toggle visibility of all mic controls
-  toggleAllMicControlsVisibility(show) {
-    // Toggle preset controls
-    if (this.presetContainer) {
-      this.presetContainer.style.display = show ? "block" : "none";
-    }
-
-    // Toggle all other controllers
-    if (this.micControllers) {
-      for (const controller of this.micControllers) {
-        if (controller) {
-          // Handle both dat.gui controllers and direct DOM elements
-          if (controller.domElement) {
-            // Regular dat.gui controller
-            controller.domElement.style.display = show ? "block" : "none";
-
-            // Special handling for folders
-            if (controller._title) {
-              // Folders have a _title property
-              // For folders, we need to toggle the entire folder element
-              const folderElement = controller.domElement.parentElement;
-              if (folderElement && folderElement.classList.contains("folder")) {
-                folderElement.style.display = show ? "block" : "none";
-              }
-
-              // Also close folders when hiding
-              if (!show && controller.closed === false) {
-                controller.close();
-              }
-            }
-          } else if (controller instanceof HTMLElement) {
-            // Direct DOM element like our device container
-            controller.style.display = show ? "block" : "none";
-          }
-        }
-      }
-    }
-
-    // Toggle modulator folders
-    if (this.micModulatorFolders) {
-      for (const folder of this.micModulatorFolders) {
-        if (folder && folder.domElement) {
-          // For folders, we need to toggle the entire folder element
-          const folderElement = folder.domElement.parentElement;
-          if (folderElement && folderElement.classList.contains("folder")) {
-            folderElement.style.display = show ? "block" : "none";
-          } else {
-            folder.domElement.style.display = show ? "block" : "none";
-          }
-
-          // Close folders when hiding
-          if (!show && folder.closed === false) {
-            folder.close();
-          }
-        }
-      }
-    }
-  }
-
-  ////////
-
-  //#region Audio Input
-  addAudioDeviceSelector() {
-    if (!this.audioDevices) {
-      this.audioDevices = [];
-    }
-
-    if (!this.gui) return;
-
-    // Container for device selection
-    const deviceContainer = document.createElement("div");
-    deviceContainer.classList.add("controller");
-    deviceContainer.style.marginTop = "8px";
-    deviceContainer.style.marginBottom = "8px";
-
-    // Label for device selection
-    const deviceLabel = document.createElement("div");
-    deviceLabel.textContent = "Select Audio Input";
-    deviceLabel.style.marginBottom = "4px";
-
-    // Create select dropdown
-    this.audioInputDeviceSelect = document.createElement("select");
-    this.audioInputDeviceSelect.classList.add("preset-select");
-    this.audioInputDeviceSelect.style.padding = "4px";
-    this.audioInputDeviceSelect.style.width = "100%";
-
-    // Add option for loading devices
-    const loadingOption = document.createElement("option");
-    loadingOption.textContent = "Loading audio devices...";
-    this.audioInputDeviceSelect.appendChild(loadingOption);
-
-    // Handle device change
-    this.audioInputDeviceSelect.addEventListener("change", (e) => {
-      const deviceId = e.target.value;
-      console.log("Selected audio device:", deviceId);
-      this.setAudioInputDevice(deviceId);
     });
 
-    // Add elements to container
-    deviceContainer.appendChild(deviceLabel);
-    deviceContainer.appendChild(this.audioInputDeviceSelect);
-
-    // Find insertion point - right after the enable button
-    const insertionPoint = this.micEnableController
-      ? this.micEnableController.domElement.nextSibling
-      : this.gui.domElement.querySelector(".children").firstChild;
-
-    // Add to UI folder
-    this.gui.domElement
-      .querySelector(".children")
-      .insertBefore(deviceContainer, insertionPoint);
-
-    // Store reference to the container for visibility toggling
-    this.deviceContainer = deviceContainer;
-    this.micControllers.push(deviceContainer);
-
-    // Populate with available devices
-    this.populateAudioDevices();
-  }
-
-  // Add method to populate audio devices
-  async populateAudioDevices() {
-    try {
-      // Check if browser supports MediaDevices API
-      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
-        console.error("Browser doesn't support device enumeration");
-        return;
+    saveButton.addEventListener("click", () => {
+      // Show save dialog
+      const presetName = prompt("Enter name for this mic preset:", "");
+      if (presetName && this.presetManager) {
+        console.log(`Saving mic preset: ${presetName}`);
+        this.presetManager.saveMicPreset(presetName, this);
+        // Update dropdown with the new preset
+        this.updatePresetDropdown();
+        // Select the new preset in the dropdown
+        this.presetSelect.value = presetName;
       }
+    });
 
-      // Get available devices
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const audioInputDevices = devices.filter(
-        (device) => device.kind === "audioinput"
-      );
-
-      // Clear existing options
-      this.audioInputDeviceSelect.innerHTML = "";
-
-      // Add default option
-      const defaultOption = document.createElement("option");
-      defaultOption.value = "default";
-      defaultOption.textContent = "Default Input";
-      this.audioInputDeviceSelect.appendChild(defaultOption);
-
-      // Add each audio input device
-      audioInputDevices.forEach((device) => {
-        const option = document.createElement("option");
-        option.value = device.deviceId;
-        // Handle unnamed devices by giving them a generic name
-        option.textContent =
-          device.label ||
-          `Audio Input ${audioInputDevices.indexOf(device) + 1}`;
-        this.audioInputDeviceSelect.appendChild(option);
-        this.audioDevices.push(device);
-      });
-    } catch (err) {
-      console.error("Error enumerating audio devices:", err);
-      this.audioInputDeviceSelect.innerHTML =
-        "<option>Error loading devices</option>";
-    }
-  }
-
-  // Method to set the selected audio input device
-  setAudioInputDevice(deviceId) {
-    if (!this.main.externalInput) return;
-
-    const constraints = {
-      audio: {
-        deviceId: deviceId !== "default" ? { exact: deviceId } : undefined,
-      },
-    };
-
-    // Pass these constraints to the external input manager
-    this.main.externalInput.setAudioInputDevice(constraints);
-  }
-  //#endregion
-  // Update the updateAllBandVisualizations method
-
-  /**
-   * Update all band visualizations including individual modulator visualizations
-   */
-  updateAllBandVisualizations() {
-    // Skip if no audio system is available
-    if (
-      !this.main ||
-      !this.main.externalInput ||
-      !this.main.externalInput.micForces
-    ) {
-      return;
-    }
-
-    const micForces = this.main.externalInput.micForces;
-    const analyzer = this.main.audioAnalyzer;
-
-    // CRITICAL PART: Update individual modulator visualizations
-    if (this.modulatorManager) {
-      // Loop through all modulators with mic input
-      this.modulatorManager.modulators.forEach((modulator) => {
-        // Only process mic input modulators with visualization elements
-        if (modulator.inputSource === "mic" && modulator._bandVisual) {
-          try {
-            let value = 0;
-
-            // Get value from analyzer if available
-            if (analyzer) {
-              if (modulator.frequencyBand === "none") {
-                // Use overall volume
-                value = analyzer.smoothedVolume || 0;
-              } else {
-                // Get band-specific values
-                const bands = analyzer.calculateBandLevels();
-                if (bands) {
-                  switch (modulator.frequencyBand) {
-                    case "sub":
-                      value = bands.sub || 0;
-                      break;
-                    case "bass":
-                      value = bands.bass || 0;
-                      break;
-                    case "lowMid":
-                      value = bands.lowMid || 0;
-                      break;
-                    case "mid":
-                      value = bands.mid || 0;
-                      break;
-                    case "highMid":
-                      value = bands.highMid || 0;
-                      break;
-                    case "treble":
-                      // Average of presence and brilliance
-                      value =
-                        ((bands.presence || 0) + (bands.brilliance || 0)) / 2;
-                      break;
-                    default:
-                      value = 0;
-                  }
-                }
-              }
-            }
-
-            // Apply sensitivity
-            value = Math.min(1, value * (modulator.sensitivity || 1));
-
-            // Calculate color based on intensity
-            const color = this.getIntensityColor(value);
-
-            // Update visualization elements
-            if (modulator._bandVisual.bar) {
-              modulator._bandVisual.bar.style.width = `${value * 100}%`;
-              // Apply the calculated color
-              modulator._bandVisual.bar.style.backgroundColor = color;
-            }
-
-            if (modulator._bandVisual.label) {
-              const bandName =
-                modulator.frequencyBand === "none"
-                  ? "All"
-                  : modulator.frequencyBand;
-              modulator._bandVisual.label.textContent = `${bandName}: ${Math.round(
-                value * 100
-              )}%`;
-            }
-          } catch (err) {
-            console.warn("Error updating modulator visualization:", err);
-          }
+    deleteButton.addEventListener("click", () => {
+      const selectedPreset = presetSelect.value;
+      if (selectedPreset && selectedPreset !== "None" && this.presetManager) {
+        const confirmed = confirm(`Delete mic preset "${selectedPreset}"?`);
+        if (confirmed) {
+          console.log(`Deleting mic preset: ${selectedPreset}`);
+          this.presetManager.deleteMicPreset(selectedPreset);
+          // Update dropdown after deletion
+          this.updatePresetDropdown();
         }
-      });
-    }
+      }
+    });
   }
 
-  /**
-   * Calculate a color based on intensity value
-   * @param {number} value - Normalized value between 0 and 1
-   * @returns {string} CSS color string
-   */
-  getIntensityColor(value) {
-    // Ensure value is between 0 and 1
-    value = Math.max(0, Math.min(1, value));
-
-    let r, g, b;
-
-    if (value < 0.33) {
-      // Green to Yellow (0.0 - 0.33)
-      // Green: rgb(0, 255, 0) to Yellow: rgb(255, 255, 0)
-      r = Math.round(value * 3 * 255);
-      g = 255;
-      b = 0;
-    } else if (value < 0.66) {
-      // Yellow to Orange/Red (0.33 - 0.66)
-      // Yellow: rgb(255, 255, 0) to Orange: rgb(255, 128, 0)
-      r = 255;
-      g = Math.round(255 - (value - 0.33) * 3 * 128);
-      b = 0;
-    } else {
-      // Orange to Red (0.66 - 1.0)
-      // Orange: rgb(255, 128, 0) to Red: rgb(255, 0, 0)
-      r = 255;
-      g = Math.round(128 - (value - 0.66) * 3 * 128);
-      b = 0;
-    }
-
-    return `rgb(${r}, ${g}, ${b})`;
-  }
-
-  // Add this method to create a new input modulator with UI controls
   addMicModulator() {
     // Create a new input modulator
     const modulator = this.modulatorManager.createInputModulator();
@@ -1012,49 +566,330 @@ export class InputModulationUi extends BaseUi {
     return modulator;
   }
 
-  // Add this method to update target dropdowns for all modulators
-  updateTargetDropdowns() {
-    // Get the updated list of target names
-    const targetNames = this.modulatorManager.getTargetNames();
+  addVisualizationToModulator(modulator, folder) {
+    // Add a band visualization to show the frequency band activity
+    const bandVisualContainer = document.createElement("div");
+    bandVisualContainer.style.margin = "8px 0";
+    bandVisualContainer.style.padding = "0";
+    bandVisualContainer.style.position = "relative";
 
-    if (!targetNames || targetNames.length === 0) {
-      console.warn("No targets available for dropdown update");
+    // Create band level visualization
+    const bandVisual = document.createElement("div");
+    bandVisual.style.height = "16px";
+    bandVisual.style.backgroundColor = "#333";
+    bandVisual.style.borderRadius = "3px";
+    bandVisual.style.overflow = "hidden";
+    bandVisual.style.position = "relative";
+
+    // Create the level bar
+    const bandLevelBar = document.createElement("div");
+    bandLevelBar.style.height = "100%";
+    bandLevelBar.style.backgroundColor = "#4f4";
+    bandLevelBar.style.width = "0%";
+    bandLevelBar.style.position = "absolute";
+    bandLevelBar.style.left = "0";
+    bandLevelBar.style.top = "0";
+    bandLevelBar.style.transition = "width 0.05s ease-out";
+
+    // Create label that shows band name and level
+    const bandLabel = document.createElement("div");
+    bandLabel.style.position = "absolute";
+    bandLabel.style.left = "5px";
+    bandLabel.style.top = "0";
+    bandLabel.style.color = "#fff";
+    bandLabel.style.fontSize = "10px";
+    bandLabel.style.lineHeight = "16px";
+    bandLabel.style.textShadow = "1px 1px 1px rgba(0,0,0,0.5)";
+    bandLabel.style.whiteSpace = "nowrap";
+    bandLabel.style.overflow = "hidden";
+    bandLabel.textContent = "All: 0%";
+
+    // Add elements to container
+    bandVisual.appendChild(bandLevelBar);
+    bandVisual.appendChild(bandLabel);
+    bandVisualContainer.appendChild(bandVisual);
+
+    // Add to the folder's DOM
+    folder.domElement
+      .querySelector(".children")
+      .appendChild(bandVisualContainer);
+
+    // Store references for updating
+    modulator._bandVisual = {
+      container: bandVisualContainer,
+      bar: bandLevelBar,
+      label: bandLabel,
+      lastUpdate: 0,
+      currentValue: 0,
+    };
+  }
+
+  onMicInputToggled(enabled) {
+    // Update preset controls visibility
+    if (this.presetContainer) {
+      this.presetContainer.style.display = enabled ? "block" : "none";
+    }
+
+    // Call original toggle functionality if it exists
+    if (typeof this.toggleAllMicControlsVisibility === "function") {
+      this.toggleAllMicControlsVisibility(enabled);
+    }
+  }
+
+  toggleAllMicControlsVisibility(show) {
+    // Toggle preset controls
+    if (this.presetContainer) {
+      this.presetContainer.style.display = show ? "block" : "none";
+    }
+
+    // Toggle all other controllers
+    if (this.micControllers) {
+      for (const controller of this.micControllers) {
+        if (controller) {
+          // Handle both dat.gui controllers and direct DOM elements
+          if (controller.domElement) {
+            // Regular dat.gui controller
+            controller.domElement.style.display = show ? "block" : "none";
+
+            // Special handling for folders
+            if (controller._title) {
+              // Folders have a _title property
+              // For folders, we need to toggle the entire folder element
+              const folderElement = controller.domElement.parentElement;
+              if (folderElement && folderElement.classList.contains("folder")) {
+                folderElement.style.display = show ? "block" : "none";
+              }
+
+              // Also close folders when hiding
+              if (!show && controller.closed === false) {
+                controller.close();
+              }
+            }
+          } else if (controller instanceof HTMLElement) {
+            // Direct DOM element like our device container
+            controller.style.display = show ? "block" : "none";
+          }
+        }
+      }
+    }
+
+    // Toggle modulator folders
+    if (this.micModulatorFolders) {
+      for (const folder of this.micModulatorFolders) {
+        if (folder && folder.domElement) {
+          // For folders, we need to toggle the entire folder element
+          const folderElement = folder.domElement.parentElement;
+          if (folderElement && folderElement.classList.contains("folder")) {
+            folderElement.style.display = show ? "block" : "none";
+          } else {
+            folder.domElement.style.display = show ? "block" : "none";
+          }
+
+          // Close folders when hiding
+          if (!show && folder.closed === false) {
+            folder.close();
+          }
+        }
+      }
+    }
+  }
+
+  //#endregion
+
+  //#region Update
+
+  update() {
+    if (
+      !this.main.audioAnalyzer ||
+      !this.main.externalInput.micForces.enabled
+    ) {
       return;
     }
 
-    console.log(`Updating target dropdowns with ${targetNames.length} targets`);
+    // Update all modulators with their respective frequency band data
+    for (let i = 0; i < this.modulatorManager.modulators.length; i++) {
+      const modulator = this.modulatorManager.modulators[i];
+      if (modulator.inputSource === "mic") {
+        const analyzer = this.main.audioAnalyzer;
+        const micForces = this.main.externalInput?.micForces;
+        let value = 0;
 
-    // Update each modulator folder's target dropdown
-    if (this.modulatorFolders) {
-      this.modulatorFolders.forEach((folder) => {
-        // Find the target controller (usually the second controller in the folder)
-        const targetController = folder.controllers.find(
-          (c) => c.property === "targetName"
-        );
-
-        if (targetController && targetController.options) {
-          // Update available options
-          targetController.options(targetNames);
-          targetController.updateDisplay();
-
-          // If the target is already set, make sure it's still in the list
-          const modulator = this.modulatorManager.modulators.find((m) =>
-            folder.controllers.some((c) => c.object === m)
-          );
-
-          if (
-            modulator &&
-            modulator.targetName &&
-            !targetNames.includes(modulator.targetName)
-          ) {
-            // Target no longer exists, reset to first available target
-            if (targetNames.length > 0) {
-              modulator.setTarget(targetNames[0]);
-              targetController.updateDisplay();
+        try {
+          // Get the appropriate frequency band value
+          if (modulator.frequencyBand !== "none" && analyzer) {
+            // Get band-specific volume
+            switch (modulator.frequencyBand) {
+              case "sub":
+                value = analyzer.calculateBandLevels().sub || 0;
+                break;
+              case "bass":
+                value = analyzer.calculateBandLevels().bass || 0;
+                break;
+              case "lowMid":
+                value = analyzer.calculateBandLevels().lowMid || 0;
+                break;
+              case "mid":
+                value = analyzer.calculateBandLevels().mid || 0;
+                break;
+              case "highMid":
+                value = analyzer.calculateBandLevels().highMid || 0;
+                break;
+              case "treble":
+                // Combine presence and brilliance for treble
+                const bands = analyzer.calculateBandLevels();
+                value = ((bands.presence || 0) + (bands.brilliance || 0)) / 2;
+                break;
+              default:
+                // Full volume
+                value = analyzer.smoothedVolume || 0;
+                break;
             }
+          } else {
+            // Use overall volume for "none" band
+            value =
+              analyzer.smoothedVolume ||
+              (micForces && micForces.smoothedAmplitude
+                ? micForces.smoothedAmplitude
+                : 0);
+          }
+
+          // Set the input value for the modulator
+          modulator.setInputValue(value);
+        } catch (e) {
+          console.error("Error processing audio input for modulator:", e);
+        }
+      }
+    }
+
+    // Update all modulators through the manager
+    this.modulatorManager.update();
+  }
+
+  updateAllBandVisualizations() {
+    // Skip if no audio system is available
+    if (
+      !this.main ||
+      !this.main.externalInput ||
+      !this.main.externalInput.micForces
+    ) {
+      return;
+    }
+
+    const micForces = this.main.externalInput.micForces;
+    const analyzer = this.main.audioAnalyzer;
+
+    // CRITICAL PART: Update individual modulator visualizations
+    if (this.modulatorManager) {
+      // Loop through all modulators with mic input
+      this.modulatorManager.modulators.forEach((modulator) => {
+        // Only process mic input modulators with visualization elements
+        if (modulator.inputSource === "mic" && modulator._bandVisual) {
+          try {
+            let value = 0;
+
+            // Get value from analyzer if available
+            if (analyzer) {
+              if (modulator.frequencyBand === "none") {
+                // Use overall volume
+                value = analyzer.smoothedVolume || 0;
+              } else {
+                // Get band-specific values
+                const bands = analyzer.calculateBandLevels();
+                if (bands) {
+                  switch (modulator.frequencyBand) {
+                    case "sub":
+                      value = bands.sub || 0;
+                      break;
+                    case "bass":
+                      value = bands.bass || 0;
+                      break;
+                    case "lowMid":
+                      value = bands.lowMid || 0;
+                      break;
+                    case "mid":
+                      value = bands.mid || 0;
+                      break;
+                    case "highMid":
+                      value = bands.highMid || 0;
+                      break;
+                    case "treble":
+                      // Average of presence and brilliance
+                      value =
+                        ((bands.presence || 0) + (bands.brilliance || 0)) / 2;
+                      break;
+                    default:
+                      value = 0;
+                  }
+                }
+              }
+            }
+
+            // Apply sensitivity
+            value = Math.min(1, value * (modulator.sensitivity || 1));
+
+            // Calculate color based on intensity
+            const color = this.getIntensityColor(value);
+
+            // Update visualization elements
+            if (modulator._bandVisual.bar) {
+              modulator._bandVisual.bar.style.width = `${value * 100}%`;
+              // Apply the calculated color
+              modulator._bandVisual.bar.style.backgroundColor = color;
+            }
+
+            if (modulator._bandVisual.label) {
+              const bandName =
+                modulator.frequencyBand === "none"
+                  ? "All"
+                  : modulator.frequencyBand;
+              modulator._bandVisual.label.textContent = `${bandName}: ${Math.round(
+                value * 100
+              )}%`;
+            }
+          } catch (err) {
+            console.warn("Error updating modulator visualization:", err);
           }
         }
       });
+    }
+  }
+  //#endregion
+
+  //#region Preset
+
+  updatePresetDropdown() {
+    if (!this.presetSelect || !this.presetManager) return;
+
+    // Clear existing options
+    while (this.presetSelect.firstChild) {
+      this.presetSelect.removeChild(this.presetSelect.firstChild);
+    }
+
+    // Get preset options from manager
+    let options = [];
+    if (typeof this.presetManager.getMicPresetOptions === "function") {
+      options = this.presetManager.getMicPresetOptions();
+    } else {
+      // Fallback: get from micHandler
+      options = this.presetManager.micHandler?.getPresetOptions() || [];
+    }
+
+    console.log(
+      `Updating mic preset dropdown with options: ${JSON.stringify(options)}`
+    );
+
+    // Add options to dropdown
+    options.forEach((option) => {
+      const optElement = document.createElement("option");
+      optElement.value = option;
+      optElement.textContent = option;
+      this.presetSelect.appendChild(optElement);
+    });
+
+    // Select the current preset if available
+    const currentPreset = this.presetManager.getSelectedMicPreset();
+    if (currentPreset && options.includes(currentPreset)) {
+      this.presetSelect.value = currentPreset;
     }
   }
 
@@ -1145,6 +980,170 @@ export class InputModulationUi extends BaseUi {
     }
   }
 
+  initWithPresetManager(presetManager) {
+    if (!presetManager) return;
+    this.presetManager = presetManager;
+    console.log("InputUi initialized with preset manager");
+    // Initialize preset controls
+    this.initPresetControls(presetManager);
+  }
+
+  //#endregion
+
+  //#region Audio Input
+
+  addAudioDeviceSelector() {
+    if (!this.audioDevices) {
+      this.audioDevices = [];
+    }
+
+    if (!this.gui) return;
+
+    // Container for device selection
+    const deviceContainer = document.createElement("div");
+    deviceContainer.classList.add("controller");
+    deviceContainer.style.marginTop = "8px";
+    deviceContainer.style.marginBottom = "8px";
+
+    // Label for device selection
+    const deviceLabel = document.createElement("div");
+    deviceLabel.textContent = "Select Audio Input";
+    deviceLabel.style.marginBottom = "4px";
+
+    // Create select dropdown
+    this.audioInputDeviceSelect = document.createElement("select");
+    this.audioInputDeviceSelect.classList.add("preset-select");
+    this.audioInputDeviceSelect.style.padding = "4px";
+    this.audioInputDeviceSelect.style.width = "100%";
+
+    // Add option for loading devices
+    const loadingOption = document.createElement("option");
+    loadingOption.textContent = "Loading audio devices...";
+    this.audioInputDeviceSelect.appendChild(loadingOption);
+
+    // Handle device change
+    this.audioInputDeviceSelect.addEventListener("change", (e) => {
+      const deviceId = e.target.value;
+      console.log("Selected audio device:", deviceId);
+      this.setAudioInputDevice(deviceId);
+    });
+
+    // Add elements to container
+    deviceContainer.appendChild(deviceLabel);
+    deviceContainer.appendChild(this.audioInputDeviceSelect);
+
+    // Find insertion point - right after the enable button
+    const insertionPoint = this.micEnableController
+      ? this.micEnableController.domElement.nextSibling
+      : this.gui.domElement.querySelector(".children").firstChild;
+
+    // Add to UI folder
+    this.gui.domElement
+      .querySelector(".children")
+      .insertBefore(deviceContainer, insertionPoint);
+
+    // Store reference to the container for visibility toggling
+    this.deviceContainer = deviceContainer;
+    this.micControllers.push(deviceContainer);
+
+    // Populate with available devices
+    this.populateAudioDevices();
+  }
+
+  // Add method to populate audio devices
+  async populateAudioDevices() {
+    try {
+      // Check if browser supports MediaDevices API
+      if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+        console.error("Browser doesn't support device enumeration");
+        return;
+      }
+
+      // Get available devices
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const audioInputDevices = devices.filter(
+        (device) => device.kind === "audioinput"
+      );
+
+      // Clear existing options
+      this.audioInputDeviceSelect.innerHTML = "";
+
+      // Add default option
+      const defaultOption = document.createElement("option");
+      defaultOption.value = "default";
+      defaultOption.textContent = "Default Input";
+      this.audioInputDeviceSelect.appendChild(defaultOption);
+
+      // Add each audio input device
+      audioInputDevices.forEach((device) => {
+        const option = document.createElement("option");
+        option.value = device.deviceId;
+        // Handle unnamed devices by giving them a generic name
+        option.textContent =
+          device.label ||
+          `Audio Input ${audioInputDevices.indexOf(device) + 1}`;
+        this.audioInputDeviceSelect.appendChild(option);
+        this.audioDevices.push(device);
+      });
+    } catch (err) {
+      console.error("Error enumerating audio devices:", err);
+      this.audioInputDeviceSelect.innerHTML =
+        "<option>Error loading devices</option>";
+    }
+  }
+
+  // Method to set the selected audio input device
+  setAudioInputDevice(deviceId) {
+    if (!this.main.externalInput) return;
+
+    const constraints = {
+      audio: {
+        deviceId: deviceId !== "default" ? { exact: deviceId } : undefined,
+      },
+    };
+
+    // Pass these constraints to the external input manager
+    this.main.externalInput.setAudioInputDevice(constraints);
+  }
+
+  getIntensityColor(value) {
+    // Ensure value is between 0 and 1
+    value = Math.max(0, Math.min(1, value));
+
+    let r, g, b;
+
+    if (value < 0.33) {
+      // Green to Yellow (0.0 - 0.33)
+      // Green: rgb(0, 255, 0) to Yellow: rgb(255, 255, 0)
+      r = Math.round(value * 3 * 255);
+      g = 255;
+      b = 0;
+    } else if (value < 0.66) {
+      // Yellow to Orange/Red (0.33 - 0.66)
+      // Yellow: rgb(255, 255, 0) to Orange: rgb(255, 128, 0)
+      r = 255;
+      g = Math.round(255 - (value - 0.33) * 3 * 128);
+      b = 0;
+    } else {
+      // Orange to Red (0.66 - 1.0)
+      // Orange: rgb(255, 128, 0) to Red: rgb(255, 0, 0)
+      r = 255;
+      g = Math.round(128 - (value - 0.66) * 3 * 128);
+      b = 0;
+    }
+
+    return `rgb(${r}, ${g}, ${b})`;
+  }
+
+  //#endregion
+
+  //#region Other
+
+  setModulatorManager(manager) {
+    this.modulatorManager = manager;
+    console.log("InputUi using shared ModulatorManager");
+  }
+
   _clearAllModulators() {
     console.log("InputUi: Clearing all modulators");
 
@@ -1221,186 +1220,6 @@ export class InputModulationUi extends BaseUi {
     this.update();
   }
 
-  initPresetControls(presetManager) {
-    if (!presetManager) {
-      console.warn("No preset manager provided for InputUi");
-      return;
-    }
-
-    // Save reference to the preset manager
-    this.presetManager = presetManager;
-
-    // Create preset controls container
-    const presetContainer = document.createElement("div");
-    presetContainer.className = "preset-controls";
-    presetContainer.style.margin = "10px 0";
-    presetContainer.style.display = "flex";
-    presetContainer.style.alignItems = "center";
-    presetContainer.style.justifyContent = "space-between";
-
-    // Label for better context
-    const presetLabel = document.createElement("div");
-    presetLabel.textContent = "Mic Presets:";
-    presetLabel.style.marginRight = "8px";
-
-    // Create preset selector
-    const presetSelect = document.createElement("select");
-    presetSelect.className = "preset-selector";
-    presetSelect.style.flexGrow = "1";
-    presetSelect.style.marginRight = "5px";
-
-    // Create save button
-    const saveButton = document.createElement("button");
-    saveButton.textContent = "Save";
-    saveButton.className = "save-preset-btn";
-    saveButton.style.marginRight = "5px";
-
-    // Create delete button
-    const deleteButton = document.createElement("button");
-    deleteButton.textContent = "Delete";
-    deleteButton.className = "delete-preset-btn";
-
-    // Add elements to container
-    presetContainer.appendChild(presetLabel);
-    presetContainer.appendChild(presetSelect);
-    presetContainer.appendChild(saveButton);
-    presetContainer.appendChild(deleteButton);
-
-    // Get insertion point - right AFTER the enable mic checkbox
-    let insertPoint = null;
-    if (this.micEnableController && this.micEnableController.domElement) {
-      insertPoint = this.micEnableController.domElement.nextSibling;
-    }
-
-    // Insert at the correct position
-    const targetElement =
-      this.micPanel?.domElement?.querySelector(".children") ||
-      this.gui?.domElement?.querySelector(".children");
-
-    if (targetElement) {
-      if (insertPoint) {
-        targetElement.insertBefore(presetContainer, insertPoint);
-      } else {
-        targetElement.insertBefore(presetContainer, targetElement.firstChild);
-      }
-    }
-
-    // Store references
-    this.presetSelect = presetSelect;
-    this.savePresetButton = saveButton;
-    this.deletePresetButton = deleteButton;
-    this.presetContainer = presetContainer;
-
-    // Initially hide preset controls if mic input is disabled
-    const enabled = this.main?.externalInput?.micForces?.enabled || false;
-    this.presetContainer.style.display = enabled ? "block" : "none";
-
-    // Update dropdown with available presets
-    this.updatePresetDropdown();
-
-    // Add event listeners
-    presetSelect.addEventListener("change", () => {
-      const selectedPreset = presetSelect.value;
-      if (selectedPreset && this.presetManager) {
-        console.log(`Mic preset selector changed to: ${selectedPreset}`);
-        this.presetManager.loadMicPreset(selectedPreset, this);
-      }
-    });
-
-    saveButton.addEventListener("click", () => {
-      // Show save dialog
-      const presetName = prompt("Enter name for this mic preset:", "");
-      if (presetName && this.presetManager) {
-        console.log(`Saving mic preset: ${presetName}`);
-        this.presetManager.saveMicPreset(presetName, this);
-        // Update dropdown with the new preset
-        this.updatePresetDropdown();
-        // Select the new preset in the dropdown
-        this.presetSelect.value = presetName;
-      }
-    });
-
-    deleteButton.addEventListener("click", () => {
-      const selectedPreset = presetSelect.value;
-      if (selectedPreset && selectedPreset !== "None" && this.presetManager) {
-        const confirmed = confirm(`Delete mic preset "${selectedPreset}"?`);
-        if (confirmed) {
-          console.log(`Deleting mic preset: ${selectedPreset}`);
-          this.presetManager.deleteMicPreset(selectedPreset);
-          // Update dropdown after deletion
-          this.updatePresetDropdown();
-        }
-      }
-    });
-  }
-
-  /**
-   * Update the preset dropdown with available options
-   */
-  updatePresetDropdown() {
-    if (!this.presetSelect || !this.presetManager) return;
-
-    // Clear existing options
-    while (this.presetSelect.firstChild) {
-      this.presetSelect.removeChild(this.presetSelect.firstChild);
-    }
-
-    // Get preset options from manager
-    let options = [];
-    if (typeof this.presetManager.getMicPresetOptions === "function") {
-      options = this.presetManager.getMicPresetOptions();
-    } else {
-      // Fallback: get from micHandler
-      options = this.presetManager.micHandler?.getPresetOptions() || [];
-    }
-
-    console.log(
-      `Updating mic preset dropdown with options: ${JSON.stringify(options)}`
-    );
-
-    // Add options to dropdown
-    options.forEach((option) => {
-      const optElement = document.createElement("option");
-      optElement.value = option;
-      optElement.textContent = option;
-      this.presetSelect.appendChild(optElement);
-    });
-
-    // Select the current preset if available
-    const currentPreset = this.presetManager.getSelectedMicPreset();
-    if (currentPreset && options.includes(currentPreset)) {
-      this.presetSelect.value = currentPreset;
-    }
-  }
-
-  initWithPresetManager(presetManager) {
-    if (!presetManager) return;
-    this.presetManager = presetManager;
-    console.log("InputUi initialized with preset manager");
-    // Initialize preset controls
-    this.initPresetControls(presetManager);
-  }
-
-  /**
-   * Handle toggling of mic input enabled state
-   * @param {boolean} enabled - Whether mic input is enabled
-   */
-  onMicInputToggled(enabled) {
-    // Update preset controls visibility
-    if (this.presetContainer) {
-      this.presetContainer.style.display = enabled ? "block" : "none";
-    }
-
-    // Call original toggle functionality if it exists
-    if (typeof this.toggleAllMicControlsVisibility === "function") {
-      this.toggleAllMicControlsVisibility(enabled);
-    }
-  }
-
-  /**
-   * Get all current mic modulators in a format suitable for saving
-   * @returns {Array} Array of modulator data objects
-   */
   getModulatorData() {
     const modulatorData = [];
 
@@ -1514,5 +1333,172 @@ export class InputModulationUi extends BaseUi {
 
     // Call parent dispose
     super.dispose();
+  }
+
+  //#endregion
+
+  registerAvailableTargets() {
+    console.log("InputUi delegating target registration to ModulatorManager");
+
+    // If deferring, don't register targets yet
+    if (this.deferTargetRegistration) {
+      console.log(
+        "InputUi deferring target registration until UI panels are ready"
+      );
+      return;
+    }
+
+    // No need to call this directly since UiManager handles it now with the shared manager
+    if (this.leftUi && this.rightUi) {
+      this.modulatorManager.registerTargetsFromUi(this.leftUi, this.rightUi);
+    } else if (this.main.ui) {
+      // Fallback to using main.ui references
+      this.modulatorManager.registerTargetsFromUi(
+        this.main.ui.leftUi,
+        this.main.ui.rightUi
+      );
+    } else {
+      console.warn("InputUi could not find UI panels for target registration");
+    }
+  }
+
+  getControlTargets() {
+    // Access leftUi implementation if available
+    if (
+      this.main.ui &&
+      this.main.ui.leftUi &&
+      typeof this.main.ui.leftUi.getControlTargets === "function"
+    ) {
+      return this.main.ui.leftUi.getControlTargets();
+    }
+
+    // Fallback to a minimal implementation
+    return ["None", "Particle Size", "Gravity Strength", "Repulsion"];
+  }
+
+  getControllerForTarget(targetName) {
+    // Access leftUi implementation if available
+    if (
+      this.main.ui &&
+      this.main.ui.leftUi &&
+      typeof this.main.ui.leftUi.getControllerForTarget === "function"
+    ) {
+      return this.main.ui.leftUi.getControllerForTarget(targetName);
+    }
+
+    // Fallback to null
+    return null;
+  }
+
+  findTargetNameByController(controller) {
+    if (!controller) {
+      console.warn("Null controller provided to findTargetNameByController");
+      return null;
+    }
+
+    // Log the controller we're trying to find
+    console.log("Finding target name for controller:", controller.property);
+
+    // Try exact controller matching first
+    const targets = this.getControlTargets();
+    for (const targetName of targets) {
+      if (targetName === "None") continue;
+
+      const info = this.getControllerForTarget(targetName);
+      if (info?.controller === controller) {
+        console.log(`Found exact match for controller: ${targetName}`);
+        return targetName;
+      }
+    }
+
+    // If no exact match, try matching by property
+    const propertyName = controller.property;
+    if (propertyName) {
+      // Log all available target properties for debugging
+      console.log("Available target properties:");
+      for (const targetName of targets) {
+        if (targetName === "None") continue;
+
+        const info = this.getControllerForTarget(targetName);
+        if (info?.controller) {
+          console.log(`- ${targetName}: ${info.controller.property}`);
+        }
+      }
+
+      // Try to find a match by property
+      for (const targetName of targets) {
+        if (targetName === "None") continue;
+
+        const info = this.getControllerForTarget(targetName);
+        if (info?.controller?.property === propertyName) {
+          console.log(`Found property match for controller: ${targetName}`);
+          return targetName;
+        }
+      }
+
+      // As a last resort, try matching by similar property name
+      for (const targetName of targets) {
+        if (targetName === "None") continue;
+
+        // If target name contains the property or vice versa
+        if (
+          targetName.toLowerCase().includes(propertyName.toLowerCase()) ||
+          propertyName.toLowerCase().includes(targetName.toLowerCase())
+        ) {
+          console.log(`Found partial name match for controller: ${targetName}`);
+          return targetName;
+        }
+      }
+    }
+
+    console.warn(
+      `Could not find target name for controller: ${propertyName || "unknown"}`
+    );
+    return null;
+  }
+
+  updateTargetDropdowns() {
+    // Get the updated list of target names
+    const targetNames = this.modulatorManager.getTargetNames();
+
+    if (!targetNames || targetNames.length === 0) {
+      console.warn("No targets available for dropdown update");
+      return;
+    }
+
+    console.log(`Updating target dropdowns with ${targetNames.length} targets`);
+
+    // Update each modulator folder's target dropdown
+    if (this.modulatorFolders) {
+      this.modulatorFolders.forEach((folder) => {
+        // Find the target controller (usually the second controller in the folder)
+        const targetController = folder.controllers.find(
+          (c) => c.property === "targetName"
+        );
+
+        if (targetController && targetController.options) {
+          // Update available options
+          targetController.options(targetNames);
+          targetController.updateDisplay();
+
+          // If the target is already set, make sure it's still in the list
+          const modulator = this.modulatorManager.modulators.find((m) =>
+            folder.controllers.some((c) => c.object === m)
+          );
+
+          if (
+            modulator &&
+            modulator.targetName &&
+            !targetNames.includes(modulator.targetName)
+          ) {
+            // Target no longer exists, reset to first available target
+            if (targetNames.length > 0) {
+              modulator.setTarget(targetNames[0]);
+              targetController.updateDisplay();
+            }
+          }
+        }
+      });
+    }
   }
 }

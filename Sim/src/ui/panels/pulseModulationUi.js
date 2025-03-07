@@ -28,6 +28,20 @@ export class PulseModulationUi extends BaseUi {
     this.targetControllerMap = new Map();
   }
 
+  //#region Ui
+
+  initializeWithUiPanels(leftUi, rightUi, targetsRegistered = false) {
+    console.log("PulseModulationUi initializing with UI panels");
+
+    // Store UI references
+    this.leftUi = leftUi;
+    this.rightUi = rightUi;
+
+    // No need to register targets since they're registered by UiManager
+
+    console.log("PulseModulationUi initialized with UI panels");
+  }
+
   initBasicControls() {
     // Add master frequency slider
     this.gui
@@ -45,20 +59,125 @@ export class PulseModulationUi extends BaseUi {
     this.gui.open(true);
   }
 
-  // Update the initializeWithUiPanels method to accept a targetsRegistered flag
-  initializeWithUiPanels(leftUi, rightUi, targetsRegistered = false) {
-    console.log("PulseModulationUi initializing with UI panels");
+  initPresetControls(presetManager) {
+    if (!presetManager) {
+      console.warn("PresetManager not provided to PulseModulationUi");
+      return;
+    }
 
-    // Store UI references
-    this.leftUi = leftUi;
-    this.rightUi = rightUi;
+    this.presetManager = presetManager;
 
-    // No need to register targets since they're registered by UiManager
+    // Find the correct container in GUI structure
+    const containerElement = this.gui.domElement.querySelector(".children");
+    if (!containerElement) {
+      console.error("Could not find container element in GUI");
+      return;
+    }
 
-    console.log("PulseModulationUi initialized with UI panels");
+    // Create select dropdown
+    const presetSelect = document.createElement("select");
+    presetSelect.classList.add("preset-select");
+    presetSelect.style.padding = "4px";
+
+    presetSelect.style.margin = "5px";
+
+    this.updatePresetDropdown(presetSelect);
+
+    presetSelect.addEventListener("change", (e) => {
+      const value = e.target.value;
+      console.log("Pulse modulation preset selector changed to:", value);
+      this.presetManager.loadPulsePreset(value, this);
+    });
+
+    this.pulsePresetControls = { selector: presetSelect };
+
+    // Create action buttons container
+    const actionsContainer = document.createElement("div");
+    actionsContainer.style.display = "flex";
+    actionsContainer.style.justifyContent = "space-between";
+    actionsContainer.style.margin = "5px";
+
+    actionsContainer.style.flexWrap = "wrap"; // Allow wrapping if needed
+
+    // SAVE BUTTON
+    const saveButton = document.createElement("button");
+    saveButton.textContent = "Save";
+    saveButton.style.flex = "1";
+    saveButton.style.margin = "0 2px";
+    saveButton.addEventListener("click", () => {
+      const presetName = prompt("Enter pulse modulation preset name:");
+      if (
+        this.presetManager.savePulsePreset(presetName, this.modulatorManager)
+      ) {
+        this.updatePresetDropdown(presetSelect);
+        presetSelect.value = this.presetManager.getSelectedPulsePreset();
+        alert(`Pulse modulation preset "${presetName}" saved.`);
+      }
+    });
+
+    // DELETE BUTTON
+    const deleteButton = document.createElement("button");
+    deleteButton.textContent = "Delete";
+    deleteButton.style.flex = "1";
+    deleteButton.style.margin = "0 2px";
+    deleteButton.addEventListener("click", () => {
+      const current = presetSelect.value;
+      if (current === "None") {
+        alert("Cannot delete the None preset!");
+        return;
+      }
+      console.log("Attempting to delete pulse modulation preset:", current);
+      if (
+        confirm(`Delete preset "${current}"?`) &&
+        this.presetManager.deletePulsePreset(current)
+      ) {
+        this.updatePresetDropdown(presetSelect);
+        presetSelect.value = this.presetManager.getSelectedPulsePreset();
+        alert(`Pulse modulation preset "${current}" deleted.`);
+      }
+    });
+
+    // Add buttons to the container
+    actionsContainer.appendChild(saveButton);
+    actionsContainer.appendChild(deleteButton);
+
+    // Get the Add Modulator button (first controller)
+    const addModulatorController = this.gui.controllers[0];
+    const addModulatorElement = addModulatorController.domElement;
+
+    // Remove the Add Modulator button from its current position
+    if (addModulatorElement && addModulatorElement.parentNode) {
+      addModulatorElement.parentNode.removeChild(addModulatorElement);
+    }
+
+    // Insert preset controls at the top of the GUI
+    this.gui.domElement.insertBefore(
+      presetSelect,
+      this.gui.domElement.querySelector(".children")
+    );
+
+    this.gui.domElement.insertBefore(
+      actionsContainer,
+      this.gui.domElement.querySelector(".children")
+    );
+
+    // Add the Add Modulator button back after the preset controls
+    if (addModulatorElement) {
+      this.gui.domElement
+        .querySelector(".children")
+        .insertBefore(
+          addModulatorElement,
+          this.gui.domElement.querySelector(".children").firstChild
+        );
+    }
+
+    // Remove any existing lil-gui preset controllers
+    if (this.presetController) {
+      this.presetController.destroy();
+      this.presetController = null;
+    }
   }
 
-  // Add a new pulse modulator
   addPulseModulator() {
     // Check if we have ModulatorManager and UI references
     if (!this.modulatorManager) {
@@ -246,6 +365,9 @@ export class PulseModulationUi extends BaseUi {
 
     return modulator;
   }
+  //#endregion
+
+  //#region Update
 
   update() {
     if (!this.modulatorManager) return;
@@ -264,7 +386,6 @@ export class PulseModulationUi extends BaseUi {
     this.updateUIDisplays();
   }
 
-  // Helper method to update all UI displays
   updateUIDisplays() {
     // Update target controller displays in left/right UI
     if (this.rightUi?.updateControllerDisplays) {
@@ -279,126 +400,29 @@ export class PulseModulationUi extends BaseUi {
     this.updateModulatorDisplays();
   }
 
-  initPresetControls(presetManager) {
-    if (!presetManager) {
-      console.warn("PresetManager not provided to PulseModulationUi");
-      return;
-    }
+  updateModulatorDisplays() {
+    // Update all modulator UI controllers to reflect current values
+    if (!this.modulatorManager || !this.folders) return; // Changed from this.modulatorFolders
 
-    this.presetManager = presetManager;
+    this.modulatorManager.modulators.forEach((modulator, index) => {
+      // Find the folder for this modulator
+      const folder = this.folders[index]; // Changed from this.modulatorFolders
+      if (!folder) return;
 
-    // Find the correct container in GUI structure
-    const containerElement = this.gui.domElement.querySelector(".children");
-    if (!containerElement) {
-      console.error("Could not find container element in GUI");
-      return;
-    }
-
-    // Create select dropdown
-    const presetSelect = document.createElement("select");
-    presetSelect.classList.add("preset-select");
-    presetSelect.style.padding = "4px";
-
-    presetSelect.style.margin = "5px";
-
-    this.updatePresetDropdown(presetSelect);
-
-    presetSelect.addEventListener("change", (e) => {
-      const value = e.target.value;
-      console.log("Pulse modulation preset selector changed to:", value);
-      this.presetManager.loadPulsePreset(value, this);
+      // Update all controllers in the folder
+      folder.controllers.forEach((controller) => {
+        // Only update controllers for properties that exist on the modulator
+        if (modulator.hasOwnProperty(controller.property)) {
+          controller.updateDisplay();
+        }
+      });
     });
-
-    this.pulsePresetControls = { selector: presetSelect };
-
-    // Create action buttons container
-    const actionsContainer = document.createElement("div");
-    actionsContainer.style.display = "flex";
-    actionsContainer.style.justifyContent = "space-between";
-    actionsContainer.style.margin = "5px";
-
-    actionsContainer.style.flexWrap = "wrap"; // Allow wrapping if needed
-
-    // SAVE BUTTON
-    const saveButton = document.createElement("button");
-    saveButton.textContent = "Save";
-    saveButton.style.flex = "1";
-    saveButton.style.margin = "0 2px";
-    saveButton.addEventListener("click", () => {
-      const presetName = prompt("Enter pulse modulation preset name:");
-      if (
-        this.presetManager.savePulsePreset(presetName, this.modulatorManager)
-      ) {
-        this.updatePresetDropdown(presetSelect);
-        presetSelect.value = this.presetManager.getSelectedPulsePreset();
-        alert(`Pulse modulation preset "${presetName}" saved.`);
-      }
-    });
-
-    // DELETE BUTTON
-    const deleteButton = document.createElement("button");
-    deleteButton.textContent = "Delete";
-    deleteButton.style.flex = "1";
-    deleteButton.style.margin = "0 2px";
-    deleteButton.addEventListener("click", () => {
-      const current = presetSelect.value;
-      if (current === "None") {
-        alert("Cannot delete the None preset!");
-        return;
-      }
-      console.log("Attempting to delete pulse modulation preset:", current);
-      if (
-        confirm(`Delete preset "${current}"?`) &&
-        this.presetManager.deletePulsePreset(current)
-      ) {
-        this.updatePresetDropdown(presetSelect);
-        presetSelect.value = this.presetManager.getSelectedPulsePreset();
-        alert(`Pulse modulation preset "${current}" deleted.`);
-      }
-    });
-
-    // Add buttons to the container
-    actionsContainer.appendChild(saveButton);
-    actionsContainer.appendChild(deleteButton);
-
-    // Get the Add Modulator button (first controller)
-    const addModulatorController = this.gui.controllers[0];
-    const addModulatorElement = addModulatorController.domElement;
-
-    // Remove the Add Modulator button from its current position
-    if (addModulatorElement && addModulatorElement.parentNode) {
-      addModulatorElement.parentNode.removeChild(addModulatorElement);
-    }
-
-    // Insert preset controls at the top of the GUI
-    this.gui.domElement.insertBefore(
-      presetSelect,
-      this.gui.domElement.querySelector(".children")
-    );
-
-    this.gui.domElement.insertBefore(
-      actionsContainer,
-      this.gui.domElement.querySelector(".children")
-    );
-
-    // Add the Add Modulator button back after the preset controls
-    if (addModulatorElement) {
-      this.gui.domElement
-        .querySelector(".children")
-        .insertBefore(
-          addModulatorElement,
-          this.gui.domElement.querySelector(".children").firstChild
-        );
-    }
-
-    // Remove any existing lil-gui preset controllers
-    if (this.presetController) {
-      this.presetController.destroy();
-      this.presetController = null;
-    }
   }
 
-  // Helper method to update dropdown options
+  //#endregion
+
+  //#region Preset Management
+
   updatePresetDropdown(selectElement) {
     const options = this.presetManager.getPulsePresetOptions();
     console.log(
@@ -426,31 +450,6 @@ export class PulseModulationUi extends BaseUi {
     this.presetManager = presetManager;
     this.initPresetControls(presetManager);
     console.log(`${this.constructor.name} initialized with preset manager`);
-  }
-
-  // Add this method to the PulseModulationUi class
-  updateModulatorDisplays() {
-    // Update all modulator UI controllers to reflect current values
-    if (!this.modulatorManager || !this.folders) return; // Changed from this.modulatorFolders
-
-    this.modulatorManager.modulators.forEach((modulator, index) => {
-      // Find the folder for this modulator
-      const folder = this.folders[index]; // Changed from this.modulatorFolders
-      if (!folder) return;
-
-      // Update all controllers in the folder
-      folder.controllers.forEach((controller) => {
-        // Only update controllers for properties that exist on the modulator
-        if (modulator.hasOwnProperty(controller.property)) {
-          controller.updateDisplay();
-        }
-      });
-    });
-  }
-
-  // Add this method to PulseModulationUi class
-  setModulatorManager(manager) {
-    this.modulatorManager = manager;
   }
 
   loadPresetData(preset) {
@@ -575,6 +574,13 @@ export class PulseModulationUi extends BaseUi {
       return false;
     }
   }
+  //#endregion
+
+  //#region Other
+
+  setModulatorManager(manager) {
+    this.modulatorManager = manager;
+  }
 
   clearAllModulators() {
     console.log("PulseModulationUI: Clearing all modulators");
@@ -657,4 +663,5 @@ export class PulseModulationUi extends BaseUi {
   getModulatorsData() {
     return this.saveToData();
   }
+  //#endregion
 }
