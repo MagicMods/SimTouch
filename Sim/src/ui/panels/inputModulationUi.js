@@ -733,85 +733,67 @@ export class InputModulationUi extends BaseUi {
     }
 
     const micForces = this.main.externalInput.micForces;
+    const analyzer = this.main.audioAnalyzer;
 
-    // Update global mic controllers
-    if (this.micControllers && Array.isArray(this.micControllers)) {
-      this.micControllers.forEach((item) => {
-        // Skip invalid controllers
-        if (!item || !item.controller || !item.controller.object) {
-          return;
-        }
-
-        let value = 0;
-
-        if (item.band === "volume") {
-          // Try different methods to get the overall level
-          if (typeof micForces.getVolume === "function") {
-            value = micForces.getVolume();
-          } else if (typeof micForces.getLevel === "function") {
-            value = micForces.getLevel();
-          } else {
-            value = micForces.volume || 0;
-          }
-        } else {
-          // Try different methods to get band levels
-          if (typeof micForces.getBand === "function") {
-            value = micForces.getBand(item.band);
-          } else if (typeof micForces.getBandLevel === "function") {
-            value = micForces.getBandLevel(item.band);
-          } else if (micForces.bands && micForces.bands[item.band]) {
-            value = micForces.bands[item.band] || 0;
-          }
-        }
-
-        // Update the controller's object value
-        item.controller.object.level = value;
-      });
-    }
-
-    // ADD THIS PART: Update individual modulator visualizations
-    if (this.modulatorManager && this.modulatorManager.modulators) {
+    // CRITICAL PART: Update individual modulator visualizations
+    if (this.modulatorManager) {
       // Loop through all modulators with mic input
       this.modulatorManager.modulators.forEach((modulator) => {
         // Only process mic input modulators with visualization elements
         if (modulator.inputSource === "mic" && modulator._bandVisual) {
           try {
-            // Get the correct band level
             let value = 0;
 
-            if (modulator.frequencyBand === "none") {
-              // Overall volume
-              if (typeof micForces.getVolume === "function") {
-                value = micForces.getVolume();
-              } else if (typeof micForces.getLevel === "function") {
-                value = micForces.getLevel();
+            // Get value from analyzer if available
+            if (analyzer) {
+              if (modulator.frequencyBand === "none") {
+                // Use overall volume
+                value = analyzer.smoothedVolume || 0;
               } else {
-                // Try direct property access as fallback
-                value = micForces.volume || 0;
-              }
-            } else {
-              // Specific band
-              if (typeof micForces.getBandLevel === "function") {
-                value = micForces.getBandLevel(modulator.frequencyBand);
-              } else if (typeof micForces.getBand === "function") {
-                value = micForces.getBand(modulator.frequencyBand);
-              } else if (
-                micForces.bands &&
-                micForces.bands[modulator.frequencyBand]
-              ) {
-                value = micForces.bands[modulator.frequencyBand] || 0;
+                // Get band-specific values
+                const bands = analyzer.calculateBandLevels();
+                if (bands) {
+                  switch (modulator.frequencyBand) {
+                    case "sub":
+                      value = bands.sub || 0;
+                      break;
+                    case "bass":
+                      value = bands.bass || 0;
+                      break;
+                    case "lowMid":
+                      value = bands.lowMid || 0;
+                      break;
+                    case "mid":
+                      value = bands.mid || 0;
+                      break;
+                    case "highMid":
+                      value = bands.highMid || 0;
+                      break;
+                    case "treble":
+                      // Average of presence and brilliance
+                      value =
+                        ((bands.presence || 0) + (bands.brilliance || 0)) / 2;
+                      break;
+                    default:
+                      value = 0;
+                  }
+                }
               }
             }
 
             // Apply sensitivity
-            value = Math.min(1, value * modulator.sensitivity);
+            value = Math.min(1, value * (modulator.sensitivity || 1));
 
-            // Update bar width
+            // Calculate color based on intensity
+            const color = this.getIntensityColor(value);
+
+            // Update visualization elements
             if (modulator._bandVisual.bar) {
               modulator._bandVisual.bar.style.width = `${value * 100}%`;
+              // Apply the calculated color
+              modulator._bandVisual.bar.style.backgroundColor = color;
             }
 
-            // Update label
             if (modulator._bandVisual.label) {
               const bandName =
                 modulator.frequencyBand === "none"
@@ -822,11 +804,45 @@ export class InputModulationUi extends BaseUi {
               )}%`;
             }
           } catch (err) {
-            // Silent error - visualization is non-critical
+            console.warn("Error updating modulator visualization:", err);
           }
         }
       });
     }
+  }
+
+  /**
+   * Calculate a color based on intensity value
+   * @param {number} value - Normalized value between 0 and 1
+   * @returns {string} CSS color string
+   */
+  getIntensityColor(value) {
+    // Ensure value is between 0 and 1
+    value = Math.max(0, Math.min(1, value));
+
+    let r, g, b;
+
+    if (value < 0.33) {
+      // Green to Yellow (0.0 - 0.33)
+      // Green: rgb(0, 255, 0) to Yellow: rgb(255, 255, 0)
+      r = Math.round(value * 3 * 255);
+      g = 255;
+      b = 0;
+    } else if (value < 0.66) {
+      // Yellow to Orange/Red (0.33 - 0.66)
+      // Yellow: rgb(255, 255, 0) to Orange: rgb(255, 128, 0)
+      r = 255;
+      g = Math.round(255 - (value - 0.33) * 3 * 128);
+      b = 0;
+    } else {
+      // Orange to Red (0.66 - 1.0)
+      // Orange: rgb(255, 128, 0) to Red: rgb(255, 0, 0)
+      r = 255;
+      g = Math.round(128 - (value - 0.66) * 3 * 128);
+      b = 0;
+    }
+
+    return `rgb(${r}, ${g}, ${b})`;
   }
 
   // Add this method to create a new input modulator with UI controls
@@ -1510,443 +1526,5 @@ export class InputModulationUi extends BaseUi {
 
     // Call parent dispose
     super.dispose();
-  }
-
-  /**
-   * Initialize preset controls with dropdown and save/delete buttons
-   * @param {PresetManager} presetManager - Reference to the preset manager
-   */
-  initPresetControls(presetManager) {
-    if (!presetManager) {
-      console.warn("PresetManager not provided to InputModulationUi");
-      return;
-    }
-
-    this.presetManager = presetManager;
-
-    // Find the correct container in GUI structure
-    const containerElement = this.gui.domElement.querySelector(".children");
-    if (!containerElement) {
-      console.error("Could not find container element in GUI");
-      return;
-    }
-
-    // Create select dropdown
-    const presetSelect = document.createElement("select");
-    presetSelect.classList.add("preset-select");
-    presetSelect.style.padding = "4px";
-    presetSelect.style.margin = "5px";
-
-    this.updatePresetDropdown(presetSelect);
-
-    presetSelect.addEventListener("change", (e) => {
-      const value = e.target.value;
-      console.log("Input modulation preset selector changed to:", value);
-      this.presetManager.loadMicPreset(value, this);
-    });
-
-    this.micPresetControls = { selector: presetSelect };
-
-    // Create action buttons container
-    const actionsContainer = document.createElement("div");
-    actionsContainer.style.display = "flex";
-    actionsContainer.style.justifyContent = "space-between";
-    actionsContainer.style.margin = "5px";
-    actionsContainer.style.flexWrap = "wrap"; // Allow wrapping if needed
-
-    // SAVE BUTTON
-    const saveButton = document.createElement("button");
-    saveButton.textContent = "Save";
-    saveButton.style.flex = "1";
-    saveButton.style.margin = "0 2px";
-    saveButton.addEventListener("click", () => {
-      const presetName = prompt("Enter mic modulation preset name:");
-      if (presetName && this.presetManager.saveMicPreset(presetName, this)) {
-        this.updatePresetDropdown(presetSelect);
-        presetSelect.value = this.presetManager.getSelectedMicPreset();
-        alert(`Mic modulation preset "${presetName}" saved.`);
-      }
-    });
-
-    // DELETE BUTTON
-    const deleteButton = document.createElement("button");
-    deleteButton.textContent = "Delete";
-    deleteButton.style.flex = "1";
-    deleteButton.style.margin = "0 2px";
-    deleteButton.addEventListener("click", () => {
-      const current = presetSelect.value;
-      if (current === "None") {
-        alert("Cannot delete the None preset!");
-        return;
-      }
-      console.log("Attempting to delete mic modulation preset:", current);
-      if (
-        confirm(`Delete preset "${current}"?`) &&
-        this.presetManager.deleteMicPreset(current)
-      ) {
-        this.updatePresetDropdown(presetSelect);
-        presetSelect.value = this.presetManager.getSelectedMicPreset();
-        alert(`Mic modulation preset "${current}" deleted.`);
-      }
-    });
-
-    // Add buttons to the container
-    actionsContainer.appendChild(saveButton);
-    actionsContainer.appendChild(deleteButton);
-
-    // Insert preset controls at the top of the GUI
-    this.gui.domElement.insertBefore(
-      presetSelect,
-      this.gui.domElement.querySelector(".children")
-    );
-
-    this.gui.domElement.insertBefore(
-      actionsContainer,
-      this.gui.domElement.querySelector(".children")
-    );
-  }
-
-  /**
-   * Helper method to update dropdown options
-   * @param {HTMLSelectElement} selectElement - The dropdown to update
-   */
-  updatePresetDropdown(selectElement) {
-    const options = this.presetManager.getMicPresetOptions();
-    console.log(
-      "Updating mic modulation preset dropdown with options:",
-      options
-    );
-
-    selectElement.innerHTML = "";
-    options.forEach((preset) => {
-      const option = document.createElement("option");
-      option.value = preset;
-      option.textContent = preset;
-      selectElement.appendChild(option);
-    });
-
-    selectElement.value = this.presetManager.getSelectedMicPreset();
-  }
-
-  /**
-   * Fix for the visualization methods - use the right API
-   */
-  updateAllBandVisualizations() {
-    // Skip if micControllers array isn't initialized or empty
-    if (
-      !this.micControllers ||
-      !Array.isArray(this.micControllers) ||
-      this.micControllers.length === 0
-    ) {
-      return;
-    }
-
-    // Skip if no audio system is available
-    if (
-      !this.main ||
-      !this.main.externalInput ||
-      !this.main.externalInput.micForces
-    ) {
-      return;
-    }
-
-    const micForces = this.main.externalInput.micForces;
-
-    // Update each controller with current band level
-    this.micControllers.forEach((item) => {
-      // Skip invalid controllers
-      if (!item || !item.controller) {
-        return;
-      }
-
-      let value = 0;
-
-      if (item.band === "volume") {
-        // Try different methods to get the overall level
-        if (typeof micForces.getVolume === "function") {
-          value = micForces.getVolume();
-        } else if (typeof micForces.getLevel === "function") {
-          value = micForces.getLevel();
-        } else {
-          value = micForces.volume || 0;
-        }
-      } else {
-        // Try different methods to get band levels
-        if (typeof micForces.getBand === "function") {
-          value = micForces.getBand(item.band);
-        } else if (typeof micForces.getBandLevel === "function") {
-          value = micForces.getBandLevel(item.band);
-        } else if (micForces.bands && micForces.bands[item.band]) {
-          value = micForces.bands[item.band] || 0;
-        }
-      }
-
-      // Update the controller's object value if it exists
-      if (
-        item.controller.object &&
-        typeof item.controller.object === "object"
-      ) {
-        item.controller.object.level = value;
-      }
-    });
-
-    // Add this part to update each modulator's visualization
-    if (this.modulatorManager && this.main?.externalInput?.micForces) {
-      const micForces = this.main.externalInput.micForces;
-
-      // Loop through all modulators with mic input
-      this.modulatorManager.modulators.forEach((modulator) => {
-        // Only process mic input modulators with visualization elements
-        if (modulator.inputSource === "mic" && modulator._bandVisual) {
-          try {
-            // Get the correct band level
-            let value = 0;
-
-            if (modulator.frequencyBand === "none") {
-              // Overall volume
-              if (typeof micForces.getVolume === "function") {
-                value = micForces.getVolume();
-              } else if (typeof micForces.getLevel === "function") {
-                value = micForces.getLevel();
-              } else {
-                // Try direct property access as fallback
-                value = micForces.volume || 0;
-              }
-            } else {
-              // Specific band
-              if (typeof micForces.getBandLevel === "function") {
-                value = micForces.getBandLevel(modulator.frequencyBand);
-              } else if (typeof micForces.getBand === "function") {
-                value = micForces.getBand(modulator.frequencyBand);
-              } else if (
-                micForces.bands &&
-                micForces.bands[modulator.frequencyBand]
-              ) {
-                value = micForces.bands[modulator.frequencyBand] || 0;
-              }
-            }
-
-            // Apply sensitivity
-            value = Math.min(1, value * modulator.sensitivity);
-
-            // Update bar width
-            if (modulator._bandVisual.bar) {
-              modulator._bandVisual.bar.style.width = `${value * 100}%`;
-            }
-
-            // Update label
-            if (modulator._bandVisual.label) {
-              const bandName =
-                modulator.frequencyBand === "none"
-                  ? "All"
-                  : modulator.frequencyBand;
-              modulator._bandVisual.label.textContent = `${bandName}: ${Math.round(
-                value * 100
-              )}%`;
-            }
-          } catch (err) {
-            // Silent error - visualization is non-critical
-          }
-        }
-      });
-    }
-  }
-  /**
-   * Fix for the loadPresetData method to correct syntax errors
-   */
-  loadPresetData(preset) {
-    console.log("InputModulationUi: Loading preset data directly");
-
-    try {
-      // Validate preset data
-      if (!preset || !preset.micSettings) {
-        console.warn("Invalid mic preset data format");
-        return false;
-      }
-
-      const settings = preset.micSettings;
-
-      // Update the mic input enabled state if available
-      if (
-        settings.enabled !== undefined &&
-        this.main?.externalInput?.micForces
-      ) {
-        if (settings.enabled) {
-          this.main.externalInput.micForces.enable();
-        } else {
-          this.main.externalInput.micForces.disable();
-        }
-
-        // Update the UI toggle if available
-        if (this.micEnableController) {
-          this.micEnableController.setValue(settings.enabled);
-        }
-      }
-
-      // Update sensitivity if available
-      if (
-        settings.sensitivity !== undefined &&
-        this.main?.externalInput?.micForces
-      ) {
-        this.main.externalInput.micForces.setSensitivity(settings.sensitivity);
-
-        // Update the UI controller if available
-        if (this.micSensitivityController) {
-          this.micSensitivityController.setValue(settings.sensitivity);
-        }
-      }
-
-      // Clear existing modulators first
-      this.clearAllModulators();
-
-      // Create new modulators from the preset data
-      if (
-        settings.modulators &&
-        Array.isArray(settings.modulators) &&
-        settings.modulators.length > 0
-      ) {
-        console.log(
-          `Creating ${settings.modulators.length} mic modulators from preset`
-        );
-
-        settings.modulators.forEach((modData) => {
-          // Create a new modulator
-          const mod = this.addMicModulator();
-
-          if (!mod) {
-            console.error("Failed to create modulator");
-            return;
-          }
-
-          // Set the loading flag BEFORE setting the target
-          mod._loadingFromPreset = true;
-
-          // Store the preset's min/max values first
-          const presetMin = modData.min !== undefined ? Number(modData.min) : 0;
-          const presetMax = modData.max !== undefined ? Number(modData.max) : 1;
-
-          // Set target (this may trigger auto-ranging in the target onChange handler)
-          if (modData.targetName && mod.targetName !== modData.targetName) {
-            // Find the target controller in the folder
-            const folder =
-              this.modulatorFolders[this.modulatorFolders.length - 1];
-            const targetController = folder.controllers.find(
-              (c) => c.property === "targetName"
-            );
-            if (targetController) {
-              targetController.setValue(modData.targetName);
-            }
-          }
-
-          // Now we need to find the min/max controllers and update them with preset values
-          const folder =
-            this.modulatorFolders[this.modulatorFolders.length - 1];
-          const minController = folder.controllers.find(
-            (c) => c.property === "min"
-          );
-          const maxController = folder.controllers.find(
-            (c) => c.property === "max"
-          );
-
-          // Update other properties
-          if (modData.frequencyBand !== undefined) {
-            const bandController = folder.controllers.find(
-              (c) => c.property === "frequencyBand"
-            );
-            if (bandController) bandController.setValue(modData.frequencyBand);
-          }
-
-          if (modData.sensitivity !== undefined) {
-            mod.sensitivity = Number(modData.sensitivity);
-            const sensController = folder.controllers.find(
-              (c) => c.property === "sensitivity"
-            );
-            if (sensController) sensController.setValue(mod.sensitivity);
-          }
-
-          if (modData.smoothing !== undefined) {
-            mod.smoothing = Number(modData.smoothing);
-            const smoothController = folder.controllers.find(
-              (c) => c.property === "smoothing"
-            );
-            if (smoothController) smoothController.setValue(mod.smoothing);
-          }
-
-          // Apply stored min/max values AFTER all other properties are set
-          mod.min = presetMin;
-          mod.max = presetMax;
-
-          if (minController) minController.setValue(presetMin);
-          if (maxController) maxController.setValue(presetMax);
-
-          // Enable the modulator if it was enabled in the preset
-          mod.enabled = !!modData.enabled;
-
-          // Clear the loading flag
-          mod._loadingFromPreset = false;
-        });
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Error loading mic preset data:", error);
-      return false;
-    }
-  }
-
-  /**
-   * Add visualization elements to a modulator
-   * @param {Object} modulator - The modulator to add visualization to
-   * @param {Object} folder - The GUI folder containing the modulator controls
-   */
-  addVisualizationToModulator(modulator, folder) {
-    // Create container for visualization
-    const visualContainer = document.createElement("div");
-    visualContainer.className = "band-visualization";
-    visualContainer.style.margin = "5px 0";
-    visualContainer.style.padding = "3px 0";
-
-    // Create label
-    const label = document.createElement("div");
-    label.textContent = "Level: 0%";
-    label.style.fontSize = "11px";
-    label.style.marginBottom = "2px";
-
-    // Create visualization bar container
-    const barContainer = document.createElement("div");
-    barContainer.style.backgroundColor = "#333";
-    barContainer.style.height = "10px";
-    barContainer.style.position = "relative";
-    barContainer.style.borderRadius = "2px";
-    barContainer.style.overflow = "hidden";
-
-    // Create the actual level bar
-    const bar = document.createElement("div");
-    bar.style.backgroundColor = "#5f9";
-    bar.style.width = "0%";
-    bar.style.height = "100%";
-    bar.style.position = "absolute";
-    bar.style.left = "0";
-    bar.style.top = "0";
-    bar.style.transition = "width 0.1s";
-
-    // Assemble the elements
-    barContainer.appendChild(bar);
-    visualContainer.appendChild(label);
-    visualContainer.appendChild(barContainer);
-
-    // Find the correct place in the DOM to add the visualization
-    const folderElement = folder.domElement;
-    const controllers = folderElement.querySelector(".children");
-    if (controllers) {
-      controllers.appendChild(visualContainer);
-    }
-
-    // Store references on the modulator for updating later
-    modulator._bandVisual = {
-      container: visualContainer,
-      bar: bar,
-      label: label,
-    };
   }
 }
