@@ -1,7 +1,7 @@
 import { BaseUi } from "./baseUi.js";
 import { ModulatorManager } from "../../input/modulatorManager.js";
 
-export class InputUi extends BaseUi {
+export class InputModulationUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
 
@@ -381,47 +381,47 @@ export class InputUi extends BaseUi {
     this.modulatorManager.update();
   }
 
-  // Add this helper method just like in PulseModulationUi
-  updateRangeForTarget(modulator, minController, maxController) {
-    const targetName = modulator.targetName;
-    if (!targetName) return;
+  // // Add this helper method just like in PulseModulationUi
+  // updateRangeForTarget(modulator, minController, maxController) {
+  //   const targetName = modulator.targetName;
+  //   if (!targetName) return;
 
-    // Get target info from ModulatorManager
-    const targetInfo = this.modulatorManager.getTargetInfo(targetName);
+  //   // Get target info from ModulatorManager
+  //   const targetInfo = this.modulatorManager.getTargetInfo(targetName);
 
-    if (
-      targetInfo &&
-      targetInfo.min !== undefined &&
-      targetInfo.max !== undefined
-    ) {
-      const min = targetInfo.min;
-      const max = targetInfo.max;
-      const step = targetInfo.step || 0.01;
+  //   if (
+  //     targetInfo &&
+  //     targetInfo.min !== undefined &&
+  //     targetInfo.max !== undefined
+  //   ) {
+  //     const min = targetInfo.min;
+  //     const max = targetInfo.max;
+  //     const step = targetInfo.step || 0.01;
 
-      // Update the modulator's min/max
-      modulator.min = min;
-      modulator.max = max;
+  //     // Update the modulator's min/max
+  //     modulator.min = min;
+  //     modulator.max = max;
 
-      // Update controller ranges
-      if (minController) {
-        minController.min(min);
-        minController.max(max);
-        minController.setValue(min);
-        minController.step(step);
-        minController.updateDisplay();
-      }
+  //     // Update controller ranges
+  //     if (minController) {
+  //       minController.min(min);
+  //       minController.max(max);
+  //       minController.setValue(min);
+  //       minController.step(step);
+  //       minController.updateDisplay();
+  //     }
 
-      if (maxController) {
-        maxController.min(min);
-        maxController.max(max);
-        maxController.setValue(max);
-        maxController.step(step);
-        maxController.updateDisplay();
-      }
+  //     if (maxController) {
+  //       maxController.min(min);
+  //       maxController.max(max);
+  //       maxController.setValue(max);
+  //       maxController.step(step);
+  //       maxController.updateDisplay();
+  //     }
 
-      console.log(`Auto-ranged for target ${targetName}: ${min} - ${max}`);
-    }
-  }
+  //     console.log(`Auto-ranged for target ${targetName}: ${min} - ${max}`);
+  //   }
+  // }
 
   // Keep the visualization creation helper
   addVisualizationToModulator(modulator, folder) {

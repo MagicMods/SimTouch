@@ -1,7 +1,7 @@
 import { LeftUi } from "./panels/leftUi.js";
 import { RightUi } from "./panels/rightUi.js";
 import { PresetUi } from "./panels/presetUi.js";
-import { InputUi } from "./panels/inputUi.js";
+import { InputModulationUi } from "./panels/inputModulationUi.js";
 import { NetworkUi } from "./panels/networkUi.js";
 import { PulseModulationUi } from "./panels/pulseModulationUi.js";
 import { PresetManager } from "../presets/presetManager.js";
@@ -26,7 +26,7 @@ export class UiManager {
     this.rightUi = new RightUi(main, this.rightContainer);
     this.pulseModUi = new PulseModulationUi(main, this.pulseModContainer);
     this.networkUi = new NetworkUi(main, this.networkContainer);
-    this.inputUi = new InputUi(main, this.inputContainer);
+    this.inputModUi = new InputModulationUi(main, this.inputContainer);
 
     // Debug log the preset container
     console.log(
@@ -41,7 +41,7 @@ export class UiManager {
       this.leftUi.gui, // Use the .gui property
       this.rightUi.gui, // Use the .gui property
       this.pulseModUi,
-      this.inputUi
+      this.inputModUi
     );
 
     // Set up voronoiField reference
@@ -57,8 +57,8 @@ export class UiManager {
     this.rightUi.setPresetManager(this.presetManager);
     this.presetUi.setPresetManager(this.presetManager);
 
-    if (typeof this.inputUi.initWithPresetManager === "function") {
-      this.inputUi.initWithPresetManager(this.presetManager);
+    if (typeof this.inputModUi.initWithPresetManager === "function") {
+      this.inputModUi.initWithPresetManager(this.presetManager);
     }
 
     if (typeof this.pulseModUi.initWithPresetManager === "function") {
@@ -93,8 +93,8 @@ export class UiManager {
 
   update() {
     // First update input values from audio analyzer
-    if (this.inputUi && typeof this.inputUi.update === "function") {
-      this.inputUi.update();
+    if (this.inputModUi && typeof this.inputModUi.update === "function") {
+      this.inputModUi.update();
     }
 
     // Then update all modulators (both pulse and input)
@@ -110,7 +110,7 @@ export class UiManager {
     this.leftUi.dispose();
     this.rightUi.dispose();
     this.presetUi.dispose();
-    this.inputUi.dispose();
+    this.inputModUi.dispose();
     this.networkUi.dispose();
     this.pulseModUi.dispose();
     if (this.stats) {
@@ -133,8 +133,8 @@ export class UiManager {
     console.log("UiManager: Setting shared ModulatorManager in UI components");
 
     // Set shared manager in UI components
-    if (this.inputUi) {
-      this.inputUi.setModulatorManager(this.modulatorManager);
+    if (this.inputModUi) {
+      this.inputModUi.setModulatorManager(this.modulatorManager);
     }
 
     // FIXED: Use pulseModUi, not pulseModulationUi
@@ -150,8 +150,8 @@ export class UiManager {
     console.log("UiManager: Initializing UI component cross-references");
 
     // Initialize UI components with panels and targets
-    if (this.inputUi) {
-      this.inputUi.initializeWithUiPanels(this.leftUi, this.rightUi, true);
+    if (this.inputModUi) {
+      this.inputModUi.initializeWithUiPanels(this.leftUi, this.rightUi, true);
     }
 
     // FIXED: Use pulseModUi, not pulseModulationUi
@@ -166,7 +166,7 @@ export class UiManager {
     console.log("UiManager: Initializing UI component cross-references");
 
     // Initialize InputUi with panels (this likely exists already)
-    this.inputUi.initializeWithUiPanels(this.leftUi, this.rightUi);
+    this.inputModUi.initializeWithUiPanels(this.leftUi, this.rightUi);
 
     // ADD THIS LINE to initialize PulseModulationUi with panels
     this.pulseModulationUi.initializeWithUiPanels(this.leftUi, this.rightUi);

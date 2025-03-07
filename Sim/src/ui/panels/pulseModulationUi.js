@@ -265,14 +265,6 @@ export class PulseModulationUi extends BaseUi {
     // Add phase control
     folder.add(modulator, "phase", 0, 3.9, 0.01).name("Phase");
 
-    // // Add auto-range button
-    // const autoRangeControl = {
-    //   autoRange: () => {
-    //     this.updateRangeForTarget(modulator, minController, maxController);
-    //   },
-    // };
-    // folder.add(autoRangeControl, "autoRange").name("Auto Range");
-
     // Add remove button - FIXED using the correct method for lil-gui
     const removeButton = {
       remove: () => {
@@ -588,7 +580,7 @@ export class PulseModulationUi extends BaseUi {
       }
 
       // Clear existing modulators - use our own internal method
-      this._clearAllModulators();
+      this.clearAllModulators();
 
       // For "None" preset, just clear modulators and return
       if (preset.modulators.length === 0) {
@@ -638,47 +630,6 @@ export class PulseModulationUi extends BaseUi {
       console.error("Error loading pulse preset data:", error);
       return false;
     }
-  }
-
-  /**
-   * Internal method to clear all modulators
-   * @private
-   */
-  _clearAllModulators() {
-    console.log("PulseModulationUi: Clearing all modulators");
-
-    // First disable all modulators to reset target values
-    if (this.modulatorManager && this.modulatorManager.modulators) {
-      // Create a copy of the array since we'll be modifying it
-      const modulatorsToRemove = [...this.modulatorManager.modulators];
-
-      // Disable and remove each modulator from the manager
-      modulatorsToRemove.forEach((modulator, index) => {
-        if (modulator) {
-          // Disable the modulator to reset target to original value
-          if (typeof modulator.disable === "function") {
-            modulator.disable();
-          } else {
-            modulator.enabled = false;
-          }
-
-          // Remove from the manager
-          this.modulatorManager.removeModulator(index);
-        }
-      });
-    }
-
-    // Remove all folders from the UI
-    if (this.folders && Array.isArray(this.folders)) {
-      this.folders.forEach((folder) => {
-        if (folder && typeof folder.destroy === "function") {
-          folder.destroy();
-        }
-      });
-    }
-
-    // Reset our tracking arrays
-    this.folders = [];
   }
 
   /**
