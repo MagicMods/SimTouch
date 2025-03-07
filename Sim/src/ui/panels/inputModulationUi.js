@@ -884,12 +884,10 @@ export class InputModulationUi extends BaseUi {
         const targetInfo = this.modulatorManager.getTargetInfo(value);
         if (!targetInfo) return;
 
-        // Connect the modulator to its target - IMPORTANT
+        // Connect the modulator to its target
         if (typeof modulator.setTarget === "function") {
-          // Use the proper method to connect the modulator
           modulator.setTarget(value);
         } else {
-          // Fallback if setTarget doesn't exist
           modulator.targetName = value;
         }
 
@@ -907,46 +905,36 @@ export class InputModulationUi extends BaseUi {
             `Auto-range: Setting min/max controller ranges to ${min}-${max}`
           );
 
-          // FORCE RECREATE the min/max controllers with new ranges
-          // Remove existing controllers
+          // CRITICAL CHANGE: Don't destroy and recreate controllers
+          // Just update their properties
           if (minController) {
-            folder.controllers.splice(
-              folder.controllers.indexOf(minController),
-              1
-            );
-            minController.destroy();
+            // Use the min/max/step methods to update the controller range without recreating it
+            minController.min(min);
+            minController.max(max);
+            minController.step(step);
           }
 
           if (maxController) {
-            folder.controllers.splice(
-              folder.controllers.indexOf(maxController),
-              1
-            );
-            maxController.destroy();
+            maxController.min(min);
+            maxController.max(max);
+            maxController.step(step);
           }
 
-          // Create new controllers with the target's range
-          minController = folder
-            .add(modulator, "min", min, max, step)
-            .name("Min Value");
-
-          maxController = folder
-            .add(modulator, "max", min, max, step)
-            .name("Max Value");
-
-          // Only update VALUES of controllers if not loading from preset
+          // Only update VALUES if not loading from preset
           if (!modulator._loadingFromPreset) {
             console.log(`Auto-ranging values for target ${value}`);
 
-            // Set values to match target min/max
-            minController.setValue(min);
-            maxController.setValue(max);
+            // Update values through the controllers
+            if (minController) minController.setValue(min);
+            if (maxController) maxController.setValue(max);
 
-            // Update modulator properties directly too
+            // Also update the underlying properties
             modulator.min = min;
             modulator.max = max;
           } else {
-            console.log(`Using preset values for target ${value}`);
+            console.log(
+              `Using preset values for target ${value}, updating only input ranges`
+            );
             // Reset the flag after first use
             modulator._loadingFromPreset = false;
           }
