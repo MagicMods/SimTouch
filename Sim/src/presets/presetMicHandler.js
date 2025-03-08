@@ -59,7 +59,7 @@ export class PresetMicHandler extends PresetBaseHandler {
       // Get modulator data using our helper method
       let modulators = [];
       if (typeof inputUi.getModulatorData === "function") {
-        modulators = inputUi.getModulatorData();
+        modulators = inputUi.getModulatorsData();
         console.log(`Got ${modulators.length} modulators from helper method`);
       } else {
         // Fallback to direct access

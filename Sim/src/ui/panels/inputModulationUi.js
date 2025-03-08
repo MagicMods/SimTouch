@@ -901,16 +901,22 @@ export class InputModulationUi extends BaseUi {
   }
 
   loadPresetData(preset) {
-    console.log("InputUi: Loading preset data directly");
+    console.log("InputUi: Loading preset data");
 
     try {
       // Validate preset data
-      if (!preset || !preset.micSettings) {
-        console.warn("Invalid mic preset data format");
+      if (!preset) {
+        console.warn("Empty preset data");
         return false;
       }
 
-      const settings = preset.micSettings;
+      // Handle different preset formats
+      const settings = preset.micSettings || preset;
+
+      if (!settings) {
+        console.warn("No mic settings found in preset");
+        return false;
+      }
 
       // Clear existing modulators - use our own internal method
       this.clearAllModulators();
@@ -918,19 +924,17 @@ export class InputModulationUi extends BaseUi {
       // Apply mic forces settings
       if (this.main?.externalInput?.micForces) {
         // Set enabled state
-        if (settings.enabled) {
-          this.main.externalInput.micForces.enable();
-          // Update UI toggle
-          if (this.micEnableController) {
-            this.micEnableController.setValue(true);
-            this.toggleAllMicControlsVisibility(true);
+        if (settings.enabled !== undefined) {
+          if (settings.enabled) {
+            this.main.externalInput.micForces.enable();
+          } else {
+            this.main.externalInput.micForces.disable();
           }
-        } else {
-          this.main.externalInput.micForces.disable();
+
           // Update UI toggle
           if (this.micEnableController) {
-            this.micEnableController.setValue(false);
-            this.toggleAllMicControlsVisibility(false);
+            this.micEnableController.setValue(settings.enabled);
+            this.toggleAllMicControlsVisibility(settings.enabled);
           }
         }
 
@@ -948,38 +952,39 @@ export class InputModulationUi extends BaseUi {
 
       // Create modulators from preset
       if (settings.modulators && Array.isArray(settings.modulators)) {
+        console.log(
+          `Creating ${settings.modulators.length} modulators from preset`
+        );
+
         settings.modulators.forEach((modData) => {
           const mod = this.addMicModulator();
-          if (!mod) {
-            console.warn("Failed to create mic modulator");
-            return;
-          }
-
-          // Apply properties
-          if (modData.targetName && typeof mod.setTarget === "function") {
-            mod.setTarget(modData.targetName);
-          }
+          if (!mod) return;
 
           // Set input source
           mod.inputSource = "mic";
 
-          // Set frequency band
-          if (modData.frequencyBand) {
-            mod.frequencyBand = modData.frequencyBand;
-          }
+          // Apply all properties from data
+          Object.keys(modData).forEach((key) => {
+            if (key in mod) {
+              mod[key] = modData[key];
+            }
+          });
 
-          // Apply other properties
-          mod.sensitivity = modData.sensitivity || 1.0;
-          mod.smoothing = modData.smoothing || 0.7;
-          mod.min = modData.min || 0;
-          mod.max = modData.max || 1;
-          mod.enabled = !!modData.enabled;
+          // Find the controller for the target and set it last
+          const folder =
+            this.modulatorFolders[this.modulatorFolders.length - 1];
+          const targetController = folder.controllers.find(
+            (c) => c.property === "targetName"
+          );
+
+          if (targetController && modData.targetName) {
+            targetController.setValue(modData.targetName);
+          }
         });
       }
 
       // Update UI visuals
       this.update();
-
       return true;
     } catch (error) {
       console.error("Error loading mic preset data:", error);
@@ -1220,14 +1225,20 @@ export class InputModulationUi extends BaseUi {
     return micSettings;
   }
 
-  // Keep this method for API compatibility
-  getModulatorsData() {
-    return this.saveToData();
+  getModulatorData() {
+    if (this.modulatorManager) {
+      return this.modulatorManager.getModulatorsState("input");
+    }
+    return [];
   }
 
-  // ADD THIS METHOD - which is what presetMicHandler actually looks for
-  getModulatorData() {
-    return this.saveToData().modulators || [];
+  getModulatorsData() {
+    return {
+      enabled: this.main?.externalInput?.micForces?.enabled || false,
+      sensitivity: this.main?.externalInput?.micForces?.sensitivity || 1.0,
+      smoothing: this.main?.externalInput?.micForces?.smoothing || 0.8,
+      modulators: this.getModulatorData(),
+    };
   }
 
   dispose() {

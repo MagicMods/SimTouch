@@ -35,8 +35,6 @@ export class UiManager {
     );
     this.presetUi = new PresetUi(main, this.presetContainer);
 
-    // Initialize PresetManager with the GUI objects, not UI components
-    console.log("Creating PresetManager with GUI references");
     this.presetManager = new PresetManager(
       this.leftUi.gui, // Use the .gui property
       this.rightUi.gui, // Use the .gui property
@@ -44,31 +42,13 @@ export class UiManager {
       this.inputModUi
     );
 
-    // Set up voronoiField reference
-    if (this.main?.voronoiField) {
-      console.log(
-        "UiManager: Setting up voronoiField reference in PresetManager"
-      );
-      this.presetManager.setVoronoiField(this.main.voronoiField);
-    }
-
-    // Make references available to UI components
-    console.log("Setting PresetManager in UI components");
+    this.presetManager.setVoronoiField(this.main.voronoiField);
     this.rightUi.setPresetManager(this.presetManager);
     this.presetUi.setPresetManager(this.presetManager);
+    this.inputModUi.initWithPresetManager(this.presetManager);
+    this.pulseModUi.initWithPresetManager(this.presetManager);
 
-    if (typeof this.inputModUi.initWithPresetManager === "function") {
-      this.inputModUi.initWithPresetManager(this.presetManager);
-    }
-
-    if (typeof this.pulseModUi.initWithPresetManager === "function") {
-      this.pulseModUi.initWithPresetManager(this.presetManager);
-    }
-
-    // Initialize UI components with shared ModulatorManager and targets
     this.initializeUiComponents();
-
-    // Initialize stats
     this.stats = new Stats();
     this.initStats();
   }
@@ -88,22 +68,13 @@ export class UiManager {
   }
 
   updateStats() {
-    if (this.stats) this.stats.update();
+    this.stats.update();
   }
 
   update() {
-    // First update input values from audio analyzer
-    if (this.inputModUi) {
-      this.inputModUi.update();
-    }
-
-    // Then update all modulators (both pulse and input)
-    if (this.modulatorManager) {
-      this.modulatorManager.update();
-    }
-
-    // Update stats display
-    if (this.stats) this.stats.update();
+    this.inputModUi.update();
+    this.modulatorManager.update();
+    this.stats.update();
   }
 
   dispose() {
@@ -120,57 +91,25 @@ export class UiManager {
   }
 
   initializeUiComponents() {
-    // Create a shared ModulatorManager
-    console.log("UiManager: Creating shared ModulatorManager");
     this.modulatorManager = new ModulatorManager();
-
-    // Store UI panels for auto-registration
     this.modulatorManager.storeUiPanelsForAutoRegistration(
       this.leftUi,
       this.rightUi
     );
-
-    console.log("UiManager: Setting shared ModulatorManager in UI components");
-
-    // Set shared manager in UI components
-    if (this.inputModUi) {
-      this.inputModUi.setModulatorManager(this.modulatorManager);
-    }
-
-    // FIXED: Use pulseModUi, not pulseModulationUi
-    if (this.pulseModUi) {
-      this.pulseModUi.setModulatorManager(this.modulatorManager);
-    }
-
-    console.log("UiManager: Registering targets from UI panels");
-
-    // Register targets
+    this.inputModUi.setModulatorManager(this.modulatorManager);
+    this.pulseModUi.setModulatorManager(this.modulatorManager);
     this.modulatorManager.registerTargetsFromUi(this.leftUi, this.rightUi);
-
-    console.log("UiManager: Initializing UI component cross-references");
-
-    // Initialize UI components with panels and targets
-    if (this.inputModUi) {
-      this.inputModUi.initializeWithUiPanels(this.leftUi, this.rightUi, true);
-    }
-
-    // FIXED: Use pulseModUi, not pulseModulationUi
-    if (this.pulseModUi) {
-      this.pulseModUi.initializeWithUiPanels(this.leftUi, this.rightUi, true);
-    }
-
-    console.log("UiManager: All UI components initialized");
+    this.inputModUi.initializeWithUiPanels(this.leftUi, this.rightUi, true);
+    this.pulseModUi.initializeWithUiPanels(this.leftUi, this.rightUi, true);
   }
 
   initializeCrossReferences() {
-    console.log("UiManager: Initializing UI component cross-references");
-
-    // Initialize InputUi with panels (this likely exists already)
+    this.modulatorManager = new ModulatorManager();
+    this.modulatorManager.setUiPanels(this.leftUi, this.rightUi);
+    this.pulseModUi.setModulatorManager(this.modulatorManager);
+    this.inputModUi.setModulatorManager(this.modulatorManager);
+    this.pulseModUi.initializeWithUiPanels(this.leftUi, this.rightUi);
     this.inputModUi.initializeWithUiPanels(this.leftUi, this.rightUi);
-
-    // ADD THIS LINE to initialize PulseModulationUi with panels
-    this.pulseModulationUi.initializeWithUiPanels(this.leftUi, this.rightUi);
-
-    // Other initialization code...
+    this.modulatorManager.registerTargetsFromUi(this.leftUi, this.rightUi);
   }
 }

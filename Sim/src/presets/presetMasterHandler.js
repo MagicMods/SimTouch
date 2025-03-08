@@ -1,7 +1,7 @@
 import { PresetBaseHandler } from "./presetBaseHandler.js";
 
 export class PresetMasterHandler extends PresetBaseHandler {
-  constructor(leftGui, rightGui, pulseModUi, inputUi) {
+  constructor(leftGui, rightGui, pulseModUi, inputModUi) {
     // Create default preset without immediately calling save() which might fail
     let defaultPresets = {
       Default: {
@@ -39,7 +39,7 @@ export class PresetMasterHandler extends PresetBaseHandler {
     this.leftGui = leftGui;
     this.rightGui = rightGui;
     this.pulseModUi = pulseModUi;
-    this.inputUi = inputUi;
+    this.inputModUi = inputModUi;
 
     this.protectedPresets = ["Default"];
     this.defaultPreset = "Default";
@@ -58,28 +58,18 @@ export class PresetMasterHandler extends PresetBaseHandler {
     };
 
     try {
-      // Extract left GUI data
-      if (this.leftGui && typeof this.leftGui.save === "function") {
-        data.left = this.leftGui.save();
-      }
+      data.left = this.leftGui.save();
 
-      // Extract right GUI data
-      if (this.rightGui && typeof this.rightGui.save === "function") {
-        data.right = this.rightGui.save();
-      }
+      data.right = this.rightGui.save();
 
-      // Extract pulse modulation data
-      if (this.pulseModUi) {
-        if (typeof this.pulseModUi.saveToData === "function") {
-          data.pulseModulation = this.pulseModUi.saveToData();
-        } else if (typeof this.pulseModUi.getModulatorsData === "function") {
-          data.pulseModulation = this.pulseModUi.getModulatorsData();
-        }
-      }
+      data.pulseModulation = this.pulseModUi.getModulatorsData();
 
       // Extract mic settings data
-      if (this.inputUi && typeof this.inputUi.getMicSettings === "function") {
-        data.micSettings = this.inputUi.getMicSettings();
+      if (
+        this.inputModUi &&
+        typeof this.inputModUi.getModulatorsData === "function"
+      ) {
+        data.micSettings = this.inputModUi.getModulatorsData();
       }
     } catch (error) {
       console.error("Error extracting UI data:", error);
@@ -147,9 +137,9 @@ export class PresetMasterHandler extends PresetBaseHandler {
       }
 
       // Apply mic settings if they exist
-      if (preset.micSettings && this.inputUi) {
-        if (typeof this.inputUi.loadMicSettings === "function") {
-          this.inputUi.loadMicSettings(preset.micSettings);
+      if (preset.micSettings && this.inputModUi) {
+        if (typeof this.inputModUi.loadMicSettings === "function") {
+          this.inputModUi.loadMicSettings(preset.micSettings);
         } else {
           console.warn("InputUi doesn't have loadMicSettings method");
         }
@@ -184,21 +174,21 @@ export class PresetMasterHandler extends PresetBaseHandler {
     if (!data) return false;
 
     // If mic settings are null but the same preset name exists in mic presets, use those
-    if (data.micSettings === null && this.inputUi) {
+    if (data.micSettings === null && this.inputModUi) {
       try {
         // First try using existing methods
-        if (typeof this.inputUi.getCurrentMicSettings === "function") {
-          data.micSettings = this.inputUi.getCurrentMicSettings();
-        } else if (typeof this.inputUi.getActiveMicSettings === "function") {
-          data.micSettings = this.inputUi.getActiveMicSettings();
+        if (typeof this.inputModUi.getCurrentMicSettings === "function") {
+          data.micSettings = this.inputModUi.getCurrentMicSettings();
+        } else if (typeof this.inputModUi.getActiveMicSettings === "function") {
+          data.micSettings = this.inputModUi.getActiveMicSettings();
         }
 
         // If still null AND if the input UI has access to micPresets, try to find one with matching name
         if (
           data.micSettings === null &&
-          typeof this.inputUi.getMicPresetByName === "function"
+          typeof this.inputModUi.getMicPresetByName === "function"
         ) {
-          data.micSettings = this.inputUi.getMicPresetByName(presetName);
+          data.micSettings = this.inputModUi.getMicPresetByName(presetName);
         }
       } catch (error) {
         console.warn(

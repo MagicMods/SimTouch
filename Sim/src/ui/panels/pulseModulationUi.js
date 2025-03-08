@@ -648,7 +648,7 @@ export class PulseModulationUi extends BaseUi {
     }
   }
 
-  saveToData() {
+  getModulatorsData() {
     if (!this.modulatorManager) {
       return { modulators: [] };
     }
@@ -661,8 +661,5 @@ export class PulseModulationUi extends BaseUi {
     };
   }
 
-  getModulatorsData() {
-    return this.saveToData();
-  }
   //#endregion
 }
