@@ -11,9 +11,7 @@ export class PresetUi extends BaseUi {
     this.autoPlaySpeed = 3000; // Default: 3 seconds
 
     // Change the GUI title
-    if (this.gui) {
-      this.gui.title("Presets");
-    }
+    this.gui.title("Presets");
   }
 
   setPresetManager(presetManager) {
@@ -21,135 +19,285 @@ export class PresetUi extends BaseUi {
     this.initPresetControls();
   }
 
-  //#region UI Controls Initialization
-
   initPresetControls() {
-    this._clearExistingControls();
-    this._setupPresetSelector();
-    this._setupSavePresetControls();
-    this._setupDeletePresetControls();
-    this._setupNavigationControls();
+    this.presetControls = this.presetControls || {};
+
+    // Work directly with the gui's DOM element instead of a folder
+    const containerElement = this.gui.domElement.querySelector(".children");
+    if (!containerElement) {
+      console.error("Could not find container element in GUI");
+      return;
+    }
+
+    // Clear existing elements
+    containerElement.innerHTML = "";
+
+    // Create preset dropdown
+    const presetSelect = document.createElement("select");
+    presetSelect.classList = "preset-select";
+    presetSelect.style.padding = "4px";
+    presetSelect.style.width = "100%";
+    presetSelect.style.marginBottom = "8px";
+
+    this.updatePresetDropdown(presetSelect);
+
+    presetSelect.addEventListener("change", (e) => {
+      const value = e.target.value;
+      console.log("Preset selector changed to:", value);
+      this.presetManager.loadPreset(PresetManager.TYPES.MASTER, value);
+    });
+
+    this.presetControls.selector = presetSelect;
+
+    // Create buttons for preset management
+    const actionsContainer = document.createElement("div");
+    actionsContainer.style.display = "flex";
+    actionsContainer.style.justifyContent = "space-between";
+    actionsContainer.style.margin = "5px 0";
+    actionsContainer.style.flexWrap = "wrap";
+
+    const saveButton = document.createElement("button");
+    saveButton.textContent = "Save";
+    saveButton.style.flex = "1";
+    saveButton.style.margin = "0 2px";
+    saveButton.addEventListener("click", () => {
+      const presetName = prompt("Enter preset name:");
+      if (
+        presetName &&
+        this.presetManager.savePreset(PresetManager.TYPES.MASTER, presetName)
+      ) {
+        this.updatePresetDropdown(presetSelect);
+        presetSelect.value = this.presetManager.getSelectedPreset(
+          PresetManager.TYPES.MASTER
+        );
+        alert(`Preset "${presetName}" saved.`);
+      }
+    });
+
+    const deleteButton = document.createElement("button");
+    deleteButton.textContent = "Delete";
+    deleteButton.style.flex = "1";
+    deleteButton.style.margin = "0 2px";
+    deleteButton.addEventListener("click", () => {
+      const current = this.presetManager.getSelectedPreset(
+        PresetManager.TYPES.MASTER
+      );
+      console.log("Attempting to delete preset:", current);
+      if (
+        this.presetManager.deletePreset(PresetManager.TYPES.MASTER, current)
+      ) {
+        this.updatePresetDropdown(presetSelect);
+        presetSelect.value = this.presetManager.getSelectedPreset(
+          PresetManager.TYPES.MASTER
+        );
+        alert(`Preset "${current}" deleted.`);
+      }
+    });
+
+    const exportButton = document.createElement("button");
+    exportButton.textContent = "Export All";
+    exportButton.style.flex = "1";
+    exportButton.style.margin = "0 2px";
+    exportButton.addEventListener("click", () => {
+      if (typeof this.presetManager.exportPresets === "function") {
+        this.presetManager.exportPresets();
+      } else {
+        alert("Export functionality not available");
+      }
+    });
+
+    const importButton = document.createElement("button");
+    importButton.textContent = "Import";
+    importButton.style.flex = "1";
+    importButton.style.margin = "0 2px";
+    importButton.addEventListener("click", () => {
+      if (typeof this.presetManager.importPresets !== "function") {
+        alert("Import functionality not available");
+        return;
+      }
+
+      const fileInput = document.createElement("input");
+      fileInput.type = "file";
+      fileInput.accept = ".json";
+      fileInput.style.display = "none";
+      document.body.appendChild(fileInput);
+
+      fileInput.addEventListener("change", (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const importCount = this.presetManager.importPresets(e.target.result);
+          if (importCount) {
+            this.updatePresetDropdown(presetSelect);
+            alert(`Successfully imported ${importCount} presets.`);
+          } else {
+            alert("Failed to import presets. Check console for details.");
+          }
+        };
+        reader.readAsText(file);
+        document.body.removeChild(fileInput);
+      });
+
+      fileInput.click();
+    });
+
+    actionsContainer.appendChild(saveButton);
+    actionsContainer.appendChild(deleteButton);
+    actionsContainer.appendChild(exportButton);
+    actionsContainer.appendChild(importButton);
+
+    // Keep the navigation buttons
+    const navContainer = document.createElement("div");
+    navContainer.style.display = "flex";
+    navContainer.style.justifyContent = "space-between";
+    navContainer.style.margin = "5px 0";
+
+    const prevButton = document.createElement("button");
+    prevButton.textContent = "← Prev";
+    prevButton.style.flex = "1";
+    prevButton.style.marginRight = "5px";
+    prevButton.addEventListener("click", () => this.navigatePreset(-1));
+
+    // Add Play button
+    const playButton = document.createElement("button");
+    playButton.textContent = "▶ Play";
+    playButton.style.flex = "1";
+    playButton.style.margin = "0 5px";
+    playButton.addEventListener("click", () => this.toggleAutoPlay(playButton));
+    this.presetControls.playButton = playButton;
+
+    const nextButton = document.createElement("button");
+    nextButton.textContent = "Next →";
+    nextButton.style.flex = "1";
+    nextButton.style.marginLeft = "5px";
+    nextButton.addEventListener("click", () => this.navigatePreset(1));
+
+    navContainer.appendChild(prevButton);
+    navContainer.appendChild(playButton);
+    navContainer.appendChild(nextButton);
+
+    // Create speed slider container (initially hidden)
+    const speedContainer = document.createElement("div");
+    speedContainer.style.margin = "5px 0";
+    speedContainer.style.display = "none";
+
+    const speedLabel = document.createElement("div");
+    speedLabel.textContent = `Speed: ${(this.autoPlaySpeed / 1000).toFixed(
+      1
+    )}s`;
+    speedLabel.style.marginBottom = "5px";
+    speedLabel.style.textAlign = "center";
+
+    const speedSlider = document.createElement("input");
+    speedSlider.type = "range";
+    speedSlider.min = "500";
+    speedSlider.max = "10000";
+    speedSlider.step = "500";
+    speedSlider.value = this.autoPlaySpeed.toString();
+    speedSlider.style.width = "100%";
+
+    speedSlider.addEventListener("input", (e) => {
+      const value = parseInt(e.target.value);
+      this.autoPlaySpeed = value;
+      speedLabel.textContent = `Speed: ${(value / 1000).toFixed(1)}s`;
+
+      // If autoplay is active, restart it with new speed
+      if (this.autoPlayActive) {
+        this.stopAutoPlay();
+        this.startAutoPlay();
+      }
+    });
+
+    speedContainer.appendChild(speedLabel);
+    speedContainer.appendChild(speedSlider);
+    this.presetControls.speedContainer = speedContainer;
+
+    // Add elements to container in correct order
+    containerElement.appendChild(actionsContainer);
+    containerElement.appendChild(presetSelect);
+    containerElement.appendChild(navContainer);
+    containerElement.appendChild(speedContainer);
   }
 
-  _clearExistingControls() {
-    // Clear any existing controllers
-    if (this.gui && this.gui.__controllers) {
-      while (this.gui.__controllers.length > 0) {
-        this.gui.remove(this.gui.__controllers[0]);
-      }
+  toggleAutoPlay(playButton) {
+    if (this.autoPlayActive) {
+      this.stopAutoPlay();
+      playButton.textContent = "▶ Play";
+      this.presetControls.speedContainer.style.display = "none";
+    } else {
+      this.startAutoPlay();
+      playButton.textContent = "⏹ Stop";
+      this.presetControls.speedContainer.style.display = "block";
     }
   }
 
-  _setupPresetSelector() {
-    // Get preset options with safety measures
-    const presetOptions = this._getPresetOptions();
-
-    // Create preset dropdown
-    const preset = { value: presetOptions[0] };
-    this.presetControls.selector = this.gui
-      .add(preset, "value", presetOptions)
-      .name("Select Preset")
-      .onChange((value) => {
-        if (value && value !== "Default") {
-          try {
-            this.presetManager.loadPreset(PresetManager.TYPES.MASTER, value);
-          } catch (error) {
-            console.error("Error loading preset:", error);
-          }
-        }
-      });
+  startAutoPlay() {
+    this.autoPlayActive = true;
+    this.autoPlayInterval = setInterval(() => {
+      this.navigatePreset(1);
+    }, this.autoPlaySpeed);
+    console.log(`Auto-play started with ${this.autoPlaySpeed}ms interval`);
   }
 
-  _setupSavePresetControls() {
-    // Save preset controls
-    const saveObj = { name: "" };
-    this.presetControls.name = this.gui
-      .add(saveObj, "name")
-      .name("Preset Name");
-
-    // Create save button
-    const saveButton = {
-      save: () => {
-        const name = saveObj.name;
-        if (name && name.trim() !== "") {
-          try {
-            this.presetManager.savePreset(PresetManager.TYPES.MASTER, name);
-            this.updatePresetDropdown();
-          } catch (error) {
-            console.error("Error saving preset:", error);
-          }
-        } else {
-          console.warn("Please enter a preset name");
-        }
-      },
-    };
-
-    this.presetControls.save = this.gui
-      .add(saveButton, "save")
-      .name("Save Preset");
+  stopAutoPlay() {
+    if (this.autoPlayInterval) {
+      clearInterval(this.autoPlayInterval);
+      this.autoPlayInterval = null;
+    }
+    this.autoPlayActive = false;
+    console.log("Auto-play stopped");
   }
 
-  _setupDeletePresetControls() {
-    // Delete preset button
-    const deleteButton = {
-      delete: () => {
-        const selectedPreset = this.presetControls.selector.getValue();
-        if (selectedPreset && selectedPreset !== "Default") {
-          try {
-            this.presetManager.deletePreset(
-              PresetManager.TYPES.MASTER,
-              selectedPreset
-            );
-            this.updatePresetDropdown();
-          } catch (error) {
-            console.error("Error deleting preset:", error);
-          }
-        } else {
-          console.warn("Cannot delete Default preset");
-        }
-      },
-    };
+  navigatePreset(direction) {
+    const options = this._getPresetOptions();
+    if (!options || options.length <= 1) return;
 
-    this.presetControls.delete = this.gui
-      .add(deleteButton, "delete")
-      .name("Delete Preset");
+    const currentPreset = this.presetManager.getSelectedPreset(
+      PresetManager.TYPES.MASTER
+    );
+    let currentIndex = options.indexOf(currentPreset);
+
+    if (currentIndex === -1) currentIndex = 0;
+
+    // Calculate new index with wrapping
+    let newIndex = (currentIndex + direction + options.length) % options.length;
+    const newPreset = options[newIndex];
+
+    // Load the new preset
+    console.log(`Navigating from "${currentPreset}" to "${newPreset}"`);
+    this.presetManager.loadPreset(PresetManager.TYPES.MASTER, newPreset);
+
+    // Update the dropdown display
+    if (this.presetControls.selector) {
+      this.presetControls.selector.value = newPreset;
+    }
   }
 
-  _setupNavigationControls() {
-    // Navigation controls
-    const navFolder = this.gui.addFolder("Navigation");
+  updatePresetDropdown(selectElement) {
+    const options = this._getPresetOptions();
+    console.log("Updating preset dropdown with options:", options);
 
-    // Previous and next buttons
-    const navObj = {
-      prev: () => this.navigatePreset(-1),
-      next: () => this.navigatePreset(1),
-      autoPlay: this.autoPlayActive,
-      speed: this.autoPlaySpeed,
-    };
+    // Clear existing options
+    if (!selectElement) return;
+    selectElement.innerHTML = "";
 
-    this.presetControls.prev = navFolder
-      .add(navObj, "prev")
-      .name("⬅️ Previous");
-    this.presetControls.next = navFolder.add(navObj, "next").name("Next ➡️");
+    // Add new options
+    options.forEach((preset) => {
+      const option = document.createElement("option");
+      option.value = preset;
+      option.textContent = preset;
+      selectElement.appendChild(option);
+    });
 
-    // Auto-play control
-    this.presetControls.autoPlay = navFolder
-      .add(navObj, "autoPlay")
-      .name("Auto Play")
-      .onChange((value) => this.toggleAutoPlay(value));
-
-    this.presetControls.speed = navFolder
-      .add(navObj, "speed", 500, 10000)
-      .name("Speed (ms)")
-      .onChange((value) => {
-        this.autoPlaySpeed = value;
-        if (this.autoPlayActive) {
-          this.stopAutoPlay();
-          this.startAutoPlay();
-        }
-      });
-
-    navFolder.open();
+    // Set current value
+    const currentPreset = this.presetManager.getSelectedPreset(
+      PresetManager.TYPES.MASTER
+    );
+    if (currentPreset) {
+      selectElement.value = currentPreset;
+    }
   }
 
   _getPresetOptions() {
@@ -161,8 +309,8 @@ export class PresetUi extends BaseUi {
       typeof this.presetManager.getPresetOptions === "function"
     ) {
       try {
-        const masterType = PresetManager.TYPES.MASTER;
-        presetOptions = this.presetManager.getPresetOptions(masterType) || [];
+        presetOptions =
+          this.presetManager.getPresetOptions(PresetManager.TYPES.MASTER) || [];
       } catch (error) {
         console.error("Error getting master preset options:", error);
       }
@@ -175,85 +323,4 @@ export class PresetUi extends BaseUi {
 
     return presetOptions;
   }
-
-  //#endregion
-
-  //#region Auto Play Management
-
-  toggleAutoPlay(value) {
-    if (value) {
-      this.startAutoPlay();
-    } else {
-      this.stopAutoPlay();
-    }
-  }
-
-  startAutoPlay() {
-    if (!this.autoPlayInterval) {
-      this.autoPlayActive = true;
-      this.autoPlayInterval = setInterval(() => {
-        this.navigatePreset(1);
-      }, this.autoPlaySpeed);
-
-      if (this.presetControls.autoPlay) {
-        this.presetControls.autoPlay.setValue(true);
-      }
-    }
-  }
-
-  stopAutoPlay() {
-    if (this.autoPlayInterval) {
-      clearInterval(this.autoPlayInterval);
-      this.autoPlayInterval = null;
-      this.autoPlayActive = false;
-
-      if (this.presetControls.autoPlay) {
-        this.presetControls.autoPlay.setValue(false);
-      }
-    }
-  }
-
-  //#endregion
-
-  //#region Preset Navigation
-
-  navigatePreset(direction) {
-    try {
-      const options = this._getPresetOptions();
-      if (options.length <= 1) return;
-
-      const currentPreset = this.presetControls.selector.getValue();
-      const currentIndex = options.indexOf(currentPreset);
-
-      if (currentIndex === -1) return;
-
-      let nextIndex = currentIndex + direction;
-
-      // Loop around if we go past the end or beginning
-      if (nextIndex >= options.length) nextIndex = 0;
-      if (nextIndex < 0) nextIndex = options.length - 1;
-
-      const nextPreset = options[nextIndex];
-      if (nextPreset) {
-        this.presetControls.selector.setValue(nextPreset);
-      }
-    } catch (error) {
-      console.error("Error navigating presets:", error);
-    }
-  }
-
-  updatePresetDropdown(selectElement) {
-    try {
-      // Use the provided select element or the stored one
-      const dropdown = selectElement || this.presetControls.selector;
-      if (dropdown) {
-        const options = this._getPresetOptions();
-        dropdown.options(options);
-      }
-    } catch (error) {
-      console.error("Error updating preset dropdown:", error);
-    }
-  }
-
-  //#endregion
 }
