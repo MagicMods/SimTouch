@@ -526,4 +526,16 @@ export class SoundAnalyzer {
     this.timeData = null;
     this.isInitialized = false;
   }
+
+  setGain(value) {
+    // Store the gain value
+    this.gain = value;
+
+    // If we have a gain node in the audio graph, update it
+    if (this.gainNode) {
+      this.gainNode.gain.value = value;
+    }
+
+    return this;
+  }
 }

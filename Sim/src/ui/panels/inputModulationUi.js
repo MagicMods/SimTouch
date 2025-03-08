@@ -266,18 +266,29 @@ export class InputModulationUi extends BaseUi {
   update() {
     if (!this.main.externalInput?.micForces?.enabled) return;
 
+    // Get global sensitivity from MicForces (not from this.globalSensitivity)
+    const globalSensitivity =
+      this.main.externalInput?.micForces?.sensitivity || 1.0;
+
+    // Log it initially to confirm we're getting the right value
+    if (this._lastGlobalSensitivity !== globalSensitivity) {
+      console.log(`Global sensitivity: ${globalSensitivity}`);
+      this._lastGlobalSensitivity = globalSensitivity;
+    }
+
     // Update each mic modulator with current audio data
     if (this.modulatorManager && this.main.audioAnalyzer) {
       const analyzer = this.main.audioAnalyzer;
 
-      // Check all modulators - use the same flexible filter as visualization
+      // Update all modulators with their respective frequency band data
       this.modulatorManager.modulators.forEach((modulator) => {
         if (modulator.inputSource === "mic") {
           let value = 0;
 
           try {
-            // Get appropriate frequency band value
+            // Get the appropriate frequency band value
             if (modulator.frequencyBand !== "none" && analyzer) {
+              // Get band-specific volume
               const bands = analyzer.calculateBandLevels();
               switch (modulator.frequencyBand) {
                 case "sub":
@@ -306,12 +317,21 @@ export class InputModulationUi extends BaseUi {
               value = analyzer.smoothedVolume || 0;
             }
 
-            // Store the raw input value for visualization
+            // Store raw input value before sensitivity
+            modulator.rawValue = value;
+
+            // IMPORTANT: Apply both global and local sensitivity
+            value *= globalSensitivity * (modulator.sensitivity || 1.0);
+
+            // Store sensitivity-adjusted value
             modulator.inputValue = value;
 
-            // Set the processed value for modulation
+            // Apply value to modulator
             if (typeof modulator.setInputValue === "function") {
               modulator.setInputValue(value);
+            } else {
+              // Fallback if no setInputValue method
+              modulator.value = value;
             }
           } catch (e) {
             console.error("Error processing audio input for modulator:", e);
@@ -320,7 +340,7 @@ export class InputModulationUi extends BaseUi {
       });
     }
 
-    // Then run the manager update
+    // Then run the general update pass
     if (this.modulatorManager) {
       this.modulatorManager.update();
     }
@@ -332,66 +352,40 @@ export class InputModulationUi extends BaseUi {
   updateAllBandVisualizations() {
     if (!this.main.externalInput?.micForces?.enabled) return;
 
-    // Debug all modulators first
-    const allModulators = this.modulatorManager?.modulators || [];
-    if (allModulators.length > 0 && this.modulatorFolders.length > 0) {
-      console.log(
-        "All modulators:",
-        allModulators.map((m) => ({
-          type: m.type,
-          source: m.inputSource || "none",
-        }))
-      );
-    }
-
-    // More flexible type detection
-    const modulators = allModulators.filter((m) => {
-      // Check for any modulators that look like input modulators
-      return (
-        // Direct type match
-        (m.type === "input" && m.inputSource === "mic") ||
-        // Class-based detection
-        (m.constructor &&
-          m.constructor.name === "InputModulator" &&
-          m.inputSource === "mic") ||
-        // Feature-based detection - has the key properties of an input modulator
-        (m.inputSource === "mic" &&
-          m.frequencyBand !== undefined &&
-          m.sensitivity !== undefined) ||
-        // Fall back to checking folder association
-        (this.modulatorFolders.length > 0 && m.ui && m.ui.bar)
-      );
+    // Use dynamic detection
+    const modulators = (this.modulatorManager?.modulators || []).filter((m) => {
+      return m.inputSource === "mic" || (m.ui && m.ui.bar);
     });
-
-    // console.log(
-    //   `Found ${modulators.length} input modulators for visualization`
-    // );
 
     // Update each modulator's visualization
     modulators.forEach((modulator) => {
       if (!modulator.ui?.bar) return;
 
-      // Get the current value - try multiple properties
-      let value = 0;
-      if (modulator.inputValue !== undefined) value = modulator.inputValue;
-      else if (modulator.value !== undefined) value = modulator.value;
-      else if (modulator.currentValue !== undefined)
-        value = modulator.currentValue;
-      else if (modulator.lastValue !== undefined) value = modulator.lastValue;
+      try {
+        // IMPORTANT: Use the sensitivity-adjusted value (inputValue), not the raw value
+        // This value already incorporates both global and local sensitivity
+        const value =
+          modulator.inputValue !== undefined
+            ? modulator.inputValue
+            : modulator.value || 0;
 
-      // Limit value to 0-1 range
-      value = Math.min(1, Math.max(0, value));
+        // Update the bar
+        const percent = Math.min(100, Math.max(0, value * 100));
+        modulator.ui.bar.style.width = `${percent}%`;
+        modulator.ui.bar.style.backgroundColor = this.getIntensityColor(value);
 
-      // Update visualization
-      const percent = Math.min(100, Math.max(0, value * 100));
-      modulator.ui.bar.style.width = `${percent}%`;
-      modulator.ui.bar.style.backgroundColor = this.getIntensityColor(value);
-
-      // Update label
-      if (modulator.ui.label) {
-        const bandName =
-          modulator.frequencyBand === "none" ? "All" : modulator.frequencyBand;
-        modulator.ui.label.textContent = `${bandName}: ${Math.round(percent)}%`;
+        // Update label with sensitivity-adjusted percentage
+        if (modulator.ui.label) {
+          const bandName =
+            modulator.frequencyBand === "none"
+              ? "All"
+              : modulator.frequencyBand;
+          modulator.ui.label.textContent = `${bandName}: ${Math.round(
+            percent
+          )}%`;
+        }
+      } catch (e) {
+        // Silently ignore visualization errors
       }
     });
   }
@@ -758,6 +752,19 @@ export class InputModulationUi extends BaseUi {
 
         if (value === 0) {
           modulator.resetToOriginal();
+        } else {
+          // Get global sensitivity from MicForces
+          const globalSensitivity =
+            this.main.externalInput?.micForces?.sensitivity || 1.0;
+
+          // Calculate new input value with updated sensitivity
+          const rawValue = modulator.rawValue || 0;
+          modulator.inputValue = rawValue * globalSensitivity * value;
+
+          // Update the modulator
+          if (typeof modulator.setInputValue === "function") {
+            modulator.setInputValue(modulator.inputValue);
+          }
         }
       });
 

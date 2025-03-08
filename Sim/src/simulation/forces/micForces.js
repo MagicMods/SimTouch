@@ -317,6 +317,20 @@ export class MicInputForces {
 
   setSensitivity(value) {
     this.sensitivity = value;
+
+    // Update analyzer's gain if available
+    if (this.analyzer) {
+      // Pass sensitivity to analyzer
+      this.analyzer.setGain(value);
+    }
+
+    // Update visualizer if available
+    if (this.visualizer) {
+      // Tell visualizer to redraw with new sensitivity
+      this.visualizer.updateOptions({ gain: value });
+    }
+
+    console.log(`Global sensitivity set to ${value}`);
     return this;
   }
 
