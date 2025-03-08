@@ -1,7 +1,9 @@
 import { PresetBaseHandler } from "./presetBaseHandler.js";
+import { PresetManager } from "./presetManager.js";
 
 export class PresetPulseHandler extends PresetBaseHandler {
   constructor() {
+    // Initialize with a clean default "None" preset
     const defaultPresets = {
       None: { modulators: [] },
     };
@@ -11,6 +13,7 @@ export class PresetPulseHandler extends PresetBaseHandler {
     this.defaultPreset = "None";
   }
 
+  // Extract data from UI component
   extractDataFromUI(pulseModUI) {
     if (!pulseModUI) {
       console.error("No PulseModulationUi provided");
@@ -18,73 +21,42 @@ export class PresetPulseHandler extends PresetBaseHandler {
     }
 
     try {
-      // Get modulators from controllers if available
-      let modulators = [];
+      // Get clean data via the modern API
+      const data = pulseModUI.getModulatorsData();
 
-      if (Array.isArray(pulseModUI.modulatorControllers)) {
-        modulators = pulseModUI.modulatorControllers;
-      } else if (Array.isArray(pulseModUI.modulators)) {
-        modulators = pulseModUI.modulators;
-      } else if (typeof pulseModUI.getModulators === "function") {
-        modulators = pulseModUI.getModulators();
-      } else {
-        console.warn("No modulators found in pulseModUI");
+      // Validate data structure
+      if (!data || typeof data !== "object") {
+        console.error("Invalid data returned from PulseModulationUi");
         return { modulators: [] };
       }
 
-      // Extract data from modulators
-      const modulatorData = modulators.map((mod) => {
-        console.log("Extracting pulse modulator data:", mod);
-        return {
-          enabled: Boolean(mod.enabled),
-          targetName: mod.targetName || null,
-          type: mod.type || mod.waveType || "sine",
-          frequency: Number(mod.frequency) || 0.5,
-          amplitude: Number(mod.amplitude) || 0.5,
-          phase: Number(mod.phase) || 0,
-          bias: Number(mod.bias) || 0.5,
-          min: Number(mod.min), // Ensure min value is extracted
-          max: Number(mod.max), // Ensure max value is extracted
-        };
-      });
+      // Ensure modulators is an array
+      if (!Array.isArray(data.modulators)) {
+        console.warn("Modulators is not an array, using empty array");
+        data.modulators = [];
+      }
 
-      console.log(`Extracted ${modulatorData.length} pulse modulators`);
-      return { modulators: modulatorData };
+      console.log(`Extracted ${data.modulators.length} pulse modulators`);
+      return data;
     } catch (error) {
       console.error("Error extracting pulse modulation data:", error);
       return { modulators: [] };
     }
   }
 
+  // Apply data to UI component
   applyDataToUI(presetName, pulseModUI) {
-    // Special case for "None" - just clear all modulators
+    console.log(`Loading pulse preset: ${presetName}`);
+
+    // Special case for "None" preset
     if (presetName === "None") {
-      // Try to clear modulators
-      try {
-        if (Array.isArray(pulseModUI.modulatorControllers)) {
-          // Clone array to avoid issues during iteration
-          const controllers = [...pulseModUI.modulatorControllers];
-          controllers.forEach((controller) => {
-            if (typeof pulseModUI.removeModulator === "function") {
-              pulseModUI.removeModulator(controller);
-            }
-          });
-        }
-
-        // Update UI
-        if (typeof pulseModUI.update === "function") {
-          pulseModUI.update();
-        }
-
-        this.selectedPreset = "None";
-        return true;
-      } catch (error) {
-        console.error("Error clearing modulators for None preset:", error);
-        return false;
-      }
+      console.log("Loading empty 'None' preset");
+      pulseModUI.clearAllModulators();
+      this.selectedPreset = "None";
+      return true;
     }
 
-    // Regular preset handling for non-"None" presets
+    // Get the preset data
     const preset = this.presets[presetName];
     if (!preset) {
       console.warn(`Preset "${presetName}" not found`);
@@ -92,107 +64,50 @@ export class PresetPulseHandler extends PresetBaseHandler {
     }
 
     try {
-      // First, try our new direct method if it exists
-      if (typeof pulseModUI.loadPresetData === "function") {
-        const result = pulseModUI.loadPresetData(preset);
-        if (result) {
-          this.selectedPreset = presetName;
-          return true;
-        }
+      console.log("Applying preset data to PulseModulationUi");
+
+      // Apply the data via the modern API
+      const result = pulseModUI.loadPresetData(preset);
+
+      if (result) {
+        this.selectedPreset = presetName;
+        console.log(`Successfully loaded pulse preset: ${presetName}`);
+        return true;
       }
 
-      // Fall back to manual implementation if direct method isn't available or fails
-      console.warn(
-        "PulseModulationUi.loadPresetData failed, using manual approach"
-      );
-
-      // First step: Clear existing modulators
-      if (Array.isArray(pulseModUI.modulatorControllers)) {
-        // Clone array to avoid issues when removing during iteration
-        const controllers = [...pulseModUI.modulatorControllers];
-        controllers.forEach((controller) => {
-          if (typeof pulseModUI.removeModulator === "function") {
-            pulseModUI.removeModulator(controller);
-          }
-        });
-      }
-
-      // Create new modulators using the correct method
-      if (
-        preset.modulators &&
-        Array.isArray(preset.modulators) &&
-        typeof pulseModUI.addPulseModulator === "function"
-      ) {
-        preset.modulators.forEach((modData) => {
-          const mod = pulseModUI.addPulseModulator();
-
-          if (!mod) {
-            console.warn("Failed to create modulator");
-            return;
-          }
-
-          // Set flag for loading from preset
-          mod._loadingFromPreset = true;
-
-          // Set min/max values explicitly before setting target
-          mod.min = modData.min !== undefined ? Number(modData.min) : 0;
-          mod.max = modData.max !== undefined ? Number(modData.max) : 1;
-
-          // Apply target (which might otherwise trigger auto-range)
-          if (modData.targetName && typeof mod.setTarget === "function") {
-            mod.setTarget(modData.targetName);
-          }
-
-          // Apply remaining properties
-          if (modData.type && typeof mod.setWaveType === "function") {
-            mod.setWaveType(modData.type);
-          }
-
-          mod.frequency = modData.frequency || 0.5;
-          mod.amplitude = modData.amplitude || 0.5;
-          mod.phase = modData.phase || 0;
-          mod.bias = modData.bias || 0.5;
-          mod.enabled = !!modData.enabled;
-
-          // Reset the loading flag
-          mod._loadingFromPreset = false;
-        });
-      } else {
-        console.error(
-          "Cannot create modulators - addPulseModulator method not found"
-        );
-        return false;
-      }
-
-      // Update UI using the correct method
-      if (typeof pulseModUI.update === "function") {
-        pulseModUI.update();
-      }
-
-      this.selectedPreset = presetName;
-      return true;
+      console.warn(`Failed to load pulse preset: ${presetName}`);
+      return false;
     } catch (error) {
-      console.error(`Error applying pulse preset ${presetName}:`, error);
+      console.error("Error applying pulse preset data:", error);
       return false;
     }
   }
 
-  // API compatibility methods
-  savePulsePreset(presetName, pulseModUI) {
-    const data = this.extractDataFromUI(pulseModUI);
-    if (!data) return false;
-    return this.savePreset(presetName, data, this.protectedPresets);
-  }
+  // Save a preset with validation
+  savePreset(presetName, data, protectedList = this.protectedPresets) {
+    // Validate data before saving
+    if (!data || !data.modulators) {
+      console.error("Invalid data for saving preset");
+      return false;
+    }
 
-  loadPulsePreset(presetName, pulseModUI) {
-    return this.applyDataToUI(presetName, pulseModUI);
-  }
-
-  deletePulsePreset(presetName) {
-    return this.deletePreset(
-      presetName,
-      this.protectedPresets,
-      this.defaultPreset
+    console.log(
+      `Saving pulse preset: ${presetName} with ${data.modulators.length} modulators`
     );
+
+    // Use the parent class method for actual saving
+    return super.savePreset(presetName, data, protectedList);
+  }
+
+  loadPreset(presetName, ui) {
+    return this.applyDataToUI(presetName, ui);
+  }
+
+  deletePreset(
+    presetName,
+    protectedList = this.protectedPresets,
+    defaultPreset = this.defaultPreset
+  ) {
+    return super.deletePreset(presetName, protectedList, defaultPreset);
   }
 }
