@@ -14,24 +14,23 @@ class RightUi extends BaseUi {
 
   setPresetManager(presetManager) {
     this.presetManager = presetManager;
-    this.initFolders();
     this.initTurbulencePresetControls();
-    this.initVoronoiPresetControls(); // Add voronoi presets
+    this.initVoronoiPresetControls();
   }
 
   async initFolders() {
     this.turbFolder = this.createFolder("Turbulence");
-    this.voronoiFolder = this.createFolder("Voronoi");
-    this.initTurbulenceControls();
-    this.voronoiFolder = this.createFolder("Voronoi Field"); // Add voronoi folder
+    this.voronoiFolder = this.createFolder("Voronoi Field");
     this.organicFolder = this.createFolder("Organic Behavior");
     this.gridFolder = this.createFolder("Grid");
 
-    this.initVoronoiControls(); // Initialize voronoi controls
+    this.initTurbulenceControls();
+    this.initVoronoiControls();
     this.initOrganicControls();
     this.initGridControls();
 
     this.gui.open();
+    this.turbFolder.open();
     this.voronoiFolder.open();
     this.organicFolder.open(true);
     this.gridFolder.open(false);
@@ -44,63 +43,78 @@ class RightUi extends BaseUi {
     if (!turbulence) return;
 
     // Store controllers as class properties
-    this.turbulenceAffectPositionController = this.gui
+    this.turbulenceAffectPositionController = this.turbFolder
       .add(turbulence, "affectPosition")
       .name("Affect Position");
-    this.turbulenceScaleFieldController = this.gui
+
+    this.turbulenceScaleFieldController = this.turbFolder
       .add(turbulence, "scaleField")
       .name("Affect Scale Field");
-    this.turbulenceAffectScaleController = this.gui
+
+    this.turbulenceAffectScaleController = this.turbFolder
       .add(turbulence, "affectScale")
       .name("Affect Scale Particles");
 
     // Store these key controllers that will be targeted by modulators
-    this.turbulenceStrengthController = this.gui
+    this.turbulenceStrengthController = this.turbFolder
       .add(turbulence, "strength", 0, 10)
       .name("Strength");
-    this.turbulenceScaleController = this.gui
+
+    this.turbulenceScaleController = this.turbFolder
       .add(turbulence, "scale", 0.1, 10)
       .name("Scale");
-    this.turbulenceSpeedController = this.gui
+
+    this.turbulenceSpeedController = this.turbFolder
       .add(turbulence, "speed", 0, 20)
       .name("Speed");
 
     // Add min/max scale controls
-    const scaleRangeFolder = this.gui.addFolder("Scale Range");
+    const scaleRangeFolder = this.turbFolder.addFolder("Scale Range");
+
     this.turbulenceScaleStrengthController = scaleRangeFolder
       .add(turbulence, "scaleStrength", 0, 1)
       .name("Scale Strength");
+
     this.turbulenceMinScaleController = scaleRangeFolder
       .add(turbulence, "minScale", 0.1, 1.0)
       .name("Min Scale");
+
     this.turbulenceMaxScaleController = scaleRangeFolder
       .add(turbulence, "maxScale", 1.0, 4.0)
       .name("Max Scale");
 
-    const advancedFolder = this.gui.addFolder("Advanced");
+    const advancedFolder = this.turbFolder.addFolder("Advanced");
+
     this.turbulenceOctavesController = advancedFolder
       .add(turbulence, "octaves", 1, 8, 1)
       .name("Octaves");
+
     this.turbulencePersistenceController = advancedFolder
       .add(turbulence, "persistence", 0, 1)
       .name("Persistence");
+
     this.turbulenceRotationController = advancedFolder
       .add(turbulence, "rotation", 0, Math.PI * 2)
       .name("Rotation");
+
     this.turbulenceRotationSpeedController = advancedFolder
       .add(turbulence, "rotationSpeed", 0, 1)
       .name("Rotation Speed");
+
     this.turbulenceInwardFactorController = advancedFolder
       .add(turbulence, "inwardFactor", 0, 5)
       .name("Inward Pull");
+
     this.turbulenceDecayRateController = advancedFolder
       .add(turbulence, "decayRate", 0.9, 1)
       .name("Decay Rate");
 
-    const biasFolder = this.gui.addFolder("Direction Bias");
+    const biasFolder = this.turbFolder.addFolder("Direction Bias");
+
     this.turbulenceBiasXController = biasFolder
       .add(turbulence.directionBias, "0", -1, 1)
       .name("X Bias");
+
     this.turbulenceBiasYController = biasFolder
       .add(turbulence.directionBias, "1", -1, 1)
       .name("Y Bias");
@@ -108,132 +122,136 @@ class RightUi extends BaseUi {
   //#endregion
 
   initTurbulencePresetControls() {
-    if (!this.turbFolder) {
-      console.error(
-        "Cannot initialize turbulence preset controls: turbFolder is not defined"
-      );
+    // Find the correct container in dat.GUI's structure
+    const containerElement =
+      this.turbFolder.domElement.querySelector(".children");
+    if (!containerElement) {
+      console.error("Could not find container element in turbulence folder");
       return;
     }
 
-    const folder = this.turbFolder;
+    // Create select dropdown
+    const presetSelect = document.createElement("select");
+    presetSelect.classList.add("preset-select");
+    presetSelect.style.padding = "4px";
+    presetSelect.style.margin = "5px";
+    presetSelect.style.width = "100%";
 
-    // Add preset selection dropdown
-    const presetOptions = this.presetManager.getPresetOptions(
-      PresetManager.TYPES.TURBULENCE
-    );
+    this.updateTurbPresetDropdown(presetSelect);
 
-    folder
-      .add({ preset: presetOptions[0] || "None" }, "preset", presetOptions)
-      .name("Presets")
-      .onChange((value) => {
-        if (value) {
-          this.presetManager.loadPreset(
-            PresetManager.TYPES.TURBULENCE,
-            value,
-            this.turbFolder
-          );
-        }
-      });
+    presetSelect.addEventListener("change", (e) => {
+      const value = e.target.value;
+      console.log("Turbulence preset selector changed to:", value);
+      this.presetManager.loadPreset(
+        PresetManager.TYPES.TURBULENCE,
+        value,
+        this.turbFolder
+      );
+    });
 
-    // Save preset button
-    const saveController = folder
-      .add({ save: () => {} }, "save")
-      .name("Save Preset");
-    saveController.domElement.querySelector(".name").style.width =
-      "calc(100% - 80px)";
+    this.turbPresetControls = { selector: presetSelect };
 
-    // Add save input and button
-    const saveContainer = document.createElement("div");
-    saveContainer.style.display = "flex";
-    saveContainer.style.alignItems = "center";
-    saveContainer.style.width = "100%";
+    // Create action buttons container
+    const actionsContainer = document.createElement("div");
+    actionsContainer.style.display = "flex";
+    actionsContainer.style.justifyContent = "space-between";
+    actionsContainer.style.margin = "5px";
+    actionsContainer.style.flexWrap = "wrap"; // Allow wrapping if needed
 
-    const saveInput = document.createElement("input");
-    saveInput.type = "text";
-    saveInput.placeholder = "Preset name";
-    saveInput.style.flex = "1";
-    saveInput.style.marginRight = "5px";
-
+    // SAVE BUTTON
     const saveButton = document.createElement("button");
     saveButton.textContent = "Save";
-    saveButton.style.flex = "0 0 auto";
-
-    saveContainer.appendChild(saveInput);
-    saveContainer.appendChild(saveButton);
-
-    saveController.domElement
-      .querySelector(".widget")
-      .appendChild(saveContainer);
-
-    // Save button click handler
+    saveButton.style.flex = "1";
+    saveButton.style.margin = "0 2px";
     saveButton.addEventListener("click", () => {
-      const name = saveInput.value;
-      if (name) {
+      const presetName = prompt("Enter turbulence preset name:");
+      if (
+        presetName &&
         this.presetManager.savePreset(
           PresetManager.TYPES.TURBULENCE,
-          name,
+          presetName,
           this.turbFolder
+        )
+      ) {
+        this.updateTurbPresetDropdown(presetSelect);
+        presetSelect.value = this.presetManager.getSelectedPreset(
+          PresetManager.TYPES.TURBULENCE
         );
-        this.updateTurbPresetDropdown();
+        alert(`Turbulence preset "${presetName}" saved.`);
       }
     });
 
-    // Delete preset button
-    const deleteController = folder
-      .add({ delete: () => {} }, "delete")
-      .name("Delete Preset");
-    deleteController.domElement.querySelector(".name").style.width =
-      "calc(100% - 80px)";
-
-    // Add delete input and button
-    const deleteContainer = document.createElement("div");
-    deleteContainer.style.display = "flex";
-    deleteContainer.style.alignItems = "center";
-    deleteContainer.style.width = "100%";
-
-    const deleteInput = document.createElement("input");
-    deleteInput.type = "text";
-    deleteInput.placeholder = "Preset name";
-    deleteInput.style.flex = "1";
-    deleteInput.style.marginRight = "5px";
-
+    // DELETE BUTTON
     const deleteButton = document.createElement("button");
     deleteButton.textContent = "Delete";
-    deleteButton.style.flex = "0 0 auto";
-
-    deleteContainer.appendChild(deleteInput);
-    deleteContainer.appendChild(deleteButton);
-
-    deleteController.domElement
-      .querySelector(".widget")
-      .appendChild(deleteContainer);
-
-    // Delete button click handler
+    deleteButton.style.flex = "1";
+    deleteButton.style.margin = "0 2px";
     deleteButton.addEventListener("click", () => {
-      const name = deleteInput.value;
-      if (name) {
-        this.presetManager.deletePreset(PresetManager.TYPES.TURBULENCE, name);
-        this.updateTurbPresetDropdown();
+      const current = this.presetManager.getSelectedPreset(
+        PresetManager.TYPES.TURBULENCE
+      );
+      console.log("Attempting to delete turbulence preset:", current);
+      if (
+        this.presetManager.deletePreset(PresetManager.TYPES.TURBULENCE, current)
+      ) {
+        this.updateTurbPresetDropdown(presetSelect);
+        presetSelect.value = this.presetManager.getSelectedPreset(
+          PresetManager.TYPES.TURBULENCE
+        );
+        alert(`Turbulence preset "${current}" deleted.`);
       }
     });
+
+    // Add buttons to the container
+    actionsContainer.appendChild(saveButton);
+    actionsContainer.appendChild(deleteButton);
+
+    // Insert elements at the beginning of the folder
+    this.turbFolder.domElement.insertBefore(
+      actionsContainer,
+      this.turbFolder.domElement.querySelector(".children")
+    );
+
+    this.turbFolder.domElement.insertBefore(
+      presetSelect,
+      this.turbFolder.domElement.querySelector(".children")
+    );
+
+    // Remove old dat.GUI controls if they exist
+    const oldSaveControls = this.turbFolder.controllers.filter(
+      (c) => c.property === "save"
+    );
+
+    const oldDeleteControls = this.turbFolder.controllers.filter(
+      (c) => c.property === "delete"
+    );
+
+    // Remove old controls
+    oldSaveControls.forEach((c) => this.turbFolder.remove(c));
+    oldDeleteControls.forEach((c) => this.turbFolder.remove(c));
   }
 
   updateTurbPresetDropdown(selectElement) {
-    // Find the dropdown if not provided
-    if (!selectElement) {
-      selectElement = this.turbFolder?.__controllers?.find(
-        (c) => c.property === "preset"
-      );
-    }
+    if (!selectElement || !this.presetManager) return;
 
-    if (selectElement) {
-      // Get the updated options
-      const options = this.presetManager.getPresetOptions(
-        PresetManager.TYPES.TURBULENCE
-      );
+    const options = this.presetManager.getPresetOptions(
+      PresetManager.TYPES.TURBULENCE
+    );
+    console.log("Updating turbulence preset dropdown with options:", options);
 
-      // Update the options
-      selectElement.options(options);
+    selectElement.innerHTML = "";
+    options.forEach((preset) => {
+      const option = document.createElement("option");
+      option.value = preset;
+      option.textContent = preset;
+      selectElement.appendChild(option);
+    });
+
+    const currentPreset = this.presetManager.getSelectedPreset(
+      PresetManager.TYPES.TURBULENCE
+    );
+    if (currentPreset) {
+      selectElement.value = currentPreset;
     }
   }
 
@@ -269,26 +287,8 @@ class RightUi extends BaseUi {
       .name("Decay Rate");
 
     // Store reference to voronoiField for preset management
-    if (this.main && this.main.voronoiField) {
-      // Store reference directly in the folder
-      this.voronoiFolder.object = this.voronoiFolder.object || {};
-      this.voronoiFolder.object.voronoiField = this.main.voronoiField;
-
-      // Also store in a property controllers can access
-      if (
-        this.voronoiFolder.controllers &&
-        this.voronoiFolder.controllers.length > 0
-      ) {
-        const firstController = this.voronoiFolder.controllers[0];
-        if (firstController && firstController.object) {
-          firstController.object.__voronoiField = this.main.voronoiField;
-        }
-      }
-
-      // If we have a preset manager, update its reference too
-      if (this.presetManager) {
-        this.presetManager.setVoronoiField(this.main.voronoiField);
-      }
+    if (this.main && this.main.voronoiField && this.presetManager) {
+      this.presetManager.setVoronoiField(this.main.voronoiField);
     }
   }
 
@@ -303,125 +303,136 @@ class RightUi extends BaseUi {
       return;
     }
 
-    const folder = this.voronoiFolder;
+    // Find the correct container in dat.GUI's structure
+    const containerElement =
+      this.voronoiFolder.domElement.querySelector(".children");
+    if (!containerElement) {
+      console.error("Could not find container element in voronoi folder");
+      return;
+    }
 
-    // Add preset selection dropdown
-    const presetOptions = this.presetManager.getPresetOptions(
-      PresetManager.TYPES.VORONOI
-    );
+    // Create select dropdown
+    const presetSelect = document.createElement("select");
+    presetSelect.classList.add("preset-select");
+    presetSelect.style.padding = "4px";
+    presetSelect.style.margin = "5px";
+    presetSelect.style.width = "100%";
 
-    folder
-      .add({ preset: presetOptions[0] || "None" }, "preset", presetOptions)
-      .name("Presets")
-      .onChange((value) => {
-        if (value) {
-          this.presetManager.loadPreset(
-            PresetManager.TYPES.VORONOI,
-            value,
-            this.voronoiFolder
-          );
-        }
-      });
+    this.updateVoronoiPresetDropdown(presetSelect);
 
-    // Save preset button
-    const saveController = folder
-      .add({ save: () => {} }, "save")
-      .name("Save Preset");
-    saveController.domElement.querySelector(".name").style.width =
-      "calc(100% - 80px)";
+    presetSelect.addEventListener("change", (e) => {
+      const value = e.target.value;
+      console.log("Voronoi preset selector changed to:", value);
+      this.presetManager.loadPreset(
+        PresetManager.TYPES.VORONOI,
+        value,
+        this.voronoiFolder
+      );
+    });
 
-    // Add save input and button
-    const saveContainer = document.createElement("div");
-    saveContainer.style.display = "flex";
-    saveContainer.style.alignItems = "center";
-    saveContainer.style.width = "100%";
+    this.voronoiPresetControls = { selector: presetSelect };
 
-    const saveInput = document.createElement("input");
-    saveInput.type = "text";
-    saveInput.placeholder = "Preset name";
-    saveInput.style.flex = "1";
-    saveInput.style.marginRight = "5px";
+    // Create action buttons container
+    const actionsContainer = document.createElement("div");
+    actionsContainer.style.display = "flex";
+    actionsContainer.style.justifyContent = "space-between";
+    actionsContainer.style.margin = "5px";
+    actionsContainer.style.flexWrap = "wrap"; // Allow wrapping if needed
 
+    // SAVE BUTTON
     const saveButton = document.createElement("button");
     saveButton.textContent = "Save";
-    saveButton.style.flex = "0 0 auto";
-
-    saveContainer.appendChild(saveInput);
-    saveContainer.appendChild(saveButton);
-
-    saveController.domElement
-      .querySelector(".widget")
-      .appendChild(saveContainer);
-
-    // Save button click handler
+    saveButton.style.flex = "1";
+    saveButton.style.margin = "0 2px";
     saveButton.addEventListener("click", () => {
-      const name = saveInput.value;
-      if (name) {
+      const presetName = prompt("Enter voronoi preset name:");
+      if (
+        presetName &&
         this.presetManager.savePreset(
           PresetManager.TYPES.VORONOI,
-          name,
+          presetName,
           this.voronoiFolder
+        )
+      ) {
+        this.updateVoronoiPresetDropdown(presetSelect);
+        presetSelect.value = this.presetManager.getSelectedPreset(
+          PresetManager.TYPES.VORONOI
         );
-        this.updateVoronoiPresetDropdown();
+        alert(`Voronoi preset "${presetName}" saved.`);
       }
     });
 
-    // Delete preset button
-    const deleteController = folder
-      .add({ delete: () => {} }, "delete")
-      .name("Delete Preset");
-    deleteController.domElement.querySelector(".name").style.width =
-      "calc(100% - 80px)";
-
-    // Add delete input and button
-    const deleteContainer = document.createElement("div");
-    deleteContainer.style.display = "flex";
-    deleteContainer.style.alignItems = "center";
-    deleteContainer.style.width = "100%";
-
-    const deleteInput = document.createElement("input");
-    deleteInput.type = "text";
-    deleteInput.placeholder = "Preset name";
-    deleteInput.style.flex = "1";
-    deleteInput.style.marginRight = "5px";
-
+    // DELETE BUTTON
     const deleteButton = document.createElement("button");
     deleteButton.textContent = "Delete";
-    deleteButton.style.flex = "0 0 auto";
-
-    deleteContainer.appendChild(deleteInput);
-    deleteContainer.appendChild(deleteButton);
-
-    deleteController.domElement
-      .querySelector(".widget")
-      .appendChild(deleteContainer);
-
-    // Delete button click handler
+    deleteButton.style.flex = "1";
+    deleteButton.style.margin = "0 2px";
     deleteButton.addEventListener("click", () => {
-      const name = deleteInput.value;
-      if (name) {
-        this.presetManager.deletePreset(PresetManager.TYPES.VORONOI, name);
-        this.updateVoronoiPresetDropdown();
+      const current = this.presetManager.getSelectedPreset(
+        PresetManager.TYPES.VORONOI
+      );
+      console.log("Attempting to delete voronoi preset:", current);
+      if (
+        this.presetManager.deletePreset(PresetManager.TYPES.VORONOI, current)
+      ) {
+        this.updateVoronoiPresetDropdown(presetSelect);
+        presetSelect.value = this.presetManager.getSelectedPreset(
+          PresetManager.TYPES.VORONOI
+        );
+        alert(`Voronoi preset "${current}" deleted.`);
       }
     });
+
+    // Add buttons to the container
+    actionsContainer.appendChild(saveButton);
+    actionsContainer.appendChild(deleteButton);
+
+    // Insert elements at the beginning of the folder
+    this.voronoiFolder.domElement.insertBefore(
+      actionsContainer,
+      this.voronoiFolder.domElement.querySelector(".children")
+    );
+
+    this.voronoiFolder.domElement.insertBefore(
+      presetSelect,
+      this.voronoiFolder.domElement.querySelector(".children")
+    );
+
+    // Remove old dat.GUI controls if they exist
+    const oldSaveControls = this.voronoiFolder.controllers.filter(
+      (c) => c.property === "save"
+    );
+
+    const oldDeleteControls = this.voronoiFolder.controllers.filter(
+      (c) => c.property === "delete"
+    );
+
+    // Remove old controls
+    oldSaveControls.forEach((c) => this.voronoiFolder.remove(c));
+    oldDeleteControls.forEach((c) => this.voronoiFolder.remove(c));
   }
 
   updateVoronoiPresetDropdown(selectElement) {
-    // Find the dropdown if not provided
-    if (!selectElement) {
-      selectElement = this.voronoiFolder?.__controllers?.find(
-        (c) => c.property === "preset"
-      );
-    }
+    if (!selectElement || !this.presetManager) return;
 
-    if (selectElement) {
-      // Get the updated options
-      const options = this.presetManager.getPresetOptions(
-        PresetManager.TYPES.VORONOI
-      );
+    const options = this.presetManager.getPresetOptions(
+      PresetManager.TYPES.VORONOI
+    );
+    console.log("Updating voronoi preset dropdown with options:", options);
 
-      // Update the options
-      selectElement.options(options);
+    selectElement.innerHTML = "";
+    options.forEach((preset) => {
+      const option = document.createElement("option");
+      option.value = preset;
+      option.textContent = preset;
+      selectElement.appendChild(option);
+    });
+
+    const currentPreset = this.presetManager.getSelectedPreset(
+      PresetManager.TYPES.VORONOI
+    );
+    if (currentPreset) {
+      selectElement.value = currentPreset;
     }
   }
   //#endregion
@@ -484,6 +495,7 @@ class RightUi extends BaseUi {
         });
       });
   }
+
   updateOrganicFolders(mode) {
     const fluidEnabled = mode === "Fluid";
     const swarmEnabled = mode === "Swarm";
@@ -494,9 +506,11 @@ class RightUi extends BaseUi {
     this.fluidFolder?.controllers.forEach((controller) =>
       controller.enable(fluidEnabled)
     );
+
     this.swarmFolder?.controllers.forEach((controller) =>
       controller.enable(swarmEnabled)
     );
+
     this.automataFolder?.controllers.forEach((controller) =>
       controller.enable(automataEnabled)
     );
@@ -507,16 +521,19 @@ class RightUi extends BaseUi {
       this.swarmFolder.close();
       this.automataFolder.close();
     }
+
     if (swarmEnabled) {
       this.fluidFolder.close();
       this.swarmFolder.open();
       this.automataFolder.close();
     }
+
     if (automataEnabled) {
       this.fluidFolder.close();
       this.swarmFolder.close();
       this.automataFolder.open();
     }
+
     if (mode == "None") {
       this.fluidFolder.close();
       this.swarmFolder.close();
@@ -592,9 +609,9 @@ class RightUi extends BaseUi {
       .add(particles.organicBehavior.params.Automata, "threshold", 0, 1)
       .name("Threshold");
   }
+  //#endregion
 
   //#region Grid
-
   initGridControls() {
     const gridRenderer = this.main.gridRenderer;
     if (!gridRenderer) return;
@@ -659,7 +676,8 @@ class RightUi extends BaseUi {
     });
 
     this.gridFolder.open(false);
-  } //#endregion
+  }
+  //#endregion
 
   /**
    * Get controllers that can be targeted by pulse modulators
