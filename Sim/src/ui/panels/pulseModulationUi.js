@@ -4,42 +4,27 @@ import { ModulatorManager } from "../../input/modulatorManager.js";
 export class PulseModulationUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-    this.masterFrequency = 1.0; // For pulse modulators
+    this.masterFrequency = 1.0;
 
-    // Don't create a new ModulatorManager here! It should be set by UiManager
-    // this.modulatorManager = new ModulatorManager();
-    this.modulatorManager = null; // Will be set by UiManager later
-
-    // Initialize arrays
+    this.modulatorManager = null;
     this.modulatorFolders = [];
     this.presets = [];
 
-    // Change the GUI title
     this.gui.title("Pulse Modulation");
 
-    // Initialize basic controls
     this.initBasicControls();
 
-    // PresetManager will be initialized later when available
     this.presetManager = null;
     this.presetController = null;
-
-    // Initialize target controller map
     this.targetControllerMap = new Map();
   }
 
   //#region Ui
 
-  initializeWithUiPanels(leftUi, rightUi, targetsRegistered = false) {
+  initializeWithUiPanels(leftUi, rightUi) {
     console.log("PulseModulationUi initializing with UI panels");
-
-    // Store UI references
     this.leftUi = leftUi;
     this.rightUi = rightUi;
-
-    // No need to register targets since they're registered by UiManager
-
-    console.log("PulseModulationUi initialized with UI panels");
   }
 
   initBasicControls() {
@@ -78,7 +63,6 @@ export class PulseModulationUi extends BaseUi {
     const presetSelect = document.createElement("select");
     presetSelect.classList.add("preset-select");
     presetSelect.style.padding = "4px";
-
     presetSelect.style.margin = "5px";
 
     this.updatePresetDropdown(presetSelect);
@@ -96,8 +80,7 @@ export class PulseModulationUi extends BaseUi {
     actionsContainer.style.display = "flex";
     actionsContainer.style.justifyContent = "space-between";
     actionsContainer.style.margin = "5px";
-
-    actionsContainer.style.flexWrap = "wrap"; // Allow wrapping if needed
+    actionsContainer.style.flexWrap = "wrap";
 
     // SAVE BUTTON
     const saveButton = document.createElement("button");
