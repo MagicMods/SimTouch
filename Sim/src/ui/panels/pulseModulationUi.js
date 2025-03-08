@@ -1,5 +1,6 @@
 import { BaseUi } from "./baseUi.js";
 import { ModulatorManager } from "../../input/modulatorManager.js";
+import { PresetManager } from "../../presets/presetManager.js";
 
 export class PulseModulationUi extends BaseUi {
   constructor(main, container) {
@@ -45,120 +46,126 @@ export class PulseModulationUi extends BaseUi {
   }
 
   initPresetControls(presetManager) {
-    if (!presetManager) {
-      console.warn("PresetManager not provided to PulseModulationUi");
-      return;
-    }
-
     this.presetManager = presetManager;
 
-    // Find the correct container in GUI structure
-    const containerElement = this.gui.domElement.querySelector(".children");
-    if (!containerElement) {
-      console.error("Could not find container element in GUI");
-      return;
-    }
+    const folder = this.gui.addFolder("Presets");
+    folder.open();
 
-    // Create select dropdown
-    const presetSelect = document.createElement("select");
-    presetSelect.classList.add("preset-select");
-    presetSelect.style.padding = "4px";
-    presetSelect.style.margin = "5px";
+    // Add preset selection dropdown
+    const presetOptions = this.presetManager.getPresetOptions(
+      PresetManager.TYPES.PULSE
+    );
 
-    this.updatePresetDropdown(presetSelect);
+    folder
+      .add({ preset: presetOptions[0] || "None" }, "preset", presetOptions)
+      .name("Presets")
+      .onChange((value) => {
+        if (value) {
+          this.presetManager.loadPreset(PresetManager.TYPES.PULSE, value, this);
+        }
+      });
 
-    presetSelect.addEventListener("change", (e) => {
-      const value = e.target.value;
-      console.log("Pulse modulation preset selector changed to:", value);
-      this.presetManager.loadPulsePreset(value, this);
-    });
+    // Save preset button
+    const saveController = folder
+      .add({ save: () => {} }, "save")
+      .name("Save Preset");
+    saveController.domElement.querySelector(".name").style.width =
+      "calc(100% - 80px)";
 
-    this.pulsePresetControls = { selector: presetSelect };
+    // Add save input and button
+    const saveContainer = document.createElement("div");
+    saveContainer.style.display = "flex";
+    saveContainer.style.alignItems = "center";
+    saveContainer.style.width = "100%";
 
-    // Create action buttons container
-    const actionsContainer = document.createElement("div");
-    actionsContainer.style.display = "flex";
-    actionsContainer.style.justifyContent = "space-between";
-    actionsContainer.style.margin = "5px";
-    actionsContainer.style.flexWrap = "wrap";
+    const saveInput = document.createElement("input");
+    saveInput.type = "text";
+    saveInput.placeholder = "Preset name";
+    saveInput.style.flex = "1";
+    saveInput.style.marginRight = "5px";
 
-    // SAVE BUTTON
     const saveButton = document.createElement("button");
     saveButton.textContent = "Save";
-    saveButton.style.flex = "1";
-    saveButton.style.margin = "0 2px";
+    saveButton.style.flex = "0 0 auto";
+
+    saveContainer.appendChild(saveInput);
+    saveContainer.appendChild(saveButton);
+
+    saveController.domElement
+      .querySelector(".widget")
+      .appendChild(saveContainer);
+
+    // Save button click handler
     saveButton.addEventListener("click", () => {
-      const presetName = prompt("Enter pulse modulation preset name:");
-      if (
-        this.presetManager.savePulsePreset(presetName, this.modulatorManager)
-      ) {
-        this.updatePresetDropdown(presetSelect);
-        presetSelect.value = this.presetManager.getSelectedPulsePreset();
-        alert(`Pulse modulation preset "${presetName}" saved.`);
+      const name = saveInput.value;
+      if (name) {
+        this.presetManager.savePreset(PresetManager.TYPES.PULSE, name, this);
+        this.updatePresetDropdown();
       }
     });
 
-    // DELETE BUTTON
+    // Delete preset button
+    const deleteController = folder
+      .add({ delete: () => {} }, "delete")
+      .name("Delete Preset");
+    deleteController.domElement.querySelector(".name").style.width =
+      "calc(100% - 80px)";
+
+    // Add delete input and button
+    const deleteContainer = document.createElement("div");
+    deleteContainer.style.display = "flex";
+    deleteContainer.style.alignItems = "center";
+    deleteContainer.style.width = "100%";
+
+    const deleteInput = document.createElement("input");
+    deleteInput.type = "text";
+    deleteInput.placeholder = "Preset name";
+    deleteInput.style.flex = "1";
+    deleteInput.style.marginRight = "5px";
+
     const deleteButton = document.createElement("button");
     deleteButton.textContent = "Delete";
-    deleteButton.style.flex = "1";
-    deleteButton.style.margin = "0 2px";
+    deleteButton.style.flex = "0 0 auto";
+
+    deleteContainer.appendChild(deleteInput);
+    deleteContainer.appendChild(deleteButton);
+
+    deleteController.domElement
+      .querySelector(".widget")
+      .appendChild(deleteContainer);
+
+    // Delete button click handler
     deleteButton.addEventListener("click", () => {
-      const current = presetSelect.value;
-      if (current === "None") {
-        alert("Cannot delete the None preset!");
-        return;
-      }
-      console.log("Attempting to delete pulse modulation preset:", current);
-      if (
-        confirm(`Delete preset "${current}"?`) &&
-        this.presetManager.deletePulsePreset(current)
-      ) {
-        this.updatePresetDropdown(presetSelect);
-        presetSelect.value = this.presetManager.getSelectedPulsePreset();
-        alert(`Pulse modulation preset "${current}" deleted.`);
+      const name = deleteInput.value;
+      if (name) {
+        this.presetManager.deletePreset(PresetManager.TYPES.PULSE, name);
+        this.updatePresetDropdown();
       }
     });
+  }
 
-    // Add buttons to the container
-    actionsContainer.appendChild(saveButton);
-    actionsContainer.appendChild(deleteButton);
-
-    // Get the Add Modulator button (first controller)
-    const addModulatorController = this.gui.controllers[0];
-    const addModulatorElement = addModulatorController.domElement;
-
-    // Remove the Add Modulator button from its current position
-    if (addModulatorElement && addModulatorElement.parentNode) {
-      addModulatorElement.parentNode.removeChild(addModulatorElement);
+  updatePresetDropdown(selectElement) {
+    // Find the dropdown if not provided
+    if (!selectElement) {
+      const presetFolder = this.gui.__folders["Presets"];
+      selectElement = presetFolder.__controllers.find(
+        (c) => c.property === "preset"
+      );
     }
 
-    // Insert preset controls at the top of the GUI
-    this.gui.domElement.insertBefore(
-      presetSelect,
-      this.gui.domElement.querySelector(".children")
-    );
+    if (selectElement) {
+      // Get the updated options
+      const options = this.presetManager.getPresetOptions(
+        PresetManager.TYPES.PULSE
+      );
 
-    this.gui.domElement.insertBefore(
-      actionsContainer,
-      this.gui.domElement.querySelector(".children")
-    );
-
-    // Add the Add Modulator button back after the preset controls
-    if (addModulatorElement) {
-      this.gui.domElement
-        .querySelector(".children")
-        .insertBefore(
-          addModulatorElement,
-          this.gui.domElement.querySelector(".children").firstChild
-        );
+      // Update the options
+      selectElement.options(options);
     }
+  }
 
-    // Remove any existing lil-gui preset controllers
-    if (this.presetController) {
-      this.presetController.destroy();
-      this.presetController = null;
-    }
+  initWithPresetManager(presetManager) {
+    this.presetManager = presetManager;
   }
 
   addPulseModulator() {
@@ -407,21 +414,23 @@ export class PulseModulationUi extends BaseUi {
   //#region Preset Management
 
   updatePresetDropdown(selectElement) {
-    const options = this.presetManager.getPulsePresetOptions();
-    console.log(
-      "Updating pulse modulation preset dropdown with options:",
-      options
-    );
+    // Find the dropdown if not provided
+    if (!selectElement) {
+      const presetFolder = this.gui.__folders["Presets"];
+      selectElement = presetFolder.__controllers.find(
+        (c) => c.property === "preset"
+      );
+    }
 
-    selectElement.innerHTML = "";
-    options.forEach((preset) => {
-      const option = document.createElement("option");
-      option.value = preset;
-      option.textContent = preset;
-      selectElement.appendChild(option);
-    });
+    if (selectElement) {
+      // Get the updated options
+      const options = this.presetManager.getPresetOptions(
+        PresetManager.TYPES.PULSE
+      );
 
-    selectElement.value = this.presetManager.getSelectedPulsePreset();
+      // Update the options
+      selectElement.options(options);
+    }
   }
 
   initWithPresetManager(presetManager) {

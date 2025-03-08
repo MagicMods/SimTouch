@@ -1,21 +1,27 @@
 import { BaseUi } from "./baseUi.js";
 import { Behaviors } from "../../simulation/behaviors/organicBehavior.js";
+import { PresetManager } from "../../presets/presetManager.js";
 
 class RightUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
     this.presetManager = null;
+    this.turbFolder = null;
+    this.voronoiFolder = null;
     this.initFolders();
     this.gui.title("Turbulences Fx");
   }
 
   setPresetManager(presetManager) {
     this.presetManager = presetManager;
+    this.initFolders();
     this.initTurbulencePresetControls();
     this.initVoronoiPresetControls(); // Add voronoi presets
   }
 
   async initFolders() {
+    this.turbFolder = this.createFolder("Turbulence");
+    this.voronoiFolder = this.createFolder("Voronoi");
     this.initTurbulenceControls();
     this.voronoiFolder = this.createFolder("Voronoi Field"); // Add voronoi folder
     this.organicFolder = this.createFolder("Organic Behavior");
@@ -102,108 +108,133 @@ class RightUi extends BaseUi {
   //#endregion
 
   initTurbulencePresetControls() {
-    // Find the correct container in dat.GUI's structure
-    const containerElement = this.gui.domElement.querySelector(".children");
-    if (!containerElement) {
-      console.error("Could not find container element in turbulence folder");
+    if (!this.turbFolder) {
+      console.error(
+        "Cannot initialize turbulence preset controls: turbFolder is not defined"
+      );
       return;
     }
 
-    // Create select dropdown
-    const presetSelect = document.createElement("select");
-    presetSelect.classList.add("preset-select");
-    presetSelect.style.padding = "4px";
+    const folder = this.turbFolder;
 
-    presetSelect.style.margin = "5px";
+    // Add preset selection dropdown
+    const presetOptions = this.presetManager.getPresetOptions(
+      PresetManager.TYPES.TURBULENCE
+    );
 
-    this.updateTurbPresetDropdown(presetSelect);
+    folder
+      .add({ preset: presetOptions[0] || "None" }, "preset", presetOptions)
+      .name("Presets")
+      .onChange((value) => {
+        if (value) {
+          this.presetManager.loadPreset(
+            PresetManager.TYPES.TURBULENCE,
+            value,
+            this.turbFolder
+          );
+        }
+      });
 
-    presetSelect.addEventListener("change", (e) => {
-      const value = e.target.value;
-      console.log("Turbulence preset selector changed to:", value);
-      this.presetManager.loadTurbPreset(value, this.gui);
-    });
+    // Save preset button
+    const saveController = folder
+      .add({ save: () => {} }, "save")
+      .name("Save Preset");
+    saveController.domElement.querySelector(".name").style.width =
+      "calc(100% - 80px)";
 
-    this.turbPresetControls = { selector: presetSelect };
+    // Add save input and button
+    const saveContainer = document.createElement("div");
+    saveContainer.style.display = "flex";
+    saveContainer.style.alignItems = "center";
+    saveContainer.style.width = "100%";
 
-    // Create action buttons container
-    const actionsContainer = document.createElement("div");
-    actionsContainer.style.display = "flex";
-    actionsContainer.style.justifyContent = "space-between";
-    actionsContainer.style.margin = "5px";
+    const saveInput = document.createElement("input");
+    saveInput.type = "text";
+    saveInput.placeholder = "Preset name";
+    saveInput.style.flex = "1";
+    saveInput.style.marginRight = "5px";
 
-    actionsContainer.style.flexWrap = "wrap"; // Allow wrapping if needed
-
-    // SAVE BUTTON
     const saveButton = document.createElement("button");
     saveButton.textContent = "Save";
-    saveButton.style.flex = "1";
-    saveButton.style.margin = "0 2px";
+    saveButton.style.flex = "0 0 auto";
+
+    saveContainer.appendChild(saveInput);
+    saveContainer.appendChild(saveButton);
+
+    saveController.domElement
+      .querySelector(".widget")
+      .appendChild(saveContainer);
+
+    // Save button click handler
     saveButton.addEventListener("click", () => {
-      const presetName = prompt("Enter turbulence preset name:");
-      if (this.presetManager.saveTurbPreset(presetName, this.gui)) {
-        this.updateTurbPresetDropdown(presetSelect);
-        presetSelect.value = this.presetManager.getSelectedTurbPreset();
-        alert(`Turbulence preset "${presetName}" saved.`);
+      const name = saveInput.value;
+      if (name) {
+        this.presetManager.savePreset(
+          PresetManager.TYPES.TURBULENCE,
+          name,
+          this.turbFolder
+        );
+        this.updateTurbPresetDropdown();
       }
     });
 
-    // DELETE BUTTON
+    // Delete preset button
+    const deleteController = folder
+      .add({ delete: () => {} }, "delete")
+      .name("Delete Preset");
+    deleteController.domElement.querySelector(".name").style.width =
+      "calc(100% - 80px)";
+
+    // Add delete input and button
+    const deleteContainer = document.createElement("div");
+    deleteContainer.style.display = "flex";
+    deleteContainer.style.alignItems = "center";
+    deleteContainer.style.width = "100%";
+
+    const deleteInput = document.createElement("input");
+    deleteInput.type = "text";
+    deleteInput.placeholder = "Preset name";
+    deleteInput.style.flex = "1";
+    deleteInput.style.marginRight = "5px";
+
     const deleteButton = document.createElement("button");
     deleteButton.textContent = "Delete";
-    deleteButton.style.flex = "1";
-    deleteButton.style.margin = "0 2px";
+    deleteButton.style.flex = "0 0 auto";
+
+    deleteContainer.appendChild(deleteInput);
+    deleteContainer.appendChild(deleteButton);
+
+    deleteController.domElement
+      .querySelector(".widget")
+      .appendChild(deleteContainer);
+
+    // Delete button click handler
     deleteButton.addEventListener("click", () => {
-      const current = this.presetManager.getSelectedTurbPreset();
-      console.log("Attempting to delete turbulence preset:", current);
-      if (this.presetManager.deleteTurbPreset(current)) {
-        this.updateTurbPresetDropdown(presetSelect);
-        presetSelect.value = this.presetManager.getSelectedTurbPreset();
-        alert(`Turbulence preset "${current}" deleted.`);
+      const name = deleteInput.value;
+      if (name) {
+        this.presetManager.deletePreset(PresetManager.TYPES.TURBULENCE, name);
+        this.updateTurbPresetDropdown();
       }
     });
-
-    // Add buttons to the container
-    actionsContainer.appendChild(saveButton);
-    actionsContainer.appendChild(deleteButton);
-
-    // Insert elements at the beginning of the folder
-    this.gui.domElement.insertBefore(
-      actionsContainer,
-      this.gui.domElement.querySelector(".children")
-    );
-
-    this.gui.domElement.insertBefore(
-      presetSelect,
-      this.gui.domElement.querySelector(".children")
-    );
-
-    // Remove old dat.GUI controls if they exist
-    const oldSaveControls = this.gui.controllers.filter(
-      (c) => c.property === "save"
-    );
-    const oldDeleteControls = this.gui.controllers.filter(
-      (c) => c.property === "delete"
-    );
-
-    // Remove old controls
-    oldSaveControls.forEach((c) => this.gui.remove(c));
-    oldDeleteControls.forEach((c) => this.gui.remove(c));
   }
 
   updateTurbPresetDropdown(selectElement) {
-    const options = this.presetManager.getTurbPresetOptions();
-    console.log("Updating turbulence preset dropdown with options:", options);
+    // Find the dropdown if not provided
+    if (!selectElement) {
+      selectElement = this.turbFolder?.__controllers?.find(
+        (c) => c.property === "preset"
+      );
+    }
 
-    selectElement.innerHTML = "";
-    options.forEach((preset) => {
-      const option = document.createElement("option");
-      option.value = preset;
-      option.textContent = preset;
-      selectElement.appendChild(option);
-    });
+    if (selectElement) {
+      // Get the updated options
+      const options = this.presetManager.getPresetOptions(
+        PresetManager.TYPES.TURBULENCE
+      );
 
-    selectElement.value = this.presetManager.getSelectedTurbPreset();
+      // Update the options
+      selectElement.options(options);
+    }
   }
 
   //#region Voronoi
@@ -265,124 +296,133 @@ class RightUi extends BaseUi {
    * Initialize the Voronoi preset controls
    */
   initVoronoiPresetControls() {
-    if (!this.presetManager) {
-      console.warn("No preset manager available for voronoi presets");
+    if (!this.voronoiFolder) {
+      console.error(
+        "Cannot initialize voronoi preset controls: voronoiFolder is not defined"
+      );
       return;
     }
 
-    // Create select dropdown
-    const presetSelect = document.createElement("select");
-    presetSelect.classList.add("preset-select");
-    presetSelect.style.padding = "4px";
-    presetSelect.style.margin = "5px 0";
-    presetSelect.style.width = "100%";
+    const folder = this.voronoiFolder;
 
-    this.updateVoronoiPresetDropdown(presetSelect);
+    // Add preset selection dropdown
+    const presetOptions = this.presetManager.getPresetOptions(
+      PresetManager.TYPES.VORONOI
+    );
 
-    presetSelect.addEventListener("change", (e) => {
-      const value = e.target.value;
-      console.log(`Voronoi preset selector changed to: ${value}`);
+    folder
+      .add({ preset: presetOptions[0] || "None" }, "preset", presetOptions)
+      .name("Presets")
+      .onChange((value) => {
+        if (value) {
+          this.presetManager.loadPreset(
+            PresetManager.TYPES.VORONOI,
+            value,
+            this.voronoiFolder
+          );
+        }
+      });
 
-      // Load the selected preset - regeneration happens in the PresetManager
-      this.presetManager.loadVoronoiPreset(value, this.voronoiFolder);
+    // Save preset button
+    const saveController = folder
+      .add({ save: () => {} }, "save")
+      .name("Save Preset");
+    saveController.domElement.querySelector(".name").style.width =
+      "calc(100% - 80px)";
 
-      // No need to duplicate the regeneration logic here since it's in the PresetManager
-    });
+    // Add save input and button
+    const saveContainer = document.createElement("div");
+    saveContainer.style.display = "flex";
+    saveContainer.style.alignItems = "center";
+    saveContainer.style.width = "100%";
 
-    this.voronoiPresetSelect = presetSelect;
+    const saveInput = document.createElement("input");
+    saveInput.type = "text";
+    saveInput.placeholder = "Preset name";
+    saveInput.style.flex = "1";
+    saveInput.style.marginRight = "5px";
 
-    // Create action buttons container
-    const actionsContainer = document.createElement("div");
-    actionsContainer.style.display = "flex";
-    actionsContainer.style.justifyContent = "space-between";
-    actionsContainer.style.margin = "5px 0";
-    actionsContainer.style.width = "100%";
-
-    // SAVE BUTTON
     const saveButton = document.createElement("button");
     saveButton.textContent = "Save";
-    saveButton.style.flex = "1";
-    saveButton.style.marginRight = "5px";
+    saveButton.style.flex = "0 0 auto";
+
+    saveContainer.appendChild(saveInput);
+    saveContainer.appendChild(saveButton);
+
+    saveController.domElement
+      .querySelector(".widget")
+      .appendChild(saveContainer);
+
+    // Save button click handler
     saveButton.addEventListener("click", () => {
-      const presetName = prompt("Enter voronoi preset name:");
-      if (presetName) {
-        console.log(`Saving voronoi preset: ${presetName}`);
-        if (
-          this.presetManager.saveVoronoiPreset(presetName, this.voronoiFolder)
-        ) {
-          this.updateVoronoiPresetDropdown(presetSelect);
-          presetSelect.value = presetName;
-          alert(`Voronoi preset "${presetName}" saved.`);
-        }
+      const name = saveInput.value;
+      if (name) {
+        this.presetManager.savePreset(
+          PresetManager.TYPES.VORONOI,
+          name,
+          this.voronoiFolder
+        );
+        this.updateVoronoiPresetDropdown();
       }
     });
 
-    // DELETE BUTTON
+    // Delete preset button
+    const deleteController = folder
+      .add({ delete: () => {} }, "delete")
+      .name("Delete Preset");
+    deleteController.domElement.querySelector(".name").style.width =
+      "calc(100% - 80px)";
+
+    // Add delete input and button
+    const deleteContainer = document.createElement("div");
+    deleteContainer.style.display = "flex";
+    deleteContainer.style.alignItems = "center";
+    deleteContainer.style.width = "100%";
+
+    const deleteInput = document.createElement("input");
+    deleteInput.type = "text";
+    deleteInput.placeholder = "Preset name";
+    deleteInput.style.flex = "1";
+    deleteInput.style.marginRight = "5px";
+
     const deleteButton = document.createElement("button");
     deleteButton.textContent = "Delete";
-    deleteButton.style.flex = "1";
+    deleteButton.style.flex = "0 0 auto";
+
+    deleteContainer.appendChild(deleteInput);
+    deleteContainer.appendChild(deleteButton);
+
+    deleteController.domElement
+      .querySelector(".widget")
+      .appendChild(deleteContainer);
+
+    // Delete button click handler
     deleteButton.addEventListener("click", () => {
-      const selectedPreset = presetSelect.value;
-      if (selectedPreset && !["None", "Default"].includes(selectedPreset)) {
-        const confirmed = confirm(`Delete voronoi preset "${selectedPreset}"?`);
-        if (confirmed) {
-          console.log(`Deleting voronoi preset: ${selectedPreset}`);
-          if (this.presetManager.deleteVoronoiPreset(selectedPreset)) {
-            this.updateVoronoiPresetDropdown(presetSelect);
-            alert(`Voronoi preset "${selectedPreset}" deleted.`);
-          }
-        }
-      } else {
-        alert("Cannot delete protected presets.");
+      const name = deleteInput.value;
+      if (name) {
+        this.presetManager.deletePreset(PresetManager.TYPES.VORONOI, name);
+        this.updateVoronoiPresetDropdown();
       }
     });
-
-    // Add buttons to the container
-    actionsContainer.appendChild(saveButton);
-    actionsContainer.appendChild(deleteButton);
-
-    // Insert controls at the top of the voronoi folder
-    if (this.voronoiFolder && this.voronoiFolder.domElement) {
-      const folderElement = this.voronoiFolder.domElement;
-
-      // Insert dropdown and buttons
-      folderElement.insertBefore(
-        actionsContainer,
-        folderElement.querySelector(".children")
-      );
-
-      folderElement.insertBefore(
-        presetSelect,
-        folderElement.querySelector(".children")
-      );
-    }
   }
 
-  /**
-   * Update the voronoi preset dropdown
-   */
   updateVoronoiPresetDropdown(selectElement) {
-    if (!selectElement || !this.presetManager) return;
+    // Find the dropdown if not provided
+    if (!selectElement) {
+      selectElement = this.voronoiFolder?.__controllers?.find(
+        (c) => c.property === "preset"
+      );
+    }
 
-    // Clear existing options
-    selectElement.innerHTML = "";
+    if (selectElement) {
+      // Get the updated options
+      const options = this.presetManager.getPresetOptions(
+        PresetManager.TYPES.VORONOI
+      );
 
-    // Get preset options
-    const options = this.presetManager.getVoronoiPresetOptions() || [];
-    console.log(`Updating voronoi preset dropdown with options:`, options);
-
-    // Add options to dropdown
-    options.forEach((preset) => {
-      const option = document.createElement("option");
-      option.value = preset;
-      option.textContent = preset;
-      selectElement.appendChild(option);
-    });
-
-    // Select current preset
-    const currentPreset =
-      this.presetManager.getSelectedVoronoiPreset() || "None";
-    selectElement.value = currentPreset;
+      // Update the options
+      selectElement.options(options);
+    }
   }
   //#endregion
 
