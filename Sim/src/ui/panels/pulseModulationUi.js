@@ -378,6 +378,21 @@ export class PulseModulationUi extends BaseUi {
         if (folderIndex > -1) {
           this.modulatorFolders.splice(folderIndex, 1);
         }
+
+        // If no modulators remain, set preset to "None" AND LOAD THE DEFAULT PRESET DATA
+        if (this.modulatorFolders.length === 0 && this.presetSelect) {
+          this.presetSelect.value = "None";
+
+          // Actually load the "None" preset data instead of just changing the dropdown
+          if (this.presetManager) {
+            // This will trigger the same behavior as selecting "None" from dropdown
+            this.presetManager.loadPreset(
+              PresetManager.TYPES.PULSE,
+              "None",
+              this
+            );
+          }
+        }
       },
     };
     folder.add(removeButton, "remove").name("Remove");
