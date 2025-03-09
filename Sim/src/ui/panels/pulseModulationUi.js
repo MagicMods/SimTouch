@@ -52,146 +52,20 @@ export class PulseModulationUi extends BaseUi {
   }
 
   initPresetControls(presetManager) {
-    if (!presetManager) {
-      console.warn("PresetManager not provided to PulseModulationUi");
-      return;
-    }
+    if (!presetManager) return;
 
     this.presetManager = presetManager;
 
     // Find the correct container in GUI structure
     const containerElement = this.gui.domElement.querySelector(".children");
-    if (!containerElement) {
-      console.error("Could not find container element in GUI");
-      return;
-    }
+    if (!containerElement) return;
 
-    // Create a flex container for all preset controls
-    const presetControlsContainer = document.createElement("div");
-    presetControlsContainer.classList.add("preset-controls-container");
-
-    // Create select dropdown
-    const presetSelect = document.createElement("select");
-    presetSelect.classList.add("preset-select");
-
-    // Store reference to the select element
-    this.presetSelect = presetSelect;
-
-    // Populate dropdown options
-    this.updatePresetDropdown(presetSelect);
-
-    // Set up change event handler
-    presetSelect.addEventListener("change", (e) => {
-      const value = e.target.value;
-      console.log("Pulse modulation preset selector changed to:", value);
-      this.presetManager.loadPreset(PresetManager.TYPES.PULSE, value, this);
-    });
-
-    // SAVE BUTTON
-    const saveButton = document.createElement("button");
-    saveButton.textContent = "Save";
-    saveButton.classList.add("preset-control-button");
-    saveButton.addEventListener("click", () => {
-      const presetName = prompt("Enter pulse modulation preset name:");
-      if (!presetName) return;
-
-      console.log(`Requesting save of pulse preset: ${presetName}`);
-
-      try {
-        // Get modulator data directly
-        const data = this.getModulatorsData();
-        console.log(
-          `Prepared data for saving with ${data.modulators.length} modulators`
-        );
-
-        // Explicitly validate before saving
-        if (!data || !Array.isArray(data.modulators)) {
-          alert("Failed to save: Invalid modulator data");
-          return;
-        }
-
-        // Try to save the preset
-        const success = this.presetManager.savePreset(
-          PresetManager.TYPES.PULSE,
-          presetName,
-          data // Pass data directly instead of 'this'
-        );
-
-        if (success) {
-          this.updatePresetDropdown(presetSelect);
-          alert(`Pulse modulation preset "${presetName}" saved.`);
-        } else {
-          alert("Failed to save preset.");
-        }
-      } catch (error) {
-        console.error("Error saving preset:", error);
-        alert(`Error saving preset: ${error.message}`);
-      }
-    });
-
-    // DELETE BUTTON
-    const deleteButton = document.createElement("button");
-    deleteButton.textContent = "Delete";
-    deleteButton.classList.add("preset-control-button");
-    deleteButton.addEventListener("click", () => {
-      const current = presetSelect.value;
-      if (current === "None") {
-        alert("Cannot delete the None preset!");
-        return;
-      }
-
-      if (
-        confirm(`Delete preset "${current}"?`) &&
-        this.presetManager.deletePreset(PresetManager.TYPES.PULSE, current)
-      ) {
-        this.updatePresetDropdown(presetSelect);
-        alert(`Pulse modulation preset "${current}" deleted.`);
-      }
-    });
-
-    // Add elements to the flex container
-    presetControlsContainer.appendChild(saveButton);
-    presetControlsContainer.appendChild(presetSelect);
-
-    presetControlsContainer.appendChild(deleteButton);
-
-    // Insert the flex container at the top of the parent container
-    containerElement.insertBefore(
-      presetControlsContainer,
-      containerElement.firstChild
+    // Create standardized preset controls
+    this.presetControl = this.presetManager.createPresetControls(
+      PresetManager.TYPES.PULSE,
+      containerElement,
+      { insertFirst: true }
     );
-  }
-
-  // Helper method to update dropdown options
-  updatePresetDropdown(selectElement) {
-    if (!this.presetManager || !selectElement) return;
-
-    const options = this.presetManager.getPresetOptions(
-      PresetManager.TYPES.PULSE
-    );
-    console.log(
-      "Updating pulse modulation preset dropdown with options:",
-      options
-    );
-
-    // Clear existing options
-    selectElement.innerHTML = "";
-
-    // Add all available presets
-    options.forEach((preset) => {
-      const option = document.createElement("option");
-      option.value = preset;
-      option.textContent = preset;
-      selectElement.appendChild(option);
-    });
-
-    // Set current selection
-    const currentPreset = this.presetManager.getSelectedPreset(
-      PresetManager.TYPES.PULSE
-    );
-    if (currentPreset) {
-      selectElement.value = currentPreset;
-    }
   }
 
   // Initialize with preset manager

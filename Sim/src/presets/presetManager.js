@@ -19,6 +19,9 @@ class PresetManager {
     this.pulseModUi = pulseModUi;
     this.inputUi = inputUi;
 
+    // Track created preset controls
+    this.presetControls = {};
+
     this.handlers = {
       [PresetManager.TYPES.MASTER]: new PresetMasterHandler(
         leftGui,
@@ -32,6 +35,159 @@ class PresetManager {
       [PresetManager.TYPES.MIC]: new PresetMicHandler(),
     };
   }
+  //#region UI
+  createPresetControls(presetType, parentElement, options = {}) {
+    if (!parentElement || !presetType || !this.handlers[presetType]) {
+      console.error(`Cannot create preset controls: Invalid parameters`);
+      return null;
+    }
+
+    const controlId = `${presetType}-${Date.now()}`;
+
+    // Create container
+    const container = document.createElement("div");
+    container.classList.add("preset-controls-container");
+    // container.style.display = "flex";
+    // container.style.alignItems = "center";
+    // container.style.marginTop = "8px";
+    // container.style.marginBottom = "8px";
+
+    // Add section title if specified
+    if (options.title) {
+      const title = document.createElement("div");
+      title.textContent = options.title;
+      title.style.marginBottom = "4px";
+      title.style.fontWeight = "bold";
+      parentElement.appendChild(title);
+    }
+
+    // Create buttons and select
+    const saveButton = this._createButton("Save", () =>
+      this._handleSave(presetType)
+    );
+    const deleteButton = this._createButton("Delete", () =>
+      this._handleDelete(presetType, presetSelect)
+    );
+
+    const presetSelect = document.createElement("select");
+    presetSelect.classList.add("preset-select");
+    presetSelect.style.flex = "2";
+    presetSelect.style.margin = "0 4px";
+    presetSelect.style.padding = "3px";
+
+    // Add change event handler
+    presetSelect.addEventListener("change", (e) => {
+      const value = e.target.value;
+      console.log(`Preset selector for ${presetType} changed to:`, value);
+      this.loadPreset(presetType, value);
+    });
+
+    // Update dropdown options
+    this._updatePresetDropdown(presetType, presetSelect);
+
+    // Add elements to container
+    container.appendChild(saveButton);
+    container.appendChild(presetSelect);
+    container.appendChild(deleteButton);
+
+    // Insert at specified position
+    if (options.insertFirst) {
+      parentElement.insertBefore(container, parentElement.firstChild);
+    } else {
+      parentElement.appendChild(container);
+    }
+
+    // Store control references
+    this.presetControls[controlId] = {
+      type: presetType,
+      container,
+      select: presetSelect,
+    };
+
+    return {
+      id: controlId,
+      container,
+      select: presetSelect,
+      saveButton,
+      deleteButton,
+      update: () => this._updatePresetDropdown(presetType, presetSelect),
+    };
+  }
+
+  _createButton(text, clickHandler) {
+    const button = document.createElement("button");
+    button.textContent = text;
+    button.style.flex = "1";
+    // button.style.padding = "3px 5px";
+    // button.style.margin = "0 2px";
+    button.addEventListener("click", clickHandler);
+    return button;
+  }
+
+  _handleSave(presetType) {
+    const presetName = prompt(`Enter ${presetType} preset name:`);
+    if (!presetName) return;
+
+    if (this.savePreset(presetType, presetName)) {
+      this._updateAllPresetDropdowns(presetType);
+      alert(`Preset "${presetName}" saved.`);
+    } else {
+      alert("Failed to save preset.");
+    }
+  }
+
+  _handleDelete(presetType, selectElement) {
+    const current = selectElement.value;
+
+    // Check if this is a protected preset
+    const handler = this.getHandler(presetType);
+    if (handler?.protectedPresets?.includes(current)) {
+      alert(`Cannot delete protected preset: ${current}`);
+      return;
+    }
+
+    if (
+      confirm(`Delete preset "${current}"?`) &&
+      this.deletePreset(presetType, current)
+    ) {
+      this._updateAllPresetDropdowns(presetType);
+      alert(`Preset "${current}" deleted.`);
+    }
+  }
+
+  _updatePresetDropdown(presetType, selectElement) {
+    if (!selectElement || !this.handlers[presetType]) return;
+
+    const options = this.getPresetOptions(presetType);
+
+    // Clear existing options
+    selectElement.innerHTML = "";
+
+    // Add all available presets
+    options.forEach((preset) => {
+      const option = document.createElement("option");
+      option.value = preset;
+      option.textContent = preset;
+      selectElement.appendChild(option);
+    });
+
+    // Set current selection
+    const currentPreset = this.getSelectedPreset(presetType);
+    if (currentPreset && options.includes(currentPreset)) {
+      selectElement.value = currentPreset;
+    }
+  }
+
+  _updateAllPresetDropdowns(presetType) {
+    Object.values(this.presetControls)
+      .filter((control) => control.type === presetType)
+      .forEach((control) => {
+        this._updatePresetDropdown(presetType, control.select);
+      });
+  }
+  //#endregion
+
+  //#region Get
 
   getHandler(type) {
     return this.handlers[type] || null;
@@ -42,9 +198,9 @@ class PresetManager {
       case PresetManager.TYPES.MASTER:
         return this.leftGui;
       case PresetManager.TYPES.TURBULENCE:
-        return this.rightGui;
+        return this.rightGui?.turbFolder;
       case PresetManager.TYPES.VORONOI:
-        return this.rightGui;
+        return this.rightGui?.voronoiFolder;
       case PresetManager.TYPES.PULSE:
         return this.pulseModUi;
       case PresetManager.TYPES.MIC:
@@ -53,6 +209,20 @@ class PresetManager {
         return null;
     }
   }
+
+  getPresetOptions(type) {
+    const handler = this.getHandler(type);
+    return handler ? handler.getPresetOptions() : [];
+  }
+
+  getSelectedPreset(type) {
+    const handler = this.getHandler(type);
+    return handler ? handler.getSelectedPreset() : null;
+  }
+
+  //#endregion
+
+  //#region Set
 
   setDebug(enabled) {
     Object.values(this.handlers).forEach((handler) => {
@@ -69,15 +239,9 @@ class PresetManager {
     }
   }
 
-  getPresetOptions(type) {
-    const handler = this.getHandler(type);
-    return handler ? handler.getPresetOptions() : [];
-  }
+  //#endregion
 
-  getSelectedPreset(type) {
-    const handler = this.getHandler(type);
-    return handler ? handler.getSelectedPreset() : null;
-  }
+  //#region Preset
 
   savePreset(type, presetName, uiComponent = null) {
     const handler = this.getHandler(type);
@@ -94,7 +258,14 @@ class PresetManager {
 
   deletePreset(type, presetName) {
     const handler = this.getHandler(type);
-    return handler ? handler.deletePreset(presetName) : false;
+    if (!handler) return false;
+
+    const result = handler.deletePreset(presetName);
+    if (result) {
+      // Update all preset dropdowns for this type
+      this._updateAllPresetDropdowns(type);
+    }
+    return result;
   }
 
   loadPreset(type, presetName, uiComponent = null) {
@@ -102,8 +273,16 @@ class PresetManager {
     if (!handler) return false;
 
     const component = uiComponent || this.getUIComponent(type);
-    return handler.applyDataToUI(presetName, component);
+    const result = handler.applyDataToUI(presetName, component);
+
+    if (result) {
+      // Update all preset dropdowns for this type to show the new selection
+      this._updateAllPresetDropdowns(type);
+    }
+
+    return result;
   }
+  //#endregion
 
   //#region Import/Export
   exportPresets() {

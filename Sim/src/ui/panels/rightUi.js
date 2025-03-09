@@ -20,8 +20,28 @@ class RightUi extends BaseUi {
 
   setPresetManager(presetManager) {
     this.presetManager = presetManager;
-    this.initPresetControls(this.turbFolder, PresetManager.TYPES.TURBULENCE);
-    this.initPresetControls(this.voronoiFolder, PresetManager.TYPES.VORONOI);
+
+    // Create standardized preset controls for turbulence
+    const turbulenceContainer =
+      this.turbFolder.domElement.querySelector(".children");
+    if (turbulenceContainer) {
+      this.presetControls.turbulence = this.presetManager.createPresetControls(
+        PresetManager.TYPES.TURBULENCE,
+        turbulenceContainer,
+        { insertFirst: true }
+      );
+    }
+
+    // Create standardized preset controls for voronoi
+    const voronoiContainer =
+      this.voronoiFolder.domElement.querySelector(".children");
+    if (voronoiContainer) {
+      this.presetControls.voronoi = this.presetManager.createPresetControls(
+        PresetManager.TYPES.VORONOI,
+        voronoiContainer,
+        { insertFirst: true }
+      );
+    }
   }
 
   async initFolders() {
@@ -127,138 +147,6 @@ class RightUi extends BaseUi {
   }
   //#endregion
 
-  initPresetControls(folder, presetType) {
-    if (!folder || !this.presetManager) {
-      console.error(`Cannot initialize preset controls for ${presetType}`);
-      return;
-    }
-
-    // Find the container element in the folder
-    const containerElement = folder.domElement.querySelector(".children");
-    if (!containerElement) {
-      console.error(`Could not find container element in ${presetType} folder`);
-      return;
-    }
-
-    // Create a flex container for preset controls (similar to pulseModulationUi)
-    const presetControlsContainer = document.createElement("div");
-    presetControlsContainer.classList.add("preset-controls-container");
-
-    // Create select dropdown
-    const presetSelect = document.createElement("select");
-    presetSelect.classList.add("preset-select");
-    presetSelect.style.flex = "2";
-
-    // Update the dropdown with available presets
-    this.updatePresetDropdown(presetSelect, presetType);
-
-    // Set up change event handler
-    presetSelect.addEventListener("change", (e) => {
-      const value = e.target.value;
-      console.log(`${presetType} preset selector changed to:`, value);
-      this.presetManager.loadPreset(presetType, value, folder);
-    });
-
-    // SAVE BUTTON
-    const saveButton = document.createElement("button");
-    saveButton.textContent = "Save";
-    saveButton.classList.add("preset-control-button");
-    saveButton.style.flex = "1";
-    saveButton.style.margin = "0 2px";
-    saveButton.addEventListener("click", () => {
-      const presetName = prompt(
-        `Enter ${presetType.toLowerCase()} preset name:`
-      );
-      if (!presetName) return;
-
-      try {
-        if (this.presetManager.savePreset(presetType, presetName, folder)) {
-          this.updatePresetDropdown(presetSelect, presetType);
-          presetSelect.value = this.presetManager.getSelectedPreset(presetType);
-          alert(`${presetType} preset "${presetName}" saved.`);
-        } else {
-          alert("Failed to save preset.");
-        }
-      } catch (error) {
-        console.error(`Error saving ${presetType} preset:`, error);
-        alert(`Error saving preset: ${error.message}`);
-      }
-    });
-
-    // DELETE BUTTON
-    const deleteButton = document.createElement("button");
-    deleteButton.textContent = "Delete";
-    deleteButton.classList.add("preset-control-button");
-    deleteButton.style.flex = "1";
-    deleteButton.style.margin = "0 2px";
-    deleteButton.addEventListener("click", () => {
-      const current = presetSelect.value;
-      if (current === "None") {
-        alert("Cannot delete the None preset!");
-        return;
-      }
-
-      if (
-        confirm(`Delete preset "${current}"?`) &&
-        this.presetManager.deletePreset(presetType, current)
-      ) {
-        this.updatePresetDropdown(presetSelect, presetType);
-        alert(`${presetType} preset "${current}" deleted.`);
-      }
-    });
-
-    // Add elements to the flex container
-    presetControlsContainer.appendChild(saveButton);
-    presetControlsContainer.appendChild(presetSelect);
-    presetControlsContainer.appendChild(deleteButton);
-
-    // Insert the flex container at the top of the folder
-    folder.domElement.insertBefore(
-      presetControlsContainer,
-      folder.domElement.querySelector(".children")
-    );
-
-    // Store reference to the controls
-    this.presetControls[presetType.toLowerCase()] = {
-      container: presetControlsContainer,
-      select: presetSelect,
-    };
-
-    // Remove old dat.GUI controls if they exist
-    const oldControls = folder.controllers.filter(
-      (c) => c.property === "save" || c.property === "delete"
-    );
-    oldControls.forEach((c) => folder.remove(c));
-  }
-
-  updatePresetDropdown(selectElement, presetType) {
-    if (!selectElement || !this.presetManager) return;
-
-    const options = this.presetManager.getPresetOptions(presetType);
-    console.log(
-      `Updating ${presetType} preset dropdown with options:`,
-      options
-    );
-
-    // Clear existing options
-    selectElement.innerHTML = "";
-
-    // Add all available presets
-    options.forEach((preset) => {
-      const option = document.createElement("option");
-      option.value = preset;
-      option.textContent = preset;
-      selectElement.appendChild(option);
-    });
-
-    // Set current selection
-    const currentPreset = this.presetManager.getSelectedPreset(presetType);
-    if (currentPreset) {
-      selectElement.value = currentPreset;
-    }
-  }
-
-  //#region Voronoi
   initVoronoiControls() {
     const voronoi = this.main.voronoiField;
     if (!voronoi) return;
@@ -294,7 +182,6 @@ class RightUi extends BaseUi {
       this.presetManager.setVoronoiField(this.main.voronoiField);
     }
   }
-  //#endregion
 
   //#region Organic Behavior
   initOrganicControls() {
