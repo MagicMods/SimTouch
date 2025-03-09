@@ -375,19 +375,16 @@ export class InputModulationUi extends BaseUi {
       if (!modulator.ui?.bar) return;
 
       try {
-        // IMPORTANT: Use the sensitivity-adjusted value (inputValue), not the raw value
-        // This value already incorporates both global and local sensitivity
-        const value =
-          modulator.inputValue !== undefined
-            ? modulator.inputValue
-            : modulator.value || 0;
+        // Use the lastOutputValue property which contains the smoothed output value
+        // This is what's actually affecting the target
+        const value = modulator.lastOutputValue || 0;
 
         // Update the bar
         const percent = Math.min(100, Math.max(0, value * 100));
         modulator.ui.bar.style.width = `${percent}%`;
         modulator.ui.bar.style.backgroundColor = this.getIntensityColor(value);
 
-        // Update label with sensitivity-adjusted percentage
+        // Update label with proper percentage
         if (modulator.ui.label) {
           const bandName =
             modulator.frequencyBand === "none"
