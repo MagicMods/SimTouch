@@ -2,38 +2,8 @@ import { PresetBaseHandler } from "./presetBaseHandler.js";
 
 export class PresetMasterHandler extends PresetBaseHandler {
   constructor(leftGui, rightGui, pulseModUi, inputModUi) {
-    // Create default preset without immediately calling save() which might fail
-    let defaultPresets = {
-      Default: {
-        left: {},
-        right: {},
-        pulseModulation: null,
-        micSettings: null,
-      },
-    };
-
-    // Only try to get GUI states if the objects have save methods
-    try {
-      if (leftGui && typeof leftGui.save === "function") {
-        defaultPresets.Default.left = leftGui.save();
-      } else {
-        console.warn(
-          "PresetMasterHandler: leftGui missing or has no save method"
-        );
-      }
-
-      if (rightGui && typeof rightGui.save === "function") {
-        defaultPresets.Default.right = rightGui.save();
-      } else {
-        console.warn(
-          "PresetMasterHandler: rightGui missing or has no save method"
-        );
-      }
-    } catch (error) {
-      console.error("Error creating default preset:", error);
-    }
-
-    super("savedPresets", defaultPresets);
+    // Call super first with empty default presets
+    super("savedPresets", {});
 
     // Store references to UI components
     this.leftGui = leftGui;
@@ -43,28 +13,82 @@ export class PresetMasterHandler extends PresetBaseHandler {
 
     this.protectedPresets = ["Default"];
     this.defaultPreset = "Default";
-    this.autoPlayEnabled = false;
+
+    // Now create the default preset data
+    const defaultPresetData = {
+      left: this.filterInputFolders(leftGui?.save?.() || {}),
+      right: rightGui?.save?.() || {},
+      pulseModulation: null,
+      micSettings: null,
+    };
+
+    // Only update the Default preset, preserve all other presets
+    if (!this.presets.Default) {
+      this.presets.Default = defaultPresetData;
+      // Only save to storage if we had to create the Default preset
+      this.saveToStorage();
+    }
   }
-  /**
-   * Extract data from all UI components
-   * @returns {Object} Combined UI data
-   */
+
+  // Helper method to filter input folders from data
+  filterInputFolders(data) {
+    if (!data || !data.folders) return data;
+
+    // Create deep copy to avoid modifying original
+    const filteredData = JSON.parse(JSON.stringify(data));
+
+    // List of input-related folders to remove
+    const inputFolders = [
+      "Inputs",
+      "Debug",
+      "Mouse Input",
+      "EMU Input",
+      "Touch Input",
+      "External Input",
+      "UDP Network",
+    ];
+    inputFolders.forEach((folder) => {
+      if (filteredData.folders[folder]) {
+        delete filteredData.folders[folder];
+      }
+    });
+
+    return filteredData;
+  }
+
   extractDataFromUI() {
     const data = {
       left: {},
       right: {},
       pulseModulation: null,
       micSettings: null,
+      _meta: {
+        timestamp: Date.now(),
+      },
     };
 
     try {
-      data.left = this.leftGui.save();
+      // Get data from left UI - save with input-related folders filtered out
+      if (this.leftGui && typeof this.leftGui.save === "function") {
+        const leftData = this.leftGui.save();
+        // Use the shared filtering method
+        data.left = this.filterInputFolders(leftData);
+        console.log("Extracted and filtered leftUi data");
+      }
 
-      data.right = this.rightGui.save();
+      // Rest of method remains unchanged
+      if (this.rightGui && typeof this.rightGui.save === "function") {
+        data.right = this.rightGui.save();
+        console.log("Extracted rightUi data");
+      }
 
-      data.pulseModulation = this.pulseModUi.getModulatorsData();
+      if (
+        this.pulseModUi &&
+        typeof this.pulseModUi.getModulatorsData === "function"
+      ) {
+        data.pulseModulation = this.pulseModUi.getModulatorsData();
+      }
 
-      // Extract mic settings data
       if (
         this.inputModUi &&
         typeof this.inputModUi.getModulatorsData === "function"
@@ -78,12 +102,34 @@ export class PresetMasterHandler extends PresetBaseHandler {
     return data;
   }
 
-  /**
-   * Apply preset data to the UI
-   * @param {string} presetName - Name of the preset to apply
-   * @returns {boolean} Success/failure
-   */
-  applyDataToUI(presetName) {
+  // New method to sanitize the left UI data
+  sanitizeLeftUiData(data) {
+    if (!data) return;
+
+    // Make sure folders exist
+    data.folders = data.folders || {};
+
+    // Check that Show folder exists
+    if (data.folders.Show) {
+      // Ensure show property exists on controllers
+      for (const key in data.folders.Show.controllers) {
+        if (
+          data.folders.Show.controllers[key] &&
+          !data.folders.Show.controllers[key].hasOwnProperty("show")
+        ) {
+          data.folders.Show.controllers[key].show = true;
+        }
+      }
+    }
+
+    // Check controllers
+    data.controllers = data.controllers || {};
+
+    return data;
+  }
+
+  // Improved data loading with sanitization
+  applyDataToUI(presetName, uiComponent = null) {
     try {
       const preset = this.presets[presetName];
       if (!preset) {
@@ -91,57 +137,49 @@ export class PresetMasterHandler extends PresetBaseHandler {
         return false;
       }
 
-      // Apply left and right GUI settings
-      if (
-        preset.left &&
-        this.leftGui &&
-        typeof this.leftGui.load === "function"
-      ) {
-        this.leftGui.load(preset.left);
-      }
+      // A safe load function that catches errors and sanitizes data
+      const safeLoad = (ui, data, name) => {
+        if (!ui || typeof ui.load !== "function") return false;
 
-      if (
-        preset.right &&
-        this.rightGui &&
-        typeof this.rightGui.load === "function"
-      ) {
-        this.rightGui.load(preset.right);
-      }
+        try {
+          console.log(`Loading ${name} data`);
+          ui.load(data);
+          return true;
+        } catch (err) {
+          console.error(`Error loading ${name} data:`, err);
+          return false;
+        }
+      };
 
-      // Clear existing modulators before applying new ones (if the method exists)
-      if (this.pulseModUi) {
-        // Check if the method exists before calling it
-        if (typeof this.pulseModUi.clearAllModulators === "function") {
-          this.pulseModUi.clearAllModulators();
-        } else if (typeof this.pulseModUi.clearModulators === "function") {
-          // Try alternative method name
-          this.pulseModUi.clearModulators();
-        } else {
-          console.warn(
-            "PulseModUi doesn't have clearAllModulators or clearModulators method"
-          );
+      // Apply left GUI settings safely
+      safeLoad(this.leftGui, preset.left, "leftUi");
+
+      // Apply right GUI settings safely
+      safeLoad(this.rightGui, preset.right, "rightUi");
+
+      // Apply pulse modulation
+      if (
+        preset.pulseModulation &&
+        this.pulseModUi &&
+        typeof this.pulseModUi.loadPresetData === "function"
+      ) {
+        try {
+          this.pulseModUi.loadPresetData(preset.pulseModulation);
+        } catch (err) {
+          console.error("Error loading pulse modulation:", err);
         }
       }
 
-      // Apply pulse modulation settings if they exist
-      if (preset.pulseModulation && this.pulseModUi) {
-        if (typeof this.pulseModUi.loadFromData === "function") {
-          this.pulseModUi.loadFromData(preset.pulseModulation);
-        } else if (typeof this.pulseModUi.loadModulators === "function") {
-          this.pulseModUi.loadModulators(preset.pulseModulation);
-        } else {
-          console.warn(
-            "PulseModUi doesn't have a method to load modulator data"
-          );
-        }
-      }
-
-      // Apply mic settings if they exist
-      if (preset.micSettings && this.inputModUi) {
-        if (typeof this.inputModUi.loadMicSettings === "function") {
-          this.inputModUi.loadMicSettings(preset.micSettings);
-        } else {
-          console.warn("InputUi doesn't have loadMicSettings method");
+      // Apply mic settings
+      if (
+        preset.micSettings &&
+        this.inputModUi &&
+        typeof this.inputModUi.loadPresetData === "function"
+      ) {
+        try {
+          this.inputModUi.loadPresetData(preset.micSettings);
+        } catch (err) {
+          console.error("Error loading mic settings:", err);
         }
       }
 
@@ -153,52 +191,53 @@ export class PresetMasterHandler extends PresetBaseHandler {
     }
   }
 
-  // API compatibility methods with auto-play management
-  setAutoPlay(enabled) {
-    this.autoPlayEnabled = enabled;
-
-    // Update current preset to remember auto-play setting
-    const currentPreset = this.selectedPreset;
-    if (currentPreset && this.presets[currentPreset]) {
-      this.presets[currentPreset].autoPlay = enabled;
-      this.saveToStorage();
-    }
-  }
-
-  isAutoPlay() {
-    return this.autoPlayEnabled;
-  }
-
-  savePreset(presetName) {
-    const data = this.extractDataFromUI();
-    if (!data) return false;
-
-    // If mic settings are null but the same preset name exists in mic presets, use those
-    if (data.micSettings === null && this.inputModUi) {
-      try {
-        // First try using existing methods
-        if (typeof this.inputModUi.getCurrentMicSettings === "function") {
-          data.micSettings = this.inputModUi.getCurrentMicSettings();
-        } else if (typeof this.inputModUi.getActiveMicSettings === "function") {
-          data.micSettings = this.inputModUi.getActiveMicSettings();
-        }
-
-        // If still null AND if the input UI has access to micPresets, try to find one with matching name
-        if (
-          data.micSettings === null &&
-          typeof this.inputModUi.getMicPresetByName === "function"
-        ) {
-          data.micSettings = this.inputModUi.getMicPresetByName(presetName);
-        }
-      } catch (error) {
-        console.warn(
-          `Error retrieving mic settings for preset ${presetName}:`,
-          error
-        );
+  // Add import/export methods
+  importPreset(presetName, data) {
+    try {
+      if (!data || typeof data !== "object") {
+        console.error("Invalid import data format");
+        return false;
       }
+
+      // Add metadata if not present
+      if (!data._meta) {
+        data._meta = {
+          timestamp: Date.now(),
+          imported: true,
+        };
+      }
+
+      // Sanitize the data
+      if (data.left) {
+        this.sanitizeLeftUiData(data.left);
+      }
+
+      // Save the imported data as a preset
+      return this.savePreset(presetName, data);
+    } catch (error) {
+      console.error("Error importing preset:", error);
+      return false;
+    }
+  }
+
+  exportPreset(presetName) {
+    const preset = this.presets[presetName];
+    if (!preset) {
+      console.error(`Preset "${presetName}" not found for export`);
+      return null;
     }
 
-    return super.savePreset(presetName, data, this.protectedPresets);
+    // Return a deep copy to prevent modification
+    return JSON.parse(JSON.stringify(preset));
+  }
+
+  savePreset(presetName, data = null, protectedList = this.protectedPresets) {
+    // Extract data if not provided (main use case)
+    const presetData = data || this.extractDataFromUI();
+    if (!presetData) return false;
+
+    console.log(`Saving master preset ${presetName}`);
+    return super.savePreset(presetName, presetData, protectedList);
   }
 
   loadPreset(presetName) {
