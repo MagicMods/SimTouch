@@ -36,6 +36,8 @@ export class PulseModulationUi extends BaseUi {
         }
       });
 
+    // this.gui.push(this);
+
     // Add button to add a new modulator
     const addButton = { add: () => this.addPulseModulator() };
     this.gui.add(addButton, "add").name("Add Modulator");
@@ -151,35 +153,14 @@ export class PulseModulationUi extends BaseUi {
     actionsContainer.appendChild(saveButton);
     actionsContainer.appendChild(deleteButton);
 
-    // Get the Add Modulator button (second controller after master frequency)
-    const addModulatorController = this.gui.controllers[1];
-    const addModulatorElement = addModulatorController?.domElement;
+    // CHANGED: Insert preset controls INSIDE the container element (not before it)
+    // This matches the InputModulationUi behavior
+    containerElement.insertBefore(presetSelect, containerElement.firstChild);
+    containerElement.insertBefore(actionsContainer, presetSelect.nextSibling);
 
-    // Remove the Add Modulator button from its current position
-    if (addModulatorElement && addModulatorElement.parentNode) {
-      addModulatorElement.parentNode.removeChild(addModulatorElement);
-    }
-
-    // Insert preset controls at the top of the GUI
-    this.gui.domElement.insertBefore(
-      presetSelect,
-      this.gui.domElement.querySelector(".children")
-    );
-
-    this.gui.domElement.insertBefore(
-      actionsContainer,
-      this.gui.domElement.querySelector(".children")
-    );
-
-    // Add the Add Modulator button back after the preset controls
-    if (addModulatorElement) {
-      this.gui.domElement
-        .querySelector(".children")
-        .insertBefore(
-          addModulatorElement,
-          this.gui.domElement.querySelector(".children").firstChild
-        );
-    }
+    // Add the Add Modulator button at the appropriate position
+    // Note: We're not removing and re-inserting it, just letting it stay in its normal position
+    // This simplifies the code and matches InputModulationUi's approach
   }
 
   // Helper method to update dropdown options
@@ -231,8 +212,7 @@ export class PulseModulationUi extends BaseUi {
 
   //#endregion
 
-  //#region Modulator Management
-
+  //#region Modulator
   // Set a modulator manager
   setModulatorManager(manager) {
     this.modulatorManager = manager;
@@ -400,6 +380,41 @@ export class PulseModulationUi extends BaseUi {
     return modulator;
   }
 
+  getModulatorsData() {
+    const modulators = [];
+
+    // Extract data from each modulator folder in the UI
+    this.modulatorFolders.forEach((folder) => {
+      const modData = {
+        type: "pulse",
+        enabled: false,
+        frequency: 1.0,
+        amplitude: 1.0,
+        phase: 0,
+        waveform: "sine",
+        min: 0,
+        max: 1,
+        targetName: "None",
+      };
+
+      // Extract values from controllers
+      folder.controllers.forEach((controller) => {
+        if (controller?.property) {
+          const prop = controller.property;
+          if (controller.getValue) {
+            modData[prop] = controller.getValue();
+          } else if (controller.object && prop in controller.object) {
+            modData[prop] = controller.object[prop];
+          }
+        }
+      });
+
+      modulators.push(modData);
+    });
+
+    return { modulators };
+  }
+
   clearAllModulators() {
     console.log("PulseModulationUI: Clearing all modulators");
 
@@ -450,7 +465,7 @@ export class PulseModulationUi extends BaseUi {
 
   //#endregion
 
-  //#region Update and State Management
+  //#region Update
 
   update() {
     if (!this.modulatorManager) return;
@@ -560,39 +575,5 @@ export class PulseModulationUi extends BaseUi {
     return true;
   }
 
-  getModulatorsData() {
-    const modulators = [];
-
-    // Extract data from each modulator folder in the UI
-    this.modulatorFolders.forEach((folder) => {
-      const modData = {
-        type: "pulse",
-        enabled: false,
-        frequency: 1.0,
-        amplitude: 1.0,
-        phase: 0,
-        waveform: "sine",
-        min: 0,
-        max: 1,
-        targetName: "None",
-      };
-
-      // Extract values from controllers
-      folder.controllers.forEach((controller) => {
-        if (controller?.property) {
-          const prop = controller.property;
-          if (controller.getValue) {
-            modData[prop] = controller.getValue();
-          } else if (controller.object && prop in controller.object) {
-            modData[prop] = controller.object[prop];
-          }
-        }
-      });
-
-      modulators.push(modData);
-    });
-
-    return { modulators };
-  }
   //#endregion
 }
