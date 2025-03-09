@@ -21,7 +21,6 @@ class PresetManager {
     this.pulseModUi = pulseModUi;
     this.inputUi = inputUi;
 
-    // Initialize handlers (no need for require since we're importing at the top)
     this.handlers = {
       [PresetManager.TYPES.MASTER]: new PresetMasterHandler(
         leftGui,
@@ -125,7 +124,7 @@ class PresetManager {
   }
 
   // Add these methods to the PresetManager class
-
+  //#region Import/Export
   exportPresets() {
     try {
       // Get the Master handler since that's what we're exporting
@@ -215,6 +214,7 @@ class PresetManager {
       return 0;
     }
   }
+  //#endregion
 }
 
 export { PresetManager };
