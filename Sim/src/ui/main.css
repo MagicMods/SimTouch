@@ -64,7 +64,6 @@ canvas {
     transform: translateX(-50%); /* Center at position point */
 }
 
-/* Keep support for other positions */
 .gui-container-left-bottom {
     position: absolute;
     top: 400px;
@@ -90,17 +89,8 @@ canvas {
     position: absolute;
     bottom: 0;
     right: 0;
-    /* width: 200px; */
 }
-
-/* .stats-innercontainer {
-    position: absolute;
-    bottom: 0;
-    right: 0;
-    width: 200px;
-} */
-
-
+ 
 /* Preset save dialog */
 .preset-overlay {
     position: fixed;
@@ -152,9 +142,9 @@ canvas {
 }
 
 .preset-select {
-    width: calc(100% - 8px); /* Adjust width to account for margins */
-    /* padding: 6px; */
-    margin:5px;
+    width: calc(100% - 8px); 
+    padding: 4px; 
+    margin: 5px;
     border: 1px solid #242424;
     border-radius: 4px;
     background: #3b3b3b;
@@ -162,6 +152,31 @@ canvas {
     font-size: 10px;
     color: white;
 }
+
+/* Common UI component styles */
+.preset-control-button {
+    background: #3a3a3a;
+    border: 1px solid #242424;
+    color: white;
+    /* padding: 6px 12px; */
+    border-radius: 4px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.preset-control-button:hover {
+    background: #4a4a4a;
+}
+
+/* Preset control container */
+.preset-controls-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 5px;
+    gap: 5px;
+}
+
 
 /* Notification message */
 .notification {

@@ -37,7 +37,7 @@ export class PulseModulationUi extends BaseUi {
       });
 
     // Add margin to master frequency controller
-    masterFreqController.domElement.style.marginTop = "15px";
+    masterFreqController.domElement.style.marginTop = "10px";
 
     // this.gui.push(this);
 
@@ -51,7 +51,6 @@ export class PulseModulationUi extends BaseUi {
     addModulatorController.domElement.style.marginTop = "15px";
   }
 
-  // Initialize with custom HTML preset controls - matching the original
   initPresetControls(presetManager) {
     if (!presetManager) {
       console.warn("PresetManager not provided to PulseModulationUi");
@@ -67,11 +66,13 @@ export class PulseModulationUi extends BaseUi {
       return;
     }
 
+    // Create a flex container for all preset controls
+    const presetControlsContainer = document.createElement("div");
+    presetControlsContainer.classList.add("preset-controls-container");
+
     // Create select dropdown
     const presetSelect = document.createElement("select");
     presetSelect.classList.add("preset-select");
-    presetSelect.style.padding = "4px";
-    presetSelect.style.margin = "5px";
 
     // Store reference to the select element
     this.presetSelect = presetSelect;
@@ -86,18 +87,10 @@ export class PulseModulationUi extends BaseUi {
       this.presetManager.loadPreset(PresetManager.TYPES.PULSE, value, this);
     });
 
-    // Create action buttons container
-    const actionsContainer = document.createElement("div");
-    actionsContainer.style.display = "flex";
-    actionsContainer.style.justifyContent = "space-between";
-    actionsContainer.style.margin = "5px";
-    actionsContainer.style.flexWrap = "wrap"; // Allow wrapping if needed
-
     // SAVE BUTTON
     const saveButton = document.createElement("button");
     saveButton.textContent = "Save";
-    saveButton.style.flex = "1";
-    saveButton.style.margin = "0 2px";
+    saveButton.classList.add("preset-control-button");
     saveButton.addEventListener("click", () => {
       const presetName = prompt("Enter pulse modulation preset name:");
       if (!presetName) return;
@@ -139,8 +132,7 @@ export class PulseModulationUi extends BaseUi {
     // DELETE BUTTON
     const deleteButton = document.createElement("button");
     deleteButton.textContent = "Delete";
-    deleteButton.style.flex = "1";
-    deleteButton.style.margin = "0 2px";
+    deleteButton.classList.add("preset-control-button");
     deleteButton.addEventListener("click", () => {
       const current = presetSelect.value;
       if (current === "None") {
@@ -157,18 +149,17 @@ export class PulseModulationUi extends BaseUi {
       }
     });
 
-    // Add buttons to the container
-    actionsContainer.appendChild(saveButton);
-    actionsContainer.appendChild(deleteButton);
+    // Add elements to the flex container
+    presetControlsContainer.appendChild(saveButton);
+    presetControlsContainer.appendChild(presetSelect);
 
-    // CHANGED: Insert preset controls INSIDE the container element (not before it)
-    // This matches the InputModulationUi behavior
-    containerElement.insertBefore(presetSelect, containerElement.firstChild);
-    containerElement.insertBefore(actionsContainer, presetSelect.nextSibling);
+    presetControlsContainer.appendChild(deleteButton);
 
-    // Add the Add Modulator button at the appropriate position
-    // Note: We're not removing and re-inserting it, just letting it stay in its normal position
-    // This simplifies the code and matches InputModulationUi's approach
+    // Insert the flex container at the top of the parent container
+    containerElement.insertBefore(
+      presetControlsContainer,
+      containerElement.firstChild
+    );
   }
 
   // Helper method to update dropdown options

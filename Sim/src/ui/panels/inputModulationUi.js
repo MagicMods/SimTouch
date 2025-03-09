@@ -40,7 +40,6 @@ export class InputModulationUi extends BaseUi {
     console.log("InputModulationUi initializing with UI panels");
     this.leftUi = leftUi;
     this.rightUi = rightUi;
-    console.log("InputModulationUi initialized with UI panels");
   }
 
   initMicInputControls() {
@@ -63,7 +62,7 @@ export class InputModulationUi extends BaseUi {
           externalInput.setMicSensitivity(value);
         }
       });
-    this.micSensitivityController.domElement.style.marginTop = "15px";
+    this.micSensitivityController.domElement.style.marginTop = "10px";
     this.micControllers.push(this.micSensitivityController);
 
     // Global smoothing control
@@ -91,7 +90,7 @@ export class InputModulationUi extends BaseUi {
     const addModulatorController = this.gui
       .add(addModulatorControl, "add")
       .name("Add Modulator");
-    addModulatorController.domElement.style.marginTop = "15px";
+    addModulatorController.domElement.style.marginTop = "10px";
     this.micControllers.push(addModulatorController);
   }
 
@@ -111,11 +110,13 @@ export class InputModulationUi extends BaseUi {
       return;
     }
 
+    // Create a flex container for all preset controls (like in pulseModulationUi)
+    const presetControlsContainer = document.createElement("div");
+    presetControlsContainer.classList.add("preset-controls-container");
+
     // Create select dropdown
     const presetSelect = document.createElement("select");
     presetSelect.classList.add("preset-select");
-    presetSelect.style.padding = "4px";
-    presetSelect.style.margin = "5px";
 
     // Store reference to the select element
     this.presetSelect = presetSelect;
@@ -130,18 +131,10 @@ export class InputModulationUi extends BaseUi {
       this.presetManager.loadPreset(PresetManager.TYPES.MIC, value, this);
     });
 
-    // Create action buttons container
-    const actionsContainer = document.createElement("div");
-    actionsContainer.style.display = "flex";
-    actionsContainer.style.justifyContent = "space-between";
-    actionsContainer.style.margin = "5px";
-    actionsContainer.style.flexWrap = "wrap"; // Allow wrapping if needed
-
     // SAVE BUTTON
     const saveButton = document.createElement("button");
     saveButton.textContent = "Save";
-    saveButton.style.flex = "1";
-    saveButton.style.margin = "0 2px";
+    saveButton.classList.add("preset-control-button");
     saveButton.addEventListener("click", () => {
       const presetName = prompt("Enter input modulation preset name:");
       if (!presetName) return;
@@ -175,8 +168,7 @@ export class InputModulationUi extends BaseUi {
     // DELETE BUTTON
     const deleteButton = document.createElement("button");
     deleteButton.textContent = "Delete";
-    deleteButton.style.flex = "1";
-    deleteButton.style.margin = "0 2px";
+    deleteButton.classList.add("preset-control-button");
     deleteButton.addEventListener("click", () => {
       const current = presetSelect.value;
       if (current === "None") {
@@ -193,13 +185,16 @@ export class InputModulationUi extends BaseUi {
       }
     });
 
-    // Add buttons to the container
-    actionsContainer.appendChild(saveButton);
-    actionsContainer.appendChild(deleteButton);
+    // Add elements to the flex container
+    presetControlsContainer.appendChild(saveButton);
+    presetControlsContainer.appendChild(presetSelect);
+    presetControlsContainer.appendChild(deleteButton);
 
-    // Insert preset controls at the top of the GUI
-    containerElement.insertBefore(presetSelect, containerElement.firstChild);
-    containerElement.insertBefore(actionsContainer, presetSelect.nextSibling);
+    // Insert the flex container at the top of the parent container
+    containerElement.insertBefore(
+      presetControlsContainer,
+      containerElement.firstChild
+    );
   }
 
   //#endregion
