@@ -35,9 +35,10 @@ export class PresetUi extends BaseUi {
     // Create preset dropdown
     const presetSelect = document.createElement("select");
     presetSelect.classList = "preset-select";
-    presetSelect.style.padding = "4px";
+    presetSelect.style.padding = "5px";
     presetSelect.style.width = "100%";
-    presetSelect.style.marginBottom = "8px";
+
+    presetSelect.style.margin = "5px 0";
 
     this.updatePresetDropdown(presetSelect);
 
@@ -53,7 +54,7 @@ export class PresetUi extends BaseUi {
     const actionsContainer = document.createElement("div");
     actionsContainer.style.display = "flex";
     actionsContainer.style.justifyContent = "space-between";
-    actionsContainer.style.margin = "5px 0";
+    actionsContainer.style.margin = "5px";
     actionsContainer.style.flexWrap = "wrap";
 
     const saveButton = document.createElement("button");
