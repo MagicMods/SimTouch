@@ -176,12 +176,32 @@ export class InputModulationUi extends BaseUi {
     saveButton.style.margin = "0 2px";
     saveButton.addEventListener("click", () => {
       const presetName = prompt("Enter input modulation preset name:");
-      if (
-        presetName &&
-        this.presetManager.savePreset(PresetManager.TYPES.MIC, presetName, this)
-      ) {
-        this.updatePresetDropdown(presetSelect);
-        alert(`Input modulation preset "${presetName}" saved.`);
+      if (!presetName) return;
+
+      try {
+        // Extract data directly instead of passing 'this'
+        const data = this.getModulatorsData();
+
+        console.log(
+          `Prepared input modulation data with ${data.modulators.length} modulators`
+        );
+
+        // Pass the data object rather than 'this'
+        if (
+          this.presetManager.savePreset(
+            PresetManager.TYPES.MIC,
+            presetName,
+            data
+          )
+        ) {
+          this.updatePresetDropdown(presetSelect);
+          alert(`Input modulation preset "${presetName}" saved.`);
+        } else {
+          alert("Failed to save preset.");
+        }
+      } catch (error) {
+        console.error("Error saving preset:", error);
+        alert(`Error saving preset: ${error.message}`);
       }
     });
 
