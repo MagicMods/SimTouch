@@ -127,11 +127,6 @@ class RightUi extends BaseUi {
   }
   //#endregion
 
-  /**
-   * Create consistent preset controls UI for any folder and preset type
-   * @param {Object} folder - The dat.GUI folder to add controls to
-   * @param {String} presetType - The preset type constant from PresetManager.TYPES
-   */
   initPresetControls(folder, presetType) {
     if (!folder || !this.presetManager) {
       console.error(`Cannot initialize preset controls for ${presetType}`);
@@ -148,16 +143,10 @@ class RightUi extends BaseUi {
     // Create a flex container for preset controls (similar to pulseModulationUi)
     const presetControlsContainer = document.createElement("div");
     presetControlsContainer.classList.add("preset-controls-container");
-    presetControlsContainer.style.display = "flex";
-    presetControlsContainer.style.justifyContent = "space-between";
-    presetControlsContainer.style.margin = "5px";
-    presetControlsContainer.style.width = "100%";
 
     // Create select dropdown
     const presetSelect = document.createElement("select");
     presetSelect.classList.add("preset-select");
-    presetSelect.style.padding = "4px";
-    presetSelect.style.margin = "0 2px";
     presetSelect.style.flex = "2";
 
     // Update the dropdown with available presets
@@ -242,11 +231,6 @@ class RightUi extends BaseUi {
     oldControls.forEach((c) => folder.remove(c));
   }
 
-  /**
-   * Update dropdown with preset options for a specific type
-   * @param {HTMLSelectElement} selectElement
-   * @param {String} presetType
-   */
   updatePresetDropdown(selectElement, presetType) {
     if (!selectElement || !this.presetManager) return;
 
@@ -554,10 +538,6 @@ class RightUi extends BaseUi {
   }
   //#endregion
 
-  /**
-   * Get controllers that can be targeted by pulse modulators
-   * @returns {Object} Map of target names to controllers
-   */
   getControlTargets() {
     const targets = {};
 

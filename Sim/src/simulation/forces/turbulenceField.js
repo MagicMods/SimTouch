@@ -174,6 +174,8 @@ class TurbulenceField {
   update(dt) {
     this.time += dt;
 
+    if (this.strength <= 0) return;
+
     // Apply rotation based on rotation speed
     if (this.rotationSpeed > 0) {
       this.rotation += this.rotationSpeed * dt;

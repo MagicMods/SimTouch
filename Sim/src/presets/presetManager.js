@@ -74,6 +74,11 @@ class PresetManager {
     return handler ? handler.getPresetOptions() : [];
   }
 
+  getSelectedPreset(type) {
+    const handler = this.getHandler(type);
+    return handler ? handler.getSelectedPreset() : null;
+  }
+
   savePreset(type, presetName, uiComponent = null) {
     const handler = this.getHandler(type);
     if (!handler) return false;
@@ -97,19 +102,10 @@ class PresetManager {
     if (!handler) return false;
 
     const component = uiComponent || this.getUIComponent(type);
-
-    if (type === PresetManager.TYPES.MASTER) {
-      return handler.applyDataToUI(presetName);
-    } else {
-      return handler.applyDataToUI(presetName, component);
-    }
+    return handler.applyDataToUI(presetName, component);
   }
 
-  getSelectedPreset(type) {
-    const handler = this.getHandler(type);
-    return handler ? handler.getSelectedPreset() : null;
-  }
-
+  //#region Import/Export
   exportPresets() {
     try {
       const masterHandler = this.getHandler(PresetManager.TYPES.MASTER);
@@ -189,6 +185,7 @@ class PresetManager {
       return 0;
     }
   }
+  //#endregion
 }
 
 export { PresetManager };

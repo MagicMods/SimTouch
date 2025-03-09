@@ -15,88 +15,108 @@ export class PresetMicHandler extends PresetBaseHandler {
 
     this.protectedPresets = ["None"];
     this.defaultPreset = "None";
+    this.debug = false;
   }
 
-  // Fix the extractDataFromUI method to properly get modulator data
+  // Standard extractDataFromUI
   extractDataFromUI(inputUi) {
     if (!inputUi) return null;
 
     try {
+      if (this.debug) console.log("Extracting mic data from UI");
+
       // Get modulators data from UI directly
       const modulatorData = inputUi.getModulatorsData();
+      const micEnabled = inputUi.isMicEnabled ? inputUi.isMicEnabled() : false;
+      const sensitivity = inputUi.micSensitivity || 1.0;
 
       // Create a clean, serializable preset structure
-      const cleanPreset = {
+      return {
         micSettings: {
-          enabled: true,
-          modulators: modulatorData.modulators.map((mod) => ({
-            // Only include primitive values that can be safely serialized
-            type: "input",
-            inputSource: mod.inputSource || "mic",
-            enabled: mod.sensitivity > 0,
-            targetName: mod.targetName || "None",
-            frequencyBand: mod.frequencyBand || "none",
-            sensitivity: Number(mod.sensitivity) || 0,
-            smoothing: Number(mod.smoothing) || 0.7,
-            min: Number(mod.min) || 0,
-            max: Number(mod.max) || 1,
-          })),
+          enabled: micEnabled,
+          sensitivity: sensitivity,
+          modulators: modulatorData || [],
         },
       };
-
-      console.log("Clean preset data for saving:", cleanPreset);
-      return cleanPreset;
     } catch (error) {
-      console.error("Error extracting input modulation data:", error);
-      return { micSettings: { enabled: true, modulators: [] } };
+      console.error("Error extracting mic data:", error);
+      return null;
     }
   }
 
-  // Fix the applyDataToUI method to handle mic loading correctly
+  // Standard applyDataToUI
   applyDataToUI(presetName, inputUi) {
+    if (this.debug) console.log(`Applying mic preset: ${presetName}`);
+
+    if (!inputUi) {
+      console.warn("No input UI component provided for loading");
+      return false;
+    }
+
     const preset = this.presets[presetName];
-    if (!preset) return false;
+    if (!preset || !preset.micSettings) {
+      console.warn(`Invalid preset or missing mic settings: ${presetName}`);
+      return false;
+    }
 
     try {
-      console.log(`Applying mic preset: ${presetName}`);
-      console.log(`Mic preset data:`, JSON.stringify(preset));
-
-      // Handle different preset formats gracefully
-      let modulators = [];
-
-      // Format 1: Direct modulators array (new format)
-      if (Array.isArray(preset.modulators)) {
-        modulators = preset.modulators;
+      // Clear existing modulators first
+      if (typeof inputUi.clearAllModulators === "function") {
+        inputUi.clearAllModulators();
       }
-      // Format 2: Nested in micSettings (old format)
-      else if (
-        preset.micSettings &&
-        Array.isArray(preset.micSettings.modulators)
+
+      // Enable/disable mic input based on preset
+      if (typeof inputUi.enableDisableAudioInput === "function") {
+        inputUi.enableDisableAudioInput(preset.micSettings.enabled);
+      }
+
+      // Set sensitivity if available
+      if (
+        preset.micSettings.sensitivity !== undefined &&
+        typeof inputUi.setMicSensitivity === "function"
       ) {
-        modulators = preset.micSettings.modulators;
-      }
-      // Fallback: Empty preset
-      else {
-        console.warn(`Unknown preset format in ${presetName}`);
-        return false;
+        inputUi.setMicSensitivity(preset.micSettings.sensitivity);
       }
 
-      // Create normalized preset format for loading
-      const normalizedPreset = { modulators };
+      // Load modulators from preset
+      if (
+        preset.micSettings.modulators &&
+        preset.micSettings.modulators.length > 0 &&
+        typeof inputUi.loadPresetData === "function"
+      ) {
+        inputUi.loadPresetData(preset);
+      }
 
-      // Load the normalized preset data
-      return inputUi.loadPresetData(normalizedPreset);
+      this.selectedPreset = presetName;
+      return true;
     } catch (error) {
-      console.error(`Error applying mic preset ${presetName}:`, error);
+      console.error("Error applying mic preset:", error);
       return false;
     }
   }
 
-  deleteMicPreset(presetName) {
-    return this.deletePreset(
+  // Standard savePreset method
+  savePreset(presetName, inputUi) {
+    if (this.debug) console.log(`Saving mic preset: ${presetName}`);
+
+    const data = this.extractDataFromUI(inputUi);
+    if (!data) return false;
+
+    return super.savePreset(presetName, data, this.protectedPresets);
+  }
+
+  // Standard deletePreset method
+  deletePreset(presetName) {
+    if (this.debug) console.log(`Deleting mic preset: ${presetName}`);
+
+    return super.deletePreset(
       presetName,
       this.protectedPresets,
       this.defaultPreset
     );
+  }
+
+  setDebug(enabled) {
+    this.debug = enabled;
   }
 }

@@ -36,8 +36,8 @@ export class UiManager {
     this.presetUi = new PresetUi(main, this.presetContainer);
 
     this.presetManager = new PresetManager(
-      this.leftUi.gui, // Use the .gui property
-      this.rightUi.gui, // Use the .gui property
+      this.leftUi.gui,
+      this.rightUi.gui,
       this.pulseModUi,
       this.inputModUi
     );
