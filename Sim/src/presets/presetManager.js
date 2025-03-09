@@ -5,7 +5,6 @@ import { PresetPulseHandler } from "./presetPulseHandler.js";
 import { PresetMicHandler } from "./presetMicHandler.js";
 
 class PresetManager {
-  // Define preset types as constants
   static TYPES = {
     MASTER: "master",
     TURBULENCE: "turb",
@@ -15,7 +14,6 @@ class PresetManager {
   };
 
   constructor(leftGui, rightGui, pulseModUi, inputUi) {
-    // Store references to UI components
     this.leftGui = leftGui;
     this.rightGui = rightGui;
     this.pulseModUi = pulseModUi;
@@ -35,16 +33,14 @@ class PresetManager {
     };
   }
 
-  // Helper method to get the appropriate handler for a preset type
   getHandler(type) {
     return this.handlers[type] || null;
   }
 
-  // Helper method to get the appropriate UI component for a preset type
   getUIComponent(type) {
     switch (type) {
       case PresetManager.TYPES.MASTER:
-        return this.leftGui; // Just a placeholder, master handles all UIs
+        return this.leftGui;
       case PresetManager.TYPES.TURBULENCE:
         return this.rightGui;
       case PresetManager.TYPES.VORONOI:
@@ -58,7 +54,6 @@ class PresetManager {
     }
   }
 
-  // Set debug mode across all handlers
   setDebug(enabled) {
     Object.values(this.handlers).forEach((handler) => {
       if (typeof handler.setDebug === "function") {
@@ -67,7 +62,6 @@ class PresetManager {
     });
   }
 
-  // Set voronoi field reference (specific to voronoi handler)
   setVoronoiField(field) {
     const handler = this.getHandler(PresetManager.TYPES.VORONOI);
     if (handler && typeof handler.setVoronoiField === "function") {
@@ -75,18 +69,15 @@ class PresetManager {
     }
   }
 
-  // Get preset options for a specific type
   getPresetOptions(type) {
     const handler = this.getHandler(type);
     return handler ? handler.getPresetOptions() : [];
   }
 
-  // Save preset of a specific type
   savePreset(type, presetName, uiComponent = null) {
     const handler = this.getHandler(type);
     if (!handler) return false;
 
-    // Use provided UI component or get default for this type
     const component = uiComponent || this.getUIComponent(type);
 
     if (type === PresetManager.TYPES.MASTER) {
@@ -96,18 +87,15 @@ class PresetManager {
     }
   }
 
-  // Delete preset of a specific type
   deletePreset(type, presetName) {
     const handler = this.getHandler(type);
     return handler ? handler.deletePreset(presetName) : false;
   }
 
-  // Load preset of a specific type
   loadPreset(type, presetName, uiComponent = null) {
     const handler = this.getHandler(type);
     if (!handler) return false;
 
-    // Use provided UI component or get default for this type
     const component = uiComponent || this.getUIComponent(type);
 
     if (type === PresetManager.TYPES.MASTER) {
@@ -117,35 +105,28 @@ class PresetManager {
     }
   }
 
-  // Get selected preset for a specific type
   getSelectedPreset(type) {
     const handler = this.getHandler(type);
     return handler ? handler.getSelectedPreset() : null;
   }
 
-  // Add these methods to the PresetManager class
-  //#region Import/Export
   exportPresets() {
     try {
-      // Get the Master handler since that's what we're exporting
       const masterHandler = this.getHandler(PresetManager.TYPES.MASTER);
       if (!masterHandler) {
         console.error("Master preset handler not found");
         return false;
       }
 
-      // Export all presets
       const presets = masterHandler.presets;
       if (!presets || Object.keys(presets).length === 0) {
         console.warn("No presets to export");
         return false;
       }
 
-      // Create a download link for the exported presets
       const dataStr = JSON.stringify(presets, null, 2);
       const dataUri =
         "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
-
       const exportFileName =
         "svibe_presets_" + new Date().toISOString().slice(0, 10) + ".json";
 
@@ -167,7 +148,6 @@ class PresetManager {
 
   importPresets(jsonData) {
     try {
-      // Parse the imported data
       let importedPresets;
       try {
         importedPresets = JSON.parse(jsonData);
@@ -181,25 +161,20 @@ class PresetManager {
         return 0;
       }
 
-      // Get the Master handler
       const masterHandler = this.getHandler(PresetManager.TYPES.MASTER);
       if (!masterHandler) {
         console.error("Master preset handler not found");
         return 0;
       }
 
-      // Count imported presets
       let importCount = 0;
 
-      // Import each preset
       for (const presetName in importedPresets) {
-        // Skip the default preset if it exists in imported data
         if (masterHandler.protectedPresets.includes(presetName)) {
           console.log(`Skipping protected preset: ${presetName}`);
           continue;
         }
 
-        // Use our sanitize-enabled import method
         if (
           masterHandler.importPreset(presetName, importedPresets[presetName])
         ) {
@@ -214,7 +189,6 @@ class PresetManager {
       return 0;
     }
   }
-  //#endregion
 }
 
 export { PresetManager };
