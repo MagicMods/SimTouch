@@ -74,11 +74,6 @@ export class PresetMicHandler extends PresetBaseHandler {
         Array.isArray(preset.micSettings.modulators)
       ) {
         modulators = preset.micSettings.modulators;
-
-        // Also enable mic input if specified
-        if (preset.micSettings.enabled) {
-          inputUi.onMicInputToggled(true);
-        }
       }
       // Fallback: Empty preset
       else {

@@ -31,52 +31,7 @@ export class InputModulationUi extends BaseUi {
       this.updateAllBandVisualizations();
     }, 50);
 
-    // Use DOM observation to detect folder state changes
-    this.setupFolderObserver();
-
-    // CHANGED: Initialize to opened but disabled state
-    if (typeof this.gui.open === "function") {
-      this.gui.open();
-      this.enableDisableAudioInput(false, false);
-    }
-  }
-
-  // Use DOM observation instead of method patching
-  setupFolderObserver() {
-    if (!this.gui.domElement) return;
-
-    // Find the folder's DOM element
-    const folderElement = this.gui.domElement;
-    if (!folderElement) {
-      console.warn("Could not find folder element");
-      return;
-    }
-
-    // Create mutation observer to watch for class changes
-    const observer = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (
-          mutation.type === "attributes" &&
-          mutation.attributeName === "class"
-        ) {
-          // CHANGED: Only log folder state changes, don't affect audio input
-          const isClosed = folderElement.classList.contains("closed");
-          console.log(
-            `Folder state changed (via DOM): ${isClosed ? "closed" : "open"}`
-          );
-          // REMOVED: this.enableDisableAudioInput(!isClosed, false);
-        }
-      });
-    });
-
-    // Start observing
-    observer.observe(folderElement, {
-      attributes: true,
-      attributeFilter: ["class"],
-    });
-
-    // Store observer for cleanup
-    this.folderObserver = observer;
+    this.gui.open();
   }
 
   // Clean up on dispose
@@ -128,13 +83,6 @@ export class InputModulationUi extends BaseUi {
         this.gui.close();
       }
     }
-  }
-
-  // Add back compatibility method for preset loading
-  onMicInputToggled(enabled) {
-    // This method is kept for backward compatibility with preset loading
-    console.log(`Legacy onMicInputToggled called with enabled=${enabled}`);
-    this.enableDisableAudioInput(enabled, true); // Changed to sync folder for presets
   }
 
   // Modified loadPresetData to handle folder state properly
@@ -429,8 +377,6 @@ export class InputModulationUi extends BaseUi {
     }
   }
 
-  // No need for onMicInputToggled or toggleAllMicControlsVisibility methods anymore
-  // Update method should check GUI open state
   update() {
     // Check folder state directly - if open, process regardless of stored state
     const folderOpen = !this.gui.closed;
