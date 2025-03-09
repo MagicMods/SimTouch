@@ -48,7 +48,7 @@ export class PulseModulationUi extends BaseUi {
       .name("Add Modulator");
 
     // Add margin to the add modulator button
-    addModulatorController.domElement.style.marginTop = "15px";
+    addModulatorController.domElement.style.marginTop = "10px";
   }
 
   initPresetControls(presetManager) {

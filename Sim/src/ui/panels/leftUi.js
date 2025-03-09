@@ -70,7 +70,7 @@ export class LeftUi extends BaseUi {
 
     // Set initial button text based on current state
     this.pauseButtonController.name(this.main.paused ? "Resume" : "Pause");
-
+    this.pauseButtonController.domElement.style.marginBottom = "10px";
     // Update the render mode dropdown to include the new "Overlap" option
     if (this.main.gridRenderer.renderModes) {
       const gridFields = Object.values(
@@ -91,7 +91,7 @@ export class LeftUi extends BaseUi {
       // Store as class property instead of in this.controls
       this.fieldTypeController = this.gui
         .add(fieldControl, "field", Object.values(GridField))
-        // .className("preset-select")
+        // .className("full-width")
         .name("Mode")
         .onChange((value) => {
           // Set new mode
@@ -99,6 +99,8 @@ export class LeftUi extends BaseUi {
           // Update display
           this.fieldTypeController.updateDisplay();
         });
+
+      this.fieldTypeController.domElement.classList.add("full-width");
 
       const behaviorControl = {
         behavior: particles.organicBehavior.currentBehavior,
@@ -117,6 +119,7 @@ export class LeftUi extends BaseUi {
           this.behaviorTypeController.updateDisplay();
         });
 
+      this.behaviorTypeController.domElement.classList.add("full-width");
       // Store as class property
       this.boundaryModeController = this.gui
         .add(this.main.particleSystem.boundary, "mode", {
@@ -127,7 +130,8 @@ export class LeftUi extends BaseUi {
         .onChange((value) => {
           this.main.particleSystem.setBoundaryMode(value);
         });
-
+      this.boundaryModeController.domElement.classList.add("full-width");
+      this.boundaryModeController.domElement.style.marginBottom = "10px";
       const smoothing = this.main.gridRenderer.renderModes.smoothing;
 
       // Store as class property
@@ -151,6 +155,7 @@ export class LeftUi extends BaseUi {
       this.timeStepController = this.gui
         .add(particles, "timeStep", 0.001, 0.05, 0.001)
         .name("Time Step");
+      this.timeStepController.domElement.style.marginTop = "10px";
 
       // Store as class property
       this.timeScaleController = this.gui
@@ -167,6 +172,7 @@ export class LeftUi extends BaseUi {
         .onFinishChange((value) => {
           console.log(`Velocity damping set to ${value}`);
         });
+      this.velocityDampingController.domElement.style.marginTop = "10px";
     }
   }
   //#endregion

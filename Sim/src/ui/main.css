@@ -144,7 +144,7 @@ canvas {
 .preset-select {
     width: calc(100% - 8px); 
     padding: 4px; 
-    margin: 5px;
+    /* margin: 5px; */
     border: 1px solid #242424;
     border-radius: 4px;
     background: #3b3b3b;
@@ -158,7 +158,6 @@ canvas {
     background: #3a3a3a;
     border: 1px solid #242424;
     color: white;
-    /* padding: 6px 12px; */
     border-radius: 4px;
     cursor: pointer;
     white-space: nowrap;
@@ -176,6 +175,18 @@ canvas {
     margin: 5px;
     gap: 5px;
 }
+
+
+
+.full-width .widget {
+    width: 100% !important;
+    display: block !important;
+}
+
+
+
+
+
 
 
 /* Notification message */
