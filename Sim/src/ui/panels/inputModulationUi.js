@@ -10,13 +10,16 @@ export class InputModulationUi extends BaseUi {
     this.modulatorFolders = [];
     this.micControllers = [];
 
+    // Track internal state separately from UI state
+    this.audioInputEnabled = false;
+
     // ModulatorManager will be set by UiManager
     this.modulatorManager = null;
 
     // Change the GUI title
     this.gui.title("Input Modulation");
 
-    // Initialize basic controls
+    // Initialize controls directly in the root GUI
     this.initMicInputControls();
 
     // PresetManager will be initialized later
@@ -27,6 +30,193 @@ export class InputModulationUi extends BaseUi {
     this.bandVisualizationInterval = setInterval(() => {
       this.updateAllBandVisualizations();
     }, 50);
+
+    // Use DOM observation to detect folder state changes
+    this.setupFolderObserver();
+
+    // Initialize to closed/disabled state
+    if (typeof this.gui.close === "function") {
+      this.gui.close();
+      this.enableDisableAudioInput(false, false);
+    }
+  }
+
+  // Use DOM observation instead of method patching
+  setupFolderObserver() {
+    if (!this.gui.domElement) return;
+
+    // Find the folder's DOM element
+    const folderElement = this.gui.domElement;
+    if (!folderElement) {
+      console.warn("Could not find folder element");
+      return;
+    }
+
+    // Create mutation observer to watch for class changes
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (
+          mutation.type === "attributes" &&
+          mutation.attributeName === "class"
+        ) {
+          // Check if closed class exists
+          const isClosed = folderElement.classList.contains("closed");
+          console.log(
+            `Folder state changed (via DOM): ${isClosed ? "closed" : "open"}`
+          );
+          this.enableDisableAudioInput(!isClosed, false);
+        }
+      });
+    });
+
+    // Start observing
+    observer.observe(folderElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+
+    // Store observer for cleanup
+    this.folderObserver = observer;
+  }
+
+  // Clean up on dispose
+  dispose() {
+    // Stop DOM observer
+    if (this.folderObserver) {
+      this.folderObserver.disconnect();
+      this.folderObserver = null;
+    }
+
+    if (this.bandVisualizationInterval) {
+      clearInterval(this.bandVisualizationInterval);
+      this.bandVisualizationInterval = null;
+    }
+
+    // Call parent dispose if it exists
+    if (super.dispose) {
+      super.dispose();
+    }
+  }
+
+  // Enable/disable audio input based on folder state
+  enableDisableAudioInput(enabled, syncFolder = true) {
+    if (!this.main.externalInput) return;
+
+    console.log(`Setting audio input ${enabled ? "enabled" : "disabled"}`);
+
+    // Store internal state
+    this.audioInputEnabled = enabled;
+
+    if (enabled) {
+      this.main.externalInput.enableMic();
+      // Sync folder state only when requested
+      if (
+        syncFolder &&
+        this.gui.closed &&
+        typeof this.gui.open === "function"
+      ) {
+        this.gui.open();
+      }
+    } else {
+      this.main.externalInput.disableMic();
+      // Sync folder state only when requested
+      if (
+        syncFolder &&
+        !this.gui.closed &&
+        typeof this.gui.close === "function"
+      ) {
+        this.gui.close();
+      }
+    }
+  }
+
+  // Add back compatibility method for preset loading
+  onMicInputToggled(enabled) {
+    // This method is kept for backward compatibility with preset loading
+    console.log(`Legacy onMicInputToggled called with enabled=${enabled}`);
+    this.enableDisableAudioInput(enabled, true); // Changed to sync folder for presets
+  }
+
+  // Modified loadPresetData to handle folder state properly
+  loadPresetData(preset) {
+    console.log("InputModulationUi: Loading preset data", preset);
+
+    if (!preset) {
+      console.error("Invalid preset data");
+      return false;
+    }
+
+    // Clear existing modulators
+    this.clearAllModulators();
+
+    // Extract modulators array, handling different formats
+    let modulators = [];
+    let enabled = false;
+
+    if (Array.isArray(preset.modulators)) {
+      modulators = preset.modulators;
+    } else if (
+      preset.micSettings &&
+      Array.isArray(preset.micSettings.modulators)
+    ) {
+      modulators = preset.micSettings.modulators;
+      // Capture the enabled state if available
+      enabled = preset.micSettings.enabled === true;
+    } else {
+      console.warn("No modulators found in preset");
+    }
+
+    // Set the enabled state and sync the folder
+    this.enableDisableAudioInput(enabled, true);
+
+    console.log(`Creating ${modulators.length} modulators from preset`);
+
+    // Create modulators from the data
+    modulators.forEach((modData, index) => {
+      const mod = this.addMicModulator();
+      if (!mod) return;
+
+      // Mark as loading from preset
+      mod._loadingFromPreset = true;
+
+      // Get folder for UI updates
+      const folder = this.modulatorFolders[this.modulatorFolders.length - 1];
+
+      // Apply basic properties
+      if (modData.frequencyBand) mod.frequencyBand = modData.frequencyBand;
+      if (modData.smoothing !== undefined) mod.smoothing = modData.smoothing;
+      if (modData.min !== undefined) mod.min = modData.min;
+      if (modData.max !== undefined) mod.max = modData.max;
+      if (modData.sensitivity !== undefined)
+        mod.sensitivity = modData.sensitivity;
+
+      // Set target last (after other properties)
+      if (modData.targetName && modData.targetName !== "None") {
+        console.log(
+          `Setting target for modulator ${index + 1} to ${modData.targetName}`
+        );
+        mod.setTarget(modData.targetName);
+      }
+
+      // Update all controllers
+      folder.controllers.forEach((controller) => {
+        if (
+          controller.property &&
+          controller.property in mod &&
+          controller.setValue
+        ) {
+          controller.setValue(mod[controller.property]);
+        }
+      });
+
+      // Enable based on sensitivity
+      mod.enabled = mod.sensitivity > 0;
+
+      // Clear loading flag
+      delete mod._loadingFromPreset;
+    });
+
+    return true;
   }
 
   initializeWithUiPanels(leftUi, rightUi) {
@@ -41,25 +231,7 @@ export class InputModulationUi extends BaseUi {
 
     const externalInput = this.main.externalInput;
 
-    // Enable toggle at ROOT level
-    this.micEnableController = this.gui
-      .add({ enabled: externalInput?.micForces?.enabled || false }, "enabled")
-      .name("Enable Audio Input")
-      .onChange((value) => {
-        if (externalInput && externalInput.micForces) {
-          if (value) {
-            externalInput.enableMic();
-          } else {
-            externalInput.disableMic();
-          }
-          this.onMicInputToggled(value);
-        }
-      });
-
-    // Add device selector right after the enable toggle
-    this.addAudioDeviceSelector();
-
-    // Global sensitivity control
+    // Global sensitivity control (now directly in root GUI)
     this.micSensitivityController = this.gui
       .add(
         { sensitivity: externalInput?.micForces?.sensitivity || 1.0 },
@@ -93,23 +265,6 @@ export class InputModulationUi extends BaseUi {
       });
     this.micControllers.push(this.micSmoothingController);
 
-    // Add calibrate button
-    const calibrateObj = {
-      calibrate: () => {
-        if (externalInput?.micForces?.enabled) {
-          externalInput.calibrateMic();
-          alert("Microphone calibrated to current ambient level");
-        } else {
-          alert("Please enable microphone input first");
-        }
-      },
-    };
-
-    const calibrateController = this.gui
-      .add(calibrateObj, "calibrate")
-      .name("Calibrate Mic");
-    this.micControllers.push(calibrateController);
-
     // Add modulator button
     const addModulatorControl = {
       add: () => this.addMicModulator(),
@@ -118,16 +273,11 @@ export class InputModulationUi extends BaseUi {
     const addModulatorController = this.gui
       .add(addModulatorControl, "add")
       .name("Add Modulator");
+    addModulatorController.domElement.style.marginTop = "15px";
     this.micControllers.push(addModulatorController);
-
-    // Hide controls initially (or show if already enabled)
-    const isEnabled = externalInput?.micForces?.enabled || false;
-    this.toggleAllMicControlsVisibility(isEnabled);
-
-    this.gui.open();
   }
 
-  // Initialize with custom HTML preset controls - following the PulseModulationUi pattern
+  // Initialize with preset controls - modified to work with root folder
   initPresetControls(presetManager) {
     if (!presetManager) {
       console.warn("PresetManager not provided to InputModulationUi");
@@ -179,14 +329,13 @@ export class InputModulationUi extends BaseUi {
       if (!presetName) return;
 
       try {
-        // Extract data directly instead of passing 'this'
+        // Extract data directly
         const data = this.getModulatorsData();
-
         console.log(
           `Prepared input modulation data with ${data.modulators.length} modulators`
         );
 
-        // Pass the data object rather than 'this'
+        // Save the preset
         if (
           this.presetManager.savePreset(
             PresetManager.TYPES.MIC,
@@ -230,16 +379,9 @@ export class InputModulationUi extends BaseUi {
     actionsContainer.appendChild(saveButton);
     actionsContainer.appendChild(deleteButton);
 
-    // Insert preset controls after the enable toggle
-    let insertPoint = this.micEnableController?.domElement?.nextSibling;
-
-    if (insertPoint) {
-      containerElement.insertBefore(presetSelect, insertPoint);
-      containerElement.insertBefore(actionsContainer, presetSelect.nextSibling);
-    } else {
-      containerElement.appendChild(presetSelect);
-      containerElement.appendChild(actionsContainer);
-    }
+    // Insert preset controls at the top of the GUI
+    containerElement.insertBefore(presetSelect, containerElement.firstChild);
+    containerElement.insertBefore(actionsContainer, presetSelect.nextSibling);
   }
 
   // Helper method to update dropdown options
@@ -283,20 +425,35 @@ export class InputModulationUi extends BaseUi {
     }
   }
 
+  // No need for onMicInputToggled or toggleAllMicControlsVisibility methods anymore
+  // Update method should check GUI open state
   update() {
-    if (!this.main.externalInput?.micForces?.enabled) return;
+    // Check folder state directly - if open, process regardless of stored state
+    const folderOpen = !this.gui.closed;
 
-    // Get global sensitivity
+    // Update internal state if needed to match folder state
+    if (folderOpen !== this.audioInputEnabled) {
+      this.audioInputEnabled = folderOpen;
+    }
+
+    // Only process if enabled
+    if (
+      !this.audioInputEnabled ||
+      !this.main.externalInput?.micForces?.enabled
+    ) {
+      return;
+    }
+
+    // Rest of the original update method...
     const globalSensitivity =
       this.main.externalInput?.micForces?.sensitivity || 1.0;
 
-    // Only log when it changes
     if (this._lastGlobalSensitivity !== globalSensitivity) {
       console.log(`Global sensitivity: ${globalSensitivity}`);
       this._lastGlobalSensitivity = globalSensitivity;
     }
 
-    // Process mic input for each modulator
+    // Continue with existing update logic...
     if (this.modulatorManager && this.main.audioAnalyzer) {
       const analyzer = this.main.audioAnalyzer;
 
@@ -353,19 +510,32 @@ export class InputModulationUi extends BaseUi {
       });
     }
 
-    // Run general update pass
     if (this.modulatorManager) {
       this.modulatorManager.update();
     }
 
-    // Update visualizations
     this.updateAllBandVisualizations();
   }
 
+  // Update visualization method also needs to respect GUI state
   updateAllBandVisualizations() {
-    if (!this.main.externalInput?.micForces?.enabled) return;
+    // Check if folder is open - important for visualization
+    const folderOpen = !this.gui.closed;
 
-    // Use dynamic detection
+    // Always update the visualizers if the folder is open, even if internal state is wrong
+    if (
+      (!folderOpen && !this.audioInputEnabled) ||
+      !this.main.externalInput?.micForces?.enabled
+    ) {
+      return;
+    }
+
+    // If we got here and the states don't match, update internal state
+    if (folderOpen !== this.audioInputEnabled) {
+      this.audioInputEnabled = folderOpen;
+    }
+
+    // Rest of the original visualization update code...
     const modulators = (this.modulatorManager?.modulators || []).filter((m) => {
       return m.inputSource === "mic" || (m.ui && m.ui.bar);
     });
@@ -400,115 +570,9 @@ export class InputModulationUi extends BaseUi {
     });
   }
 
-  onMicInputToggled(enabled) {
-    // Show/hide all controllers except the enable switch
-    this.toggleAllMicControlsVisibility(enabled);
-
-    // Also toggle the preset controls
-    if (this.presetSelect) {
-      this.presetSelect.parentElement.style.display = enabled
-        ? "block"
-        : "none";
-    }
-  }
-
-  toggleAllMicControlsVisibility(show) {
-    // Toggle visibility for all controllers except the enable switch
-    this.micControllers.forEach((controller) => {
-      if (controller?.domElement) {
-        controller.domElement.style.display = show ? "block" : "none";
-      }
-    });
-
-    // Toggle visibility of modulator folders
-    this.modulatorFolders.forEach((folder) => {
-      if (folder?.domElement) {
-        folder.domElement.parentElement.style.display = show ? "block" : "none";
-      }
-    });
-  }
-
   setModulatorManager(manager) {
     this.modulatorManager = manager;
     console.log("ModulatorManager set in InputModulationUi");
-  }
-
-  loadPresetData(preset) {
-    console.log("InputModulationUi: Loading preset data", preset);
-
-    if (!preset) {
-      console.error("Invalid preset data");
-      return false;
-    }
-
-    // Clear existing modulators
-    this.clearAllModulators();
-
-    // Extract modulators array, handling different formats
-    let modulators = [];
-
-    if (Array.isArray(preset.modulators)) {
-      // Direct modulators array
-      modulators = preset.modulators;
-    } else if (
-      preset.micSettings &&
-      Array.isArray(preset.micSettings.modulators)
-    ) {
-      // Nested in micSettings
-      modulators = preset.micSettings.modulators;
-    } else {
-      console.warn("No modulators found in preset");
-      return true; // Still return success for empty presets
-    }
-
-    console.log(`Creating ${modulators.length} modulators from preset`);
-
-    // Create modulators from the data
-    modulators.forEach((modData, index) => {
-      const mod = this.addMicModulator();
-      if (!mod) return;
-
-      // Mark as loading from preset
-      mod._loadingFromPreset = true;
-
-      // Get folder for UI updates
-      const folder = this.modulatorFolders[this.modulatorFolders.length - 1];
-
-      // Apply basic properties
-      if (modData.frequencyBand) mod.frequencyBand = modData.frequencyBand;
-      if (modData.smoothing !== undefined) mod.smoothing = modData.smoothing;
-      if (modData.min !== undefined) mod.min = modData.min;
-      if (modData.max !== undefined) mod.max = modData.max;
-      if (modData.sensitivity !== undefined)
-        mod.sensitivity = modData.sensitivity;
-
-      // Set target last (after other properties)
-      if (modData.targetName && modData.targetName !== "None") {
-        console.log(
-          `Setting target for modulator ${index + 1} to ${modData.targetName}`
-        );
-        mod.setTarget(modData.targetName);
-      }
-
-      // Update all controllers
-      folder.controllers.forEach((controller) => {
-        if (
-          controller.property &&
-          controller.property in mod &&
-          controller.setValue
-        ) {
-          controller.setValue(mod[controller.property]);
-        }
-      });
-
-      // Enable based on sensitivity
-      mod.enabled = mod.sensitivity > 0;
-
-      // Clear loading flag
-      delete mod._loadingFromPreset;
-    });
-
-    return true;
   }
 
   clearAllModulators() {
@@ -580,19 +644,6 @@ export class InputModulationUi extends BaseUi {
     });
 
     return { modulators };
-  }
-
-  dispose() {
-    // Clean up interval
-    if (this.bandVisualizationInterval) {
-      clearInterval(this.bandVisualizationInterval);
-    }
-
-    // Clear modulators
-    this.clearAllModulators();
-
-    // Call parent dispose
-    super.dispose();
   }
 
   getIntensityColor(value) {

@@ -1,7 +1,3 @@
-/**
- * An input modulator that can modify a parameter based on input signals
- * such as microphone audio, EMU sensors, or external inputs
- */
 export class InputModulator {
   // Update the constructor to not set any default target
   constructor(manager) {
@@ -21,10 +17,6 @@ export class InputModulator {
     this.lastOutputValue = 0;
   }
 
-  /**
-   * Set the target to modulate
-   * @param {string} targetName - Name of the target to modulate
-   */
   setTarget(targetName) {
     const target = this.manager.targets[targetName];
     if (!target) {
@@ -57,9 +49,6 @@ export class InputModulator {
     }
   }
 
-  /**
-   * Reset target to its original value
-   */
   resetToOriginal() {
     if (this.targetController && this.originalValue !== null) {
       try {
@@ -76,36 +65,20 @@ export class InputModulator {
     }
   }
 
-  /**
-   * Set the input source
-   * @param {string} source - "mic", "emu", or "external"
-   */
   setInputSource(source) {
     if (["mic", "emu", "external"].includes(source)) {
       this.inputSource = source;
     }
   }
 
-  /**
-   * Set the frequency band for mic input
-   * @param {string} band - "none", "sub", "bass", "lowMid", etc.
-   */
   setFrequencyBand(band) {
     this.frequencyBand = band;
   }
 
-  /**
-   * Set the current raw input value
-   * @param {number} value - Raw input value (0-1)
-   */
   setInputValue(value) {
     this.currentInputValue = Math.max(0, Math.min(1, value));
   }
 
-  /**
-   * Process the current input value with smoothing and sensitivity
-   * @returns {number} Processed value (0-1)
-   */
   processInput() {
     // Apply sensitivity to make the response more or less dramatic
     let value = Math.min(1, this.currentInputValue * this.sensitivity);
@@ -122,7 +95,6 @@ export class InputModulator {
     return value;
   }
 
-  // Fix the update method to really check if there's a target
   update(deltaTime) {
     // Skip if no target, not enabled, or sensitivity is zero
     if (
@@ -142,19 +114,6 @@ export class InputModulator {
       // Map from 0-1 to min-max
       const mappedValue = this.min + normalizedValue * (this.max - this.min);
 
-      // // Debug logging to track values
-      // if (Math.random() < 0.01) {
-      //   // Log only occasionally to avoid flooding console
-      //   console.log(
-      //     `InputModulator(${
-      //       this.targetName
-      //     }): input=${this.currentInputValue.toFixed(3)}, ` +
-      //       `normalized=${normalizedValue.toFixed(
-      //         3
-      //       )}, mapped=${mappedValue.toFixed(3)}`
-      //   );
-      // }
-
       // Apply to target
       this.targetController.setValue(mappedValue);
 
@@ -171,9 +130,6 @@ export class InputModulator {
     }
   }
 
-  /**
-   * Disable modulation and clean up
-   */
   disable() {
     this.enabled = false;
     this.resetToOriginal(); // Reset to original value when disabled
