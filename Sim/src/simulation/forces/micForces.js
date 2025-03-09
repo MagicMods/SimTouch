@@ -320,13 +320,17 @@ export class MicInputForces {
 
     // Update analyzer's gain if available
     if (this.analyzer) {
-      // Pass sensitivity to analyzer
-      this.analyzer.setGain(value);
+      // Pass sensitivity to analyzer safely
+      if (typeof this.analyzer.setGain === "function") {
+        this.analyzer.setGain(value);
+      }
     }
 
-    // Update visualizer if available
-    if (this.visualizer) {
-      // Tell visualizer to redraw with new sensitivity
+    // Update visualizer ONLY if it exists AND has the method
+    if (
+      this.visualizer &&
+      typeof this.visualizer.updateOptions === "function"
+    ) {
       this.visualizer.updateOptions({ gain: value });
     }
 
