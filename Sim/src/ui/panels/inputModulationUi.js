@@ -34,9 +34,9 @@ export class InputModulationUi extends BaseUi {
     // Use DOM observation to detect folder state changes
     this.setupFolderObserver();
 
-    // Initialize to closed/disabled state
-    if (typeof this.gui.close === "function") {
-      this.gui.close();
+    // CHANGED: Initialize to opened but disabled state
+    if (typeof this.gui.open === "function") {
+      this.gui.open();
       this.enableDisableAudioInput(false, false);
     }
   }
@@ -59,12 +59,12 @@ export class InputModulationUi extends BaseUi {
           mutation.type === "attributes" &&
           mutation.attributeName === "class"
         ) {
-          // Check if closed class exists
+          // CHANGED: Only log folder state changes, don't affect audio input
           const isClosed = folderElement.classList.contains("closed");
           console.log(
             `Folder state changed (via DOM): ${isClosed ? "closed" : "open"}`
           );
-          this.enableDisableAudioInput(!isClosed, false);
+          // REMOVED: this.enableDisableAudioInput(!isClosed, false);
         }
       });
     });
@@ -155,19 +155,23 @@ export class InputModulationUi extends BaseUi {
 
     if (Array.isArray(preset.modulators)) {
       modulators = preset.modulators;
+      // ADDED: If we have modulators, we should enable
+      enabled = modulators.length > 0;
     } else if (
       preset.micSettings &&
       Array.isArray(preset.micSettings.modulators)
     ) {
       modulators = preset.micSettings.modulators;
       // Capture the enabled state if available
-      enabled = preset.micSettings.enabled === true;
+      enabled = preset.micSettings.enabled === true || modulators.length > 0;
     } else {
       console.warn("No modulators found in preset");
     }
 
-    // Set the enabled state and sync the folder
-    this.enableDisableAudioInput(enabled, true);
+    // CHANGED: Only enable, never disable
+    if (enabled) {
+      this.enableDisableAudioInput(true, false);
+    }
 
     console.log(`Creating ${modulators.length} modulators from preset`);
 
@@ -727,6 +731,9 @@ export class InputModulationUi extends BaseUi {
       console.error("ModulatorManager not available");
       return null;
     }
+
+    // ADDED: Enable audio input when adding a modulator
+    this.enableDisableAudioInput(true, false);
 
     // Create a new modulator
     const modulator = this.modulatorManager.createInputModulator("mic");
