@@ -96,10 +96,6 @@ export class PresetVoronoiHandler extends PresetBaseHandler {
     }
   }
 
-  /**
-   * Find a controller by property name
-   * @private
-   */
   _findController(folder, propertyName) {
     if (!folder || !folder.controllers) return null;
 

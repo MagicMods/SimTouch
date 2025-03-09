@@ -92,33 +92,6 @@ export class PresetMicHandler extends PresetBaseHandler {
     }
   }
 
-  // API compatibility methods
-  // Update saveMicPreset to provide more feedback
-  saveMicPreset(presetName, inputUi) {
-    console.log(`Saving mic preset: ${presetName}`);
-
-    const data = this.extractDataFromUI(inputUi);
-    if (!data) {
-      console.error("Failed to extract data from InputUi");
-      return false;
-    }
-
-    // Log what we're about to save
-    const modulatorCount = data.micSettings.modulators.length;
-    console.log(
-      `Saving preset with ${modulatorCount} modulators, enabled=${data.micSettings.enabled}`
-    );
-
-    const result = this.savePreset(presetName, data, this.protectedPresets);
-    console.log(`Save result: ${result ? "success" : "failed"}`);
-
-    return result;
-  }
-
-  loadMicPreset(presetName, inputUi) {
-    return this.applyDataToUI(presetName, inputUi);
-  }
-
   deleteMicPreset(presetName) {
     return this.deletePreset(
       presetName,
