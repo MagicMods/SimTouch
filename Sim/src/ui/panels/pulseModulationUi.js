@@ -26,7 +26,7 @@ export class PulseModulationUi extends BaseUi {
 
   initBasicControls() {
     // Add master frequency slider
-    this.gui
+    const masterFreqController = this.gui
       .add(this, "masterFrequency", 0.01, 3, 0.01)
       .name("Master Frequency (Hz)")
       .onChange((value) => {
@@ -36,11 +36,19 @@ export class PulseModulationUi extends BaseUi {
         }
       });
 
+    // Add margin to master frequency controller
+    masterFreqController.domElement.style.marginTop = "15px";
+
     // this.gui.push(this);
 
     // Add button to add a new modulator
     const addButton = { add: () => this.addPulseModulator() };
-    this.gui.add(addButton, "add").name("Add Modulator");
+    const addModulatorController = this.gui
+      .add(addButton, "add")
+      .name("Add Modulator");
+
+    // Add margin to the add modulator button
+    addModulatorController.domElement.style.marginTop = "15px";
   }
 
   // Initialize with custom HTML preset controls - matching the original
