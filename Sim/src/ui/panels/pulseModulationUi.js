@@ -379,18 +379,32 @@ export class PulseModulationUi extends BaseUi {
           this.modulatorFolders.splice(folderIndex, 1);
         }
 
-        // If no modulators remain, set preset to "None" AND LOAD THE DEFAULT PRESET DATA
+        // If no modulators remain, reset targets and update UI
         if (this.modulatorFolders.length === 0 && this.presetSelect) {
+          // Update the UI dropdown
           this.presetSelect.value = "None";
 
-          // Actually load the "None" preset data instead of just changing the dropdown
+          // Update the selected preset in the manager
           if (this.presetManager) {
-            // This will trigger the same behavior as selecting "None" from dropdown
-            this.presetManager.loadPreset(
-              PresetManager.TYPES.PULSE,
-              "None",
-              this
+            const handler = this.presetManager.getHandler(
+              PresetManager.TYPES.PULSE
             );
+            if (handler) {
+              handler.selectedPreset = "None";
+            }
+          }
+
+          // CRITICAL: Reset all target values to their original values
+          if (this.modulatorManager) {
+            // Reset all targets that were affected by the removed modulator
+            const targets = modulator._affectedTargets || [
+              modulator.targetName,
+            ];
+            targets.forEach((targetName) => {
+              if (targetName && targetName !== "None") {
+                this.modulatorManager.resetTargetToOriginalValue(targetName);
+              }
+            });
           }
         }
       },
