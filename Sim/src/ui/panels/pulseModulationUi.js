@@ -76,11 +76,16 @@ export class PulseModulationUi extends BaseUi {
     }
   }
 
-  // Initialize with UI panels
-  initializeWithUiPanels(leftUi, rightUi) {
-    console.log("PulseModulationUi initializing with UI panels");
+  // Update to work with component map
+  initializeWithComponents(leftUi, components) {
+    console.log("PulseModulationUi initializing with UI components");
     this.leftUi = leftUi;
-    this.rightUi = rightUi;
+    this.components = components;
+
+    // Set up target controller map if needed
+    if (this.modulatorManager) {
+      this.modulatorManager.registerTargetsFromUi();
+    }
   }
 
   //#endregion

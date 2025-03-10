@@ -36,10 +36,33 @@ export class InputModulationUi extends BaseUi {
 
   //#region Ui Setup
 
-  initializeWithUiPanels(leftUi, rightUi) {
-    console.log("InputModulationUi initializing with UI panels");
+  // Keep only the components version
+  initializeWithComponents(leftUi, components) {
+    console.log("InputModulationUi initializing with UI components");
     this.leftUi = leftUi;
-    this.rightUi = rightUi;
+    this.components = components;
+
+    // Set up target controller map if needed
+    this.targetControllerMap = new Map();
+
+    // Add targets from all components
+    if (leftUi && typeof leftUi.getControlTargets === "function") {
+      const targets = leftUi.getControlTargets();
+      Object.keys(targets).forEach((name) => {
+        this.targetControllerMap.set(name, targets[name]);
+      });
+    }
+
+    if (components) {
+      Object.values(components).forEach((component) => {
+        if (component && typeof component.getControlTargets === "function") {
+          const targets = component.getControlTargets();
+          Object.keys(targets).forEach((name) => {
+            this.targetControllerMap.set(name, targets[name]);
+          });
+        }
+      });
+    }
   }
 
   initMicInputControls() {

@@ -9,12 +9,10 @@ export class OrganicUi extends BaseUi {
     this.gui.title("Organic Behavior");
 
     // Create the main folder
-    this.organicFolder = this.createFolder("Organic Controls");
     this.initOrganicControls();
 
     // Open GUI by default
     this.gui.open();
-    this.organicFolder.open();
   }
 
   initOrganicControls() {
@@ -25,9 +23,9 @@ export class OrganicUi extends BaseUi {
     this.addGlobalForceControl();
 
     // Store folder references for later use
-    this.fluidFolder = this.organicFolder.addFolder("Fluid Parameters");
-    this.swarmFolder = this.organicFolder.addFolder("Swarm Parameters");
-    this.automataFolder = this.organicFolder.addFolder("Automata Parameters");
+    this.fluidFolder = this.gui.addFolder("Fluid Parameters");
+    this.swarmFolder = this.gui.addFolder("Swarm Parameters");
+    this.automataFolder = this.gui.addFolder("Automata Parameters");
 
     // Add parameters without their individual force controls
     this.initFluidControls();
@@ -59,7 +57,7 @@ export class OrganicUi extends BaseUi {
     });
 
     // Create controller
-    this.globalForceController = this.organicFolder
+    this.globalForceController = this.gui
       .add(this.globalForceControl, "force", 0, 5)
       .name("Force")
       .onChange((value) => {

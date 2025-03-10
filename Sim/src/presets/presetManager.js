@@ -13,19 +13,33 @@ class PresetManager {
     MIC: "mic",
   };
 
-  constructor(leftGui, rightGui, pulseModUi, inputUi) {
-    this.leftGui = leftGui;
-    this.rightGui = rightGui;
+  constructor(
+    leftUi,
+    pulseModUi,
+    inputModUi,
+    turbulenceUi,
+    voronoiUi,
+    organicUi,
+    gridUi
+  ) {
+    this.leftUi = leftUi;
     this.pulseModUi = pulseModUi;
-    this.inputUi = inputUi;
+    this.inputModUi = inputModUi;
+    this.turbulenceUi = turbulenceUi;
+    this.voronoiUi = voronoiUi;
+    this.organicUi = organicUi;
+    this.gridUi = gridUi;
     this.presetControls = {};
 
     this.handlers = {
       [PresetManager.TYPES.MASTER]: new PresetMasterHandler(
-        leftGui,
-        rightGui,
+        leftUi,
         pulseModUi,
-        inputUi
+        inputModUi,
+        turbulenceUi,
+        voronoiUi,
+        organicUi,
+        gridUi
       ),
       [PresetManager.TYPES.TURBULENCE]: new PresetTurbulenceHandler(),
       [PresetManager.TYPES.VORONOI]: new PresetVoronoiHandler(),
@@ -182,18 +196,19 @@ class PresetManager {
     return this.handlers[type] || null;
   }
 
+  // Update this method to work with individual components
   getUIComponent(type) {
     switch (type) {
       case PresetManager.TYPES.MASTER:
-        return this.leftGui;
+        return this.leftUi;
       case PresetManager.TYPES.TURBULENCE:
-        return this.rightGui?.turbFolder;
+        return this.turbulenceUi;
       case PresetManager.TYPES.VORONOI:
-        return this.rightGui?.voronoiFolder;
+        return this.voronoiUi;
       case PresetManager.TYPES.PULSE:
         return this.pulseModUi;
       case PresetManager.TYPES.MIC:
-        return this.inputUi;
+        return this.inputModUi;
       default:
         return null;
     }
@@ -251,18 +266,12 @@ class PresetManager {
     });
   }
 
-  setVoronoiField(field) {
-    const handler = this.getHandler(PresetManager.TYPES.VORONOI);
-    if (handler && typeof handler.setVoronoiField === "function") {
-      handler.setVoronoiField(field);
-    }
+  setVoronoiField(voronoiField) {
+    this.voronoiField = voronoiField;
   }
 
-  setTurbulenceField(field) {
-    const handler = this.getHandler(PresetManager.TYPES.TURBULENCE);
-    if (handler && typeof handler.setTurbulenceField === "function") {
-      handler.setTurbulenceField(field);
-    }
+  setTurbulenceField(turbulenceField) {
+    this.turbulenceField = turbulenceField;
   }
 
   exportPresets() {

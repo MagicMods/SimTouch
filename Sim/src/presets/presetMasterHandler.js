@@ -1,13 +1,27 @@
 import { PresetBaseHandler } from "./presetBaseHandler.js";
 
 export class PresetMasterHandler extends PresetBaseHandler {
-  constructor(leftGui, rightGui, pulseModUi, inputModUi) {
+  constructor(
+    leftGui,
+    pulseModUi,
+    inputModUi,
+    turbulenceUi,
+    voronoiUi,
+    organicUi,
+    gridUi
+  ) {
     // Call super first with empty default presets
     super("savedPresets", {});
 
     // Store references to UI components
     this.leftGui = leftGui;
-    this.rightGui = rightGui;
+
+    // Store specialized UI components instead of rightGui
+    this.turbulenceUi = turbulenceUi;
+    this.voronoiUi = voronoiUi;
+    this.organicUi = organicUi;
+    this.gridUi = gridUi;
+
     this.pulseModUi = pulseModUi;
     this.inputModUi = inputModUi;
 
@@ -17,7 +31,15 @@ export class PresetMasterHandler extends PresetBaseHandler {
     // Now create the default preset data
     const defaultPresetData = {
       left: this.filterInputFolders(leftGui?.save?.() || {}),
-      right: rightGui?.save?.() || {},
+
+      // Replace rightGui with individual UIs
+      ui: {
+        turbulence: turbulenceUi?.save?.() || {},
+        voronoi: voronoiUi?.save?.() || {},
+        organic: organicUi?.save?.() || {},
+        grid: gridUi?.save?.() || {},
+      },
+
       pulseModulation: null,
       micSettings: null,
     };
@@ -59,7 +81,15 @@ export class PresetMasterHandler extends PresetBaseHandler {
   extractDataFromUI() {
     const data = {
       left: {},
-      right: {},
+
+      // Structure for specialized UI components
+      ui: {
+        turbulence: {},
+        voronoi: {},
+        organic: {},
+        grid: {},
+      },
+
       pulseModulation: null,
       micSettings: null,
       _meta: {
@@ -76,10 +106,25 @@ export class PresetMasterHandler extends PresetBaseHandler {
         console.log("Extracted and filtered leftUi data");
       }
 
-      // Rest of method remains unchanged
-      if (this.rightGui && typeof this.rightGui.save === "function") {
-        data.right = this.rightGui.save();
-        console.log("Extracted rightUi data");
+      // Extract data from all specialized UI components
+      if (this.turbulenceUi && typeof this.turbulenceUi.save === "function") {
+        data.ui.turbulence = this.turbulenceUi.save();
+        console.log("Extracted turbulenceUi data");
+      }
+
+      if (this.voronoiUi && typeof this.voronoiUi.save === "function") {
+        data.ui.voronoi = this.voronoiUi.save();
+        console.log("Extracted voronoiUi data");
+      }
+
+      if (this.organicUi && typeof this.organicUi.save === "function") {
+        data.ui.organic = this.organicUi.save();
+        console.log("Extracted organicUi data");
+      }
+
+      if (this.gridUi && typeof this.gridUi.save === "function") {
+        data.ui.grid = this.gridUi.save();
+        console.log("Extracted gridUi data");
       }
 
       if (
@@ -154,8 +199,30 @@ export class PresetMasterHandler extends PresetBaseHandler {
       // Apply left GUI settings safely
       safeLoad(this.leftGui, preset.left, "leftUi");
 
-      // Apply right GUI settings safely
-      safeLoad(this.rightGui, preset.right, "rightUi");
+      // Handle backward compatibility - if preset has right property but not ui
+      if (preset.right && !preset.ui) {
+        // Legacy format - load the right data into all UIs
+        // This helps migrate old presets
+        safeLoad(this.turbulenceUi, preset.right, "turbulenceUi");
+        safeLoad(this.voronoiUi, preset.right, "voronoiUi");
+        safeLoad(this.organicUi, preset.right, "organicUi");
+        safeLoad(this.gridUi, preset.right, "gridUi");
+      }
+      // If we have the new ui format, apply to each component
+      else if (preset.ui) {
+        if (preset.ui.turbulence) {
+          safeLoad(this.turbulenceUi, preset.ui.turbulence, "turbulenceUi");
+        }
+        if (preset.ui.voronoi) {
+          safeLoad(this.voronoiUi, preset.ui.voronoi, "voronoiUi");
+        }
+        if (preset.ui.organic) {
+          safeLoad(this.organicUi, preset.ui.organic, "organicUi");
+        }
+        if (preset.ui.grid) {
+          safeLoad(this.gridUi, preset.ui.grid, "gridUi");
+        }
+      }
 
       // Apply pulse modulation
       if (

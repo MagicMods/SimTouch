@@ -114,7 +114,9 @@ export class LeftUi extends BaseUi {
           console.log("Behavior changed to:", value);
           particles.organicBehavior.currentBehavior = value;
 
-          this.main.ui.rightUi.updateOrganicFolders(value);
+          if (this.main.ui?.organicUi?.updateOrganicFolders) {
+            this.main.ui.organicUi.updateOrganicFolders(value);
+          }
 
           this.behaviorTypeController.updateDisplay();
         });

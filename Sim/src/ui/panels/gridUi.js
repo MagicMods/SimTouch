@@ -8,13 +8,13 @@ export class GridUi extends BaseUi {
     this.gui.title("Grid");
 
     // Create the main folder
-    this.gridFolder = this.createFolder("Grid Controls");
+    // this.gridFolder = this.createFolder("Grid Controls");
     this.gradientPointControllers = [];
     this.initGridControls();
 
     // Open GUI by default
-    this.gui.open();
-    this.gridFolder.open();
+    this.gui.open(false);
+    // this.gridFolder.open();
   }
 
   initGridControls() {
@@ -23,7 +23,7 @@ export class GridUi extends BaseUi {
 
     // Grid parameters
     if (gridRenderer.gridParams) {
-      const gridParamFolder = this.gridFolder.addFolder("Parameters");
+      const gridParamFolder = this.gui.addFolder("Parameters");
 
       this.gridTargetCellsController = gridParamFolder
         .add(gridRenderer.gridParams, "target", 1, 800, 1)
@@ -51,10 +51,12 @@ export class GridUi extends BaseUi {
       stats.add(gridRenderer.gridParams, "rows").name("Rows").listen();
       stats.add(gridRenderer.gridParams, "width").name("Rect Width").listen();
       stats.add(gridRenderer.gridParams, "height").name("Rect Height").listen();
+
+      // this.gridParamFolder.open(false);
     }
 
     // Gradient controls - store in arrays if needed
-    const gradientFolder = this.gridFolder.addFolder("Gradient");
+    const gradientFolder = this.gui.addFolder("Gradient");
     const gradientPoints = this.main.gridRenderer.gradient.points;
 
     gradientPoints.forEach((point, index) => {
@@ -74,6 +76,9 @@ export class GridUi extends BaseUi {
         color: colorController,
       });
     });
+
+    // this.gridParamFolder.open(false);
+    // this.gradientFolder.open(false);
   }
 
   getControlTargets() {

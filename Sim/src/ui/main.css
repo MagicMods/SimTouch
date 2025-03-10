@@ -64,6 +64,8 @@ canvas {
     transform: translateX(-50%); /* Center at position point */
 }
 
+
+
 .gui-container-left-bottom {
     position: absolute;
     top: 400px;
@@ -83,6 +85,36 @@ canvas {
     left: 50%;
     transform: translateX(-50%);
 }
+
+.gui-container-right-1 {
+    position: absolute;
+    right: 0;
+    width: 245px;
+    margin-bottom: 10px;
+}
+.gui-container-right-2 {
+    position: absolute;
+    right: 0;
+    width: 245px;
+    margin-bottom: 10px;
+}
+.gui-container-right-3 {
+    position: absolute;
+    right: 0;
+    width: 245px;
+    margin-bottom: 10px;
+}
+
+.gui-container-right-4 {
+    position: absolute;
+    right: 0;
+    width: 245px;
+    margin-bottom: 10px;
+}
+
+
+
+
 
 /* Stats container */
 .stats-container {

@@ -1,16 +1,14 @@
 import { PulseModulator } from "./pulseModulator.js";
 import { InputModulator } from "./inputModulator.js";
 
-/**
- * Manages modulators that can modify UI parameters through various inputs
- */
 export class ModulatorManager {
   constructor() {
     this.modulators = [];
     this.targets = {};
     this.targetRanges = {}; // Store min/max ranges for targets
     this.lastUpdateTime = Date.now();
-    // this.masterFrequency = 1.0; // For pulse modulators
+    this._leftUi = null;
+    this._components = null;
   }
 
   //#region Target
@@ -97,8 +95,8 @@ export class ModulatorManager {
     return Object.keys(this.targets);
   }
 
-  registerTargetsFromUi(leftUi, rightUi) {
-    console.log("ModulatorManager registering targets from UI panels");
+  registerTargetsFromUi() {
+    console.log("ModulatorManager registering targets from UI components");
 
     try {
       if (Object.keys(this.targets).length > 0) {
@@ -110,38 +108,21 @@ export class ModulatorManager {
 
       this.targets = {};
 
-      if (leftUi && typeof leftUi.getControlTargets === "function") {
-        const leftTargets = leftUi.getControlTargets();
-
-        Object.keys(leftTargets).forEach((name) => {
-          const controller = leftTargets[name];
-          const targetInfo = this.getControllerInfo(controller, name);
-          if (targetInfo && targetInfo.controller) {
-            this.addTargetWithRangeFull(
-              name,
-              targetInfo.controller,
-              targetInfo.min,
-              targetInfo.max,
-              targetInfo.step
-            );
-          }
-        });
+      // Register targets from leftUi
+      if (
+        this._leftUi &&
+        typeof this._leftUi.getControlTargets === "function"
+      ) {
+        const leftTargets = this._leftUi.getControlTargets();
+        this.registerTargetsFromObject(leftTargets);
       }
 
-      if (rightUi && typeof rightUi.getControlTargets === "function") {
-        const rightTargets = rightUi.getControlTargets();
-
-        Object.keys(rightTargets).forEach((name) => {
-          const controller = rightTargets[name];
-          const targetInfo = this.getControllerInfo(controller, name);
-          if (targetInfo && targetInfo.controller) {
-            this.addTargetWithRangeFull(
-              name,
-              targetInfo.controller,
-              targetInfo.min,
-              targetInfo.max,
-              targetInfo.step
-            );
+      // Register targets from each component
+      if (this._components) {
+        Object.values(this._components).forEach((component) => {
+          if (component && typeof component.getControlTargets === "function") {
+            const targets = component.getControlTargets();
+            this.registerTargetsFromObject(targets);
           }
         });
       }
@@ -424,9 +405,25 @@ export class ModulatorManager {
     return this.masterFrequency || 1.0;
   }
 
-  storeUiPanelsForAutoRegistration(leftUi, rightUi) {
-    if (leftUi && rightUi) {
-      this._uiPanelsForAutoRegister = { leftUi, rightUi };
-    }
+  storeComponentsForAutoRegistration(leftUi, components) {
+    this._leftUi = leftUi;
+    this._components = components;
+  }
+
+  // Helper method to register targets
+  registerTargetsFromObject(targetsObject) {
+    Object.keys(targetsObject).forEach((name) => {
+      const controller = targetsObject[name];
+      const targetInfo = this.getControllerInfo(controller, name);
+      if (targetInfo && targetInfo.controller) {
+        this.addTargetWithRangeFull(
+          name,
+          targetInfo.controller,
+          targetInfo.min,
+          targetInfo.max,
+          targetInfo.step
+        );
+      }
+    });
   }
 }

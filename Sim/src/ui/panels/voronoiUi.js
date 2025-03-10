@@ -10,13 +10,10 @@ export class VoronoiUi extends BaseUi {
     // Change the GUI title
     this.gui.title("Voronoi Field");
 
-    // Create the main folder
-    this.voronoiFolder = this.createFolder("Voronoi Controls");
     this.initVoronoiControls();
 
     // Open GUI by default
     this.gui.open();
-    this.voronoiFolder.open();
   }
 
   setPresetManager(presetManager) {
@@ -43,28 +40,28 @@ export class VoronoiUi extends BaseUi {
     if (!voronoi) return;
 
     // Basic voronoi controls - store as class properties
-    this.voronoiStrengthController = this.voronoiFolder
+    this.voronoiStrengthController = this.gui
       .add(voronoi, "strength", 0, 10)
       .name("Strength");
 
-    this.voronoiEdgeWidthController = this.voronoiFolder
+    this.voronoiEdgeWidthController = this.gui
       .add(voronoi, "edgeWidth", 0.1, 50)
       .name("Edge Width");
 
-    this.voronoiAttractionController = this.voronoiFolder
+    this.voronoiAttractionController = this.gui
       .add(voronoi, "attractionFactor", 0, 8)
       .name("Attraction");
 
-    this.voronoiCellCountController = this.voronoiFolder
+    this.voronoiCellCountController = this.gui
       .add(voronoi, "cellCount", 1, 10, 1)
       .name("Cell Count")
       .onChange(() => voronoi.regenerateCells());
 
-    this.voronoiSpeedController = this.voronoiFolder
+    this.voronoiSpeedController = this.gui
       .add(voronoi, "cellMovementSpeed", 0, 4)
       .name("Cell Speed");
 
-    this.voronoiDecayRateController = this.voronoiFolder
+    this.voronoiDecayRateController = this.gui
       .add(voronoi, "decayRate", 0.9, 1)
       .name("Decay Rate");
   }
