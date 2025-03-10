@@ -1,4 +1,4 @@
-import { BaseUi } from "./baseUi.js";
+import { BaseUi } from "../baseUi.js";
 import { PresetManager } from "../../presets/presetManager.js";
 
 export class PulseModulationUi extends BaseUi {

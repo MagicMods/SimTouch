@@ -1,4 +1,4 @@
-import { BaseUi } from "./baseUi.js";
+import { BaseUi } from "../baseUi.js";
 import { socketManager } from "../../network/socketManager.js";
 import { GridField } from "../../renderer/gridRenderModes.js";
 import { Behaviors } from "../../simulation/behaviors/organicBehavior.js";

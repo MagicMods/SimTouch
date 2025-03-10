@@ -1,4 +1,4 @@
-import { BaseUi } from "./baseUi.js";
+import { BaseUi } from "../baseUi.js";
 import { Behaviors } from "../../simulation/behaviors/organicBehavior.js";
 import { PresetManager } from "../../presets/presetManager.js";
 

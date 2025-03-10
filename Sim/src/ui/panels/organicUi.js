@@ -1,0 +1,246 @@
+import { BaseUi } from "../baseUi.js";
+import { Behaviors } from "../../simulation/behaviors/organicBehavior.js";
+
+export class OrganicUi extends BaseUi {
+  constructor(main, container) {
+    super(main, container);
+
+    // Change the GUI title
+    this.gui.title("Organic Behavior");
+
+    // Create the main folder
+    this.organicFolder = this.createFolder("Organic Controls");
+    this.initOrganicControls();
+
+    // Open GUI by default
+    this.gui.open();
+    this.organicFolder.open();
+  }
+
+  initOrganicControls() {
+    const particles = this.main.particleSystem;
+    if (!particles?.organicBehavior) return;
+
+    // Add global force control to the organic folder root
+    this.addGlobalForceControl();
+
+    // Store folder references for later use
+    this.fluidFolder = this.organicFolder.addFolder("Fluid Parameters");
+    this.swarmFolder = this.organicFolder.addFolder("Swarm Parameters");
+    this.automataFolder = this.organicFolder.addFolder("Automata Parameters");
+
+    // Add parameters without their individual force controls
+    this.initFluidControls();
+    this.initSwarmControls();
+    this.initAutomataControls();
+
+    // Initial state
+    this.updateOrganicFolders(this.main.gridRenderer.renderModes.currentMode);
+  }
+
+  addGlobalForceControl() {
+    const behavior = this.main.particleSystem?.organicBehavior;
+    if (!behavior?.forceScales) return;
+
+    // Set default force to 5.0
+    const forceTypes = ["Fluid", "Swarm", "Automata"];
+    const defaultForce = 5.0;
+
+    // Create control object with fixed default force
+    this.globalForceControl = {
+      force: defaultForce,
+    };
+
+    // Apply the default force to all behavior types immediately
+    forceTypes.forEach((type) => {
+      if (behavior.forceScales[type]) {
+        behavior.forceScales[type].base = defaultForce;
+      }
+    });
+
+    // Create controller
+    this.globalForceController = this.organicFolder
+      .add(this.globalForceControl, "force", 0, 5)
+      .name("Force")
+      .onChange((value) => {
+        // Apply the same force value to all types
+        forceTypes.forEach((type) => {
+          if (behavior.forceScales[type]) {
+            behavior.forceScales[type].base = value;
+          }
+        });
+      });
+  }
+
+  initFluidControls() {
+    const particles = this.main.particleSystem;
+    if (!particles?.organicBehavior?.params?.Fluid) return;
+
+    const fluid = particles.organicBehavior.params.Fluid;
+
+    // Add fluid parameters as class properties
+    this.fluidRadiusController = this.fluidFolder
+      .add(fluid, "radius", 5, 50)
+      .name("Radius");
+
+    this.fluidSurfaceTensionController = this.fluidFolder
+      .add(fluid, "surfaceTension", 0, 1)
+      .name("Surface Tension");
+
+    this.fluidViscosityController = this.fluidFolder
+      .add(fluid, "viscosity", 0, 1)
+      .name("Viscosity");
+
+    this.fluidDampingController = this.fluidFolder
+      .add(fluid, "damping", 0, 1)
+      .name("Damping");
+  }
+
+  initSwarmControls() {
+    const particles = this.main.particleSystem;
+    if (!particles?.organicBehavior?.params?.Swarm) return;
+
+    const swarm = particles.organicBehavior.params.Swarm;
+
+    // Add swarm parameters as class properties
+    this.swarmRadiusController = this.swarmFolder
+      .add(swarm, "radius", 5, 50)
+      .name("Radius");
+
+    this.swarmCohesionController = this.swarmFolder
+      .add(swarm, "cohesion", 0, 2)
+      .name("Cohesion");
+
+    this.swarmAlignmentController = this.swarmFolder
+      .add(swarm, "alignment", 0, 2)
+      .name("Alignment");
+
+    this.swarmSeparationController = this.swarmFolder
+      .add(swarm, "separation", 0, 2)
+      .name("Separation");
+
+    this.swarmMaxSpeedController = this.swarmFolder
+      .add(swarm, "maxSpeed", 0, 1)
+      .name("Max Speed");
+  }
+
+  initAutomataControls() {
+    const particles = this.main.particleSystem;
+    if (!particles?.organicBehavior?.params?.Automata) return;
+
+    const automata = particles.organicBehavior.params.Automata;
+
+    // Add automata parameters as class properties
+    this.automataRadiusController = this.automataFolder
+      .add(automata, "radius", 5, 200)
+      .name("Radius");
+
+    this.automataRepulsionController = this.automataFolder
+      .add(automata, "repulsion", 0, 2)
+      .name("Repulsion");
+
+    this.automataAttractionController = this.automataFolder
+      .add(automata, "attraction", 0, 10)
+      .name("Attraction");
+
+    this.automataThresholdController = this.automataFolder
+      .add(automata, "threshold", 0, 1)
+      .name("Threshold");
+  }
+
+  updateOrganicFolders(mode) {
+    const fluidEnabled = mode === "Fluid";
+    const swarmEnabled = mode === "Swarm";
+    const automataEnabled = mode === "Automata";
+    console.log(`Updating organic folders for mode: ${mode}`);
+
+    // Enable/disable controllers based on current mode
+    const enableControllers = (folder, enabled) => {
+      if (!folder?.controllers) return;
+      folder.controllers.forEach((controller) => {
+        if (controller.enable) controller.enable(enabled);
+      });
+    };
+
+    enableControllers(this.fluidFolder, fluidEnabled);
+    enableControllers(this.swarmFolder, swarmEnabled);
+    enableControllers(this.automataFolder, automataEnabled);
+
+    // Show/hide folders based on current mode
+    if (fluidEnabled) {
+      this.fluidFolder.open();
+      this.swarmFolder.close();
+      this.automataFolder.close();
+    } else if (swarmEnabled) {
+      this.fluidFolder.close();
+      this.swarmFolder.open();
+      this.automataFolder.close();
+    } else if (automataEnabled) {
+      this.fluidFolder.close();
+      this.swarmFolder.close();
+      this.automataFolder.open();
+    } else {
+      this.fluidFolder.close();
+      this.swarmFolder.close();
+      this.automataFolder.close();
+    }
+
+    // Update the organic behavior mode
+    if (this.main.particleSystem?.organicBehavior) {
+      this.main.particleSystem.organicBehavior.currentBehavior = mode;
+    }
+  }
+
+  getControlTargets() {
+    const targets = {};
+
+    // Organic controls
+    if (this.globalForceController)
+      targets["Force"] = this.globalForceController;
+
+    // Fluid controls
+    if (this.fluidRadiusController)
+      targets["Fluid Radius"] = this.fluidRadiusController;
+    if (this.fluidSurfaceTensionController)
+      targets["Surface Tension"] = this.fluidSurfaceTensionController;
+    if (this.fluidViscosityController)
+      targets["Viscosity"] = this.fluidViscosityController;
+
+    return targets;
+  }
+
+  updateControllerDisplays() {
+    // Helper function to safely update controllers
+    const safeUpdateDisplay = (controller) => {
+      if (controller && typeof controller.updateDisplay === "function") {
+        try {
+          controller.updateDisplay();
+        } catch (e) {
+          console.warn("Error updating controller display:", e);
+        }
+      }
+    };
+
+    // Update organic behavior controllers
+    safeUpdateDisplay(this.globalForceController);
+
+    // Update fluid controllers
+    safeUpdateDisplay(this.fluidRadiusController);
+    safeUpdateDisplay(this.fluidSurfaceTensionController);
+    safeUpdateDisplay(this.fluidViscosityController);
+    safeUpdateDisplay(this.fluidDampingController);
+
+    // Update swarm controllers
+    safeUpdateDisplay(this.swarmRadiusController);
+    safeUpdateDisplay(this.swarmCohesionController);
+    safeUpdateDisplay(this.swarmAlignmentController);
+    safeUpdateDisplay(this.swarmSeparationController);
+    safeUpdateDisplay(this.swarmMaxSpeedController);
+
+    // Update automata controllers
+    safeUpdateDisplay(this.automataRadiusController);
+    safeUpdateDisplay(this.automataRepulsionController);
+    safeUpdateDisplay(this.automataAttractionController);
+    safeUpdateDisplay(this.automataThresholdController);
+  }
+}

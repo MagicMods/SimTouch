@@ -1,4 +1,4 @@
-import { BaseUi } from "./baseUi.js";
+import { BaseUi } from "../baseUi.js";
 import { NetworkConfig } from "../../network/networkConfig.js";
 import { socketManager } from "../../network/socketManager.js";
 
