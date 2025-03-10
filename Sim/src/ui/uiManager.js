@@ -8,6 +8,10 @@ import { NetworkUi } from "./panels/networkUi.js";
 import { InputModulationUi } from "./panels/inputModulationUi.js";
 import { PresetUi } from "./panels/presetUi.js";
 import { PresetManager } from "../presets/presetManager.js";
+import { InputsUi } from "./panels/inputsUi.js";
+import { DebugUi } from "./panels/debugUi.js";
+import { ParamUi } from "./panels/paramUi.js";
+import { ParticleUi } from "./panels/particleUi.js";
 import Stats from "../util/statsModule.js";
 
 export class UiManager {
@@ -17,28 +21,31 @@ export class UiManager {
 
     // Create GUI containers
     this.leftContainer = this.createContainer("left");
+    this.rightContainer = this.createContainer("right");
+
     this.pulseModContainer = this.createContainer("left-top");
     this.presetContainer = this.createContainer("left-second");
     this.networkContainer = this.createContainer("center-top");
-    this.inputContainer = this.createContainer("right-top");
-    this.turbulenceContainer = this.createContainer("right-1");
-    this.voronoiContainer = this.createContainer("right-2");
-    this.organicContainer = this.createContainer("right-3");
-    this.gridContainer = this.createContainer("right-4");
+    this.inputModContainer = this.createContainer("right-top");
 
     // Initialize UI components
     this.leftUi = new LeftUi(main, this.leftContainer);
+    this.paramUi = new ParamUi(main, this.leftContainer);
+    this.particleUi = new ParticleUi(main, this.leftContainer);
+
+    this.inputsUi = new InputsUi(main, this.leftContainer);
+    this.debugUi = new DebugUi(main, this.leftContainer);
 
     // Create specialized UI components instead of RightUi
     this.pulseModUi = new PulseModulationUi(main, this.pulseModContainer);
     this.networkUi = new NetworkUi(main, this.networkContainer);
-    this.inputModUi = new InputModulationUi(main, this.inputContainer);
+    this.inputModUi = new InputModulationUi(main, this.inputModContainer);
     this.presetUi = new PresetUi(main, this.presetContainer);
 
-    this.turbulenceUi = new TurbulenceUi(main, this.turbulenceContainer);
-    this.voronoiUi = new VoronoiUi(main, this.voronoiContainer);
-    this.organicUi = new OrganicUi(main, this.organicContainer);
-    this.gridUi = new GridUi(main, this.gridContainer);
+    this.turbulenceUi = new TurbulenceUi(main, this.rightContainer);
+    this.voronoiUi = new VoronoiUi(main, this.rightContainer);
+    this.organicUi = new OrganicUi(main, this.rightContainer);
+    this.gridUi = new GridUi(main, this.rightContainer);
 
     // Create preset manager with ALL UI components
     this.presetManager = new PresetManager(
@@ -60,10 +67,6 @@ export class UiManager {
     this.initializeUiComponents();
     this.stats = new Stats();
     this.initStats();
-
-    // Make sure right panels are correctly positioned
-    // Use a slight delay to allow panels to render first
-    setTimeout(() => this.updateRightPanelsPositions(), 100);
   }
 
   createContainer(position) {
@@ -100,9 +103,6 @@ export class UiManager {
     if (this.stats) {
       this.updateStats();
     }
-
-    // Update panel positions periodically (can be optimized with a flag or event)
-    this.updateRightPanelsPositions();
   }
 
   dispose() {
@@ -144,14 +144,14 @@ export class UiManager {
       const turbulenceTargets = this.turbulenceUi?.getControlTargets?.() || {};
       const voronoiTargets = this.voronoiUi?.getControlTargets?.() || {};
       const organicTargets = this.organicUi?.getControlTargets?.() || {};
-      const gridTargets = this.gridUi?.getControlTargets?.() || {};
+      // const gridTargets = this.gridUi?.getControlTargets?.() || {};
 
       // Combine all targets
       const allTargets = {
         ...turbulenceTargets,
         ...voronoiTargets,
         ...organicTargets,
-        ...gridTargets,
+        // ...gridTargets,
       };
 
       // Pass combined targets to input modulation UI
@@ -164,7 +164,7 @@ export class UiManager {
         turbulence: this.turbulenceUi,
         voronoi: this.voronoiUi,
         organic: this.organicUi,
-        grid: this.gridUi,
+        // grid: this.gridUi,
       });
     }
 
@@ -173,31 +173,9 @@ export class UiManager {
         turbulence: this.turbulenceUi,
         voronoi: this.voronoiUi,
         organic: this.organicUi,
-        grid: this.gridUi,
+        // grid: this.gridUi,
       });
     }
-  }
-
-  // Add this method to UiManager
-  updateRightPanelsPositions() {
-    // The order of panels from top to bottom
-    const panels = [
-      this.turbulenceContainer,
-      this.voronoiContainer,
-      this.organicContainer,
-      this.gridContainer,
-    ];
-
-    let currentTop = 0; // Start 10px from the top
-
-    // Position each panel below the previous one
-    panels.forEach((container) => {
-      if (container) {
-        container.style.top = `${currentTop}px`;
-        // Add height + margin for next panel
-        currentTop += container.offsetHeight + 0;
-      }
-    });
   }
 
   initializeModulatorManager() {
@@ -214,7 +192,7 @@ export class UiManager {
         turbulenceUi: this.turbulenceUi,
         voronoiUi: this.voronoiUi,
         organicUi: this.organicUi,
-        gridUi: this.gridUi,
+        // gridUi: this.gridUi,
         // Add any other components that have targets
       });
     } else {

@@ -23,6 +23,10 @@ canvas {
     position: absolute;
     top: 0;
     left: 0;
+    display: flex;
+	flex-direction: column;
+	flex-wrap: wrap;
+	align-content: flex-start;
 }
 
 .gui-container-right {
@@ -111,6 +115,23 @@ canvas {
     width: 245px;
     margin-bottom: 10px;
 }
+
+.gui-container-left-2 {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 245px;
+    margin-bottom: 10px;
+}
+
+.gui-container-left-3 {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 245px;
+    margin-bottom: 10px;
+}
+
 
 
 

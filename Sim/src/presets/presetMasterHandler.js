@@ -2,7 +2,7 @@ import { PresetBaseHandler } from "./presetBaseHandler.js";
 
 export class PresetMasterHandler extends PresetBaseHandler {
   constructor(
-    leftGui,
+    leftUi,
     pulseModUi,
     inputModUi,
     turbulenceUi,
@@ -14,7 +14,7 @@ export class PresetMasterHandler extends PresetBaseHandler {
     super("savedPresets", {});
 
     // Store references to UI components
-    this.leftGui = leftGui;
+    this.leftUi = leftUi;
 
     // Store specialized UI components instead of rightGui
     this.turbulenceUi = turbulenceUi;
@@ -30,7 +30,7 @@ export class PresetMasterHandler extends PresetBaseHandler {
 
     // Now create the default preset data
     const defaultPresetData = {
-      left: this.filterInputFolders(leftGui?.save?.() || {}),
+      left: this.filterInputFolders(leftUi?.save?.() || {}),
 
       // Replace rightGui with individual UIs
       ui: {
@@ -99,8 +99,8 @@ export class PresetMasterHandler extends PresetBaseHandler {
 
     try {
       // Get data from left UI - save with input-related folders filtered out
-      if (this.leftGui && typeof this.leftGui.save === "function") {
-        const leftData = this.leftGui.save();
+      if (this.leftUi && typeof this.leftUi.save === "function") {
+        const leftData = this.leftUi.save();
         // Use the shared filtering method
         data.left = this.filterInputFolders(leftData);
         console.log("Extracted and filtered leftUi data");
@@ -197,7 +197,7 @@ export class PresetMasterHandler extends PresetBaseHandler {
       };
 
       // Apply left GUI settings safely
-      safeLoad(this.leftGui, preset.left, "leftUi");
+      safeLoad(this.leftUi, preset.left, "leftUi");
 
       // Handle backward compatibility - if preset has right property but not ui
       if (preset.right && !preset.ui) {
