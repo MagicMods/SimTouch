@@ -10,9 +10,12 @@ import { CircularBoundary } from "./simulation/boundary/circularBoundary.js";
 import { socketManager } from "./network/socketManager.js";
 import { MouseForces } from "./simulation/forces/mouseForces.js";
 import { ExternalInputConnector } from "./input/externalInputConnector.js";
-import { EmuForces } from "./simulation/forces/emuForces.js"; // Already imported
-import { EmuRenderer } from "./renderer/emuRenderer.js"; // Import the visualizer at the top of the file
-import { MicInputForces } from "./simulation/forces/micForces.js"; // Import the microphone forces class
+import { EmuForces } from "./simulation/forces/emuForces.js";
+import { EmuRenderer } from "./renderer/emuRenderer.js";
+import { MicInputForces } from "./simulation/forces/micForces.js";
+import { ModulatorManager } from "./input/modulatorManager.js"; // Add this import
+import { PulseModulator } from "./input/pulseModulator.js"; // Add this import
+import { InputModulator } from "./input/inputModulator.js"; // Add this import
 
 class Main {
   constructor() {
@@ -31,13 +34,17 @@ class Main {
       turbulence: this.turbulenceField,
       voronoi: this.voronoiField,
     });
+
+    // Create ModulatorManager - ADD THIS
+    this.modulatorManager = new ModulatorManager();
+
     this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager);
     this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
     this.debugRenderer = new DebugRenderer(this.gl);
     this.frame = 0;
     this.mouseForces = new MouseForces();
     this.mouseForces.setupMouseInteraction(this.canvas, this.particleSystem);
-    this.micForces = new MicInputForces(); // Create a new instance of MicForces
+    this.micForces = new MicInputForces();
 
     // IMPORTANT: Attach it to particleSystem so render() can find it
     this.particleSystem.mouseForces = this.mouseForces;
@@ -49,7 +56,7 @@ class Main {
 
     // Create the visualizer
     this.emuRenderer = new EmuRenderer(document.body, this.emuForces);
-    this.emuRenderer.show(); // Make it visible by default
+    this.emuRenderer.show();
 
     // Pass both mouseForces and emuForces to ExternalInputConnector
     this.externalInput = new ExternalInputConnector(
@@ -58,12 +65,12 @@ class Main {
       this.micForces
     )
       .enable()
-      .setSensitivity(0.002); // Set up external input
+      .setSensitivity(0.002);
 
     this.paused = false;
 
     // Set up socket connection
-    socketManager.enable = true; // Enable the socket manager!
+    socketManager.enable = true;
     socketManager.connect();
 
     // this.setupMouseDebug();
@@ -118,6 +125,12 @@ class Main {
     // Draw particles
     this.particleRenderer.draw(this.particleSystem.getParticles());
     // this.gridRenderer.drawDebugIndexes();
+
+    // Update ModulatorManager - ADD THIS
+    if (this.modulatorManager) {
+      this.modulatorManager.update(this.particleSystem.timeStep);
+    }
+
     this.ui.update();
   }
 

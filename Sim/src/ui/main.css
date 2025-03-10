@@ -254,3 +254,30 @@ canvas {
     --width : 220px;
     --border-radius: 4px;
 }
+
+/* Turbulence toggle buttons */
+.turbulence-toggle-buttons {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    margin-top: 8px;
+    width: 100%;
+}
+
+.toggle-button {
+    flex: 1;
+    margin: 0 2px;
+    /* padding: 4px 0; */
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 11px;
+    transition: background-color 0.2s;
+    background-color: #2c2c2c;
+    color: #aaa;
+}
+
+.toggle-button.active {
+    background-color: #a17600;
+    color: #ffffff;
+}

@@ -11,12 +11,10 @@ export class TurbulenceUi extends BaseUi {
     this.gui.title("Turbulence");
 
     // Create the main folder
-    this.turbFolder = this.createFolder("Turbulence Controls");
     this.initTurbulenceControls();
 
     // Open GUI by default
     this.gui.open();
-    this.turbFolder.open();
   }
 
   setPresetManager(presetManager) {
@@ -30,6 +28,23 @@ export class TurbulenceUi extends BaseUi {
         turbulenceContainer,
         { insertFirst: true }
       );
+
+      // Add the button controls after the preset controls
+      if (this.buttonContainer) {
+        const presetElement =
+          turbulenceContainer.querySelector(".preset-controls");
+        if (presetElement && presetElement.nextSibling) {
+          turbulenceContainer.insertBefore(
+            this.buttonContainer,
+            presetElement.nextSibling
+          );
+        } else {
+          turbulenceContainer.insertBefore(
+            this.buttonContainer,
+            turbulenceContainer.firstChild.nextSibling
+          );
+        }
+      }
     }
   }
 
@@ -37,34 +52,74 @@ export class TurbulenceUi extends BaseUi {
     const turbulence = this.main.turbulenceField;
     if (!turbulence) return;
 
-    // Store controllers as class properties
-    this.turbulenceAffectPositionController = this.turbFolder
-      .add(turbulence, "affectPosition")
-      .name("Affect Position");
+    // Create button group container
+    const buttonContainer = document.createElement("div");
+    buttonContainer.className = "turbulence-toggle-buttons";
 
-    this.turbulenceScaleFieldController = this.turbFolder
-      .add(turbulence, "scaleField")
-      .name("Affect Scale Field");
+    // Store reference to the button container
+    this.buttonContainer = buttonContainer;
 
-    this.turbulenceAffectScaleController = this.turbFolder
-      .add(turbulence, "affectScale")
-      .name("Affect Scale Particles");
+    // Create position button
+    const posButton = document.createElement("button");
+    posButton.textContent = "Position";
+    posButton.className = "toggle-button";
+    if (turbulence.affectPosition) posButton.classList.add("active");
+    posButton.addEventListener("click", () => {
+      turbulence.affectPosition = !turbulence.affectPosition;
+      posButton.classList.toggle("active", turbulence.affectPosition);
+    });
+
+    // Create field button
+    const fieldButton = document.createElement("button");
+    fieldButton.textContent = "Scale Field";
+    fieldButton.className = "toggle-button";
+    if (turbulence.scaleField) fieldButton.classList.add("active");
+    fieldButton.addEventListener("click", () => {
+      turbulence.scaleField = !turbulence.scaleField;
+      fieldButton.classList.toggle("active", turbulence.scaleField);
+    });
+
+    // Create scale button
+    const scaleButton = document.createElement("button");
+    scaleButton.textContent = "Scale";
+    scaleButton.className = "toggle-button";
+    if (turbulence.affectScale) scaleButton.classList.add("active");
+    scaleButton.addEventListener("click", () => {
+      turbulence.affectScale = !turbulence.affectScale;
+      scaleButton.classList.toggle("active", turbulence.affectScale);
+    });
+
+    // Add buttons to container
+    buttonContainer.appendChild(posButton);
+    buttonContainer.appendChild(fieldButton);
+    buttonContainer.appendChild(scaleButton);
+
+    // Add the button container to the GUI children
+    const guiChildren = this.gui.domElement.querySelector(".children");
+    if (guiChildren) {
+      guiChildren.insertBefore(buttonContainer, guiChildren.firstChild);
+    }
+
+    // Store references for later updating
+    this.positionButton = posButton;
+    this.fieldButton = fieldButton;
+    this.scaleButton = scaleButton;
 
     // Store these key controllers that will be targeted by modulators
-    this.turbulenceStrengthController = this.turbFolder
+    this.turbulenceStrengthController = this.gui
       .add(turbulence, "strength", 0, 10)
       .name("Strength");
 
-    this.turbulenceScaleController = this.turbFolder
+    this.turbulenceScaleController = this.gui
       .add(turbulence, "scale", 0.1, 10)
       .name("Scale");
 
-    this.turbulenceSpeedController = this.turbFolder
+    this.turbulenceSpeedController = this.gui
       .add(turbulence, "speed", 0, 20)
       .name("Speed");
 
     // Add min/max scale controls
-    const scaleRangeFolder = this.turbFolder.addFolder("Scale Range");
+    const scaleRangeFolder = this.gui.addFolder("Scale Range");
 
     this.turbulenceScaleStrengthController = scaleRangeFolder
       .add(turbulence, "scaleStrength", 0, 1)
@@ -78,7 +133,7 @@ export class TurbulenceUi extends BaseUi {
       .add(turbulence, "maxScale", 1.0, 4.0)
       .name("Max Scale");
 
-    const advancedFolder = this.turbFolder.addFolder("Advanced");
+    const advancedFolder = this.gui.addFolder("Advanced");
 
     this.turbulenceOctavesController = advancedFolder
       .add(turbulence, "octaves", 1, 8, 1)
@@ -104,7 +159,7 @@ export class TurbulenceUi extends BaseUi {
       .add(turbulence, "decayRate", 0.9, 1)
       .name("Decay Rate");
 
-    const biasFolder = this.turbFolder.addFolder("Direction Bias");
+    const biasFolder = this.gui.addFolder("Direction Bias");
 
     this.turbulenceBiasXController = biasFolder
       .add(turbulence.directionBias, "0", -1, 1)
@@ -135,6 +190,23 @@ export class TurbulenceUi extends BaseUi {
   }
 
   updateControllerDisplays() {
+    // Update button states
+    const turbulence = this.main.turbulenceField;
+    if (turbulence) {
+      if (this.positionButton) {
+        this.positionButton.classList.toggle(
+          "active",
+          turbulence.affectPosition
+        );
+      }
+      if (this.fieldButton) {
+        this.fieldButton.classList.toggle("active", turbulence.scaleField);
+      }
+      if (this.scaleButton) {
+        this.scaleButton.classList.toggle("active", turbulence.affectScale);
+      }
+    }
+
     // Helper function to safely update controllers
     const safeUpdateDisplay = (controller) => {
       if (controller && typeof controller.updateDisplay === "function") {
@@ -153,9 +225,6 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulenceScaleStrengthController);
     safeUpdateDisplay(this.turbulenceInwardFactorController);
     safeUpdateDisplay(this.turbulenceDecayRateController);
-    safeUpdateDisplay(this.turbulenceAffectPositionController);
-    safeUpdateDisplay(this.turbulenceScaleFieldController);
-    safeUpdateDisplay(this.turbulenceAffectScaleController);
     safeUpdateDisplay(this.turbulenceMinScaleController);
     safeUpdateDisplay(this.turbulenceMaxScaleController);
     safeUpdateDisplay(this.turbulenceOctavesController);

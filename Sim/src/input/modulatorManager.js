@@ -7,8 +7,8 @@ export class ModulatorManager {
     this.targets = {};
     this.targetRanges = {}; // Store min/max ranges for targets
     this.lastUpdateTime = Date.now();
-    this._leftUi = null;
-    this._components = null;
+    this.uiComponents = {}; // Single structure for ALL UI components
+    this.masterFrequency = 1.0;
   }
 
   //#region Target
@@ -80,57 +80,62 @@ export class ModulatorManager {
   }
 
   getTargetNames() {
-    // Check if targets exist, and if not, try to register them if UI panels are available
+    // If no targets and we have stored components, try to register them
     if (
       Object.keys(this.targets).length === 0 &&
-      this._uiPanelsForAutoRegister
+      Object.keys(this.uiComponents).length > 0
     ) {
       console.log("ModulatorManager: No targets found, auto-registering");
-      this.registerTargetsFromUi(
-        this._uiPanelsForAutoRegister.leftUi,
-        this._uiPanelsForAutoRegister.rightUi
-      );
+      this.registerTargetsFromUi();
     }
 
     return Object.keys(this.targets);
   }
 
+  registerUiComponents(components = {}) {
+    this.uiComponents = components;
+    console.log(
+      `ModulatorManager: Registered ${
+        Object.keys(components).length
+      } UI components`
+    );
+
+    // Register targets from all components
+    this.registerTargetsFromUi();
+  }
+
   registerTargetsFromUi() {
-    console.log("ModulatorManager registering targets from UI components");
+    console.log("ModulatorManager: Registering targets from UI components");
 
     try {
-      if (Object.keys(this.targets).length > 0) {
-        console.log(
-          "ModulatorManager already has targets registered. Skipping registration."
+      // Clear existing targets to avoid duplicates
+      this.targets = {};
+
+      if (!this.uiComponents || Object.keys(this.uiComponents).length === 0) {
+        console.warn(
+          "ModulatorManager: No UI components to register targets from"
         );
         return;
       }
 
-      this.targets = {};
+      // Register targets from all components
+      Object.entries(this.uiComponents).forEach(([name, component]) => {
+        if (component && typeof component.getControlTargets === "function") {
+          console.log(`Registering targets from ${name}`);
+          const targets = component.getControlTargets();
+          this.registerTargetsFromObject(targets);
+        } else {
+          console.log(`Component ${name} has no getControlTargets method`);
+        }
+      });
 
-      // Register targets from leftUi
-      if (
-        this._leftUi &&
-        typeof this._leftUi.getControlTargets === "function"
-      ) {
-        const leftTargets = this._leftUi.getControlTargets();
-        this.registerTargetsFromObject(leftTargets);
+      const targetCount = Object.keys(this.targets).length;
+      console.log(`ModulatorManager: Registered ${targetCount} targets`);
+      if (targetCount > 0) {
+        console.log("Available targets:", Object.keys(this.targets));
+      } else {
+        console.warn("No targets were registered!");
       }
-
-      // Register targets from each component
-      if (this._components) {
-        Object.values(this._components).forEach((component) => {
-          if (component && typeof component.getControlTargets === "function") {
-            const targets = component.getControlTargets();
-            this.registerTargetsFromObject(targets);
-          }
-        });
-      }
-
-      console.log(
-        "ModulatorManager registered targets:",
-        this.getTargetNames()
-      );
     } catch (e) {
       console.error("Error registering targets in ModulatorManager:", e);
     }

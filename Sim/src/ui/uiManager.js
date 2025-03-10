@@ -134,21 +134,7 @@ export class UiManager {
     }
 
     // Initialize ModulatorManager with all separate components
-    if (this.main.modulatorManager) {
-      this.pulseModUi.setModulatorManager(this.main.modulatorManager);
-      this.inputModUi.setModulatorManager(this.main.modulatorManager);
-
-      // Store all UI components for target registration
-      this.main.modulatorManager.storeComponentsForAutoRegistration(
-        this.leftUi,
-        {
-          turbulence: this.turbulenceUi,
-          voronoi: this.voronoiUi,
-          organic: this.organicUi,
-          grid: this.gridUi,
-        }
-      );
-    }
+    this.initializeModulatorManager();
   }
 
   initializeCrossReferences() {
@@ -212,5 +198,27 @@ export class UiManager {
         currentTop += container.offsetHeight + 0;
       }
     });
+  }
+
+  initializeModulatorManager() {
+    if (this.main.modulatorManager) {
+      console.log("Initializing ModulatorManager with UI components");
+
+      // Pass ModulatorManager to UI components
+      this.pulseModUi.setModulatorManager(this.main.modulatorManager);
+      this.inputModUi.setModulatorManager(this.main.modulatorManager);
+
+      // Register ALL UI components with a meaningful name for each
+      this.main.modulatorManager.registerUiComponents({
+        leftUi: this.leftUi,
+        turbulenceUi: this.turbulenceUi,
+        voronoiUi: this.voronoiUi,
+        organicUi: this.organicUi,
+        gridUi: this.gridUi,
+        // Add any other components that have targets
+      });
+    } else {
+      console.warn("ModulatorManager not available in main!");
+    }
   }
 }
