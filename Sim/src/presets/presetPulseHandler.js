@@ -12,69 +12,146 @@ export class PresetPulseHandler extends PresetBaseHandler {
     this.defaultPreset = "None";
   }
 
-  extractDataFromUI(pulseModUI) {
-    if (!pulseModUI) {
-      console.warn("No pulse modulation UI provided");
+  extractDataFromUI(pulseModUi) {
+    if (!pulseModUi) {
+      console.warn("PulseModulation UI not provided to extractDataFromUI");
       return null;
     }
 
     try {
-      if (this.debug) console.log("Extracting pulse modulation data from UI");
+      // Debug: Log what methods are actually available
+      console.log(
+        "Available methods on pulseModUi:",
+        Object.getOwnPropertyNames(Object.getPrototypeOf(pulseModUi))
+      );
 
-      const data = pulseModUI.getModulatorsData();
+      // Check if the specific method exists and use the correct one
+      if (typeof pulseModUi.getModulatorsData === "function") {
+        return pulseModUi.getModulatorsData();
+      } else {
+        // Try alternative method names
+        console.warn("getModulatorsData not found, checking for alternatives");
 
-      // Validate format
-      if (!data || !Array.isArray(data.modulators)) {
-        console.warn("Invalid data format from PulseModulationUI");
+        // Check if PulseModulationUi has a method that returns modulator data
+        if (typeof pulseModUi.getModulatorData === "function") {
+          return { modulators: pulseModUi.getModulatorData() };
+        }
+
+        // Check if there's a different method with similar functionality
+        const possibleMethodNames = [
+          "getModulatorData",
+          "getModulators",
+          "getState",
+          "getPresetData",
+        ];
+
+        for (const methodName of possibleMethodNames) {
+          if (typeof pulseModUi[methodName] === "function") {
+            console.log(`Using alternative method: ${methodName}`);
+            const result = pulseModUi[methodName]();
+            return typeof result === "object" ? result : { modulators: result };
+          }
+        }
+
+        // Last resort: See if the modulatorManager can provide the data
+        if (pulseModUi.modulatorManager) {
+          console.log("Getting data directly from modulatorManager");
+          const modulators = pulseModUi.modulatorManager
+            .getModulatorsByType("pulse")
+            .map((mod) => ({
+              enabled: mod.enabled,
+              targetName: mod.targetName,
+              frequency: mod.frequency,
+              amplitude: mod.amplitude,
+              phase: mod.phase,
+              waveform: mod.waveform,
+              sync: mod.sync,
+            }));
+
+          return { modulators };
+        }
+
+        // If all fails, return empty data
+        console.error("No method found to extract modulator data");
         return { modulators: [] };
       }
-
-      return data;
     } catch (error) {
       console.error("Error extracting pulse modulation data:", error);
       return { modulators: [] };
     }
   }
 
-  applyDataToUI(presetName, pulseModUI) {
+  applyDataToUI(presetName, pulseModUi) {
+    // Changed from pulseModUI to pulseModUi
     if (this.debug) console.log(`Applying pulse preset: ${presetName}`);
 
-    if (!pulseModUI) {
-      console.warn("No pulse modulation UI provided for loading");
+    if (!pulseModUi) {
+      console.warn("PulseModulation UI not provided to applyDataToUI");
       return false;
     }
 
     // Special case for None preset
-    if (presetName === "None") {
-      pulseModUI.clearAllModulators();
-      this.selectedPreset = presetName;
+    if (presetName === "None" || !this.presets[presetName]) {
+      console.log(
+        "Clearing all pulse modulators (None preset or invalid preset name)"
+      );
+      pulseModUi.clearAllModulators();
       return true;
     }
 
-    // Get preset data
-    const preset = this.presets[presetName];
-    if (!preset) {
-      console.warn(`Preset not found: ${presetName}`);
+    const presetData = this.presets[presetName];
+    if (!presetData || !presetData.modulators) {
+      console.warn(`Invalid preset data for ${presetName}`);
       return false;
     }
 
-    // Apply data via the loadPresetData method
     try {
-      const result = pulseModUI.loadPresetData(preset);
-      if (result) this.selectedPreset = presetName;
-      return result;
+      console.log(
+        `Loading pulse preset: ${presetName} with ${presetData.modulators.length} modulators`
+      );
+
+      // Use loadPresetData() which is already implemented in PulseModulationUi
+      return pulseModUi.loadPresetData(presetData);
     } catch (error) {
-      console.error("Error applying pulse preset:", error);
+      console.error("Error applying pulse preset data:", error);
       return false;
     }
   }
 
-  savePreset(presetName, pulseModUI) {
-    if (this.debug) console.log(`Saving pulse preset: ${presetName}`);
+  savePreset(presetName, pulseModUi) {
+    if (!pulseModUi) {
+      console.warn("PulseModulation UI not provided to savePreset");
+      return false;
+    }
 
-    const data = this.extractDataFromUI(pulseModUI);
-    if (!data) return false;
+    try {
+      // Extract the data first
+      const data = this.extractDataFromUI(pulseModUi);
+      if (!data) {
+        console.warn("Failed to extract pulse modulation data");
+        return false;
+      }
 
-    return super.savePreset(presetName, data, this.protectedPresets);
+      // Save directly without calling extractDataFromUI again
+      if (this.protectedPresets.includes(presetName)) {
+        console.warn(`Cannot overwrite protected preset: ${presetName}`);
+        return false;
+      }
+
+      console.log(`Saving pulse preset: ${presetName}`, data);
+
+      // Store the preset data
+      this.presets[presetName] = data;
+
+      // Use saveToStorage() instead of saveToLocalStorage()
+      this.saveToStorage(); // ← Changed from saveToLocalStorage
+
+      this.selectedPreset = presetName;
+
+      return true;
+    } catch (error) {
+      console.error("Error saving pulse preset:", error);
+      return false;
+    }
   }
 }

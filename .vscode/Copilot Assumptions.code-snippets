@@ -1,0 +1,16 @@
+{
+	"Copilot No Assumptions": {
+	  "prefix": "copno",
+	  "body": [
+		"-Do not make any assumptions about code you haven't seen. If you need to understand something, ask for the specific file."
+	  ],
+	  "description": "Instruction to prevent Copilot from making assumptions"
+	},
+	"Copilot Information Needed": {
+	  "prefix": "copinfo",
+	  "body": [
+		"-What information do you still need before proposing a solution?"
+	  ],
+	  "description": "Ask Copilot what information it needs"
+	}
+  }

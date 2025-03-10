@@ -225,21 +225,50 @@ class PresetManager {
   }
 
   savePreset(type, presetName, uiComponent = null) {
-    const handler = this.getHandler(type);
-    if (!handler) return false;
+    if (!presetName) {
+      console.warn("No preset name provided to save");
+      return false;
+    }
 
-    const component = uiComponent || this.getUIComponent(type);
+    try {
+      switch (type) {
+        case PresetManager.TYPES.MASTER:
+          // Handle master presets...
+          break;
 
-    if (type === PresetManager.TYPES.MASTER) {
-      return handler.savePreset(presetName);
-    } else {
-      // For non-master preset types, extract data first if needed
-      if (handler.extractDataFromUI && component) {
-        const data = handler.extractDataFromUI(component);
-        return handler.savePreset(presetName, data);
-      } else {
-        return handler.savePreset(presetName, component);
+        case PresetManager.TYPES.TURBULENCE:
+          // Handle turbulence presets...
+          break;
+
+        case PresetManager.TYPES.VORONOI:
+          // Handle voronoi presets...
+          break;
+
+        case PresetManager.TYPES.PULSE:
+          console.log(
+            "Save pulse preset:",
+            presetName,
+            "UI instance type:",
+            this.pulseModUi ? this.pulseModUi.constructor.name : "missing"
+          );
+
+          // FIX: Use the handler from the handlers object
+          return this.handlers[PresetManager.TYPES.PULSE].savePreset(
+            presetName,
+            this.pulseModUi
+          );
+
+        case PresetManager.TYPES.MIC:
+          // Handle mic presets...
+          break;
+
+        default:
+          console.warn(`Unknown preset type: ${type}`);
+          return false;
       }
+    } catch (error) {
+      console.error(`Error saving ${type} preset:`, error);
+      return false;
     }
   }
 

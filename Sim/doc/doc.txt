@@ -1,3 +1,27 @@
+-Do not make any assumptions about code you haven't seen. If you need to understand something, ask for the specific file.
+-What information do you still need before proposing a solution?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 ├── shaders/
 │   ├── shaderLoader.js     # Loads shader files
 │   ├── shaderManager.js    # Manages shader programs
