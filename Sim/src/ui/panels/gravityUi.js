@@ -45,23 +45,16 @@ export class GravityUi extends BaseUi {
       .onChange((value) => {
         particles.gravity.directionY = value;
       });
-
-    // Add gravity enable/disable toggle
-    this.gravityEnabledController = this.gui
-      .add(particles.gravity, "enabled")
-      .name("Gravity Enabled");
   }
   //#endregion
 
   getControlTargets() {
     const targets = {};
-    // Physics controllers
+
     if (this.gravityStrengthController)
       targets["Gravity Strength"] = this.gravityStrengthController;
     if (this.gravityXController) targets["Gravity X"] = this.gravityXController;
     if (this.gravityYController) targets["Gravity Y"] = this.gravityYController;
-    if (this.gravityEnabledController)
-      targets["Gravity Enabled"] = this.gravityEnabledController;
 
     return targets;
   }

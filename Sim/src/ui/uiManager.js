@@ -56,7 +56,12 @@ export class UiManager {
 
     // Create preset manager with ALL UI components
     this.presetManager = new PresetManager(
-      this.leftUi,
+      this.paramUi,
+      this.particleUi,
+      this.gravityUi,
+      this.collisionUi,
+      this.boundaryUi,
+      this.restStateUi,
       this.pulseModUi,
       this.inputModUi,
       this.turbulenceUi,
@@ -65,11 +70,18 @@ export class UiManager {
     );
 
     // Set up preset manager for the UI components
+    // this.paramUi.initWithPresetManager(this.presetManager);
+    // this.particleUi.initWithPresetManager(this.presetManager);
+    // this.gravityUi.initWithPresetManager(this.presetManager);
+    // this.collisionUi.initWithPresetManager(this.presetManager);
+    // this.boundaryUi.initWithPresetManager(this.presetManager);
+    // this.restStateUi.initWithPresetManager(this.presetManager);
+
     this.inputModUi.initWithPresetManager(this.presetManager);
     this.pulseModUi.initWithPresetManager(this.presetManager);
-    this.turbulenceUi.setPresetManager(this.presetManager);
-    this.voronoiUi.setPresetManager(this.presetManager);
-    this.presetUi.setPresetManager(this.presetManager);
+    this.turbulenceUi.initWithPresetManager(this.presetManager);
+    this.voronoiUi.initWithPresetManager(this.presetManager);
+    this.presetUi.initWithPresetManager(this.presetManager);
 
     this.initializeUiComponents();
     this.stats = new Stats();
@@ -96,15 +108,19 @@ export class UiManager {
 
   update() {
     // Update all UI components
-    this.leftUi?.update?.();
-    this.turbulenceUi?.updateControllerDisplays?.();
-    this.voronoiUi?.updateControllerDisplays?.();
-    this.organicUi?.updateControllerDisplays?.();
-    this.gridUi?.updateControllerDisplays?.();
-    this.pulseModUi?.update?.();
-    this.inputModUi?.update?.();
-    this.networkUi?.update?.();
-    this.presetUi?.update?.();
+    // this.paramUi.updateControllerDisplays();
+    // this.particleUi.updateControllerDisplays();
+    // this.gravityUi.updateControllerDisplays();
+    // this.collisionUi.updateControllerDisplays();
+    // this.boundaryUi.updateControllerDisplays();
+    // this.turbulenceUi.updateControllerDisplays();
+    // this.voronoiUi.updateControllerDisplays();
+    // this.organicUi.updateControllerDisplays();
+    // this.pulseModUi.updateControllerDisplays();
+    // this.inputModUi.updateControllerDisplays();
+
+    // this.pulseModUi.update();
+    // this.inputModUi.update();
 
     // Update stats if available
     if (this.stats) {
@@ -114,15 +130,22 @@ export class UiManager {
 
   dispose() {
     // Dispose all UI components
-    this.leftUi?.dispose?.();
-    this.turbulenceUi?.dispose?.();
-    this.voronoiUi?.dispose?.();
-    this.organicUi?.dispose?.();
-    this.gridUi?.dispose?.();
-    this.pulseModUi?.dispose?.();
-    this.inputModUi?.dispose?.();
-    this.networkUi?.dispose?.();
-    this.presetUi?.dispose?.();
+    this.paramUi.dispose();
+    this.particleUi.dispose();
+    this.gravityUi.dispose();
+    this.collisionUi.dispose();
+    this.boundaryUi.dispose();
+    this.restStateUi.dispose();
+    this.inputsUi.dispose();
+    this.debugUi.dispose();
+    this.turbulenceUi.dispose();
+    this.voronoiUi.dispose();
+    this.organicUi.dispose();
+    this.gridUi.dispose();
+    this.pulseModUi.dispose();
+    this.inputModUi.dispose();
+    this.networkUi.dispose();
+    this.presetUi.dispose();
     if (this.stats) {
       this.stats.dom.remove();
       this.stats = null;

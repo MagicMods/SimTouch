@@ -14,7 +14,7 @@ export class PresetUi extends BaseUi {
     this.gui.title("Presets");
   }
 
-  setPresetManager(presetManager) {
+  initWithPresetManager(presetManager) {
     this.presetManager = presetManager;
     this.initPresetControls();
   }
@@ -35,18 +35,8 @@ export class PresetUi extends BaseUi {
     // Clear existing elements
     containerElement.innerHTML = "";
 
-    // Create elements in the correct order:
-    // 1. Action buttons (Save/Delete/Export/Import)
-    // 2. Preset selector
-    // 3. Navigation buttons (Prev/Play/Next)
-
-    // 1. Create buttons for preset management
     const actionsContainer = this._createActionButtons(containerElement);
-
-    // 2. Create a custom preset selector
     const presetSelect = this._createPresetSelector(containerElement);
-
-    // 3. Create navigation controls
     const navContainer = this._createNavigationControls(containerElement);
 
     // Store references for later access
@@ -62,9 +52,6 @@ export class PresetUi extends BaseUi {
     };
   }
 
-  /**
-   * Create action buttons (Save/Delete/Export/Import)
-   */
   _createActionButtons(containerElement) {
     const actionsContainer = document.createElement("div");
     actionsContainer.style.display = "flex";
@@ -139,9 +126,6 @@ export class PresetUi extends BaseUi {
     };
   }
 
-  /**
-   * Create preset selector dropdown
-   */
   _createPresetSelector(containerElement) {
     const presetSelect = document.createElement("select");
     presetSelect.classList = "preset-select";
@@ -162,9 +146,6 @@ export class PresetUi extends BaseUi {
     return presetSelect;
   }
 
-  /**
-   * Create navigation controls (Prev/Play/Next)
-   */
   _createNavigationControls(containerElement) {
     const navContainer = document.createElement("div");
     // navContainer.style.classList = "preset-control-button";
@@ -199,9 +180,6 @@ export class PresetUi extends BaseUi {
     };
   }
 
-  /**
-   * Helper to create a button with consistent styling
-   */
   _createButton(text, clickHandler) {
     const button = document.createElement("button");
     button.textContent = text;

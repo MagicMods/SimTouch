@@ -388,10 +388,10 @@ export class PulseModulationUi extends BaseUi {
     this.modulatorManager.update();
 
     // Update displays
-    this.updateModulatorDisplays();
+    // this.updateControllerDisplays();
   }
 
-  updateModulatorDisplays() {
+  updateControllerDisplays() {
     // Update all modulator UI controllers to reflect current values
     if (!this.modulatorManager || !this.modulatorFolders) return;
 

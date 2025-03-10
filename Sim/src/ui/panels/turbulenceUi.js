@@ -17,7 +17,7 @@ export class TurbulenceUi extends BaseUi {
     this.gui.open();
   }
 
-  setPresetManager(presetManager) {
+  initWithPresetManager(presetManager) {
     this.presetManager = presetManager;
 
     // Create standardized preset controls for turbulence

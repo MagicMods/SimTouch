@@ -803,6 +803,7 @@ export class InputModulationUi extends BaseUi {
 
     return true;
   }
+
   // Initialize with preset manager
   initWithPresetManager(presetManager) {
     console.log("InputModulationUi initialized with preset manager");

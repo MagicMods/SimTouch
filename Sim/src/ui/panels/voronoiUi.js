@@ -16,7 +16,7 @@ export class VoronoiUi extends BaseUi {
     this.gui.open();
   }
 
-  setPresetManager(presetManager) {
+  initWithPresetManager(presetManager) {
     this.presetManager = presetManager;
 
     // Create standardized preset controls for voronoi

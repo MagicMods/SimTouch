@@ -5,7 +5,7 @@ import { Behaviors } from "../../simulation/behaviors/organicBehavior.js";
 export class ParamUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-
+    this.presetManager = null;
     // Initialize controls collection to store references
     this.controls = {};
     // Change the GUI title
@@ -13,10 +13,6 @@ export class ParamUi extends BaseUi {
 
     // Initialize folders and controllers
     this.initGlobalControls();
-  }
-
-  setPresetManager(presetManager) {
-    // No longer needed for LeftUi
   }
 
   //#region Control
