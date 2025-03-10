@@ -14,6 +14,9 @@ import { ParamUi } from "./panels/paramUi.js";
 import { ParticleUi } from "./panels/particleUi.js";
 import { GravityUi } from "./panels/gravityUi.js";
 import { CollisionUi } from "./panels/collisionUi.js";
+import { BoundaryUi } from "./panels/boundaryUi.js";
+import { RestStateUi } from "./panels/restStateUi.js";
+
 import Stats from "../util/statsModule.js";
 
 export class UiManager {
@@ -25,22 +28,22 @@ export class UiManager {
     this.leftContainer = this.createContainer("left");
     this.rightContainer = this.createContainer("right");
 
-    this.pulseModContainer = this.createContainer("left-top");
-    this.presetContainer = this.createContainer("left-second");
-    this.networkContainer = this.createContainer("center-top");
-    this.inputModContainer = this.createContainer("right-top");
+    this.pulseModContainer = this.createContainer("left-middle");
+    this.presetContainer = this.createContainer("left-center");
+    this.networkContainer = this.createContainer("right-center");
+    this.inputModContainer = this.createContainer("right-middle");
 
-    // Initialize UI components
-    this.leftUi = new LeftUi(main, this.leftContainer);
+    //Left UI
     this.paramUi = new ParamUi(main, this.leftContainer);
     this.particleUi = new ParticleUi(main, this.leftContainer);
     this.gravityUi = new GravityUi(main, this.leftContainer);
     this.collisionUi = new CollisionUi(main, this.leftContainer);
-
+    this.boundaryUi = new BoundaryUi(main, this.leftContainer);
+    this.restStateUi = new RestStateUi(main, this.leftContainer);
     this.inputsUi = new InputsUi(main, this.leftContainer);
     this.debugUi = new DebugUi(main, this.leftContainer);
 
-    // Create specialized UI components instead of RightUi
+    // Right UI
     this.pulseModUi = new PulseModulationUi(main, this.pulseModContainer);
     this.networkUi = new NetworkUi(main, this.networkContainer);
     this.inputModUi = new InputModulationUi(main, this.inputModContainer);

@@ -27,43 +27,44 @@ canvas {
 	flex-direction: column;
 	flex-wrap: wrap;
 	align-content: flex-start;
+    margin-bottom: 8px;
 }
 
 .gui-container-right {
     position: absolute;
     top: 0;
     right: 0;
+    display: flex;
+	flex-direction: column;
+	flex-wrap: wrap;
+	align-content: flex-start;
 }
 
 /* New symmetrical positioning classes - accounting for side panels */
-.gui-container-left-top {
+.gui-container-left-middle {
     position: absolute;
     top: 0;
-    /* Position at 20% of the available space between left and right panels */
     left: calc(220px + (100% - 440px) * 0.150);
     transform: translateX(-50%); /* Center at position point */
 }
 
-.gui-container-left-second {
+.gui-container-left-center {
     position: absolute;
     top: 0;
-    /* Position at 40% of the available space between left and right panels */
     left: calc(220px + (100% - 440px) * 0.38);
     transform: translateX(-50%); /* Center at position point */
 }
 
-.gui-container-center-top {
+.gui-container-right-center {
     position: absolute;
     top: 0;
-    /* Position at 60% of the available space between left and right panels */
     left: calc(220px + (100% - 440px) * 0.62);
     transform: translateX(-50%); /* Center at position point */
 }
 
-.gui-container-right-top {
+.gui-container-right-middle {
     position: absolute;
     top: 0;
-    /* Position at 80% of the available space between left and right panels */
     left: calc(220px + (100% - 440px) * 0.85);
     transform: translateX(-50%); /* Center at position point */
 }
@@ -89,49 +90,6 @@ canvas {
     left: 50%;
     transform: translateX(-50%);
 }
-
-.gui-container-right-1 {
-    position: absolute;
-    right: 0;
-    width: 245px;
-    margin-bottom: 10px;
-}
-.gui-container-right-2 {
-    position: absolute;
-    right: 0;
-    width: 245px;
-    margin-bottom: 10px;
-}
-.gui-container-right-3 {
-    position: absolute;
-    right: 0;
-    width: 245px;
-    margin-bottom: 10px;
-}
-
-.gui-container-right-4 {
-    position: absolute;
-    right: 0;
-    width: 245px;
-    margin-bottom: 10px;
-}
-
-.gui-container-left-2 {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 245px;
-    margin-bottom: 10px;
-}
-
-.gui-container-left-3 {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 245px;
-    margin-bottom: 10px;
-}
-
 
 
 
