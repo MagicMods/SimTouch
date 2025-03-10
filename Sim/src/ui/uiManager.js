@@ -12,6 +12,8 @@ import { InputsUi } from "./panels/inputsUi.js";
 import { DebugUi } from "./panels/debugUi.js";
 import { ParamUi } from "./panels/paramUi.js";
 import { ParticleUi } from "./panels/particleUi.js";
+import { GravityUi } from "./panels/gravityUi.js";
+import { CollisionUi } from "./panels/collisionUi.js";
 import Stats from "../util/statsModule.js";
 
 export class UiManager {
@@ -32,6 +34,8 @@ export class UiManager {
     this.leftUi = new LeftUi(main, this.leftContainer);
     this.paramUi = new ParamUi(main, this.leftContainer);
     this.particleUi = new ParticleUi(main, this.leftContainer);
+    this.gravityUi = new GravityUi(main, this.leftContainer);
+    this.collisionUi = new CollisionUi(main, this.leftContainer);
 
     this.inputsUi = new InputsUi(main, this.leftContainer);
     this.debugUi = new DebugUi(main, this.leftContainer);
