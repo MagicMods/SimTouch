@@ -1,16 +1,37 @@
 {
-	"Copilot No Assumptions": {
-	  "prefix": "copno",
-	  "body": [
-		"-Do not make any assumptions about code you haven't seen. If you need to understand something, ask for the specific file."
-	  ],
-	  "description": "Instruction to prevent Copilot from making assumptions"
-	},
-	"Copilot Information Needed": {
-	  "prefix": "copinfo",
-	  "body": [
-		"-What information do you still need before proposing a solution?"
-	  ],
-	  "description": "Ask Copilot what information it needs"
-	}
-  }
+  "Copilot No Assumptions": {
+    "prefix": "copno",
+    "body": [
+      "-Do not make any assumptions about code you haven't seen. If you need to understand something, ask for the specific file."
+    ],
+    "description": "Instruction to prevent Copilot from making assumptions"
+  },
+  "Copilot Information Needed": {
+    "prefix": "copinfo",
+    "body": [
+      "-What information do you still need before proposing a solution?"
+    ],
+    "description": "Ask Copilot what information it needs"
+  },
+  "Debug Check Method Exists": {
+    "prefix": "dbgcheck",
+    "body": [
+      "// TEMPORARY DEBUG CHECK - REMOVE IN PRODUCTION",
+      "if (typeof ${1:object}.${2:methodName} !== 'function') {",
+      "  console.error(`${3:errorMessage}: ${1:object}.${2:methodName} is not a function`);",
+      "  return ${4:errorValue};",
+      "}",
+      "${0}"
+    ],
+    "description": "Check if a method exists with proper error reporting (for debugging only)"
+  },
+"Direct Method Call": {
+  "prefix": "directcall",
+  "body": [
+    "// Direct method call - no code check but file reviewed and method's origin and lead checked",
+    "${1:object}.${2:methodName}(${3:params});"
+  ],
+  "description": "Direct method call - no code check but file reviewed and method's origin and lead checked"
+}
+}
+

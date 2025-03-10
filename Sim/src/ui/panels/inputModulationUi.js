@@ -435,43 +435,105 @@ export class InputModulationUi extends BaseUi {
   }
 
   getModulatorsData() {
+    // TEMPORARY DEBUG CHECK - REMOVE IN PRODUCTION
+    if (!this.modulatorManager) {
+      console.error(
+        `Error getting modulator data: modulatorManager is not defined`
+      );
+      return { modulators: [] };
+    }
+
     const modulators = [];
 
-    // Process each modulator folder
-    this.modulatorFolders.forEach((folder) => {
-      // Create a clean modulator data object
-      const modData = {
-        type: "input",
-        inputSource: "mic",
-        frequencyBand: "none",
-        sensitivity: 0,
-        smoothing: 0.7,
-        min: 0,
-        max: 1,
-        targetName: "None",
-      };
+    try {
+      // First try to get data from modulator folders
+      if (
+        Array.isArray(this.modulatorFolders) &&
+        this.modulatorFolders.length > 0
+      ) {
+        console.log(
+          `InputModulationUi: Extracting data from ${this.modulatorFolders.length} folders`
+        );
 
-      // Extract values from controllers
-      folder.controllers.forEach((controller) => {
-        if (controller?.property) {
-          const prop = controller.property;
-          if (controller.getValue) {
-            // Convert to appropriate type
-            let value = controller.getValue();
-            if (typeof value === "number" && isNaN(value)) value = 0;
-            modData[prop] = value;
+        // Get data from the UI folders
+        this.modulatorFolders.forEach((folder) => {
+          try {
+            // Find controllers with property values
+            const controllers = folder.controllers || [];
+            const modData = {
+              type: "input",
+              inputSource: "mic",
+              enabled: false,
+              frequencyBand: "none",
+              sensitivity: 0,
+              smoothing: 0.7,
+              min: 0,
+              max: 1,
+              targetName: "None",
+            };
+
+            // Extract values from controllers if available
+            controllers.forEach((controller) => {
+              if (controller && controller.property && controller.getValue) {
+                modData[controller.property] = controller.getValue();
+              }
+            });
+
+            // Ensure enabled state is consistent with sensitivity
+            modData.enabled = modData.sensitivity > 0;
+
+            modulators.push(modData);
+          } catch (err) {
+            console.error("Error processing folder:", err);
           }
-        }
-      });
+        });
+      }
 
-      // Ensure enabled state is consistent with sensitivity
-      modData.enabled = modData.sensitivity > 0;
+      // Fallback to modulatorManager if no folders or empty result
+      if (modulators.length === 0 && this.modulatorManager) {
+        console.log(
+          "InputModulationUi: Falling back to modulatorManager for data"
+        );
 
-      // Add to modulators array
-      modulators.push(modData);
-    });
+        // Get modulators from manager
+        const managerMods = this.modulatorManager.modulators
+          .filter((m) => m.type === "input" && m.inputSource === "mic")
+          .map((mod) => ({
+            type: "input",
+            inputSource: "mic",
+            enabled: mod.enabled,
+            frequencyBand: mod.frequencyBand || "none",
+            sensitivity: mod.sensitivity || 0,
+            smoothing: mod.smoothing || 0.7,
+            min: mod.min || 0,
+            max: mod.max || 1,
+            targetName: mod.targetName || "None",
+          }));
 
-    return { modulators };
+        modulators.push(...managerMods);
+      }
+
+      console.log(
+        `InputModulationUi: Prepared input modulation data with ${modulators.length} modulators`
+      );
+
+      // Get the global sensitivity if available
+      const sensitivity =
+        this.main?.externalInput?.micForces?.sensitivity || 1.0;
+
+      return {
+        enabled: this.audioInputEnabled || false,
+        sensitivity: sensitivity,
+        modulators: modulators,
+      };
+    } catch (error) {
+      console.error("Error preparing input modulation data:", error);
+      return {
+        enabled: false,
+        sensitivity: 1.0,
+        modulators: [],
+      };
+    }
   }
 
   //#endregion

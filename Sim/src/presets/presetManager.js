@@ -231,6 +231,26 @@ class PresetManager {
     }
 
     try {
+      // Get the correct component based on type
+      const component = uiComponent || this.getUIComponent(type);
+
+      // TEMPORARY DEBUG CHECK - REMOVE IN PRODUCTION
+      if (!component) {
+        console.error(`Cannot save ${type} preset: UI component not found`);
+        return false;
+      }
+
+      // Get the correct handler
+      const handler = this.getHandler(type);
+
+      // TEMPORARY DEBUG CHECK - REMOVE IN PRODUCTION
+      if (typeof handler?.savePreset !== "function") {
+        console.error(
+          `Cannot save ${type} preset: handler.savePreset is not a function`
+        );
+        return false;
+      }
+
       switch (type) {
         case PresetManager.TYPES.MASTER:
           // Handle master presets...
@@ -249,18 +269,18 @@ class PresetManager {
             "Save pulse preset:",
             presetName,
             "UI instance type:",
-            this.pulseModUi ? this.pulseModUi.constructor.name : "missing"
+            component ? component.constructor.name : "missing"
           );
-
-          // FIX: Use the handler from the handlers object
-          return this.handlers[PresetManager.TYPES.PULSE].savePreset(
-            presetName,
-            this.pulseModUi
-          );
+          return handler.savePreset(presetName, component);
 
         case PresetManager.TYPES.MIC:
-          // Handle mic presets...
-          break;
+          console.log(
+            "Save mic preset:",
+            presetName,
+            "UI instance type:",
+            component ? component.constructor.name : "missing"
+          );
+          return handler.savePreset(presetName, component);
 
         default:
           console.warn(`Unknown preset type: ${type}`);
