@@ -1,30 +1,88 @@
-class PresetBaseHandler {
+export class PresetBaseHandler {
   constructor(storageKey, defaultPresets = {}) {
     this.storageKey = storageKey;
-    this.presets = this.loadFromStorage() || defaultPresets;
-    this.selectedPreset = Object.keys(this.presets)[0] || null;
-    this.version = 1; // Add versioning for future migrations
-  }
+    this.presets = this.loadFromStorage() || {};
+    this.selectedPreset = null;
+    this.debug = false;
+    this.protectedPresets = [];
+    this.defaultPreset = null;
 
-  // Core methods that standardize operations
-  loadFromStorage() {
-    try {
-      const stored = localStorage.getItem(this.storageKey);
-      return stored ? JSON.parse(stored) : null;
-    } catch (error) {
-      console.error(`Error loading from ${this.storageKey}:`, error);
-      return null;
+    if (defaultPresets) {
+      for (const key in defaultPresets) {
+        if (!this.presets[key]) {
+          this.presets[key] = defaultPresets[key];
+        }
+      }
+      this.saveToStorage();
     }
   }
 
-  saveToStorage() {
-    try {
-      localStorage.setItem(this.storageKey, JSON.stringify(this.presets));
-      return true;
-    } catch (error) {
-      console.error(`Error saving to ${this.storageKey}:`, error);
+  extractDataFromUI(uiComponent) {
+    console.warn(
+      `extractDataFromUI not implemented for ${this.constructor.name}`
+    );
+    return null;
+  }
+
+  applyDataToUI(presetName, uiComponent) {
+    console.warn(`applyDataToUI not implemented for ${this.constructor.name}`);
+    return false;
+  }
+
+  savePreset(presetName, data) {
+    if (!presetName) {
+      console.error("Invalid preset name");
       return false;
     }
+
+    if (this.protectedPresets && this.protectedPresets.includes(presetName)) {
+      console.warn(`Cannot overwrite protected preset: ${presetName}`);
+      return false;
+    }
+
+    // Handle direct UI component passing
+    let presetData = data;
+    if (
+      data &&
+      typeof data === "object" &&
+      this.extractDataFromUI &&
+      !data.hasOwnProperty("id")
+    ) {
+      presetData = this.extractDataFromUI(data);
+    }
+
+    if (!presetData) {
+      console.error("Invalid preset data");
+      return false;
+    }
+
+    // Store a deep copy to prevent reference issues
+    this.presets[presetName] = JSON.parse(JSON.stringify(presetData));
+    this.selectedPreset = presetName;
+
+    this.saveToStorage();
+    return true;
+  }
+
+  deletePreset(presetName) {
+    if (!presetName || !this.presets[presetName]) {
+      console.error(`Preset not found: ${presetName}`);
+      return false;
+    }
+
+    if (this.protectedPresets && this.protectedPresets.includes(presetName)) {
+      console.warn(`Cannot delete protected preset: ${presetName}`);
+      return false;
+    }
+
+    delete this.presets[presetName];
+
+    if (this.selectedPreset === presetName) {
+      this.selectedPreset = this.defaultPreset;
+    }
+
+    this.saveToStorage();
+    return true;
   }
 
   getPresetOptions() {
@@ -35,96 +93,44 @@ class PresetBaseHandler {
     return this.selectedPreset;
   }
 
-  // Validate preset name and provide consistent error handling
-  validatePresetName(presetName, protectedPresets = []) {
-    if (!presetName || presetName.trim() === "") {
-      console.warn("Preset name cannot be empty");
-      return false;
+  setSelectedPreset(presetName) {
+    if (this.presets[presetName]) {
+      this.selectedPreset = presetName;
+      return true;
     }
-
-    if (protectedPresets.includes(presetName)) {
-      console.warn(`Cannot modify protected preset: ${presetName}`);
-      return false;
-    }
-
-    return true;
+    return false;
   }
 
-  // Base save preset with safety checks
-  savePreset(presetName, data, protectedPresets = []) {
-    if (!this.validatePresetName(presetName, protectedPresets)) {
-      return false;
-    }
-
-    this.presets[presetName] = { ...data, _meta: { timestamp: Date.now() } };
-    this.selectedPreset = presetName;
-    this.saveToStorage();
-    return true;
-  }
-
-  // Base delete preset with safety checks
-  deletePreset(presetName, protectedPresets = [], defaultPreset = null) {
-    if (protectedPresets.includes(presetName)) {
-      console.warn(`Cannot delete protected preset: ${presetName}`);
-      return false;
-    }
-
-    if (!this.presets[presetName]) {
-      console.warn("Preset not found:", presetName);
-      return false;
-    }
-
-    delete this.presets[presetName];
-    this.selectedPreset = defaultPreset || Object.keys(this.presets)[0] || null;
-    this.saveToStorage();
-    return true;
-  }
-
-  // Generic method to extract data from a UI component
-  extractDataFromUI(uiComponent) {
-    // To be implemented by subclasses
-    throw new Error("extractDataFromUI must be implemented by subclass");
-  }
-
-  // Generic method to apply data to a UI component
-  applyDataToUI(presetName, uiComponent) {
-    // To be implemented by subclasses
-    throw new Error("applyDataToUI must be implemented by subclass");
-  }
-
-  // Export/import functionality
-  exportData() {
-    return {
-      version: this.version,
-      storageKey: this.storageKey,
-      presets: this.presets,
-      selected: this.selectedPreset,
-    };
-  }
-
-  importData(data, merge = false) {
-    if (!data || !data.presets) {
-      console.warn("Invalid import data format");
-      return false;
-    }
-
-    if (data.version > this.version) {
-      console.warn(
-        `Importing data from newer version (${data.version} > ${this.version})`
+  loadFromStorage() {
+    try {
+      const storedData = localStorage.getItem(this.storageKey);
+      return storedData ? JSON.parse(storedData) : null;
+    } catch (error) {
+      console.error(
+        `Error loading presets from storage (${this.storageKey}):`,
+        error
       );
-      // Could add migration logic here
+      return null;
     }
+  }
 
-    if (merge) {
-      this.presets = { ...this.presets, ...data.presets };
-    } else {
-      this.presets = data.presets;
+  saveToStorage() {
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(this.presets));
+      if (this.debug) {
+        console.log(`Saved presets to ${this.storageKey}`);
+      }
+      return true;
+    } catch (error) {
+      console.error(
+        `Error saving presets to storage (${this.storageKey}):`,
+        error
+      );
+      return false;
     }
+  }
 
-    this.selectedPreset = data.selected || Object.keys(this.presets)[0] || null;
-    this.saveToStorage();
-    return true;
+  setDebug(enabled) {
+    this.debug = enabled;
   }
 }
-
-export { PresetBaseHandler };

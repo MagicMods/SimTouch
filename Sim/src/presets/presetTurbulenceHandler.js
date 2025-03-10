@@ -9,10 +9,14 @@ export class PresetTurbulenceHandler extends PresetBaseHandler {
 
     this.protectedPresets = ["None"];
     this.defaultPreset = "None";
-    this.debug = false;
     this.turbulenceField = null;
   }
 
+  /**
+   * Extract turbulence data from UI folder
+   * @param {Object} turbFolder - dat.GUI folder for turbulence controls
+   * @returns {Object|null} Extracted data or null if failed
+   */
   extractDataFromUI(turbFolder) {
     if (!turbFolder) {
       console.warn("No turbulence folder provided");
@@ -31,6 +35,12 @@ export class PresetTurbulenceHandler extends PresetBaseHandler {
     }
   }
 
+  /**
+   * Apply turbulence preset data to UI
+   * @param {string} presetName - Name of preset to apply
+   * @param {Object} turbFolder - dat.GUI folder for turbulence controls
+   * @returns {boolean} Success status
+   */
   applyDataToUI(presetName, turbFolder) {
     if (this.debug) console.log(`Applying turbulence preset: ${presetName}`);
 
@@ -41,11 +51,12 @@ export class PresetTurbulenceHandler extends PresetBaseHandler {
 
     // Special handling for "None" preset
     if (presetName === "None") {
-      console.warn("Applying Turbulence None preset");
+      if (this.debug) console.log("Applying Turbulence None preset");
       const strengthController = this._findController(turbFolder, "strength");
       if (strengthController) {
         strengthController.setValue(0);
       }
+      this.selectedPreset = presetName;
       return true;
     }
 
@@ -67,6 +78,10 @@ export class PresetTurbulenceHandler extends PresetBaseHandler {
     }
   }
 
+  /**
+   * Find a controller by property name in a folder
+   * @private
+   */
   _findController(folder, propertyName) {
     if (!folder || !folder.controllers) return null;
 
@@ -78,21 +93,26 @@ export class PresetTurbulenceHandler extends PresetBaseHandler {
     return null;
   }
 
-  // Standard method for saving
+  /**
+   * Save a turbulence preset
+   * @param {string} presetName - Name to save preset as
+   * @param {Object} turbFolder - dat.GUI folder for turbulence controls
+   * @returns {boolean} Success status
+   */
   savePreset(presetName, turbFolder) {
     if (this.debug) console.log(`Saving turbulence preset: ${presetName}`);
 
     const data = this.extractDataFromUI(turbFolder);
     if (!data) return false;
 
-    const result = super.savePreset(presetName, data, this.protectedPresets);
-    // if (result) {
-    //   this.selectedPreset = presetName; // Update selected preset after successful save
-    // }
-    return result;
+    return super.savePreset(presetName, data, this.protectedPresets);
   }
 
-  // Standard method for deleting
+  /**
+   * Standard method for deleting
+   * @param {string} presetName - Name of preset to delete
+   * @returns {boolean} Success status
+   */
   deletePreset(presetName) {
     if (this.debug) console.log(`Deleting turbulence preset: ${presetName}`);
 
@@ -103,11 +123,19 @@ export class PresetTurbulenceHandler extends PresetBaseHandler {
     );
   }
 
-  setDebug(enabled) {
-    this.debug = enabled;
-  }
-
+  /**
+   * Set the turbulence field reference
+   * @param {Object} turbulenceField - Turbulence field object
+   */
   setTurbulenceField(turbulenceField) {
     this.turbulenceField = turbulenceField;
+  }
+
+  /**
+   * Enable or disable debug mode
+   * @param {boolean} enabled - Debug mode status
+   */
+  setDebug(enabled) {
+    this.debug = enabled;
   }
 }

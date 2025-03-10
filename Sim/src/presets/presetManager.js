@@ -18,8 +18,6 @@ class PresetManager {
     this.rightGui = rightGui;
     this.pulseModUi = pulseModUi;
     this.inputUi = inputUi;
-
-    // Track created preset controls
     this.presetControls = {};
 
     this.handlers = {
@@ -35,7 +33,7 @@ class PresetManager {
       [PresetManager.TYPES.MIC]: new PresetMicHandler(),
     };
   }
-  //#region UI
+
   createPresetControls(presetType, parentElement, options = {}) {
     if (!parentElement || !presetType || !this.handlers[presetType]) {
       console.error(`Cannot create preset controls: Invalid parameters`);
@@ -44,30 +42,13 @@ class PresetManager {
 
     const controlId = `${presetType}-${Date.now()}`;
 
-    // Create container
     const container = document.createElement("div");
     container.classList.add("preset-controls-container");
-    // container.style.display = "flex";
-    // container.style.alignItems = "center";
-    // container.style.marginTop = "8px";
-    // container.style.marginBottom = "8px";
-
-    // Add section title if specified
-    if (options.title) {
-      const title = document.createElement("div");
-      title.textContent = options.title;
-      title.style.marginBottom = "4px";
-      title.style.fontWeight = "bold";
-      parentElement.appendChild(title);
-    }
-
-    // Create buttons and select
-    const saveButton = this._createButton("Save", () =>
-      this._handleSave(presetType)
-    );
-    const deleteButton = this._createButton("Delete", () =>
-      this._handleDelete(presetType, presetSelect)
-    );
+    container.style.display = "flex";
+    container.style.alignItems = "center";
+    container.style.marginTop = "8px";
+    container.style.marginBottom = "8px";
+    container.style.width = "100%";
 
     const presetSelect = document.createElement("select");
     presetSelect.classList.add("preset-select");
@@ -75,29 +56,46 @@ class PresetManager {
     presetSelect.style.margin = "0 4px";
     presetSelect.style.padding = "3px";
 
-    // Add change event handler
+    const saveButton = this._createButton("Save", () =>
+      this._handleSave(presetType)
+    );
+    const deleteButton = this._createButton("Delete", () =>
+      this._handleDelete(presetType, presetSelect)
+    );
+
     presetSelect.addEventListener("change", (e) => {
       const value = e.target.value;
       console.log(`Preset selector for ${presetType} changed to:`, value);
       this.loadPreset(presetType, value);
     });
 
-    // Update dropdown options
     this._updatePresetDropdown(presetType, presetSelect);
 
-    // Add elements to container
     container.appendChild(saveButton);
     container.appendChild(presetSelect);
     container.appendChild(deleteButton);
 
-    // Insert at specified position
-    if (options.insertFirst) {
-      parentElement.insertBefore(container, parentElement.firstChild);
+    if (options.title) {
+      const titleElement = document.createElement("div");
+      titleElement.textContent = options.title;
+      titleElement.style.fontWeight = "bold";
+      titleElement.style.marginBottom = "4px";
+
+      if (options.insertFirst) {
+        parentElement.insertBefore(titleElement, parentElement.firstChild);
+        parentElement.insertBefore(container, titleElement.nextSibling);
+      } else {
+        parentElement.appendChild(titleElement);
+        parentElement.appendChild(container);
+      }
     } else {
-      parentElement.appendChild(container);
+      if (options.insertFirst) {
+        parentElement.insertBefore(container, parentElement.firstChild);
+      } else {
+        parentElement.appendChild(container);
+      }
     }
 
-    // Store control references
     this.presetControls[controlId] = {
       type: presetType,
       container,
@@ -118,8 +116,6 @@ class PresetManager {
     const button = document.createElement("button");
     button.textContent = text;
     button.style.flex = "1";
-    // button.style.padding = "3px 5px";
-    // button.style.margin = "0 2px";
     button.addEventListener("click", clickHandler);
     return button;
   }
@@ -139,7 +135,6 @@ class PresetManager {
   _handleDelete(presetType, selectElement) {
     const current = selectElement.value;
 
-    // Check if this is a protected preset
     const handler = this.getHandler(presetType);
     if (handler?.protectedPresets?.includes(current)) {
       alert(`Cannot delete protected preset: ${current}`);
@@ -160,10 +155,8 @@ class PresetManager {
 
     const options = this.getPresetOptions(presetType);
 
-    // Clear existing options
     selectElement.innerHTML = "";
 
-    // Add all available presets
     options.forEach((preset) => {
       const option = document.createElement("option");
       option.value = preset;
@@ -171,7 +164,6 @@ class PresetManager {
       selectElement.appendChild(option);
     });
 
-    // Set current selection
     const currentPreset = this.getSelectedPreset(presetType);
     if (currentPreset && options.includes(currentPreset)) {
       selectElement.value = currentPreset;
@@ -185,9 +177,6 @@ class PresetManager {
         this._updatePresetDropdown(presetType, control.select);
       });
   }
-  //#endregion
-
-  //#region Get
 
   getHandler(type) {
     return this.handlers[type] || null;
@@ -220,9 +209,39 @@ class PresetManager {
     return handler ? handler.getSelectedPreset() : null;
   }
 
-  //#endregion
+  savePreset(type, presetName, uiComponent = null) {
+    const handler = this.getHandler(type);
+    if (!handler) return false;
 
-  //#region Set
+    const component = uiComponent || this.getUIComponent(type);
+
+    if (type === PresetManager.TYPES.MASTER) {
+      return handler.savePreset(presetName);
+    } else {
+      // For non-master preset types, extract data first if needed
+      if (handler.extractDataFromUI && component) {
+        const data = handler.extractDataFromUI(component);
+        return handler.savePreset(presetName, data);
+      } else {
+        return handler.savePreset(presetName, component);
+      }
+    }
+  }
+
+  deletePreset(type, presetName) {
+    const handler = this.getHandler(type);
+    if (!handler) return false;
+
+    return handler.deletePreset(presetName);
+  }
+
+  loadPreset(type, presetName, uiComponent = null) {
+    const handler = this.getHandler(type);
+    if (!handler) return false;
+
+    const component = uiComponent || this.getUIComponent(type);
+    return handler.applyDataToUI(presetName, component);
+  }
 
   setDebug(enabled) {
     Object.values(this.handlers).forEach((handler) => {
@@ -239,52 +258,13 @@ class PresetManager {
     }
   }
 
-  //#endregion
-
-  //#region Preset
-
-  savePreset(type, presetName, uiComponent = null) {
-    const handler = this.getHandler(type);
-    if (!handler) return false;
-
-    const component = uiComponent || this.getUIComponent(type);
-
-    if (type === PresetManager.TYPES.MASTER) {
-      return handler.savePreset(presetName);
-    } else {
-      return handler.savePreset(presetName, component);
+  setTurbulenceField(field) {
+    const handler = this.getHandler(PresetManager.TYPES.TURBULENCE);
+    if (handler && typeof handler.setTurbulenceField === "function") {
+      handler.setTurbulenceField(field);
     }
   }
 
-  deletePreset(type, presetName) {
-    const handler = this.getHandler(type);
-    if (!handler) return false;
-
-    const result = handler.deletePreset(presetName);
-    if (result) {
-      // Update all preset dropdowns for this type
-      this._updateAllPresetDropdowns(type);
-    }
-    return result;
-  }
-
-  loadPreset(type, presetName, uiComponent = null) {
-    const handler = this.getHandler(type);
-    if (!handler) return false;
-
-    const component = uiComponent || this.getUIComponent(type);
-    const result = handler.applyDataToUI(presetName, component);
-
-    if (result) {
-      // Update all preset dropdowns for this type to show the new selection
-      this._updateAllPresetDropdowns(type);
-    }
-
-    return result;
-  }
-  //#endregion
-
-  //#region Import/Export
   exportPresets() {
     try {
       const masterHandler = this.getHandler(PresetManager.TYPES.MASTER);
@@ -364,7 +344,6 @@ class PresetManager {
       return 0;
     }
   }
-  //#endregion
 }
 
 export { PresetManager };

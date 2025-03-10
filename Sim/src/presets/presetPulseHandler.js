@@ -13,9 +13,14 @@ export class PresetPulseHandler extends PresetBaseHandler {
   }
 
   extractDataFromUI(pulseModUI) {
-    if (!pulseModUI) return null;
+    if (!pulseModUI) {
+      console.warn("No pulse modulation UI provided");
+      return null;
+    }
 
     try {
+      if (this.debug) console.log("Extracting pulse modulation data from UI");
+
       const data = pulseModUI.getModulatorsData();
 
       // Validate format
@@ -32,48 +37,44 @@ export class PresetPulseHandler extends PresetBaseHandler {
   }
 
   applyDataToUI(presetName, pulseModUI) {
+    if (this.debug) console.log(`Applying pulse preset: ${presetName}`);
+
+    if (!pulseModUI) {
+      console.warn("No pulse modulation UI provided for loading");
+      return false;
+    }
+
     // Special case for None preset
     if (presetName === "None") {
       pulseModUI.clearAllModulators();
+      this.selectedPreset = presetName;
       return true;
     }
 
     // Get preset data
     const preset = this.presets[presetName];
-    if (!preset) return false;
-
-    // Apply data via modern API
-    const result = pulseModUI.loadPresetData(preset);
-    if (result) this.selectedPreset = presetName;
-
-    return result;
-  }
-
-  // Save a preset with validation
-  savePreset(presetName, data, protectedList = this.protectedPresets) {
-    // Validate data before saving
-    if (!data || !data.modulators) {
-      console.error("Invalid data for saving preset");
+    if (!preset) {
+      console.warn(`Preset not found: ${presetName}`);
       return false;
     }
 
-    console.log(
-      `Saving pulse preset: ${presetName} with ${data.modulators.length} modulators`
-    );
-
-    // Use the parent class method for actual saving
-    return super.savePreset(presetName, data, protectedList);
+    // Apply data via the loadPresetData method
+    try {
+      const result = pulseModUI.loadPresetData(preset);
+      if (result) this.selectedPreset = presetName;
+      return result;
+    } catch (error) {
+      console.error("Error applying pulse preset:", error);
+      return false;
+    }
   }
 
-  loadPreset(presetName, ui) {
-    return this.applyDataToUI(presetName, ui);
-  }
+  savePreset(presetName, pulseModUI) {
+    if (this.debug) console.log(`Saving pulse preset: ${presetName}`);
 
-  deletePreset(
-    presetName,
-    protectedList = this.protectedPresets,
-    defaultPreset = this.defaultPreset
-  ) {
-    return super.deletePreset(presetName, protectedList, defaultPreset);
+    const data = this.extractDataFromUI(pulseModUI);
+    if (!data) return false;
+
+    return super.savePreset(presetName, data, this.protectedPresets);
   }
 }

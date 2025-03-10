@@ -9,10 +9,14 @@ export class PresetVoronoiHandler extends PresetBaseHandler {
 
     this.protectedPresets = ["None"];
     this.defaultPreset = "None";
-    this.debug = false;
     this.voronoiField = null;
   }
 
+  /**
+   * Extract voronoi data from UI folder
+   * @param {Object} voronoiFolder - dat.GUI folder for voronoi controls
+   * @returns {Object|null} Extracted data or null if failed
+   */
   extractDataFromUI(voronoiFolder) {
     if (!voronoiFolder) {
       console.warn("No voronoi folder provided");
@@ -31,6 +35,12 @@ export class PresetVoronoiHandler extends PresetBaseHandler {
     }
   }
 
+  /**
+   * Apply voronoi preset data to UI
+   * @param {string} presetName - Name of preset to apply
+   * @param {Object} voronoiFolder - dat.GUI folder for voronoi controls
+   * @returns {boolean} Success status
+   */
   applyDataToUI(presetName, voronoiFolder) {
     if (this.debug) console.log(`Applying voronoi preset: ${presetName}`);
 
@@ -41,7 +51,7 @@ export class PresetVoronoiHandler extends PresetBaseHandler {
 
     // Handle None preset specially
     if (presetName === "None") {
-      // console.warn("Applying Voronoi None preset");
+      if (this.debug) console.log("Applying Voronoi None preset");
       const strengthController = this._findController(
         voronoiFolder,
         "strength"
@@ -49,6 +59,7 @@ export class PresetVoronoiHandler extends PresetBaseHandler {
       if (strengthController) {
         strengthController.setValue(0);
       }
+      this.selectedPreset = presetName;
       return true;
     }
 
@@ -62,7 +73,6 @@ export class PresetVoronoiHandler extends PresetBaseHandler {
     try {
       voronoiFolder.load(preset.voronoi);
       this.selectedPreset = presetName;
-
       return true;
     } catch (error) {
       console.error("Error applying voronoi preset:", error);
@@ -70,6 +80,10 @@ export class PresetVoronoiHandler extends PresetBaseHandler {
     }
   }
 
+  /**
+   * Find a controller by property name in a folder
+   * @private
+   */
   _findController(folder, propertyName) {
     if (!folder || !folder.controllers) return null;
 
@@ -81,7 +95,12 @@ export class PresetVoronoiHandler extends PresetBaseHandler {
     return null;
   }
 
-  // Standard method for saving
+  /**
+   * Save a voronoi preset
+   * @param {string} presetName - Name to save preset as
+   * @param {Object} voronoiFolder - dat.GUI folder for voronoi controls
+   * @returns {boolean} Success status
+   */
   savePreset(presetName, voronoiFolder) {
     if (this.debug) console.log(`Saving voronoi preset: ${presetName}`);
 
@@ -91,7 +110,11 @@ export class PresetVoronoiHandler extends PresetBaseHandler {
     return super.savePreset(presetName, data, this.protectedPresets);
   }
 
-  // Standard method for deleting
+  /**
+   * Standard method for deleting
+   * @param {string} presetName - Name of preset to delete
+   * @returns {boolean} Success status
+   */
   deletePreset(presetName) {
     if (this.debug) console.log(`Deleting voronoi preset: ${presetName}`);
 
@@ -102,10 +125,18 @@ export class PresetVoronoiHandler extends PresetBaseHandler {
     );
   }
 
+  /**
+   * Set the debug mode
+   * @param {boolean} enabled - Enable or disable debug mode
+   */
   setDebug(enabled) {
     this.debug = enabled;
   }
 
+  /**
+   * Set the voronoi field reference
+   * @param {Object} voronoiField - Voronoi field object
+   */
   setVoronoiField(voronoiField) {
     this.voronoiField = voronoiField;
   }

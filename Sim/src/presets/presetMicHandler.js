@@ -15,19 +15,29 @@ export class PresetMicHandler extends PresetBaseHandler {
 
     this.protectedPresets = ["None"];
     this.defaultPreset = "None";
-    this.debug = false;
   }
 
-  // Standard extractDataFromUI
+  /**
+   * Extract data from input modulation UI
+   * @param {Object} inputUi - Input modulation UI component
+   * @returns {Object|null} Extracted data or null if failed
+   */
   extractDataFromUI(inputUi) {
-    if (!inputUi) return null;
+    if (!inputUi) {
+      console.warn("No input modulation UI provided");
+      return null;
+    }
 
     try {
       if (this.debug) console.log("Extracting mic data from UI");
 
       // Get modulators data from UI directly
       const modulatorData = inputUi.getModulatorsData();
-      const micEnabled = inputUi.isMicEnabled ? inputUi.isMicEnabled() : false;
+      const micEnabled =
+        typeof inputUi.isMicEnabled === "function"
+          ? inputUi.isMicEnabled()
+          : false;
+
       const sensitivity = inputUi.micSensitivity || 1.0;
 
       // Create a clean, serializable preset structure
@@ -44,7 +54,12 @@ export class PresetMicHandler extends PresetBaseHandler {
     }
   }
 
-  // Standard applyDataToUI
+  /**
+   * Apply mic preset data to UI
+   * @param {string} presetName - Name of preset to apply
+   * @param {Object} inputUi - Input modulation UI component
+   * @returns {boolean} Success status
+   */
   applyDataToUI(presetName, inputUi) {
     if (this.debug) console.log(`Applying mic preset: ${presetName}`);
 
@@ -84,7 +99,7 @@ export class PresetMicHandler extends PresetBaseHandler {
         preset.micSettings.modulators.length > 0 &&
         typeof inputUi.loadPresetData === "function"
       ) {
-        inputUi.loadPresetData(preset);
+        inputUi.loadPresetData(preset.micSettings);
       }
 
       this.selectedPreset = presetName;
@@ -95,7 +110,12 @@ export class PresetMicHandler extends PresetBaseHandler {
     }
   }
 
-  // Standard savePreset method
+  /**
+   * Save an input modulation preset
+   * @param {string} presetName - Name to save preset as
+   * @param {Object} inputUi - Input modulation UI component
+   * @returns {boolean} Success status
+   */
   savePreset(presetName, inputUi) {
     if (this.debug) console.log(`Saving mic preset: ${presetName}`);
 
