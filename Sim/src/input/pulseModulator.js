@@ -81,8 +81,9 @@ class PulseModulator {
   /**
    * Update the modulator
    * @param {number} deltaTime - Time since last update in seconds
+   * @param {number} globalTime - Global time in seconds
    */
-  update(deltaTime) {
+  update(deltaTime, globalTime) {
     if (!this.enabled || !this.targetController) return;
 
     // Check if sync is enabled and update frequency
@@ -94,28 +95,17 @@ class PulseModulator {
       this.frequency = this.manager.masterFrequency;
     }
 
-    // Update time for modulation calculation
-    this.time += deltaTime;
-
-    // Increment phase based on frequency, including the user-set phase
-    const totalPhase = this.time * this.frequency * Math.PI * 2 + this.phase;
+    // Use the global time instead of incrementing this.time
+    // This ensures all modulators use the same time reference
+    const totalPhase = globalTime * this.frequency * Math.PI * 2 + this.phase;
     this.currentPhase = totalPhase % (Math.PI * 2);
 
-    // Get oscillation value (0 to 1) using the correct calculation method
-    const value = this.calculateModulation(this.time);
+    // Get oscillation value based on global time
+    const value = this.calculateModulationWithGlobalTime(globalTime);
 
     // Map from 0-1 to min-max
-    const range = isNaN(this.max - this.min) ? 1 : this.max - this.min;
-    const baseValue = isNaN(this.min) ? 0 : this.min;
-    let mappedValue = baseValue + value * range;
-
-    // Protection against NaN
-    if (isNaN(mappedValue)) {
-      console.warn(
-        `Mapped value is NaN for ${this.targetName}, using defaults`
-      );
-      mappedValue = baseValue || 0;
-    }
+    const range = this.max - this.min;
+    const mappedValue = this.min + value * range;
 
     // Apply to target
     if (
@@ -171,6 +161,30 @@ class PulseModulator {
     }
 
     return value; // Return 0-1 value
+  }
+
+  /**
+   * Calculate the modulation value based on global time
+   * @param {number} globalTime - Global time in seconds
+   * @returns {number} Modulation value 0-1
+   */
+  calculateModulationWithGlobalTime(globalTime) {
+    const phase = globalTime * this.frequency * Math.PI * 2 + this.phase;
+
+    // Select waveform calculation
+    switch (this.type) {
+      case "sine":
+        return (Math.sin(phase) + 1) / 2; // 0 to 1
+      case "square":
+        return phase % (Math.PI * 2) < Math.PI ? 1 : 0;
+      case "triangle":
+        const t = (phase % (Math.PI * 2)) / (Math.PI * 2);
+        return t < 0.5 ? t * 2 : 2 - t * 2;
+      case "sawtooth":
+        return (phase % (Math.PI * 2)) / (Math.PI * 2);
+      default:
+        return (Math.sin(phase) + 1) / 2; // Default to sine
+    }
   }
 
   /**

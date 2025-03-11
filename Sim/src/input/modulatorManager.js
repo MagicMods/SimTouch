@@ -9,6 +9,7 @@ export class ModulatorManager {
     this.lastUpdateTime = Date.now();
     this.uiComponents = {}; // Single structure for ALL UI components
     this.masterFrequency = 1.0;
+    this.globalTime = 0; // Add global time reference
   }
 
   //#region Target
@@ -327,9 +328,12 @@ export class ModulatorManager {
     const dt = deltaTime || (now - this.lastUpdateTime) / 1000; // seconds
     this.lastUpdateTime = now;
 
+    // Increment global time
+    this.globalTime += deltaTime;
+
     for (const modulator of this.modulators) {
       if (modulator.enabled) {
-        modulator.update(dt);
+        modulator.update(dt, this.globalTime);
       }
     }
   }
