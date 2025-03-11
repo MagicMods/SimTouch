@@ -222,14 +222,29 @@ export class PulseModulationUi extends BaseUi {
         // No additional handling needed
       });
 
-    // Add remove button
+    // Simplified remove button implementation
     const removeButton = {
       remove: () => {
-        // Disable the modulator first
-        modulator.enabled = false;
+        console.log(`Removing modulator with target ${modulator.targetName}`);
 
-        // Remove the modulator from the manager
-        this.modulatorManager.removeModulator(modulator);
+        // Reset to original value using the modulator's built-in method
+        // This is the simplest approach - the modulator already knows its original value!
+        if (modulator && typeof modulator.resetToOriginal === "function") {
+          modulator.resetToOriginal();
+        }
+
+        // Disable the modulator (this also calls resetToOriginal internally)
+        if (modulator && typeof modulator.disable === "function") {
+          modulator.disable();
+        } else if (modulator) {
+          modulator.enabled = false;
+        }
+
+        // Remove from the manager
+        const index = this.modulatorManager.modulators.indexOf(modulator);
+        if (index !== -1) {
+          this.modulatorManager.modulators.splice(index, 1);
+        }
 
         // Remove the folder
         folder.destroy();
@@ -238,35 +253,6 @@ export class PulseModulationUi extends BaseUi {
         const folderIndex = this.modulatorFolders.indexOf(folder);
         if (folderIndex > -1) {
           this.modulatorFolders.splice(folderIndex, 1);
-        }
-
-        // If no modulators remain, reset targets and update UI
-        if (this.modulatorFolders.length === 0 && this.presetSelect) {
-          // Update the UI dropdown
-          this.presetSelect.value = "None";
-
-          // Update the selected preset in the manager
-          if (this.presetManager) {
-            const handler = this.presetManager.getHandler(
-              PresetManager.TYPES.PULSE
-            );
-            if (handler) {
-              handler.selectedPreset = "None";
-            }
-          }
-
-          // CRITICAL: Reset all target values to their original values
-          if (this.modulatorManager) {
-            // Reset all targets that were affected by the removed modulator
-            const targets = modulator._affectedTargets || [
-              modulator.targetName,
-            ];
-            targets.forEach((targetName) => {
-              if (targetName && targetName !== "None") {
-                this.modulatorManager.resetTargetToOriginalValue(targetName);
-              }
-            });
-          }
         }
       },
     };
