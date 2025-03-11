@@ -126,6 +126,12 @@ export class MasterPresetHandler extends PresetBaseHandler {
   }
 
   applyPreset(presetName) {
+    // Special handling for Default preset
+    if (presetName === "Default") {
+      console.log("Loading Default master preset");
+      return this.applyDefaultPreset();
+    }
+
     const preset = this.getPreset(presetName);
     if (!preset) {
       console.warn(`Preset not found: ${presetName}`);
@@ -133,12 +139,30 @@ export class MasterPresetHandler extends PresetBaseHandler {
     }
 
     let success = true;
+    console.log(`Applying master preset: ${presetName}`);
 
-    // Apply data to each UI component
-    for (const [key, component] of Object.entries(this.uiComponents)) {
-      if (component && preset[key]) {
-        if (typeof component.setData === "function") {
+    try {
+      // Apply data to standard UI components
+      [
+        "paramUi",
+        "particleUi",
+        "gravityUi",
+        "collisionUi",
+        "boundaryUi",
+        "restStateUi",
+        "turbulenceUi",
+        "voronoiUi",
+        "organicUi",
+        "gridUi",
+      ].forEach((key) => {
+        const component = this.uiComponents[key];
+        if (
+          component &&
+          preset[key] &&
+          typeof component.setData === "function"
+        ) {
           try {
+            console.log(`Applying preset to ${key}`);
             const componentSuccess = component.setData(preset[key]);
             success = success && componentSuccess;
           } catch (error) {
@@ -146,32 +170,109 @@ export class MasterPresetHandler extends PresetBaseHandler {
             success = false;
           }
         }
+      });
+
+      // Handle special modulation components
+      if (this.uiComponents.pulseModUi && preset.pulseModUi) {
+        console.log("Applying pulse modulation preset");
+        const pulseSuccess = this.uiComponents.pulseModUi.setData(
+          preset.pulseModUi
+        );
+        success = success && pulseSuccess;
       }
+
+      if (this.uiComponents.inputModUi && preset.inputModUi) {
+        console.log("Applying input modulation preset");
+        const inputSuccess = this.uiComponents.inputModUi.setData(
+          preset.inputModUi
+        );
+        success = success && inputSuccess;
+      }
+    } catch (error) {
+      console.error("Error applying master preset:", error);
+      success = false;
     }
 
-    if (success) this.selectedPreset = presetName;
+    if (success) {
+      this.selectedPreset = presetName;
+      console.log(`Successfully applied master preset: ${presetName}`);
+    }
+
     return success;
   }
 
+  // Apply default settings to all components
+  applyDefaultPreset() {
+    let success = true;
+
+    try {
+      // Reset all simple UI components to defaults
+      ["turbulenceUi", "voronoiUi"].forEach((key) => {
+        const component = this.uiComponents[key];
+        if (component && typeof component.setData === "function") {
+          try {
+            console.log(`Resetting ${key} to None`);
+            const componentSuccess = component.setData("None");
+            success = success && componentSuccess;
+          } catch (error) {
+            console.error(`Error resetting ${key}:`, error);
+            success = false;
+          }
+        }
+      });
+
+      // Reset modulation components
+      if (
+        this.uiComponents.pulseModUi &&
+        typeof this.uiComponents.pulseModUi.clearAllModulators === "function"
+      ) {
+        console.log("Clearing pulse modulators");
+        this.uiComponents.pulseModUi.clearAllModulators();
+      }
+
+      if (
+        this.uiComponents.inputModUi &&
+        typeof this.uiComponents.inputModUi.clearAllModulators === "function"
+      ) {
+        console.log("Clearing input modulators");
+        this.uiComponents.inputModUi.clearAllModulators();
+      }
+
+      this.selectedPreset = "Default";
+    } catch (error) {
+      console.error("Error applying default preset:", error);
+      success = false;
+    }
+
+    return success;
+  }
+
+  // More consistent implementation that matches individual handlers
   savePresetFromUI(presetName) {
     if (!this.uiComponents) {
       console.warn("No UI components registered");
       return false;
     }
 
-    const data = {};
+    try {
+      const data = {};
 
-    // Extract data from each UI component
-    for (const [key, component] of Object.entries(this.uiComponents)) {
-      if (component && typeof component.getData === "function") {
-        try {
-          data[key] = component.getData();
-        } catch (error) {
-          console.error(`Error getting data from ${key}:`, error);
+      // Extract data from each UI component using getData
+      Object.entries(this.uiComponents).forEach(([key, component]) => {
+        if (component && typeof component.getData === "function") {
+          try {
+            data[key] = component.getData();
+            console.log(`Saved data from ${key}`);
+          } catch (error) {
+            console.error(`Error getting data from ${key}:`, error);
+          }
         }
-      }
-    }
+      });
 
-    return this.savePreset(presetName, data);
+      return this.savePreset(presetName, data);
+    } catch (error) {
+      console.error("Error saving master preset:", error);
+      return false;
+    }
   }
 }

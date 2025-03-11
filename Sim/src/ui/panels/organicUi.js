@@ -192,19 +192,83 @@ export class OrganicUi extends BaseUi {
   getControlTargets() {
     const targets = {};
 
-    // Organic controls
+    // Organic controls (already included)
     if (this.globalForceController)
       targets["Force"] = this.globalForceController;
 
-    // Fluid controls
+    // Fluid controls (partially included)
     if (this.fluidRadiusController)
       targets["Fluid Radius"] = this.fluidRadiusController;
     if (this.fluidSurfaceTensionController)
       targets["Surface Tension"] = this.fluidSurfaceTensionController;
     if (this.fluidViscosityController)
       targets["Viscosity"] = this.fluidViscosityController;
+    // Missing fluid control
+    if (this.fluidDampingController)
+      targets["Damping"] = this.fluidDampingController;
+
+    // Swarm controls (completely missing)
+    if (this.swarmRadiusController)
+      targets["Swarm Radius"] = this.swarmRadiusController;
+    if (this.swarmCohesionController)
+      targets["Cohesion"] = this.swarmCohesionController;
+    if (this.swarmAlignmentController)
+      targets["Alignment"] = this.swarmAlignmentController;
+    if (this.swarmSeparationController)
+      targets["Separation"] = this.swarmSeparationController;
+    if (this.swarmMaxSpeedController)
+      targets["Max Speed"] = this.swarmMaxSpeedController;
+
+    // Automata controls (completely missing)
+    if (this.automataRadiusController)
+      targets["Automata Radius"] = this.automataRadiusController;
+    if (this.automataRepulsionController)
+      targets["Repulsion"] = this.automataRepulsionController;
+    if (this.automataAttractionController)
+      targets["Attraction"] = this.automataAttractionController;
+    if (this.automataThresholdController)
+      targets["Threshold"] = this.automataThresholdController;
 
     return targets;
+  }
+  // Add to ParamUi class
+  getData() {
+    const controllers = {};
+    const targets = this.getControlTargets();
+
+    // Extract values from controllers to create a serializable object
+    for (const [key, controller] of Object.entries(targets)) {
+      if (controller && typeof controller.getValue === "function") {
+        controllers[key] = controller.getValue();
+      }
+    }
+
+    return { controllers };
+  }
+
+  setData(data) {
+    if (!data || !data.controllers) {
+      console.warn("Invalid Organics preset data");
+      return false;
+    }
+
+    try {
+      const targets = this.getControlTargets();
+
+      // Apply values from preset to controllers
+      for (const [key, value] of Object.entries(data.controllers)) {
+        if (targets[key] && typeof targets[key].setValue === "function") {
+          targets[key].setValue(value);
+        }
+      }
+
+      // Update UI display
+      this.updateControllerDisplays();
+      return true;
+    } catch (error) {
+      console.error("Error applying Organics preset:", error);
+      return false;
+    }
   }
 
   updateControllerDisplays() {

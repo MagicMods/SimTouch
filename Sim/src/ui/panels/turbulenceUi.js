@@ -182,19 +182,11 @@ export class TurbulenceUi extends BaseUi {
       targets["Turbulence Speed"] = this.turbulenceSpeedController;
     if (this.turbulenceScaleStrengthController)
       targets["Scale Strength"] = this.turbulenceScaleStrengthController;
-    if (this.turbulenceInwardFactorController)
-      targets["Inward Pull"] = this.turbulenceInwardFactorController;
-    if (this.turbulenceDecayRateController)
-      targets["Turbulence Decay"] = this.turbulenceDecayRateController;
-
-    // Add the 8 missing controllers from subfolders
-    // Scale Range folder (remaining controllers)
     if (this.turbulenceMinScaleController)
       targets["Min Scale"] = this.turbulenceMinScaleController;
     if (this.turbulenceMaxScaleController)
       targets["Max Scale"] = this.turbulenceMaxScaleController;
 
-    // Advanced folder (remaining controllers)
     if (this.turbulenceOctavesController)
       targets["Octaves"] = this.turbulenceOctavesController;
     if (this.turbulencePersistenceController)
@@ -203,8 +195,11 @@ export class TurbulenceUi extends BaseUi {
       targets["Rotation"] = this.turbulenceRotationController;
     if (this.turbulenceRotationSpeedController)
       targets["Rotation Speed"] = this.turbulenceRotationSpeedController;
+    if (this.turbulenceInwardFactorController)
+      targets["Inward Pull"] = this.turbulenceInwardFactorController;
+    if (this.turbulenceDecayRateController)
+      targets["Turbulence Decay"] = this.turbulenceDecayRateController;
 
-    // Direction Bias folder
     if (this.turbulenceBiasXController)
       targets["X Bias"] = this.turbulenceBiasXController;
     if (this.turbulenceBiasYController)
