@@ -249,32 +249,48 @@ export class InputModulationUi extends BaseUi {
       .add(modulator, "max", 0, 1, 0.01)
       .name("Max Value");
 
-    // Add remove button
+    // Replace the remove button implementation with this corrected version
     controllers.remove = folder
       .add(
         {
           remove: () => {
-            // Disable modulator to reset target
-            modulator.enabled = false;
+            console.log(
+              `Removing input modulator with target ${modulator.targetName}`
+            );
 
-            if (modulator.resetToOriginal) {
+            // CRITICAL FIX: Reset the target to its original value FIRST
+            if (modulator && typeof modulator.resetToOriginal === "function") {
+              console.log(
+                `Explicitly resetting ${modulator.targetName} to original value ${modulator.originalValue}`
+              );
               modulator.resetToOriginal();
             }
 
-            // Remove from manager
-            this.modulatorManager.removeModulator(modulator);
+            // Disable the modulator to prevent any future updates
+            modulator.enabled = false;
 
-            // Remove folder
+            // Now remove it from the modulators array
+            const index = this.modulatorManager.modulators.indexOf(modulator);
+            if (index !== -1) {
+              this.modulatorManager.modulators.splice(index, 1);
+            } else {
+              // Alternative approach if the modulator isn't found by reference
+              this.modulatorManager.modulators =
+                this.modulatorManager.modulators.filter(
+                  (mod) => mod !== modulator
+                );
+            }
+
+            // Remove folder from UI
             folder.destroy();
 
             // Remove from tracking array
-            const idx = this.modulatorFolders.indexOf(folder);
-            if (idx !== -1) {
-              this.modulatorFolders.splice(idx, 1);
+            const folderIndex = this.modulatorFolders.indexOf(folder);
+            if (folderIndex > -1) {
+              this.modulatorFolders.splice(folderIndex, 1);
             }
 
-            // Log folder removal
-            console.log(`Removed modulator folder ${index + 1}`);
+            console.log(`Removed input modulator folder`);
           },
         },
         "remove"
