@@ -234,4 +234,83 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulenceBiasXController);
     safeUpdateDisplay(this.turbulenceBiasYController);
   }
+
+  // Add this method to the TurbulenceUi class
+  loadPresetData(preset) {
+    if (!preset || !preset.controllers) {
+      console.warn("Invalid turbulence preset data");
+      return false;
+    }
+
+    try {
+      const targets = this.getControlTargets();
+
+      // Apply values from preset
+      for (const key in preset.controllers) {
+        if (targets.hasOwnProperty(key)) {
+          targets[key] = preset.controllers[key];
+        }
+      }
+
+      // Update UI
+      this.updateControllerDisplays();
+
+      // Important: Update the actual turbulence field with new values
+      if (this.main && this.main.turbulenceField) {
+        this.main.turbulenceField.setParameters(targets);
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error applying turbulence preset data:", error);
+      return false;
+    }
+  }
+
+  // Standard data extraction method - implement in all UI components
+  getData() {
+    const controllers = {};
+    const targets = this.getControlTargets();
+
+    // Extract values from controllers to create a serializable object
+    for (const [key, controller] of Object.entries(targets)) {
+      if (controller && typeof controller.getValue === "function") {
+        controllers[key] = controller.getValue();
+      }
+    }
+
+    return { controllers };
+  }
+
+  // Standard data application method - implement in all UI components
+  setData(data) {
+    if (!data || !data.controllers) {
+      console.warn("Invalid turbulence preset data");
+      return false;
+    }
+
+    try {
+      const targets = this.getControlTargets();
+
+      // Apply values from preset to controllers
+      for (const [key, value] of Object.entries(data.controllers)) {
+        if (targets[key] && typeof targets[key].setValue === "function") {
+          targets[key].setValue(value);
+        }
+      }
+
+      // Update UI display
+      this.updateControllerDisplays();
+
+      // Update the field directly if needed
+      if (this.main && this.main.turbulenceField) {
+        this.main.turbulenceField.setParameters(targets);
+      }
+
+      return true;
+    } catch (error) {
+      console.error("Error applying turbulence preset:", error);
+      return false;
+    }
+  }
 }

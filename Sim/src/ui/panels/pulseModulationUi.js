@@ -78,12 +78,11 @@ export class PulseModulationUi extends BaseUi {
   //#endregion
 
   //#region Modulator
-  // Set a modulator manager
+
   setModulatorManager(manager) {
     this.modulatorManager = manager;
   }
 
-  // Add a new pulse modulator
   addPulseModulator() {
     // Check if we have ModulatorManager reference
     if (!this.modulatorManager) {
@@ -467,6 +466,16 @@ export class PulseModulationUi extends BaseUi {
     });
 
     return true;
+  }
+
+  // Standard data extraction method - reuses existing logic
+  getData() {
+    return this.getModulatorsData();
+  }
+
+  // Standard data application method - reuses existing logic
+  setData(data) {
+    return this.loadPresetData(data);
   }
 
   //#endregion

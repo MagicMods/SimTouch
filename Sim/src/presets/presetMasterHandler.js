@@ -44,40 +44,109 @@ export class PresetMasterHandler extends PresetBaseHandler {
 
   // REDONE - WORKING?
   extractDataFromUI() {
-    const data = {
-      param: {},
-      particle: {},
-      gravity: {},
-      collision: {},
-      boundary: {},
-      restState: {},
-      turbulence: {},
-      voronoi: {},
-      organic: {},
-      pulseModulation: null,
-      inputModulation: null,
-      _meta: {
-        timestamp: Date.now(),
-      },
-    };
-
     try {
-      data.param = this.paramUi.save();
-      data.particle = this.particleUi.save();
-      data.gravity = this.gravityUi.save();
-      data.collision = this.collisionUi.save();
-      data.boundary = this.boundaryUi.save();
-      data.restState = this.restStateUi.save();
-      data.turbulence = this.turbulenceUi.save();
-      data.voronoi = this.voronoiUi.save();
-      data.organic = this.organicUi.save();
-      data.pulseModulation = this.pulseModUi.getModulatorsData();
-      data.inputModulation = this.inputModUi.getModulatorsData();
+      const data = {
+        param: {},
+        particle: {},
+        gravity: {},
+        collision: {},
+        boundary: {},
+        restState: {},
+        turbulence: {},
+        voronoi: {},
+        organic: {},
+        pulseModulation: null,
+        inputModulation: null,
+        _meta: {
+          timestamp: Date.now(),
+          version: "1.0",
+        },
+      };
+
+      // For each UI component, use getControlTargets() if available
+      if (
+        this.paramUi &&
+        typeof this.paramUi.getControlTargets === "function"
+      ) {
+        data.param = this.paramUi.getControlTargets();
+      }
+
+      if (
+        this.particleUi &&
+        typeof this.particleUi.getControlTargets === "function"
+      ) {
+        data.particle = this.particleUi.getControlTargets();
+      }
+
+      if (
+        this.gravityUi &&
+        typeof this.gravityUi.getControlTargets === "function"
+      ) {
+        data.gravity = this.gravityUi.getControlTargets();
+      }
+
+      if (
+        this.collisionUi &&
+        typeof this.collisionUi.getControlTargets === "function"
+      ) {
+        data.collision = this.collisionUi.getControlTargets();
+      }
+
+      if (
+        this.boundaryUi &&
+        typeof this.boundaryUi.getControlTargets === "function"
+      ) {
+        data.boundary = this.boundaryUi.getControlTargets();
+      }
+
+      if (
+        this.restStateUi &&
+        typeof this.restStateUi.getControlTargets === "function"
+      ) {
+        data.restState = this.restStateUi.getControlTargets();
+      }
+
+      if (
+        this.turbulenceUi &&
+        typeof this.turbulenceUi.getControlTargets === "function"
+      ) {
+        data.turbulence = this.turbulenceUi.getControlTargets();
+      }
+
+      if (
+        this.voronoiUi &&
+        typeof this.voronoiUi.getControlTargets === "function"
+      ) {
+        data.voronoi = this.voronoiUi.getControlTargets();
+      }
+
+      if (
+        this.organicUi &&
+        typeof this.organicUi.getControlTargets === "function"
+      ) {
+        data.organic = this.organicUi.getControlTargets();
+      }
+
+      // Use getModulatorsData for modulator UIs
+      if (
+        this.pulseModUi &&
+        typeof this.pulseModUi.getModulatorsData === "function"
+      ) {
+        data.pulseModulation = this.pulseModUi.getModulatorsData();
+      }
+
+      if (
+        this.inputModUi &&
+        typeof this.inputModUi.getModulatorsData === "function"
+      ) {
+        data.inputModulation = this.inputModUi.getModulatorsData();
+      }
+
+      return data;
     } catch (error) {
       console.error("Error extracting UI data:", error);
+      return null;
     }
-
-    return data;
   }
 
   // Improved data loading with sanitization

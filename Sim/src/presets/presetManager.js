@@ -1,10 +1,10 @@
-import { PresetMasterHandler } from "./presetMasterHandler.js";
-import { PresetTurbulenceHandler } from "./presetTurbulenceHandler.js";
-import { PresetVoronoiHandler } from "./presetVoronoiHandler.js";
-import { PresetPulseHandler } from "./presetPulseHandler.js";
-import { PresetInputHandler } from "./presetInputHandler.js";
+import {
+  SimplePresetHandler,
+  ModulatorPresetHandler,
+  MasterPresetHandler,
+} from "./presetHandlers.js";
 
-class PresetManager {
+export class PresetManager {
   static TYPES = {
     MASTER: "master",
     TURBULENCE: "turb",
@@ -13,52 +13,45 @@ class PresetManager {
     INPUT: "input",
   };
 
-  constructor(
-    paramUi,
-    particleUi,
-    gravityUi,
-    collisionUi,
-    boundaryUi,
-    restStateUi,
-    pulseModUi,
-    inputModUi,
-    turbulenceUi,
-    voronoiUi,
-    organicUi
-  ) {
-    this.paramUi = paramUi;
-    this.particleUi = particleUi;
-    this.gravityUi = gravityUi;
-    this.collisionUi = collisionUi;
-    this.boundaryUi = boundaryUi;
-    this.restStateUi = restStateUi;
-    this.pulseModUi = pulseModUi;
-    this.inputModUi = inputModUi;
-    this.turbulenceUi = turbulenceUi;
-    this.voronoiUi = voronoiUi;
-    this.organicUi = organicUi;
+  constructor(uiComponents) {
+    // Store UI component references
+    this.uiComponents = uiComponents;
     this.presetControls = {};
 
+    // Initialize handlers with appropriate types
     this.handlers = {
-      [PresetManager.TYPES.MASTER]: new PresetMasterHandler(
-        paramUi,
-        particleUi,
-        gravityUi,
-        collisionUi,
-        boundaryUi,
-        restStateUi,
-        pulseModUi,
-        inputModUi,
-        turbulenceUi,
-        voronoiUi,
-        organicUi
+      [PresetManager.TYPES.TURBULENCE]: new SimplePresetHandler(
+        "savedTurbPresets",
+        { None: { controllers: { "Turbulence Strength": 0 } } },
+        ["None"]
       ),
-      [PresetManager.TYPES.TURBULENCE]: new PresetTurbulenceHandler(),
-      [PresetManager.TYPES.VORONOI]: new PresetVoronoiHandler(),
-      [PresetManager.TYPES.PULSE]: new PresetPulseHandler(),
-      [PresetManager.TYPES.INPUT]: new PresetInputHandler(),
+      [PresetManager.TYPES.VORONOI]: new SimplePresetHandler(
+        "savedVoronoiPresets",
+        { None: { controllers: { "Voronoi Strength": 0 } } },
+        ["None"]
+      ),
+      [PresetManager.TYPES.PULSE]: new ModulatorPresetHandler(
+        "savedPulsePresets",
+        { None: { modulators: [] } },
+        ["None"]
+      ),
+      [PresetManager.TYPES.INPUT]: new ModulatorPresetHandler(
+        "savedMicPresets",
+        { None: { modulators: [] } },
+        ["None"]
+      ),
+      [PresetManager.TYPES.MASTER]: new MasterPresetHandler(
+        "savedPresets",
+        { Default: {} },
+        ["Default"]
+      ),
     };
+
+    // Set components for master handler
+    this.handlers[PresetManager.TYPES.MASTER].setComponents(uiComponents);
   }
+
+  //#region Ui
 
   createPresetControls(presetType, parentElement, options = {}) {
     if (!parentElement || !presetType || !this.handlers[presetType]) {
@@ -204,23 +197,27 @@ class PresetManager {
       });
   }
 
+  //#endregion
+
+  //#region Getter
+
   getHandler(type) {
     return this.handlers[type] || null;
   }
 
-  // Update this method to work with individual components
   getUIComponent(type) {
     switch (type) {
-      case PresetManager.TYPES.MASTER:
-        return this.paramUi;
-      case PresetManager.TYPES.TURBULENCE:
-        return this.turbulenceUi;
-      case PresetManager.TYPES.VORONOI:
-        return this.voronoiUi;
       case PresetManager.TYPES.PULSE:
-        return this.pulseModUi;
+        return this.uiComponents.pulseModUi;
       case PresetManager.TYPES.INPUT:
-        return this.inputModUi;
+        return this.uiComponents.inputModUi;
+      case PresetManager.TYPES.TURBULENCE:
+        return this.uiComponents.turbulenceUi;
+      case PresetManager.TYPES.VORONOI:
+        return this.uiComponents.voronoiUi;
+      case PresetManager.TYPES.MASTER:
+        // Master handler would be handled separately
+        return null;
       default:
         return null;
     }
@@ -235,185 +232,174 @@ class PresetManager {
     const handler = this.getHandler(type);
     return handler ? handler.getSelectedPreset() : null;
   }
+  //#endregion
 
-  savePreset(type, presetName, uiComponent = null) {
-    if (!presetName) {
-      console.warn("No preset name provided to save");
-      return false;
+  //#region Presets
+
+  // Save preset - standardized version
+  savePreset(type, presetName) {
+    const handler = this.handlers[type];
+    if (!handler) return false;
+
+    const uiComponent = this.getUIComponent(type);
+
+    if (type === PresetManager.TYPES.MASTER) {
+      return handler.savePresetFromUI(presetName);
+    } else if (uiComponent) {
+      return handler.savePresetFromUI(presetName, uiComponent);
     }
 
-    try {
-      // Get the correct component based on type
-      const component = uiComponent || this.getUIComponent(type);
+    return false;
+  }
 
-      // TEMPORARY DEBUG CHECK - REMOVE IN PRODUCTION
-      if (!component) {
-        console.error(`Cannot save ${type} preset: UI component not found`);
-        return false;
+  // Load preset - standardized version
+  loadPreset(type, presetName) {
+    const handler = this.handlers[type];
+    if (!handler) return false;
+
+    if (type === PresetManager.TYPES.MASTER) {
+      return handler.applyPreset(presetName);
+    } else {
+      const uiComponent = this.getUIComponent(type);
+      if (uiComponent) {
+        return handler.applyPreset(presetName, uiComponent);
       }
-
-      // Get the correct handler
-      const handler = this.getHandler(type);
-
-      // TEMPORARY DEBUG CHECK - REMOVE IN PRODUCTION
-      if (typeof handler?.savePreset !== "function") {
-        console.error(
-          `Cannot save ${type} preset: handler.savePreset is not a function`
-        );
-        return false;
-      }
-
-      switch (type) {
-        case PresetManager.TYPES.MASTER:
-          // Handle master presets...
-          break;
-
-        case PresetManager.TYPES.TURBULENCE:
-          // Handle turbulence presets...
-          break;
-
-        case PresetManager.TYPES.VORONOI:
-          // Handle voronoi presets...
-          break;
-
-        case PresetManager.TYPES.PULSE:
-          console.log(
-            "Save pulse preset:",
-            presetName,
-            "UI instance type:",
-            component ? component.constructor.name : "missing"
-          );
-          return handler.savePreset(presetName, component);
-
-        case PresetManager.TYPES.MIC:
-          console.log(
-            "Save mic preset:",
-            presetName,
-            "UI instance type:",
-            component ? component.constructor.name : "missing"
-          );
-          return handler.savePreset(presetName, component);
-
-        default:
-          console.warn(`Unknown preset type: ${type}`);
-          return false;
-      }
-    } catch (error) {
-      console.error(`Error saving ${type} preset:`, error);
-      return false;
     }
+
+    return false;
+  }
+
+  // Helper method to extract data for master presets
+  extractMasterPresetData() {
+    const data = {
+      param: {},
+      particle: {},
+      gravity: {},
+      collision: {},
+      boundary: {},
+      restState: {},
+      turbulence: {},
+      voronoi: {},
+      organic: {},
+      pulseModulation: null,
+      inputModulation: null,
+      _meta: {
+        timestamp: Date.now(),
+        version: "1.0",
+      },
+    };
+
+    // Extract data from each UI component that supports getControlTargets
+    [
+      "param",
+      "particle",
+      "gravity",
+      "collision",
+      "boundary",
+      "restState",
+      "turbulence",
+      "voronoi",
+      "organic",
+    ].forEach((key) => {
+      const uiProp = `${key}Ui`;
+      if (
+        this[uiProp] &&
+        typeof this[uiProp].getControlTargets === "function"
+      ) {
+        data[key] = this[uiProp].getControlTargets();
+      }
+    });
+
+    // Get modulator data
+    if (
+      this.pulseModUi &&
+      typeof this.pulseModUi.getModulatorsData === "function"
+    ) {
+      data.pulseModulation = this.pulseModUi.getModulatorsData();
+    }
+
+    if (
+      this.inputModUi &&
+      typeof this.inputModUi.getModulatorsData === "function"
+    ) {
+      data.inputModulation = this.inputModUi.getModulatorsData();
+    }
+
+    return data;
   }
 
   deletePreset(type, presetName) {
     const handler = this.getHandler(type);
-    if (!handler) return false;
+    if (!handler) {
+      console.warn(`No handler for preset type: ${type}`);
+      return false;
+    }
 
     return handler.deletePreset(presetName);
   }
 
-  loadPreset(type, presetName, uiComponent = null) {
-    const handler = this.getHandler(type);
-    if (!handler) return false;
-
-    const component = uiComponent || this.getUIComponent(type);
-    return handler.applyDataToUI(presetName, component);
-  }
-
-  setDebug(enabled) {
-    Object.values(this.handlers).forEach((handler) => {
-      if (typeof handler.setDebug === "function") {
-        handler.setDebug(enabled);
-      }
-    });
-  }
-
-  setVoronoiField(voronoiField) {
-    this.voronoiField = voronoiField;
-  }
-
-  setTurbulenceField(turbulenceField) {
-    this.turbulenceField = turbulenceField;
-  }
-
   exportPresets() {
-    try {
-      const masterHandler = this.getHandler(PresetManager.TYPES.MASTER);
-      if (!masterHandler) {
-        console.error("Master preset handler not found");
-        return false;
+    const exportData = {};
+
+    for (const type in this.handlers) {
+      const handler = this.handlers[type];
+      if (handler) {
+        exportData[type] = handler.presets;
       }
-
-      const presets = masterHandler.presets;
-      if (!presets || Object.keys(presets).length === 0) {
-        console.warn("No presets to export");
-        return false;
-      }
-
-      const dataStr = JSON.stringify(presets, null, 2);
-      const dataUri =
-        "data:application/json;charset=utf-8," + encodeURIComponent(dataStr);
-      const exportFileName =
-        "svibe_presets_" + new Date().toISOString().slice(0, 10) + ".json";
-
-      const linkElement = document.createElement("a");
-      linkElement.setAttribute("href", dataUri);
-      linkElement.setAttribute("download", exportFileName);
-      linkElement.style.display = "none";
-      document.body.appendChild(linkElement);
-      linkElement.click();
-      document.body.removeChild(linkElement);
-
-      console.log(`Exported ${Object.keys(presets).length} presets`);
-      return true;
-    } catch (error) {
-      console.error("Error exporting presets:", error);
-      return false;
     }
+
+    return JSON.stringify(exportData, null, 2);
   }
 
   importPresets(jsonData) {
     try {
-      let importedPresets;
-      try {
-        importedPresets = JSON.parse(jsonData);
-      } catch (e) {
-        console.error("Failed to parse imported JSON:", e);
-        return 0;
-      }
+      const data = JSON.parse(jsonData);
+      let successCount = 0;
 
-      if (!importedPresets || typeof importedPresets !== "object") {
-        console.error("Invalid imported preset format");
-        return 0;
-      }
-
-      const masterHandler = this.getHandler(PresetManager.TYPES.MASTER);
-      if (!masterHandler) {
-        console.error("Master preset handler not found");
-        return 0;
-      }
-
-      let importCount = 0;
-
-      for (const presetName in importedPresets) {
-        if (masterHandler.protectedPresets.includes(presetName)) {
-          console.log(`Skipping protected preset: ${presetName}`);
-          continue;
-        }
-
-        if (
-          masterHandler.importPreset(presetName, importedPresets[presetName])
-        ) {
-          importCount++;
+      for (const type in data) {
+        const handler = this.handlers[type];
+        if (handler) {
+          handler.presets = data[type];
+          handler.saveToStorage();
+          this._updateAllPresetDropdowns(type);
+          successCount++;
         }
       }
 
-      console.log(`Successfully imported ${importCount} presets`);
-      return importCount;
+      return successCount > 0;
     } catch (error) {
       console.error("Error importing presets:", error);
-      return 0;
+      return false;
+    }
+  }
+
+  //#endregion
+
+  setDebug(enabled) {
+    this.debug = !!enabled;
+
+    // Set debug on all handlers
+    for (const type in this.handlers) {
+      if (
+        this.handlers[type] &&
+        typeof this.handlers[type].setDebug === "function"
+      ) {
+        this.handlers[type].setDebug(enabled);
+      }
+    }
+  }
+
+  setVoronoiField(voronoiField) {
+    const handler = this.getHandler(PresetManager.TYPES.VORONOI);
+    if (handler && typeof handler.setVoronoiField === "function") {
+      handler.setVoronoiField(voronoiField);
+    }
+  }
+
+  setTurbulenceField(turbulenceField) {
+    const handler = this.getHandler(PresetManager.TYPES.TURBULENCE);
+    if (handler && typeof handler.setTurbulenceField === "function") {
+      handler.setTurbulenceField(turbulenceField);
     }
   }
 }
-
-export { PresetManager };

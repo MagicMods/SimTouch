@@ -829,4 +829,14 @@ export class InputModulationUi extends BaseUi {
     }
   }
   //#endregion
+
+  // Standard data extraction method - reuses existing logic
+  getData() {
+    return this.getModulatorsData();
+  }
+
+  // Standard data application method - reuses existing logic
+  setData(data) {
+    return this.loadPresetData(data);
+  }
 }
