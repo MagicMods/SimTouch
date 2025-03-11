@@ -49,6 +49,7 @@ export class PresetUi extends BaseUi {
       importButton: actionsContainer.importButton,
       prevButton: navContainer.prevButton,
       nextButton: navContainer.nextButton,
+      speedContainer: navContainer.speedContainer,
     };
   }
 
@@ -148,7 +149,6 @@ export class PresetUi extends BaseUi {
 
   _createNavigationControls(containerElement) {
     const navContainer = document.createElement("div");
-    // navContainer.style.classList = "preset-control-button";
     navContainer.style.display = "flex";
     navContainer.style.justifyContent = "space-between";
     navContainer.style.margin = "10px 0 5px 0";
@@ -170,13 +170,50 @@ export class PresetUi extends BaseUi {
     navContainer.appendChild(prevButton);
     navContainer.appendChild(playButton);
     navContainer.appendChild(nextButton);
-
     containerElement.appendChild(navContainer);
+
+    // ADD THIS: Create speed control container
+    const speedContainer = document.createElement("div");
+    speedContainer.style.margin = "5px 0";
+    speedContainer.style.display = "none"; // Hidden initially
+
+    const speedLabel = document.createElement("div");
+    speedLabel.textContent = `Speed: ${(this.autoPlaySpeed / 1000).toFixed(
+      1
+    )}s`;
+    speedLabel.style.textAlign = "center";
+    speedLabel.style.fontSize = "0.85em";
+    speedLabel.style.marginBottom = "3px";
+
+    const speedSlider = document.createElement("input");
+    speedSlider.type = "range";
+    speedSlider.min = "500";
+    speedSlider.max = "10000";
+    speedSlider.step = "500";
+    speedSlider.value = this.autoPlaySpeed.toString();
+    speedSlider.style.width = "100%";
+
+    speedSlider.addEventListener("input", (e) => {
+      const value = parseInt(e.target.value);
+      this.autoPlaySpeed = value;
+      speedLabel.textContent = `Speed: ${(value / 1000).toFixed(1)}s`;
+
+      // Restart autoplay with new speed if active
+      if (this.autoPlayActive) {
+        this.stopAutoPlay();
+        this.startAutoPlay();
+      }
+    });
+
+    speedContainer.appendChild(speedLabel);
+    speedContainer.appendChild(speedSlider);
+    containerElement.appendChild(speedContainer);
 
     return {
       prevButton,
       playButton,
       nextButton,
+      speedContainer,
     };
   }
 
@@ -195,9 +232,17 @@ export class PresetUi extends BaseUi {
 
     if (this.autoPlayActive) {
       playButton.textContent = "⏹ Stop";
+      // Show speed control when playing
+      if (this.presetControls.speedContainer) {
+        this.presetControls.speedContainer.style.display = "block";
+      }
       this.startAutoPlay();
     } else {
       playButton.textContent = "▶ Auto Play";
+      // Hide speed control when stopped
+      if (this.presetControls.speedContainer) {
+        this.presetControls.speedContainer.style.display = "none";
+      }
       this.stopAutoPlay();
     }
   }
