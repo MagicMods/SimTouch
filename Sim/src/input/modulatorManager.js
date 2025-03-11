@@ -410,11 +410,6 @@ export class ModulatorManager {
     return this.masterFrequency || 1.0;
   }
 
-  storeComponentsForAutoRegistration(leftUi, components) {
-    this._leftUi = leftUi;
-    this._components = components;
-  }
-
   // Helper method to register targets
   registerTargetsFromObject(targetsObject) {
     Object.keys(targetsObject).forEach((name) => {

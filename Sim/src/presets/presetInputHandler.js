@@ -1,6 +1,6 @@
 import { PresetBaseHandler } from "./presetBaseHandler.js";
 
-export class PresetMicHandler extends PresetBaseHandler {
+export class PresetInputHandler extends PresetBaseHandler {
   constructor() {
     const defaultPresets = {
       None: {

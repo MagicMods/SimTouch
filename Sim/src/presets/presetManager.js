@@ -2,7 +2,7 @@ import { PresetMasterHandler } from "./presetMasterHandler.js";
 import { PresetTurbulenceHandler } from "./presetTurbulenceHandler.js";
 import { PresetVoronoiHandler } from "./presetVoronoiHandler.js";
 import { PresetPulseHandler } from "./presetPulseHandler.js";
-import { PresetMicHandler } from "./presetMicHandler.js";
+import { PresetInputHandler } from "./presetInputHandler.js";
 
 class PresetManager {
   static TYPES = {
@@ -14,37 +14,49 @@ class PresetManager {
   };
 
   constructor(
-    leftUi,
+    paramUi,
+    particleUi,
+    gravityUi,
+    collisionUi,
+    boundaryUi,
+    restStateUi,
     pulseModUi,
     inputModUi,
     turbulenceUi,
     voronoiUi,
-    organicUi,
-    gridUi
+    organicUi
   ) {
-    this.leftUi = leftUi;
+    this.paramUi = paramUi;
+    this.particleUi = particleUi;
+    this.gravityUi = gravityUi;
+    this.collisionUi = collisionUi;
+    this.boundaryUi = boundaryUi;
+    this.restStateUi = restStateUi;
     this.pulseModUi = pulseModUi;
     this.inputModUi = inputModUi;
     this.turbulenceUi = turbulenceUi;
     this.voronoiUi = voronoiUi;
     this.organicUi = organicUi;
-    this.gridUi = gridUi;
     this.presetControls = {};
 
     this.handlers = {
       [PresetManager.TYPES.MASTER]: new PresetMasterHandler(
-        leftUi,
+        paramUi,
+        particleUi,
+        gravityUi,
+        collisionUi,
+        boundaryUi,
+        restStateUi,
         pulseModUi,
         inputModUi,
         turbulenceUi,
         voronoiUi,
-        organicUi,
-        gridUi
+        organicUi
       ),
       [PresetManager.TYPES.TURBULENCE]: new PresetTurbulenceHandler(),
       [PresetManager.TYPES.VORONOI]: new PresetVoronoiHandler(),
       [PresetManager.TYPES.PULSE]: new PresetPulseHandler(),
-      [PresetManager.TYPES.MIC]: new PresetMicHandler(),
+      [PresetManager.TYPES.INPUT]: new PresetInputHandler(),
     };
   }
 
@@ -200,7 +212,7 @@ class PresetManager {
   getUIComponent(type) {
     switch (type) {
       case PresetManager.TYPES.MASTER:
-        return this.leftUi;
+        return this.paramUi;
       case PresetManager.TYPES.TURBULENCE:
         return this.turbulenceUi;
       case PresetManager.TYPES.VORONOI:

@@ -1,4 +1,3 @@
-import { LeftUi } from "./panels/leftUi.js";
 import { TurbulenceUi } from "./panels/turbulenceUi.js";
 import { VoronoiUi } from "./panels/voronoiUi.js";
 import { OrganicUi } from "./panels/organicUi.js";
