@@ -214,8 +214,13 @@ export class PulseModulationUi extends BaseUi {
       .add(modulator, "max", -10, 10)
       .name("Max Value");
 
-    // Add phase control
-    folder.add(modulator, "phase", 0, 3.9, 0.01).name("Phase");
+    // REMOVE both phase controller implementations and replace with this:
+    const phaseController = folder
+      .add(modulator, "phase", 0, Math.PI)
+      .name("Phase")
+      .onChange(() => {
+        // No additional handling needed
+      });
 
     // Add remove button
     const removeButton = {
