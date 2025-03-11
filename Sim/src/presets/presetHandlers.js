@@ -119,10 +119,115 @@ export class MasterPresetHandler extends PresetBaseHandler {
   constructor(storageKey, defaultPresets, protectedPresets) {
     super(storageKey, defaultPresets, protectedPresets);
     this.uiComponents = {};
+    this.initialState = null;
   }
 
   setComponents(components) {
     this.uiComponents = components;
+
+    // Capture initial state when components are set
+    this.captureInitialState();
+  }
+
+  // Capture the initial state WITHOUT conditional checks
+  captureInitialState() {
+    console.log("Capturing initial UI state for Default preset");
+    this.initialState = {};
+
+    try {
+      // Extract data from each UI component
+      Object.entries(this.uiComponents).forEach(([key, component]) => {
+        try {
+          this.initialState[key] = component.getData();
+          console.log(`Captured initial state from ${key}`);
+        } catch (error) {
+          console.error(`Error capturing initial state from ${key}:`, error);
+        }
+      });
+
+      // Save this as the Default preset
+      this.presets["Default"] = this.initialState;
+      this.saveToStorage();
+
+      console.log("Initial state captured and saved as Default preset");
+    } catch (error) {
+      console.error("Error in captureInitialState:", error);
+    }
+  }
+
+  // Apply default preset WITHOUT conditional checks
+  applyDefaultPreset() {
+    console.log("Applying Default master preset");
+    let success = true;
+
+    try {
+      if (this.initialState) {
+        // Apply the captured initial state to each component
+        Object.entries(this.initialState).forEach(([key, data]) => {
+          try {
+            const component = this.uiComponents[key];
+            const componentSuccess = component.setData(data);
+            if (!componentSuccess) {
+              console.warn(`Component ${key} returned false from setData()`);
+              success = false;
+            }
+          } catch (error) {
+            console.error(`Error applying initial state to ${key}:`, error);
+            success = false;
+          }
+        });
+      } else {
+        // No initial state captured, reset critical components
+        console.warn("No initial state data - resetting critical components");
+        this.resetCriticalComponents();
+      }
+
+      this.selectedPreset = "Default";
+    } catch (error) {
+      console.error("Error applying Default preset:", error);
+      success = false;
+    }
+
+    return success;
+  }
+
+  // Reset critical components WITHOUT conditional checks
+  resetCriticalComponents() {
+    console.log("Resetting critical components to defaults");
+    let success = true;
+
+    try {
+      // Reset turbulence and voronoi
+      ["turbulenceUi", "voronoiUi"].forEach((key) => {
+        try {
+          const component = this.uiComponents[key];
+          component.setData("None");
+        } catch (error) {
+          console.error(`Error resetting ${key}:`, error);
+          success = false;
+        }
+      });
+
+      // Clear modulators
+      try {
+        this.uiComponents.pulseModUi.clearAllModulators();
+      } catch (error) {
+        console.error("Error clearing pulse modulators:", error);
+        success = false;
+      }
+
+      try {
+        this.uiComponents.inputModUi.clearAllModulators();
+      } catch (error) {
+        console.error("Error clearing input modulators:", error);
+        success = false;
+      }
+    } catch (error) {
+      console.error("Error in resetCriticalComponents:", error);
+      success = false;
+    }
+
+    return success;
   }
 
   applyPreset(presetName) {
@@ -196,52 +301,6 @@ export class MasterPresetHandler extends PresetBaseHandler {
     if (success) {
       this.selectedPreset = presetName;
       console.log(`Successfully applied master preset: ${presetName}`);
-    }
-
-    return success;
-  }
-
-  // Apply default settings to all components
-  applyDefaultPreset() {
-    let success = true;
-
-    try {
-      // Reset all simple UI components to defaults
-      ["turbulenceUi", "voronoiUi"].forEach((key) => {
-        const component = this.uiComponents[key];
-        if (component && typeof component.setData === "function") {
-          try {
-            console.log(`Resetting ${key} to None`);
-            const componentSuccess = component.setData("None");
-            success = success && componentSuccess;
-          } catch (error) {
-            console.error(`Error resetting ${key}:`, error);
-            success = false;
-          }
-        }
-      });
-
-      // Reset modulation components
-      if (
-        this.uiComponents.pulseModUi &&
-        typeof this.uiComponents.pulseModUi.clearAllModulators === "function"
-      ) {
-        console.log("Clearing pulse modulators");
-        this.uiComponents.pulseModUi.clearAllModulators();
-      }
-
-      if (
-        this.uiComponents.inputModUi &&
-        typeof this.uiComponents.inputModUi.clearAllModulators === "function"
-      ) {
-        console.log("Clearing input modulators");
-        this.uiComponents.inputModUi.clearAllModulators();
-      }
-
-      this.selectedPreset = "Default";
-    } catch (error) {
-      console.error("Error applying default preset:", error);
-      success = false;
     }
 
     return success;
