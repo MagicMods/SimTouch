@@ -173,6 +173,7 @@ export class TurbulenceUi extends BaseUi {
   getControlTargets() {
     const targets = {};
 
+    // Main controllers (already included)
     if (this.turbulenceStrengthController)
       targets["Turbulence Strength"] = this.turbulenceStrengthController;
     if (this.turbulenceScaleController)
@@ -186,9 +187,31 @@ export class TurbulenceUi extends BaseUi {
     if (this.turbulenceDecayRateController)
       targets["Turbulence Decay"] = this.turbulenceDecayRateController;
 
+    // Add the 8 missing controllers from subfolders
+    // Scale Range folder (remaining controllers)
+    if (this.turbulenceMinScaleController)
+      targets["Min Scale"] = this.turbulenceMinScaleController;
+    if (this.turbulenceMaxScaleController)
+      targets["Max Scale"] = this.turbulenceMaxScaleController;
+
+    // Advanced folder (remaining controllers)
+    if (this.turbulenceOctavesController)
+      targets["Octaves"] = this.turbulenceOctavesController;
+    if (this.turbulencePersistenceController)
+      targets["Persistence"] = this.turbulencePersistenceController;
+    if (this.turbulenceRotationController)
+      targets["Rotation"] = this.turbulenceRotationController;
+    if (this.turbulenceRotationSpeedController)
+      targets["Rotation Speed"] = this.turbulenceRotationSpeedController;
+
+    // Direction Bias folder
+    if (this.turbulenceBiasXController)
+      targets["X Bias"] = this.turbulenceBiasXController;
+    if (this.turbulenceBiasYController)
+      targets["Y Bias"] = this.turbulenceBiasYController;
+
     return targets;
   }
-
   updateControllerDisplays() {
     // Update button states
     const turbulence = this.main.turbulenceField;

@@ -104,38 +104,6 @@ export class VoronoiUi extends BaseUi {
     safeUpdateDisplay(this.voronoiDecayRateController);
   }
 
-  // Add this method to the VoronoiUi class
-  loadPresetData(preset) {
-    if (!preset || !preset.controllers) {
-      console.warn("Invalid voronoi preset data");
-      return false;
-    }
-
-    try {
-      const targets = this.getControlTargets();
-
-      // Apply values from preset
-      for (const key in preset.controllers) {
-        if (targets.hasOwnProperty(key)) {
-          targets[key] = preset.controllers[key];
-        }
-      }
-
-      // Update UI
-      this.updateControllerDisplays();
-
-      // Important: Update the actual voronoi field with new values
-      if (this.main && this.main.voronoiField) {
-        this.main.voronoiField.setParameters(targets);
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Error applying voronoi preset data:", error);
-      return false;
-    }
-  }
-
   // Standard data extraction method
   getData() {
     // Create a clean copy of control values
@@ -159,56 +127,75 @@ export class VoronoiUi extends BaseUi {
   setData(data) {
     console.log("VoronoiUi.setData called with:", data);
 
-    // Always handle "None" as a special case to reset
+    // Handle "None" preset case
     if (!data || data === "None" || data.name === "None") {
       console.log("Resetting voronoi to default");
 
-      if (this.main && this.main.voronoiField) {
-        // Direct approach: just set strength to 0
-        this.main.voronoiField.strength = 0;
-
-        // Update controllers to match
-        if (this.voronoiStrengthController) {
-          this.voronoiStrengthController.setValue(0);
+      // Properly reset using controllers
+      if (this.voronoiStrengthController) {
+        this.voronoiStrengthController.setValue(0);
+      }
+      if (this.voronoiSpeedController) {
+        this.voronoiSpeedController.setValue(0);
+      }
+      if (this.voronoiEdgeWidthController) {
+        this.voronoiEdgeWidthController.setValue(10);
+      }
+      if (this.voronoiAttractionController) {
+        this.voronoiAttractionController.setValue(0);
+      }
+      if (this.voronoiCellCountController) {
+        this.voronoiCellCountController.setValue(3);
+        if (this.main && this.main.voronoiField) {
+          this.main.voronoiField.regenerateCells();
         }
-
-        // Update UI display
-        this.updateControllerDisplays();
+      }
+      if (this.voronoiDecayRateController) {
+        this.voronoiDecayRateController.setValue(0.95);
       }
 
+      // Update UI display
+      this.updateControllerDisplays();
       return true;
     }
 
+    // Regular preset handling
     try {
-      // For non-None presets, just apply the values directly to the field
-      if (data.controllers && this.main && this.main.voronoiField) {
-        // Get the actual field object
-        const field = this.main.voronoiField;
-
-        // Apply relevant properties directly
-        if (typeof data.controllers["Voronoi Strength"] !== "undefined") {
-          field.strength = data.controllers["Voronoi Strength"];
-        }
-        if (typeof data.controllers["Cell Speed"] !== "undefined") {
-          field.cellMovementSpeed = data.controllers["Cell Speed"];
-        }
-        if (typeof data.controllers["Edge Width"] !== "undefined") {
-          field.edgeWidth = data.controllers["Edge Width"];
-        }
-        if (typeof data.controllers["Attraction"] !== "undefined") {
-          field.attractionFactor = data.controllers["Attraction"];
-        }
-        if (typeof data.controllers["Cell Count"] !== "undefined") {
-          field.cellCount = data.controllers["Cell Count"];
-          field.regenerateCells();
-        }
-
-        // Update UI
-        this.updateControllerDisplays();
-        return true;
+      if (!data.controllers) {
+        console.error("Invalid voronoi preset data: missing controllers");
+        return false;
       }
 
-      return false;
+      // Use all available controllers
+      const controllerMap = {
+        "Voronoi Strength": this.voronoiStrengthController,
+        "Cell Speed": this.voronoiSpeedController,
+        "Edge Width": this.voronoiEdgeWidthController,
+        Attraction: this.voronoiAttractionController,
+        "Cell Count": this.voronoiCellCountController,
+        "Decay Rate": this.voronoiDecayRateController,
+      };
+
+      // Apply values from preset to controllers
+      for (const [key, value] of Object.entries(data.controllers)) {
+        const controller = controllerMap[key];
+        if (controller && typeof controller.setValue === "function") {
+          controller.setValue(value);
+          console.log(`Set ${key} to ${value}`);
+        }
+      }
+
+      // Special handling for cell count, which needs regeneration
+      if (
+        data.controllers["Cell Count"] !== undefined &&
+        this.main?.voronoiField
+      ) {
+        this.main.voronoiField.regenerateCells();
+      }
+
+      // Update UI display
+      this.updateControllerDisplays();
+      return true;
     } catch (error) {
       console.error("Error applying voronoi preset:", error);
       return false;
