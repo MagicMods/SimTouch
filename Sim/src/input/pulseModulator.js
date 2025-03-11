@@ -94,42 +94,20 @@ class PulseModulator {
       this.frequency = this.manager.masterFrequency;
     }
 
-    // Increment phase based on frequency
-    this.currentPhase += deltaTime * this.frequency * Math.PI * 2;
+    // Update time for modulation calculation
+    this.time += deltaTime;
 
-    // Keep phase in sensible range
-    while (this.currentPhase > Math.PI * 2) {
-      this.currentPhase -= Math.PI * 2;
-    }
+    // Increment phase based on frequency, including the user-set phase
+    const totalPhase = this.time * this.frequency * Math.PI * 2 + this.phase;
+    this.currentPhase = totalPhase % (Math.PI * 2);
 
-    // Get oscillation value (-1 to 1) based on wave type
-    let value = 0;
+    // Get oscillation value (0 to 1) using the correct calculation method
+    const value = this.calculateModulation(this.time);
 
-    switch (this.waveType) {
-      case "sine":
-        value = Math.sin(this.currentPhase);
-        break;
-      case "triangle":
-        value =
-          1 -
-          4 *
-            Math.abs(
-              Math.floor(this.currentPhase / Math.PI + 0.5) -
-                this.currentPhase / Math.PI
-            );
-        break;
-      case "square":
-        value = this.currentPhase < Math.PI * 2 * this.pwm ? 1 : -1;
-        break;
-      default:
-        value = Math.sin(this.currentPhase); // Default to sine
-    }
-
-    // Map from -1/1 to min/max
-    // FIX: Add validation to prevent NaN values
+    // Map from 0-1 to min-max
     const range = isNaN(this.max - this.min) ? 1 : this.max - this.min;
     const baseValue = isNaN(this.min) ? 0 : this.min;
-    let mappedValue = baseValue + (value * 0.5 + 0.5) * range;
+    let mappedValue = baseValue + value * range;
 
     // Protection against NaN
     if (isNaN(mappedValue)) {
