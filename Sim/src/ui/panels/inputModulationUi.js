@@ -435,6 +435,7 @@ export class InputModulationUi extends BaseUi {
 
   //#region Update
 
+  // Fix the update method - this is the critical piece
   update() {
     // Check folder state directly - if open, process regardless of stored state
     const folderOpen = !this.gui.closed;
@@ -452,76 +453,62 @@ export class InputModulationUi extends BaseUi {
       return;
     }
 
-    // Rest of the original update method...
-    const globalSensitivity =
-      this.main.externalInput?.micForces?.sensitivity || 1.0;
-
-    if (this._lastGlobalSensitivity !== globalSensitivity) {
-      console.log(`Global sensitivity: ${globalSensitivity}`);
-      this._lastGlobalSensitivity = globalSensitivity;
+    // Get the audio analyzer
+    const analyzer = this.main.audioAnalyzer;
+    if (!analyzer || !analyzer.isEnabled) {
+      return;
     }
 
-    // Continue with existing update logic...
-    if (this.modulatorManager && this.main.audioAnalyzer) {
-      const analyzer = this.main.audioAnalyzer;
+    // Process the audio data and update modulators
+    if (this.modulatorManager) {
+      // Get all input modulators
+      const audioModulators = this.modulatorManager.modulators.filter(
+        (mod) => mod.inputSource === "mic" && mod.sensitivity > 0
+      );
 
-      this.modulatorManager.modulators.forEach((modulator) => {
-        // Skip inactive modulators to prevent unnecessary resets
-        if (modulator.inputSource !== "mic" || modulator.sensitivity <= 0)
-          return;
+      if (audioModulators.length > 0) {
+        // Get all band levels at once to avoid repeated calculation
+        const bandLevels = analyzer.calculateBandLevels();
+        const globalVolume = analyzer.smoothedVolume || 0;
 
-        try {
-          // Get band-specific volume
-          let value = 0;
-          if (modulator.frequencyBand !== "none" && analyzer) {
-            const bands = analyzer.calculateBandLevels();
-            switch (modulator.frequencyBand) {
-              case "sub":
-                value = bands.sub || 0;
-                break;
-              case "bass":
-                value = bands.bass || 0;
-                break;
-              case "lowMid":
-                value = bands.lowMid || 0;
-                break;
-              case "mid":
-                value = bands.mid || 0;
-                break;
-              case "highMid":
-                value = bands.highMid || 0;
-                break;
-              case "treble":
-                value = ((bands.presence || 0) + (bands.brilliance || 0)) / 2;
-                break;
-              default:
-                value = analyzer.smoothedVolume || 0;
+        // Update each modulator with its appropriate audio data
+        audioModulators.forEach((modulator) => {
+          try {
+            // Get the appropriate frequency band value based on modulator's band setting
+            let bandValue = 0;
+
+            if (modulator.frequencyBand && modulator.frequencyBand !== "none") {
+              // Get band-specific audio level
+              bandValue = bandLevels[modulator.frequencyBand] || 0;
+
+              // Log value for debugging when significant
+              if (bandValue > 0.1) {
+                console.log(
+                  `Band ${modulator.frequencyBand} level: ${bandValue.toFixed(
+                    2
+                  )}`
+                );
+              }
+            } else {
+              // Use global volume if no specific band is selected
+              bandValue = globalVolume;
             }
-          } else {
-            value = analyzer.smoothedVolume || 0;
+
+            // CRITICAL: Set the input value on the modulator
+            modulator.setInputValue(bandValue);
+          } catch (e) {
+            console.error(`Error updating modulator with audio data:`, e);
           }
-
-          // Store raw value
-          modulator.rawValue = value;
-
-          // Apply global and local sensitivity
-          value *= globalSensitivity * modulator.sensitivity;
-
-          // Store processed value
-          modulator.inputValue = value;
-
-          // Apply value to target
-          modulator.setInputValue(value);
-        } catch (e) {
-          console.error("Error processing audio input for modulator:", e);
-        }
-      });
+        });
+      }
     }
 
+    // Update modulators after setting input values
     if (this.modulatorManager) {
       this.modulatorManager.update();
     }
 
+    // Update visualizations
     this.updateAllBandVisualizations();
   }
 

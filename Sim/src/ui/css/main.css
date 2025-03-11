@@ -257,6 +257,6 @@ canvas {
 }
 
 .toggle-button.active {
-    background-color: #a17600;
-    color: #ffffff;
+    background-color: #ebac00;
+    color: #000000;
 }

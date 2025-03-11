@@ -130,7 +130,6 @@ export class UiManager {
         turbulenceUi: this.turbulenceUi,
         voronoiUi: this.voronoiUi,
         organicUi: this.organicUi,
-        // You can add other UI components as needed
       };
 
       // Register UI components instead of controller targets
@@ -155,26 +154,26 @@ export class UiManager {
       turbulenceUi: this.turbulenceUi,
       voronoiUi: this.voronoiUi,
       organicUi: this.organicUi,
-      gridUi: this.gridUi,
     };
 
     // Create the preset manager with all components
     this.presetManager = new PresetManager(presetComponents);
 
-    // Initialize each UI component with the preset manager
-    // Simple presets
-    if (this.turbulenceUi)
-      this.turbulenceUi.initWithPresetManager(this.presetManager);
-    if (this.voronoiUi)
-      this.voronoiUi.initWithPresetManager(this.presetManager);
+    this.turbulenceUi.initWithPresetManager(this.presetManager);
+    this.voronoiUi.initWithPresetManager(this.presetManager);
 
-    // Complex presets (modulators)
-    if (this.pulseModUi)
-      this.pulseModUi.initWithPresetManager(this.presetManager);
-    if (this.inputModUi)
-      this.inputModUi.initWithPresetManager(this.presetManager);
+    this.pulseModUi.initWithPresetManager(this.presetManager);
+    this.inputModUi.initWithPresetManager(this.presetManager);
 
     // Initialize the preset UI
-    if (this.presetUi) this.presetUi.initWithPresetManager(this.presetManager);
+    this.presetUi.initWithPresetManager(this.presetManager);
+  }
+
+  // Add update method to UiManager
+  update(deltaTime) {
+    // Update InputModulationUi to pass audio data to modulators
+    if (this.inputModUi) {
+      this.inputModUi.update(deltaTime);
+    }
   }
 }

@@ -75,58 +75,91 @@ export class InputModulator {
     this.frequencyBand = band;
   }
 
+  // Fix the setInputValue method to store and process the input
   setInputValue(value) {
-    this.currentInputValue = Math.max(0, Math.min(1, value));
+    // Store the raw input value
+    this.currentInputValue = value;
+
+    // For immediate feedback, we can also process it right away
+    // Important to do this so the value is available for visualization immediately
+    if (this.enabled && this.sensitivity > 0) {
+      // Process the input value and update lastOutputValue
+      const processedValue = this.processInput();
+      this.lastOutputValue = processedValue;
+
+      // Debug log for high values
+      if (processedValue > 0.1) {
+        console.log(
+          `Input modulator ${
+            this.targetName || "unnamed"
+          }: processed value = ${processedValue.toFixed(2)}`
+        );
+      }
+    }
   }
 
+  // Add missing processInput method if it doesn't exist
   processInput() {
-    // Apply sensitivity to make the response more or less dramatic
-    let value = Math.min(1, this.currentInputValue * this.sensitivity);
+    // Make sure we have a valid input value
+    if (
+      this.currentInputValue === undefined ||
+      this.currentInputValue === null
+    ) {
+      return 0;
+    }
+
+    // Apply sensitivity
+    let value = Math.min(
+      1,
+      Math.max(0, this.currentInputValue * this.sensitivity)
+    );
 
     // Apply smoothing between this and the last value
-    if (this.smoothing > 0) {
+    if (this.smoothing > 0 && this.lastOutputValue !== undefined) {
       value =
         this.lastOutputValue * this.smoothing + value * (1 - this.smoothing);
     }
 
-    // Store for next frame
-    this.lastOutputValue = value;
-
+    // Return the processed value
     return value;
   }
 
+  // Fix the update method to use the processed input
   update(deltaTime) {
-    // Skip if no target, not enabled, or sensitivity is zero
-    if (
-      !this.targetController ||
-      !this.target ||
-      !this.targetName ||
-      !this.enabled ||
-      this.sensitivity === 0
-    ) {
+    // Skip if disabled
+    if (!this.enabled || this.sensitivity === 0) {
       return;
     }
 
     try {
-      // Get the processed input value (0-1)
-      const normalizedValue = this.processInput();
+      // The output value has already been processed in setInputValue
+      const normalizedValue = this.lastOutputValue || 0;
 
-      // Map from 0-1 to min-max
-      const mappedValue = this.min + normalizedValue * (this.max - this.min);
+      // Only update target if we have one
+      if (this.targetController && this.targetName) {
+        // Map from 0-1 to min-max
+        const mappedValue = this.min + normalizedValue * (this.max - this.min);
 
-      // Apply to target
-      this.targetController.setValue(mappedValue);
+        // Apply to target (only if non-zero or we've never applied a value)
+        if (normalizedValue > 0 || this._lastAppliedValue === undefined) {
+          this.targetController.setValue(mappedValue);
+          this._lastAppliedValue = mappedValue;
 
-      // Update display if available
-      if (this.targetController.updateDisplay) {
-        this.targetController.updateDisplay();
+          // Log significant changes
+          if (normalizedValue > 0.2) {
+            console.log(
+              `Setting ${this.targetName} to ${mappedValue.toFixed(
+                2
+              )} (from ${normalizedValue.toFixed(2)})`
+            );
+          }
+        }
       }
     } catch (e) {
       console.error(
-        `Error updating input modulator for ${this.targetName}:`,
+        `Error updating input modulator for ${this.targetName || "unnamed"}:`,
         e
       );
-      this.enabled = false; // Disable on error
     }
   }
 

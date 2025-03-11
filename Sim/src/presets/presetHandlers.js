@@ -258,7 +258,6 @@ export class MasterPresetHandler extends PresetBaseHandler {
         "turbulenceUi",
         "voronoiUi",
         "organicUi",
-        "gridUi",
       ].forEach((key) => {
         const component = this.uiComponents[key];
         if (

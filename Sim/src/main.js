@@ -123,6 +123,11 @@ class Main {
     this.particleRenderer.draw(this.particleSystem.getParticles());
     // this.gridRenderer.drawDebugIndexes();
 
+    // Update UI components to process audio input
+    if (this.ui) {
+      this.ui.update(this.particleSystem.timeStep);
+    }
+
     // Update ModulatorManager - ADD THIS
     if (this.modulatorManager) {
       this.modulatorManager.update(this.particleSystem.timeStep);
