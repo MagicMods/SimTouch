@@ -275,6 +275,27 @@ export class TurbulenceUi extends BaseUi {
 
   // Standard data application method - implement in all UI components
   setData(data) {
+    // Handle "None" preset case specifically
+    if (
+      !data ||
+      data === "None" ||
+      (data.controllers && Object.keys(data.controllers).length === 0)
+    ) {
+      // console.log("Resetting turbulence to None preset");
+
+      // Set strength to 0 to disable turbulence
+      this.turbulenceStrengthController.setValue(0);
+      this.turbulenceScaleStrengthController.setValue(0);
+      this.turbulenceBiasXController.setValue(0);
+      this.turbulenceBiasYController.setValue(0);
+
+      // Update UI display
+      this.updateControllerDisplays();
+
+      return true;
+    }
+
+    // Regular preset handling (existing code)
     if (!data || !data.controllers) {
       console.warn("Invalid turbulence preset data");
       return false;

@@ -7,13 +7,15 @@ export class SimplePresetHandler extends PresetBaseHandler {
   }
 
   applyPreset(presetName, uiComponent) {
-    // Handle special case for "None" preset
+    // Special handling for "None" preset
     if (presetName === "None") {
-      if (uiComponent && typeof uiComponent.clearAllModulators === "function") {
-        uiComponent.clearAllModulators();
-        this.selectedPreset = "None";
-        return true;
+      if (uiComponent && typeof uiComponent.setData === "function") {
+        // Pass "None" directly to setData to trigger special handling
+        const success = uiComponent.setData("None");
+        if (success) this.selectedPreset = "None";
+        return success;
       }
+      return false;
     }
 
     if (!uiComponent) {
@@ -27,7 +29,7 @@ export class SimplePresetHandler extends PresetBaseHandler {
       return false;
     }
 
-    // Standardized approach: use setData method
+    // Use setData method (existing code)
     if (typeof uiComponent.setData === "function") {
       const success = uiComponent.setData(preset);
       if (success) this.selectedPreset = presetName;

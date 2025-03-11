@@ -79,6 +79,8 @@ export class VoronoiUi extends BaseUi {
       targets["Attraction"] = this.voronoiAttractionController;
     if (this.voronoiCellCountController)
       targets["Cell Count"] = this.voronoiCellCountController;
+    if (this.voronoiDecayRateController)
+      targets["Decay Rate"] = this.voronoiDecayRateController;
 
     return targets;
   }
@@ -104,19 +106,14 @@ export class VoronoiUi extends BaseUi {
     safeUpdateDisplay(this.voronoiDecayRateController);
   }
 
-  // Standard data extraction method
   getData() {
-    // Create a clean copy of control values
     const controllers = {};
     const targets = this.getControlTargets();
 
-    // Only include primitive values to avoid circular references
-    for (const key in targets) {
-      if (
-        typeof targets[key] !== "function" &&
-        typeof targets[key] !== "object"
-      ) {
-        controllers[key] = targets[key];
+    // Extract values from controllers to create a serializable object
+    for (const [key, controller] of Object.entries(targets)) {
+      if (controller && typeof controller.getValue === "function") {
+        controllers[key] = controller.getValue();
       }
     }
 
