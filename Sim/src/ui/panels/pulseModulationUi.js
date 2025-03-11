@@ -265,6 +265,13 @@ export class PulseModulationUi extends BaseUi {
   }
 
   getModulatorsData() {
+    if (!this.modulatorManager) {
+      console.error(
+        `Error getting modulator data: modulatorManager is not defined`
+      );
+      return { modulators: [] };
+    }
+
     const modulators = [];
 
     // Extract data from each modulator folder in the UI

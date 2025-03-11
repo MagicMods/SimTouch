@@ -416,19 +416,29 @@ export class InputModulationUi extends BaseUi {
     }
   }
 
+  // Update the clearAllModulators method
   clearAllModulators() {
     console.log("InputModulationUi: Clearing all modulators");
 
     try {
-      // Disable modulators first
+      // IMPORTANT FIX: Reset to original values FIRST
       if (this.modulatorManager?.modulators) {
         this.modulatorManager.modulators
           .filter((m) => m.type === "input" && m.inputSource === "mic")
           .forEach((m) => {
+            // Reset to original value before disabling
+            if (typeof m.resetToOriginal === "function") {
+              console.log(
+                `Resetting ${m.targetName || "unnamed"} to original value`
+              );
+              m.resetToOriginal();
+            }
+            // Then disable
             m.enabled = false;
           });
       }
 
+      // Rest of existing implementation...
       // Remove from manager
       if (this.modulatorManager?.removeModulatorsByInput) {
         this.modulatorManager.removeModulatorsByInput("mic");
