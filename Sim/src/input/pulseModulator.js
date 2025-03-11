@@ -86,34 +86,67 @@ class PulseModulator {
   update(deltaTime, globalTime) {
     if (!this.enabled || !this.targetController) return;
 
-    // Check if sync is enabled and update frequency
-    if (
-      this.sync &&
-      this.manager &&
-      typeof this.manager.masterFrequency === "number"
-    ) {
-      this.frequency = this.manager.masterFrequency;
-    }
+    try {
+      // Check if sync is enabled and update frequency
+      if (
+        this.sync &&
+        this.manager &&
+        typeof this.manager.masterFrequency === "number"
+      ) {
+        this.frequency = this.manager.masterFrequency;
+      }
 
-    // Use the global time instead of incrementing this.time
-    // This ensures all modulators use the same time reference
-    const totalPhase = globalTime * this.frequency * Math.PI * 2 + this.phase;
-    this.currentPhase = totalPhase % (Math.PI * 2);
+      // Calculate phase based on correct time
+      const currentTime = globalTime || this.time;
+      const totalPhase =
+        currentTime * this.frequency * Math.PI * 2 + (this.phase || 0);
+      this.currentPhase = totalPhase % (Math.PI * 2);
 
-    // Get oscillation value based on global time
-    const value = this.calculateModulationWithGlobalTime(globalTime);
+      // Get the waveform type correctly - handle both 'type' and 'waveform' properties for compatibility
+      const waveType = this.type || this.waveform || "sine";
 
-    // Map from 0-1 to min-max
-    const range = this.max - this.min;
-    const mappedValue = this.min + value * range;
+      // Calculate the wave value based on type
+      let value;
+      switch (waveType) {
+        case "sine":
+          value = (Math.sin(totalPhase) + 1) / 2; // 0 to 1
+          break;
+        case "square":
+          value = totalPhase % (Math.PI * 2) < Math.PI ? 1 : 0;
+          break;
+        case "triangle":
+          const t = (totalPhase % (Math.PI * 2)) / (Math.PI * 2);
+          value = t < 0.5 ? t * 2 : 2 - t * 2;
+          break;
+        case "sawtooth":
+          value = (totalPhase % (Math.PI * 2)) / (Math.PI * 2);
+          break;
+        default:
+          value = (Math.sin(totalPhase) + 1) / 2; // Default to sine
+      }
 
-    // Apply to target
-    if (
-      this.targetController &&
-      typeof this.targetController.setValue === "function"
-    ) {
+      // Safety check for NaN before mapping
+      if (isNaN(value)) {
+        console.log(
+          `Wave calculation produced NaN for ${this.targetName}. Using default value.`
+        );
+        value = 0.5; // Use middle value as fallback
+      }
+
+      // Map to target range
+      const mappedValue = this.min + value * (this.max - this.min);
+
+      // Apply to target
       this.targetController.setValue(mappedValue);
+    } catch (e) {
+      console.error(
+        `Error in pulse modulator update for ${this.targetName}:`,
+        e
+      );
     }
+
+    // Always increment time regardless of errors
+    this.time += deltaTime;
   }
 
   /**

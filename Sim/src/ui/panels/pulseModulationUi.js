@@ -489,7 +489,26 @@ export class PulseModulationUi extends BaseUi {
 
         // Set target using the method which connects the modulator to its target
         if (modData.targetName && typeof modulator.setTarget === "function") {
+          // Explicitly mark as loading from preset to prevent auto-ranging
+          modulator._loadingFromPreset = true;
+
+          // First set min/max directly if available in preset data
+          if (modData.min !== undefined && !isNaN(modData.min)) {
+            modulator.min = modData.min;
+          }
+          if (modData.max !== undefined && !isNaN(modData.max)) {
+            modulator.max = modData.max;
+          }
+
+          // Then connect to target
           modulator.setTarget(modData.targetName);
+
+          // Remove the loading flag
+          modulator._loadingFromPreset = false;
+
+          console.log(
+            `Set target ${modData.targetName} with range: ${modulator.min} - ${modulator.max}`
+          );
         }
 
         // Set min/max if available
