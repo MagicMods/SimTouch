@@ -316,11 +316,9 @@ export class InputModulationUi extends BaseUi {
           `InputModulationUi: Extracting data from ${this.modulatorFolders.length} folders`
         );
 
-        // Get data from the UI folders
         this.modulatorFolders.forEach((folder) => {
           try {
-            // Find controllers with property values
-            const controllers = folder.controllers || [];
+            // Extract data from folder
             const modData = {
               type: "input",
               inputSource: "mic",
@@ -333,19 +331,24 @@ export class InputModulationUi extends BaseUi {
               targetName: "None",
             };
 
-            // Extract values from controllers if available
-            controllers.forEach((controller) => {
-              if (controller && controller.property && controller.getValue) {
-                modData[controller.property] = controller.getValue();
+            // Extract values from controllers
+            folder.controllers.forEach((controller) => {
+              if (controller?.property) {
+                const prop = controller.property;
+                if (controller.getValue) {
+                  modData[prop] = controller.getValue();
+                } else if (controller.object && prop in controller.object) {
+                  modData[prop] = controller.object[prop];
+                }
               }
             });
 
-            // Ensure enabled state is consistent with sensitivity
+            // Special handling: enabled state is determined by sensitivity
             modData.enabled = modData.sensitivity > 0;
 
             modulators.push(modData);
           } catch (err) {
-            console.error("Error processing folder:", err);
+            console.error("Error extracting modulator data from folder:", err);
           }
         });
       }
@@ -608,15 +611,6 @@ export class InputModulationUi extends BaseUi {
 
   //#endregion
 
-  //#region Preset
-
-  loadPresetData(preset) {
-    // Just redirect to setData for consistency
-    return this.setData(preset);
-  }
-
-  //#endregion
-
   //#region Visualization
 
   // Add the visualization helper method
@@ -767,60 +761,150 @@ export class InputModulationUi extends BaseUi {
 
   // Standard data extraction method - reuses existing logic
   getData() {
-    // Get modulators data using existing method
-    const modulatorsData = this.getModulatorsData();
-
-    // Get audio settings
-    const audioSettings = {
-      deviceId: this.main?.micInputForces?.deviceId || null,
-      enabled: this.main?.micInputForces?.enabled || false,
-    };
-
-    return {
-      modulators: modulatorsData,
-      audioSettings,
-    };
+    // Use existing getModulatorsData method which already has good implementation
+    return this.getModulatorsData();
   }
 
   // Standard data application method - reuses existing logic
   setData(data) {
-    // Better validation
+    // Validate data
     if (!data) {
-      console.warn("Invalid input modulation preset data");
+      console.error(
+        "Invalid input modulation preset data: data is null or undefined"
+      );
       return false;
     }
 
-    // Handle "None" preset special case
-    if (data.modulators === undefined || data === "None") {
-      // Just clear all modulators for "None" preset
-      this.clearAllModulators();
-      return true;
-    }
-
-    // Regular preset processing
     try {
-      // Clear existing modulators first
-      this.clearAllModulators();
-
-      // Handle audio settings if available
-      if (data.audioSettings) {
-        // Audio settings logic...
-      }
-
-      // Add modulators from preset data
-      if (Array.isArray(data.modulators)) {
-        if (this.modulatorManager) {
-          this.modulatorManager.loadModulatorsState(data.modulators, false);
-          this.update(); // Update UI to reflect changes
-        }
-        return true;
-      } else {
-        console.warn("Invalid preset data: missing modulators array");
+      // Validate modulators array
+      if (!data.modulators) {
+        console.error("Invalid preset data: missing modulators array");
         return false;
       }
+
+      if (!Array.isArray(data.modulators)) {
+        console.error("Invalid preset data: modulators is not an array");
+        return false;
+      }
+
+      if (!this.modulatorManager) {
+        console.error(
+          "Cannot load modulators: modulatorManager is not initialized"
+        );
+        return false;
+      }
+
+      console.log(
+        `Loading ${data.modulators.length} input modulators from preset`
+      );
+
+      // First clear existing modulators
+      this.clearAllModulators();
+
+      // MANUALLY CREATE MODULATORS INSTEAD OF USING loadModulatorsState
+      let success = true;
+
+      // Loop through each modulator in the preset data
+      for (let i = 0; i < data.modulators.length; i++) {
+        const modData = data.modulators[i];
+        console.log(
+          `Creating input modulator ${i + 1} with target: ${modData.targetName}`
+        );
+
+        // Create a new modulator
+        const modulator = this.addInputModulator();
+
+        if (!modulator) {
+          console.error(`Failed to create input modulator ${i + 1}`);
+          success = false;
+          continue;
+        }
+
+        // Find the folder for this modulator
+        const folder = this.modulatorFolders[i];
+        if (!folder) {
+          console.error(`Folder not found for modulator ${i + 1}`);
+          continue;
+        }
+
+        // Update UI controllers directly for special properties
+        folder.controllers.forEach((controller) => {
+          const prop = controller.property;
+          if (prop === "targetName" && modData[prop] !== undefined) {
+            // Explicitly set the UI value for target dropdown
+            controller.setValue(modData[prop]);
+            console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
+          } else if (prop === "frequencyBand" && modData[prop] !== undefined) {
+            // Set frequency band
+            controller.setValue(modData[prop]);
+            console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
+          } else if (prop === "sensitivity" && modData[prop] !== undefined) {
+            // Set sensitivity (acts as enable control)
+            controller.setValue(modData[prop]);
+            console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
+          }
+          // Other properties are set normally on the modulator object
+          else if (modData[prop] !== undefined) {
+            modulator[prop] = modData[prop];
+          }
+        });
+
+        // Set target using the method which connects the modulator to its target
+        if (modData.targetName && typeof modulator.setTarget === "function") {
+          modulator.setTarget(modData.targetName);
+        }
+
+        // Set min/max if available
+        if (modData.min !== undefined && modData.max !== undefined) {
+          // Find min/max controllers and update them
+          const minController = folder.controllers.find(
+            (c) => c.property === "min"
+          );
+          const maxController = folder.controllers.find(
+            (c) => c.property === "max"
+          );
+
+          if (minController) minController.setValue(modData.min);
+          if (maxController) maxController.setValue(modData.max);
+        }
+      }
+
+      // Update UI after all modulators are created
+      this.update();
+
+      // Force refresh of UI controllers
+      this.updateControllerDisplays();
+
+      console.log(
+        `Successfully loaded ${data.modulators.length} input modulators from preset`
+      );
+
+      return success;
     } catch (error) {
       console.error("Error applying input modulation preset:", error);
       return false;
     }
+  }
+
+  // Add this method if it doesn't exist to update controller displays
+  updateControllerDisplays() {
+    // Update all modulator UI controllers to reflect current values
+    if (!this.modulatorManager || !this.modulatorFolders) return;
+
+    this.modulatorManager.modulators
+      .filter((m) => m.type === "input" && m.inputSource === "mic")
+      .forEach((modulator, index) => {
+        // Find the folder for this modulator
+        const folder = this.modulatorFolders[index];
+        if (!folder) return;
+
+        // Update all controllers in the folder
+        folder.controllers.forEach((controller) => {
+          // Only update controllers for properties that exist on the modulator
+          if (modulator.hasOwnProperty(controller.property)) {
+            controller.updateDisplay();
+          }
+        });
+      });
   }
 }
