@@ -19,7 +19,6 @@ export class PulseModulationUi extends BaseUi {
 
     this.presetManager = null;
     this.presetSelect = null; // Reference to the HTML select element
-    this.targetControllerMap = new Map();
   }
 
   //#region Ui Setup
@@ -73,18 +72,6 @@ export class PulseModulationUi extends BaseUi {
     console.log("PulseModulationUi initialized with preset manager");
     if (presetManager) {
       this.initPresetControls(presetManager);
-    }
-  }
-
-  // Update to work with component map
-  initializeWithComponents(leftUi, components) {
-    console.log("PulseModulationUi initializing with UI components");
-    this.leftUi = leftUi;
-    this.components = components;
-
-    // Set up target controller map if needed
-    if (this.modulatorManager) {
-      this.modulatorManager.registerTargetsFromUi();
     }
   }
 

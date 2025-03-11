@@ -1,12 +1,19 @@
 export class PresetBaseHandler {
-  constructor(storageKey, defaultPresets = {}) {
+  constructor(storageKey, defaultPresets = {}, options = {}) {
     this.storageKey = storageKey;
     this.presets = this.loadFromStorage() || {};
     this.selectedPreset = null;
     this.debug = false;
-    this.protectedPresets = [];
-    this.defaultPreset = null;
 
+    // Standardized options with defaults
+    this.protectedPresets = options.protectedPresets || [];
+    this.defaultPreset = options.defaultPreset || null;
+
+    // Add extraction/application strategies
+    this.extractionMethod = options.extractionMethod || "save";
+    this.applicationMethod = options.applicationMethod || "load";
+
+    // Apply default presets if provided and not already present
     if (defaultPresets) {
       for (const key in defaultPresets) {
         if (!this.presets[key]) {
@@ -17,19 +24,120 @@ export class PresetBaseHandler {
     }
   }
 
+  // Missing storage methods
+  loadFromStorage() {
+    try {
+      const storedData = localStorage.getItem(this.storageKey);
+      if (storedData) {
+        return JSON.parse(storedData);
+      }
+    } catch (error) {
+      console.error(`Error loading presets from storage:`, error);
+    }
+    return {};
+  }
+
+  saveToStorage() {
+    try {
+      localStorage.setItem(this.storageKey, JSON.stringify(this.presets));
+      return true;
+    } catch (error) {
+      console.error(`Error saving presets to storage:`, error);
+      return false;
+    }
+  }
+
+  // Extract data using configured strategy
   extractDataFromUI(uiComponent) {
-    console.warn(
-      `extractDataFromUI not implemented for ${this.constructor.name}`
-    );
-    return null;
+    if (!uiComponent) {
+      console.warn(`Cannot extract data: UI component not provided`);
+      return null;
+    }
+
+    try {
+      if (this.debug)
+        console.log(`Extracting data using ${this.extractionMethod}`);
+
+      // Use the configured extraction method
+      if (
+        this.extractionMethod === "save" &&
+        typeof uiComponent.save === "function"
+      ) {
+        return uiComponent.save();
+      } else if (
+        this.extractionMethod === "getModulatorsData" &&
+        typeof uiComponent.getModulatorsData === "function"
+      ) {
+        return uiComponent.getModulatorsData();
+      } else {
+        console.error(
+          `Extraction method ${this.extractionMethod} not supported by UI component`
+        );
+        return null;
+      }
+    } catch (error) {
+      console.error(`Error extracting data from UI:`, error);
+      return null;
+    }
   }
 
+  // Apply data using configured strategy
   applyDataToUI(presetName, uiComponent) {
-    console.warn(`applyDataToUI not implemented for ${this.constructor.name}`);
-    return false;
+    if (!uiComponent) {
+      console.warn(`Cannot apply data: UI component not provided`);
+      return false;
+    }
+
+    try {
+      if (this.debug)
+        console.log(
+          `Applying preset ${presetName} using ${this.applicationMethod}`
+        );
+
+      // Handle special case for None preset
+      if (presetName === "None") {
+        if (typeof uiComponent.clearAllModulators === "function") {
+          uiComponent.clearAllModulators();
+          this.selectedPreset = presetName;
+          return true;
+        }
+      }
+
+      const preset = this.presets[presetName];
+      if (!preset) {
+        console.warn(`Preset not found: ${presetName}`);
+        return false;
+      }
+
+      // Use the configured application method
+      if (
+        this.applicationMethod === "load" &&
+        typeof uiComponent.load === "function"
+      ) {
+        uiComponent.load(preset);
+        this.selectedPreset = presetName;
+        return true;
+      } else if (
+        this.applicationMethod === "loadPresetData" &&
+        typeof uiComponent.loadPresetData === "function"
+      ) {
+        const result = uiComponent.loadPresetData(preset);
+        if (result) this.selectedPreset = presetName;
+        return result;
+      } else {
+        console.error(
+          `Application method ${this.applicationMethod} not supported by UI component`
+        );
+        return false;
+      }
+    } catch (error) {
+      console.error(`Error applying preset ${presetName}:`, error);
+      return false;
+    }
   }
 
-  savePreset(presetName, data) {
+  // Simplified save preset that uses extractDataFromUI
+  savePreset(presetName, uiComponent) {
     if (!presetName) {
       console.error("Invalid preset name");
       return false;
@@ -40,33 +148,38 @@ export class PresetBaseHandler {
       return false;
     }
 
-    // Handle direct UI component passing
-    let presetData = data;
-    if (
-      data &&
-      typeof data === "object" &&
-      this.extractDataFromUI &&
-      !data.hasOwnProperty("id")
-    ) {
-      presetData = this.extractDataFromUI(data);
-    }
+    try {
+      // Extract data if UI component provided, otherwise use direct data
+      let presetData = uiComponent;
+      if (
+        uiComponent &&
+        typeof uiComponent !== "string" &&
+        !uiComponent.hasOwnProperty("id")
+      ) {
+        presetData = this.extractDataFromUI(uiComponent);
+      }
 
-    if (!presetData) {
-      console.error("Invalid preset data");
+      if (!presetData) {
+        console.error("Invalid preset data");
+        return false;
+      }
+
+      // Store a deep copy to prevent reference issues
+      this.presets[presetName] = JSON.parse(JSON.stringify(presetData));
+      this.selectedPreset = presetName;
+
+      this.saveToStorage();
+      return true;
+    } catch (error) {
+      console.error(`Error saving preset ${presetName}:`, error);
       return false;
     }
-
-    // Store a deep copy to prevent reference issues
-    this.presets[presetName] = JSON.parse(JSON.stringify(presetData));
-    this.selectedPreset = presetName;
-
-    this.saveToStorage();
-    return true;
   }
 
+  // Delete preset with protection checks
   deletePreset(presetName) {
     if (!presetName || !this.presets[presetName]) {
-      console.error(`Preset not found: ${presetName}`);
+      console.warn(`Preset not found: ${presetName}`);
       return false;
     }
 
@@ -75,62 +188,34 @@ export class PresetBaseHandler {
       return false;
     }
 
-    delete this.presets[presetName];
-
-    if (this.selectedPreset === presetName) {
-      this.selectedPreset = this.defaultPreset;
-    }
-
-    this.saveToStorage();
-    return true;
-  }
-
-  getPresetOptions() {
-    return Object.keys(this.presets);
-  }
-
-  getSelectedPreset() {
-    return this.selectedPreset;
-  }
-
-  setSelectedPreset(presetName) {
-    if (this.presets[presetName]) {
-      this.selectedPreset = presetName;
-      return true;
-    }
-    return false;
-  }
-
-  loadFromStorage() {
     try {
-      const storedData = localStorage.getItem(this.storageKey);
-      return storedData ? JSON.parse(storedData) : null;
-    } catch (error) {
-      console.error(
-        `Error loading presets from storage (${this.storageKey}):`,
-        error
-      );
-      return null;
-    }
-  }
+      delete this.presets[presetName];
 
-  saveToStorage() {
-    try {
-      localStorage.setItem(this.storageKey, JSON.stringify(this.presets));
-      if (this.debug) {
-        console.log(`Saved presets to ${this.storageKey}`);
+      // If the deleted preset was selected, switch to default
+      if (this.selectedPreset === presetName) {
+        this.selectedPreset = this.defaultPreset || null;
       }
+
+      this.saveToStorage();
       return true;
     } catch (error) {
-      console.error(
-        `Error saving presets to storage (${this.storageKey}):`,
-        error
-      );
+      console.error(`Error deleting preset ${presetName}:`, error);
       return false;
     }
   }
 
+  // Get preset options for dropdown
+  getPresetOptions() {
+    return Object.keys(this.presets);
+  }
+
+  // Get selected preset
+  getSelectedPreset() {
+    return this.selectedPreset;
+  }
+
+  // Set debug mode
   setDebug(enabled) {
-    this.debug = enabled;
+    this.debug = !!enabled;
   }
 }

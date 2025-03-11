@@ -68,14 +68,6 @@ export class UiManager {
       this.organicUi
     );
 
-    // Set up preset manager for the UI components
-    // this.paramUi.initWithPresetManager(this.presetManager);
-    // this.particleUi.initWithPresetManager(this.presetManager);
-    // this.gravityUi.initWithPresetManager(this.presetManager);
-    // this.collisionUi.initWithPresetManager(this.presetManager);
-    // this.boundaryUi.initWithPresetManager(this.presetManager);
-    // this.restStateUi.initWithPresetManager(this.presetManager);
-
     this.inputModUi.initWithPresetManager(this.presetManager);
     this.pulseModUi.initWithPresetManager(this.presetManager);
     this.turbulenceUi.initWithPresetManager(this.presetManager);
@@ -85,6 +77,7 @@ export class UiManager {
     this.initializeUiComponents();
     this.stats = new Stats();
     this.initStats();
+    this.allTargets = {};
   }
 
   createContainer(position) {
@@ -99,32 +92,6 @@ export class UiManager {
     statsContainer.className = "stats-container";
     statsContainer.appendChild(this.stats.dom);
     document.body.appendChild(statsContainer);
-  }
-
-  updateStats() {
-    this.stats.update();
-  }
-
-  update() {
-    // Update all UI components
-    // this.paramUi.updateControllerDisplays();
-    // this.particleUi.updateControllerDisplays();
-    // this.gravityUi.updateControllerDisplays();
-    // this.collisionUi.updateControllerDisplays();
-    // this.boundaryUi.updateControllerDisplays();
-    // this.turbulenceUi.updateControllerDisplays();
-    // this.voronoiUi.updateControllerDisplays();
-    // this.organicUi.updateControllerDisplays();
-    // this.pulseModUi.updateControllerDisplays();
-    // this.inputModUi.updateControllerDisplays();
-
-    // this.pulseModUi.update();
-    // this.inputModUi.update();
-
-    // Update stats if available
-    if (this.stats) {
-      this.updateStats();
-    }
   }
 
   dispose() {
@@ -152,9 +119,6 @@ export class UiManager {
   }
 
   initializeUiComponents() {
-    // Initialize cross-references between UI components
-    this.initializeCrossReferences();
-
     // Set up event listeners for changes in grid render modes
     if (this.main.gridRenderer && this.organicUi) {
       this.main.gridRenderer.renderModes.onModeChange = (mode) => {
@@ -166,47 +130,6 @@ export class UiManager {
     this.initializeModulatorManager();
   }
 
-  initializeCrossReferences() {
-    // Set up connections between UI components if needed
-    if (this.inputModUi) {
-      // Get control targets from all UIs that support it
-      const turbulenceTargets = this.turbulenceUi?.getControlTargets?.() || {};
-      const voronoiTargets = this.voronoiUi?.getControlTargets?.() || {};
-      const organicTargets = this.organicUi?.getControlTargets?.() || {};
-      // const gridTargets = this.gridUi?.getControlTargets?.() || {};
-
-      // Combine all targets
-      const allTargets = {
-        ...turbulenceTargets,
-        ...voronoiTargets,
-        ...organicTargets,
-        // ...gridTargets,
-      };
-
-      // Pass combined targets to input modulation UI
-      this.inputModUi.setControlTargets?.(allTargets);
-    }
-
-    // Initialize UI panels references
-    if (this.pulseModUi) {
-      this.pulseModUi.initializeWithComponents(this.leftUi, {
-        turbulence: this.turbulenceUi,
-        voronoi: this.voronoiUi,
-        organic: this.organicUi,
-        // grid: this.gridUi,
-      });
-    }
-
-    if (this.inputModUi) {
-      this.inputModUi.initializeWithComponents(this.leftUi, {
-        turbulence: this.turbulenceUi,
-        voronoi: this.voronoiUi,
-        organic: this.organicUi,
-        // grid: this.gridUi,
-      });
-    }
-  }
-
   initializeModulatorManager() {
     if (this.main.modulatorManager) {
       console.log("Initializing ModulatorManager with UI components");
@@ -215,15 +138,22 @@ export class UiManager {
       this.pulseModUi.setModulatorManager(this.main.modulatorManager);
       this.inputModUi.setModulatorManager(this.main.modulatorManager);
 
-      // Register ALL UI components with a meaningful name for each
-      this.main.modulatorManager.registerUiComponents({
-        leftUi: this.leftUi,
+      // Register actual UI components with a meaningful name for each
+      const uiComponents = {
+        paramUi: this.paramUi,
+        particleUi: this.particleUi,
+        gravityUi: this.gravityUi,
+        collisionUi: this.collisionUi,
+        boundaryUi: this.boundaryUi,
+        restStateUi: this.restStateUi,
         turbulenceUi: this.turbulenceUi,
         voronoiUi: this.voronoiUi,
         organicUi: this.organicUi,
-        // gridUi: this.gridUi,
-        // Add any other components that have targets
-      });
+        // You can add other UI components as needed
+      };
+
+      // Register UI components instead of controller targets
+      this.main.modulatorManager.registerUiComponents(uiComponents);
     } else {
       console.warn("ModulatorManager not available in main!");
     }

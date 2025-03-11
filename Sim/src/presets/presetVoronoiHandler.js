@@ -12,11 +12,6 @@ export class PresetVoronoiHandler extends PresetBaseHandler {
     this.voronoiField = null;
   }
 
-  /**
-   * Extract voronoi data from UI folder
-   * @param {Object} voronoiFolder - dat.GUI folder for voronoi controls
-   * @returns {Object|null} Extracted data or null if failed
-   */
   extractDataFromUI(voronoiFolder) {
     if (!voronoiFolder) {
       console.warn("No voronoi folder provided");
@@ -35,12 +30,6 @@ export class PresetVoronoiHandler extends PresetBaseHandler {
     }
   }
 
-  /**
-   * Apply voronoi preset data to UI
-   * @param {string} presetName - Name of preset to apply
-   * @param {Object} voronoiFolder - dat.GUI folder for voronoi controls
-   * @returns {boolean} Success status
-   */
   applyDataToUI(presetName, voronoiFolder) {
     if (this.debug) console.log(`Applying voronoi preset: ${presetName}`);
 
@@ -80,10 +69,6 @@ export class PresetVoronoiHandler extends PresetBaseHandler {
     }
   }
 
-  /**
-   * Find a controller by property name in a folder
-   * @private
-   */
   _findController(folder, propertyName) {
     if (!folder || !folder.controllers) return null;
 
@@ -95,13 +80,7 @@ export class PresetVoronoiHandler extends PresetBaseHandler {
     return null;
   }
 
-  /**
-   * Save a voronoi preset
-   * @param {string} presetName - Name to save preset as
-   * @param {Object} voronoiFolder - dat.GUI folder for voronoi controls
-   * @returns {boolean} Success status
-   */
-  savePreset(presetName, voronoiFolder) {
+  Preset(presetName, voronoiFolder) {
     if (this.debug) console.log(`Saving voronoi preset: ${presetName}`);
 
     const data = this.extractDataFromUI(voronoiFolder);
@@ -125,18 +104,10 @@ export class PresetVoronoiHandler extends PresetBaseHandler {
     );
   }
 
-  /**
-   * Set the debug mode
-   * @param {boolean} enabled - Enable or disable debug mode
-   */
   setDebug(enabled) {
     this.debug = enabled;
   }
 
-  /**
-   * Set the voronoi field reference
-   * @param {Object} voronoiField - Voronoi field object
-   */
   setVoronoiField(voronoiField) {
     this.voronoiField = voronoiField;
   }

@@ -10,7 +10,7 @@ class PresetManager {
     TURBULENCE: "turb",
     VORONOI: "voronoi",
     PULSE: "pulse",
-    MIC: "mic",
+    INPUT: "input",
   };
 
   constructor(
@@ -219,7 +219,7 @@ class PresetManager {
         return this.voronoiUi;
       case PresetManager.TYPES.PULSE:
         return this.pulseModUi;
-      case PresetManager.TYPES.MIC:
+      case PresetManager.TYPES.INPUT:
         return this.inputModUi;
       default:
         return null;

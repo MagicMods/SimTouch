@@ -51,7 +51,6 @@ export class BoundaryUi extends BaseUi {
   getControlTargets() {
     const targets = {};
 
-    // Boundary controllers
     if (this.boundarySizeController)
       targets["Boundary Size"] = this.boundarySizeController;
     if (this.boundaryRepulsionController)

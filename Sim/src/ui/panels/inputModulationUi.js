@@ -20,7 +20,7 @@ export class InputModulationUi extends BaseUi {
     this.gui.title("Input Modulation");
 
     // Initialize controls directly in the root GUI
-    this.initMicInputControls();
+    this.initInputControls();
 
     // PresetManager will be initialized later
     this.presetManager = null;
@@ -36,36 +36,7 @@ export class InputModulationUi extends BaseUi {
 
   //#region Ui Setup
 
-  // Keep only the components version
-  initializeWithComponents(leftUi, components) {
-    console.log("InputModulationUi initializing with UI components");
-    this.leftUi = leftUi;
-    this.components = components;
-
-    // Set up target controller map if needed
-    this.targetControllerMap = new Map();
-
-    // Add targets from all components
-    if (leftUi && typeof leftUi.getControlTargets === "function") {
-      const targets = leftUi.getControlTargets();
-      Object.keys(targets).forEach((name) => {
-        this.targetControllerMap.set(name, targets[name]);
-      });
-    }
-
-    if (components) {
-      Object.values(components).forEach((component) => {
-        if (component && typeof component.getControlTargets === "function") {
-          const targets = component.getControlTargets();
-          Object.keys(targets).forEach((name) => {
-            this.targetControllerMap.set(name, targets[name]);
-          });
-        }
-      });
-    }
-  }
-
-  initMicInputControls() {
+  initInputControls() {
     if (!this.main.externalInput) return;
 
     const externalInput = this.main.externalInput;
@@ -107,7 +78,7 @@ export class InputModulationUi extends BaseUi {
 
     // Add modulator button
     const addModulatorControl = {
-      add: () => this.addMicModulator(),
+      add: () => this.addInputModulator(),
     };
 
     const addModulatorController = this.gui
@@ -117,115 +88,41 @@ export class InputModulationUi extends BaseUi {
     this.micControllers.push(addModulatorController);
   }
 
-  // Initialize with preset controls - modified to work with root folder
   initPresetControls(presetManager) {
-    if (!presetManager) {
-      console.warn("PresetManager not provided to InputModulationUi");
-      return;
-    }
+    if (!presetManager) return;
 
     this.presetManager = presetManager;
 
     // Find the correct container in GUI structure
     const containerElement = this.gui.domElement.querySelector(".children");
-    if (!containerElement) {
-      console.error("Could not find container element in GUI");
-      return;
-    }
+    if (!containerElement) return;
 
-    // Create a flex container for all preset controls (like in pulseModulationUi)
-    const presetControlsContainer = document.createElement("div");
-    presetControlsContainer.classList.add("preset-controls-container");
-
-    // Create select dropdown
-    const presetSelect = document.createElement("select");
-    presetSelect.classList.add("preset-select");
-
-    // Store reference to the select element
-    this.presetSelect = presetSelect;
-
-    // Populate dropdown options
-    this.updatePresetDropdown(presetSelect);
-
-    // Set up change event handler
-    presetSelect.addEventListener("change", (e) => {
-      const value = e.target.value;
-      console.log("Input modulation preset selector changed to:", value);
-      this.presetManager.loadPreset(PresetManager.TYPES.MIC, value, this);
-    });
-
-    // SAVE BUTTON
-    const saveButton = document.createElement("button");
-    saveButton.textContent = "Save";
-    saveButton.classList.add("preset-control-button");
-    saveButton.addEventListener("click", () => {
-      const presetName = prompt("Enter input modulation preset name:");
-      if (!presetName) return;
-
-      try {
-        // Extract data directly
-        const data = this.getModulatorsData();
-        console.log(
-          `Prepared input modulation data with ${data.modulators.length} modulators`
-        );
-
-        // Save the preset
-        if (
-          this.presetManager.savePreset(
-            PresetManager.TYPES.MIC,
-            presetName,
-            data
-          )
-        ) {
-          this.updatePresetDropdown(presetSelect);
-          alert(`Input modulation preset "${presetName}" saved.`);
-        } else {
-          alert("Failed to save preset.");
-        }
-      } catch (error) {
-        console.error("Error saving preset:", error);
-        alert(`Error saving preset: ${error.message}`);
-      }
-    });
-
-    // DELETE BUTTON
-    const deleteButton = document.createElement("button");
-    deleteButton.textContent = "Delete";
-    deleteButton.classList.add("preset-control-button");
-    deleteButton.addEventListener("click", () => {
-      const current = presetSelect.value;
-      if (current === "None") {
-        alert("Cannot delete the None preset!");
-        return;
-      }
-
-      if (
-        confirm(`Delete preset "${current}"?`) &&
-        this.presetManager.deletePreset(PresetManager.TYPES.MIC, current)
-      ) {
-        this.updatePresetDropdown(presetSelect);
-        alert(`Input modulation preset "${current}" deleted.`);
-      }
-    });
-
-    // Add elements to the flex container
-    presetControlsContainer.appendChild(saveButton);
-    presetControlsContainer.appendChild(presetSelect);
-    presetControlsContainer.appendChild(deleteButton);
-
-    // Insert the flex container at the top of the parent container
-    containerElement.insertBefore(
-      presetControlsContainer,
-      containerElement.firstChild
+    // Create standardized preset controls
+    this.presetControl = this.presetManager.createPresetControls(
+      PresetManager.TYPES.INPUT,
+      containerElement,
+      { insertFirst: true }
     );
   }
 
+  // Initialize with preset manager
+  initWithPresetManager(presetManager) {
+    console.log("PulseModulationUi initialized with preset manager");
+    if (presetManager) {
+      this.initPresetControls(presetManager);
+    }
+  }
   //#endregion
 
   //#region Modulator
 
-  // Fixed implementation of addMicModulator
-  addMicModulator() {
+  setModulatorManager(manager) {
+    this.modulatorManager = manager;
+    console.log("ModulatorManager set in InputModulationUi");
+  }
+
+  // Fixed implementation of addInputModulator
+  addInputModulator() {
     if (!this.modulatorManager) {
       console.error("ModulatorManager not available");
       return null;
@@ -398,42 +295,6 @@ export class InputModulationUi extends BaseUi {
     return modulator;
   }
 
-  setModulatorManager(manager) {
-    this.modulatorManager = manager;
-    console.log("ModulatorManager set in InputModulationUi");
-  }
-
-  clearAllModulators() {
-    console.log("InputModulationUi: Clearing all modulators");
-
-    try {
-      // Disable modulators first
-      if (this.modulatorManager?.modulators) {
-        this.modulatorManager.modulators
-          .filter((m) => m.type === "input" && m.inputSource === "mic")
-          .forEach((m) => {
-            m.enabled = false;
-          });
-      }
-
-      // Remove from manager
-      if (this.modulatorManager?.removeModulatorsByInput) {
-        this.modulatorManager.removeModulatorsByInput("mic");
-      }
-
-      // Remove UI folders
-      this.modulatorFolders.forEach((folder) => {
-        if (folder?.destroy) folder.destroy();
-      });
-      this.modulatorFolders = [];
-
-      return true;
-    } catch (error) {
-      console.error("Error clearing modulators:", error);
-      return false;
-    }
-  }
-
   getModulatorsData() {
     // TEMPORARY DEBUG CHECK - REMOVE IN PRODUCTION
     if (!this.modulatorManager) {
@@ -533,6 +394,37 @@ export class InputModulationUi extends BaseUi {
         sensitivity: 1.0,
         modulators: [],
       };
+    }
+  }
+
+  clearAllModulators() {
+    console.log("InputModulationUi: Clearing all modulators");
+
+    try {
+      // Disable modulators first
+      if (this.modulatorManager?.modulators) {
+        this.modulatorManager.modulators
+          .filter((m) => m.type === "input" && m.inputSource === "mic")
+          .forEach((m) => {
+            m.enabled = false;
+          });
+      }
+
+      // Remove from manager
+      if (this.modulatorManager?.removeModulatorsByInput) {
+        this.modulatorManager.removeModulatorsByInput("mic");
+      }
+
+      // Remove UI folders
+      this.modulatorFolders.forEach((folder) => {
+        if (folder?.destroy) folder.destroy();
+      });
+      this.modulatorFolders = [];
+
+      return true;
+    } catch (error) {
+      console.error("Error clearing modulators:", error);
+      return false;
     }
   }
 
@@ -718,72 +610,59 @@ export class InputModulationUi extends BaseUi {
 
   //#region Preset
 
-  // Modified loadPresetData to handle folder state properly
   loadPresetData(preset) {
-    console.log("InputModulationUi: Loading preset data", preset);
+    // Validate preset format
+    if (!preset || typeof preset !== "object") {
+      console.warn("Invalid preset data: not an object");
+      return false;
+    }
 
-    if (!preset) {
-      console.error("Invalid preset data");
+    // Ensure preset has modulators array
+    if (!Array.isArray(preset.modulators)) {
+      console.warn("Invalid preset data: missing modulators array");
       return false;
     }
 
     // Clear existing modulators
     this.clearAllModulators();
 
-    // Extract modulators array, handling different formats
-    let modulators = [];
-    let enabled = false;
-
-    if (Array.isArray(preset.modulators)) {
-      modulators = preset.modulators;
-      // ADDED: If we have modulators, we should enable
-      enabled = modulators.length > 0;
-    } else if (
-      preset.micSettings &&
-      Array.isArray(preset.micSettings.modulators)
-    ) {
-      modulators = preset.micSettings.modulators;
-      // Capture the enabled state if available
-      enabled = preset.micSettings.enabled === true || modulators.length > 0;
-    } else {
-      console.warn("No modulators found in preset");
+    // Empty preset case
+    if (preset.modulators.length === 0) {
+      return true;
     }
-
-    // CHANGED: Only enable, never disable
-    if (enabled) {
-      this.enableDisableAudioInput(true);
-    }
-
-    console.log(`Creating ${modulators.length} modulators from preset`);
 
     // Create modulators from the data
-    modulators.forEach((modData, index) => {
-      const mod = this.addMicModulator();
+    preset.modulators.forEach((modData, index) => {
+      const mod = this.addInputModulator();
       if (!mod) return;
 
-      // Mark as loading from preset
+      // Mark as loading from preset to prevent side effects
       mod._loadingFromPreset = true;
 
-      // Get folder for UI updates
+      // Get the folder for UI updates
       const folder = this.modulatorFolders[this.modulatorFolders.length - 1];
 
       // Apply basic properties
-      if (modData.frequencyBand) mod.frequencyBand = modData.frequencyBand;
-      if (modData.smoothing !== undefined) mod.smoothing = modData.smoothing;
-      if (modData.min !== undefined) mod.min = modData.min;
-      if (modData.max !== undefined) mod.max = modData.max;
-      if (modData.sensitivity !== undefined)
-        mod.sensitivity = modData.sensitivity;
+      Object.keys(modData).forEach((key) => {
+        if (key in mod && key !== "target" && key !== "targetName") {
+          mod[key] = modData[key];
+        }
+      });
 
-      // Set target last (after other properties)
+      // Apply target last
       if (modData.targetName && modData.targetName !== "None") {
-        console.log(
-          `Setting target for modulator ${index + 1} to ${modData.targetName}`
-        );
         mod.setTarget(modData.targetName);
+
+        // Update target UI
+        const targetController = folder.controllers.find(
+          (c) => c.property === "targetName"
+        );
+        if (targetController?.setValue) {
+          targetController.setValue(modData.targetName);
+        }
       }
 
-      // Update all controllers
+      // Update all other UI controls
       folder.controllers.forEach((controller) => {
         if (
           controller.property &&
@@ -794,55 +673,11 @@ export class InputModulationUi extends BaseUi {
         }
       });
 
-      // Enable based on sensitivity
-      mod.enabled = mod.sensitivity > 0;
-
       // Clear loading flag
       delete mod._loadingFromPreset;
     });
 
     return true;
-  }
-
-  // Initialize with preset manager
-  initWithPresetManager(presetManager) {
-    console.log("InputModulationUi initialized with preset manager");
-    if (presetManager) {
-      this.presetManager = presetManager;
-      this.initPresetControls(presetManager);
-    }
-  }
-
-  // Helper method to update dropdown options
-  updatePresetDropdown(selectElement) {
-    if (!this.presetManager || !selectElement) return;
-
-    const options = this.presetManager.getPresetOptions(
-      PresetManager.TYPES.MIC
-    );
-    console.log(
-      "Updating input modulation preset dropdown with options:",
-      options
-    );
-
-    // Clear existing options
-    selectElement.innerHTML = "";
-
-    // Add all available presets
-    options.forEach((preset) => {
-      const option = document.createElement("option");
-      option.value = preset;
-      option.textContent = preset;
-      selectElement.appendChild(option);
-    });
-
-    // Set current selection
-    const currentPreset = this.presetManager.getSelectedPreset(
-      PresetManager.TYPES.MIC
-    );
-    if (currentPreset) {
-      selectElement.value = currentPreset;
-    }
   }
 
   //#endregion

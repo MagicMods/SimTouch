@@ -96,9 +96,6 @@ class Main {
   }
 
   animate() {
-    // this.particleSystem.step();
-    this.ui.updateStats();
-
     if (!this.paused) {
       this.render();
     }
@@ -131,7 +128,7 @@ class Main {
       this.modulatorManager.update(this.particleSystem.timeStep);
     }
 
-    this.ui.update();
+    this.ui.stats.update();
   }
 
   static async create() {
