@@ -398,84 +398,125 @@ export class PulseModulationUi extends BaseUi {
       });
   }
 
-  loadPresetData(preset) {
-    // Validate preset format
-    if (!preset || typeof preset !== "object") {
-      console.warn("Invalid preset data: not an object");
-      return false;
-    }
-
-    // Ensure preset has modulators array
-    if (!Array.isArray(preset.modulators)) {
-      console.warn("Invalid preset data: missing modulators array");
-      return false;
-    }
-
-    // Clear existing modulators
-    this.clearAllModulators();
-
-    // Empty preset case
-    if (preset.modulators.length === 0) {
-      return true;
-    }
-
-    // Create modulators from the data
-    preset.modulators.forEach((modData, index) => {
-      const mod = this.addPulseModulator();
-      if (!mod) return;
-
-      // Mark as loading from preset to prevent side effects
-      mod._loadingFromPreset = true;
-
-      // Get the folder for UI updates
-      const folder = this.modulatorFolders[this.modulatorFolders.length - 1];
-
-      // Apply basic properties
-      Object.keys(modData).forEach((key) => {
-        if (key in mod && key !== "target" && key !== "targetName") {
-          mod[key] = modData[key];
-        }
-      });
-
-      // Apply target last
-      if (modData.targetName && modData.targetName !== "None") {
-        mod.setTarget(modData.targetName);
-
-        // Update target UI
-        const targetController = folder.controllers.find(
-          (c) => c.property === "targetName"
-        );
-        if (targetController?.setValue) {
-          targetController.setValue(modData.targetName);
-        }
-      }
-
-      // Update all other UI controls
-      folder.controllers.forEach((controller) => {
-        if (
-          controller.property &&
-          controller.property in mod &&
-          controller.setValue
-        ) {
-          controller.setValue(mod[controller.property]);
-        }
-      });
-
-      // Clear loading flag
-      delete mod._loadingFromPreset;
-    });
-
-    return true;
-  }
-
-  // Standard data extraction method - reuses existing logic
+  // Fix getData method to return only modulators data
   getData() {
+    // Get modulators data using existing method (which already returns the correct structure)
     return this.getModulatorsData();
   }
 
-  // Standard data application method - reuses existing logic
+  // Fix setData method to ensure modulators appear in UI
   setData(data) {
-    return this.loadPresetData(data);
+    // Validate data
+    if (!data) {
+      console.error(
+        "Invalid pulse modulation preset data: data is null or undefined"
+      );
+      return false;
+    }
+
+    try {
+      // Validate modulators array
+      if (!data.modulators) {
+        console.error("Invalid preset data: missing modulators array");
+        return false;
+      }
+
+      if (!Array.isArray(data.modulators)) {
+        console.error("Invalid preset data: modulators is not an array");
+        return false;
+      }
+
+      if (!this.modulatorManager) {
+        console.error(
+          "Cannot load modulators: modulatorManager is not initialized"
+        );
+        return false;
+      }
+
+      console.log(`Loading ${data.modulators.length} modulators from preset`);
+
+      // First clear existing modulators
+      this.clearAllModulators();
+
+      // MANUALLY CREATE MODULATORS INSTEAD OF USING loadModulatorsState
+      let success = true;
+
+      // Loop through each modulator in the preset data
+      for (let i = 0; i < data.modulators.length; i++) {
+        const modData = data.modulators[i];
+        console.log(
+          `Creating modulator ${i + 1} with target: ${modData.targetName}`
+        );
+
+        // Create a new modulator
+        const modulator = this.addPulseModulator();
+
+        if (!modulator) {
+          console.error(`Failed to create modulator ${i + 1}`);
+          success = false;
+          continue;
+        }
+
+        // Find the folder for this modulator
+        const folder = this.modulatorFolders[i];
+        if (!folder) {
+          console.error(`Folder not found for modulator ${i + 1}`);
+          continue;
+        }
+
+        // Update UI controllers directly for special properties
+        folder.controllers.forEach((controller) => {
+          const prop = controller.property;
+          if (prop === "targetName" && modData[prop] !== undefined) {
+            // Explicitly set the UI value for target dropdown
+            controller.setValue(modData[prop]);
+            console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
+          } else if (prop === "enabled" && modData[prop] !== undefined) {
+            // Explicitly set the UI value for enabled toggle
+            controller.setValue(modData[prop]);
+            console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
+          }
+          // Other properties are set normally on the modulator object
+          else if (modData[prop] !== undefined) {
+            modulator[prop] = modData[prop];
+          }
+        });
+
+        // Set target using the method which connects the modulator to its target
+        if (modData.targetName && typeof modulator.setTarget === "function") {
+          modulator.setTarget(modData.targetName);
+        }
+
+        // Set min/max if available
+        if (modData.min !== undefined && modData.max !== undefined) {
+          // Find min/max controllers and update them
+          const minController = folder.controllers.find(
+            (c) => c.property === "min"
+          );
+          const maxController = folder.controllers.find(
+            (c) => c.property === "max"
+          );
+
+          if (minController) minController.setValue(modData.min);
+          if (maxController) maxController.setValue(modData.max);
+        }
+      }
+
+      // Update UI after all modulators are created
+      this.update();
+
+      // Force refresh of UI controllers
+      this.updateControllerDisplays();
+
+      console.log(
+        `Successfully loaded ${data.modulators.length} modulators from preset`
+      );
+
+      return success;
+    } catch (error) {
+      console.error("Error applying pulse modulation preset:", error);
+      return false;
+    }
   }
 
   //#endregion

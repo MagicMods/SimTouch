@@ -7,6 +7,15 @@ export class SimplePresetHandler extends PresetBaseHandler {
   }
 
   applyPreset(presetName, uiComponent) {
+    // Handle special case for "None" preset
+    if (presetName === "None") {
+      if (uiComponent && typeof uiComponent.clearAllModulators === "function") {
+        uiComponent.clearAllModulators();
+        this.selectedPreset = "None";
+        return true;
+      }
+    }
+
     if (!uiComponent) {
       console.warn("UI component not provided");
       return false;
@@ -46,34 +55,42 @@ export class ModulatorPresetHandler extends PresetBaseHandler {
     super(storageKey, defaultPresets, protectedPresets);
   }
 
+  // Update the ModulatorPresetHandler.applyPreset method to debug
   applyPreset(presetName, uiComponent) {
+    // Handle special case for "None" preset
+    if (presetName === "None") {
+      if (uiComponent && typeof uiComponent.clearAllModulators === "function") {
+        uiComponent.clearAllModulators();
+        this.selectedPreset = "None";
+        return true;
+      }
+    }
+
     if (!uiComponent) {
-      console.warn("UI component not provided");
+      console.error("UI component not provided");
       return false;
     }
 
     const preset = this.getPreset(presetName);
     if (!preset) {
-      console.warn(`Preset not found: ${presetName}`);
+      console.error(`Preset not found: ${presetName}`);
       return false;
     }
 
-    // Use specific loadPresetData for modulators if available
-    if (typeof uiComponent.loadPresetData === "function") {
-      const success = uiComponent.loadPresetData(preset);
-      if (success) this.selectedPreset = presetName;
-      return success;
-    } else if (typeof uiComponent.setData === "function") {
-      // Fall back to standard interface
+    // DIAGNOSTIC: Log the preset structure
+    console.log(`Applying preset ${presetName}:`, JSON.stringify(preset));
+
+    // Use setData method
+    if (typeof uiComponent.setData === "function") {
       const success = uiComponent.setData(preset);
       if (success) this.selectedPreset = presetName;
       return success;
+    } else {
+      console.error(
+        `UI component for ${presetName} doesn't implement setData()`
+      );
+      return false;
     }
-
-    console.warn(
-      "UI component doesn't implement loadPresetData() or setData()"
-    );
-    return false;
   }
 
   savePresetFromUI(presetName, uiComponent) {

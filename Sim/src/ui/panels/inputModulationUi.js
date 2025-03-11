@@ -611,73 +611,8 @@ export class InputModulationUi extends BaseUi {
   //#region Preset
 
   loadPresetData(preset) {
-    // Validate preset format
-    if (!preset || typeof preset !== "object") {
-      console.warn("Invalid preset data: not an object");
-      return false;
-    }
-
-    // Ensure preset has modulators array
-    if (!Array.isArray(preset.modulators)) {
-      console.warn("Invalid preset data: missing modulators array");
-      return false;
-    }
-
-    // Clear existing modulators
-    this.clearAllModulators();
-
-    // Empty preset case
-    if (preset.modulators.length === 0) {
-      return true;
-    }
-
-    // Create modulators from the data
-    preset.modulators.forEach((modData, index) => {
-      const mod = this.addInputModulator();
-      if (!mod) return;
-
-      // Mark as loading from preset to prevent side effects
-      mod._loadingFromPreset = true;
-
-      // Get the folder for UI updates
-      const folder = this.modulatorFolders[this.modulatorFolders.length - 1];
-
-      // Apply basic properties
-      Object.keys(modData).forEach((key) => {
-        if (key in mod && key !== "target" && key !== "targetName") {
-          mod[key] = modData[key];
-        }
-      });
-
-      // Apply target last
-      if (modData.targetName && modData.targetName !== "None") {
-        mod.setTarget(modData.targetName);
-
-        // Update target UI
-        const targetController = folder.controllers.find(
-          (c) => c.property === "targetName"
-        );
-        if (targetController?.setValue) {
-          targetController.setValue(modData.targetName);
-        }
-      }
-
-      // Update all other UI controls
-      folder.controllers.forEach((controller) => {
-        if (
-          controller.property &&
-          controller.property in mod &&
-          controller.setValue
-        ) {
-          controller.setValue(mod[controller.property]);
-        }
-      });
-
-      // Clear loading flag
-      delete mod._loadingFromPreset;
-    });
-
-    return true;
+    // Just redirect to setData for consistency
+    return this.setData(preset);
   }
 
   //#endregion
@@ -832,11 +767,60 @@ export class InputModulationUi extends BaseUi {
 
   // Standard data extraction method - reuses existing logic
   getData() {
-    return this.getModulatorsData();
+    // Get modulators data using existing method
+    const modulatorsData = this.getModulatorsData();
+
+    // Get audio settings
+    const audioSettings = {
+      deviceId: this.main?.micInputForces?.deviceId || null,
+      enabled: this.main?.micInputForces?.enabled || false,
+    };
+
+    return {
+      modulators: modulatorsData,
+      audioSettings,
+    };
   }
 
   // Standard data application method - reuses existing logic
   setData(data) {
-    return this.loadPresetData(data);
+    // Better validation
+    if (!data) {
+      console.warn("Invalid input modulation preset data");
+      return false;
+    }
+
+    // Handle "None" preset special case
+    if (data.modulators === undefined || data === "None") {
+      // Just clear all modulators for "None" preset
+      this.clearAllModulators();
+      return true;
+    }
+
+    // Regular preset processing
+    try {
+      // Clear existing modulators first
+      this.clearAllModulators();
+
+      // Handle audio settings if available
+      if (data.audioSettings) {
+        // Audio settings logic...
+      }
+
+      // Add modulators from preset data
+      if (Array.isArray(data.modulators)) {
+        if (this.modulatorManager) {
+          this.modulatorManager.loadModulatorsState(data.modulators, false);
+          this.update(); // Update UI to reflect changes
+        }
+        return true;
+      } else {
+        console.warn("Invalid preset data: missing modulators array");
+        return false;
+      }
+    } catch (error) {
+      console.error("Error applying input modulation preset:", error);
+      return false;
+    }
   }
 }

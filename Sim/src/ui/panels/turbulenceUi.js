@@ -235,38 +235,6 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulenceBiasYController);
   }
 
-  // Add this method to the TurbulenceUi class
-  loadPresetData(preset) {
-    if (!preset || !preset.controllers) {
-      console.warn("Invalid turbulence preset data");
-      return false;
-    }
-
-    try {
-      const targets = this.getControlTargets();
-
-      // Apply values from preset
-      for (const key in preset.controllers) {
-        if (targets.hasOwnProperty(key)) {
-          targets[key] = preset.controllers[key];
-        }
-      }
-
-      // Update UI
-      this.updateControllerDisplays();
-
-      // Important: Update the actual turbulence field with new values
-      if (this.main && this.main.turbulenceField) {
-        this.main.turbulenceField.setParameters(targets);
-      }
-
-      return true;
-    } catch (error) {
-      console.error("Error applying turbulence preset data:", error);
-      return false;
-    }
-  }
-
   // Standard data extraction method - implement in all UI components
   getData() {
     const controllers = {};

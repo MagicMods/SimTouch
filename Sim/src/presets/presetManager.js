@@ -1,3 +1,4 @@
+// Add these imports
 import {
   SimplePresetHandler,
   ModulatorPresetHandler,
@@ -18,26 +19,34 @@ export class PresetManager {
     this.uiComponents = uiComponents;
     this.presetControls = {};
 
-    // Initialize handlers with appropriate types
+    // Fix the default preset structure for handlers
     this.handlers = {
       [PresetManager.TYPES.TURBULENCE]: new SimplePresetHandler(
         "savedTurbPresets",
-        { None: { controllers: { "Turbulence Strength": 0 } } },
+        {
+          None: { controllers: {} },
+        },
         ["None"]
       ),
       [PresetManager.TYPES.VORONOI]: new SimplePresetHandler(
         "savedVoronoiPresets",
-        { None: { controllers: { "Voronoi Strength": 0 } } },
+        {
+          None: { controllers: {} },
+        },
         ["None"]
       ),
       [PresetManager.TYPES.PULSE]: new ModulatorPresetHandler(
         "savedPulsePresets",
-        { None: { modulators: [] } },
+        {
+          None: { modulators: [] },
+        },
         ["None"]
       ),
       [PresetManager.TYPES.INPUT]: new ModulatorPresetHandler(
         "savedMicPresets",
-        { None: { modulators: [] } },
+        {
+          None: { modulators: [] },
+        },
         ["None"]
       ),
       [PresetManager.TYPES.MASTER]: new MasterPresetHandler(
@@ -216,8 +225,7 @@ export class PresetManager {
       case PresetManager.TYPES.VORONOI:
         return this.uiComponents.voronoiUi;
       case PresetManager.TYPES.MASTER:
-        // Master handler would be handled separately
-        return null;
+        return this.uiComponents; // Return all components
       default:
         return null;
     }
@@ -303,26 +311,26 @@ export class PresetManager {
     ].forEach((key) => {
       const uiProp = `${key}Ui`;
       if (
-        this[uiProp] &&
-        typeof this[uiProp].getControlTargets === "function"
+        this.uiComponents[uiProp] && // Changed from this[uiProp]
+        typeof this.uiComponents[uiProp].getControlTargets === "function"
       ) {
-        data[key] = this[uiProp].getControlTargets();
+        data[key] = this.uiComponents[uiProp].getControlTargets();
       }
     });
 
     // Get modulator data
     if (
-      this.pulseModUi &&
-      typeof this.pulseModUi.getModulatorsData === "function"
+      this.uiComponents.pulseModUi &&
+      typeof this.uiComponents.pulseModUi.getModulatorsData === "function"
     ) {
-      data.pulseModulation = this.pulseModUi.getModulatorsData();
+      data.pulseModulation = this.uiComponents.pulseModUi.getModulatorsData();
     }
 
     if (
-      this.inputModUi &&
-      typeof this.inputModUi.getModulatorsData === "function"
+      this.uiComponents.inputModUi &&
+      typeof this.uiComponents.inputModUi.getModulatorsData === "function"
     ) {
-      data.inputModulation = this.inputModUi.getModulatorsData();
+      data.inputModulation = this.uiComponents.inputModUi.getModulatorsData();
     }
 
     return data;

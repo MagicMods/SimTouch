@@ -53,31 +53,12 @@ export class UiManager {
     this.organicUi = new OrganicUi(main, this.rightContainer);
     this.gridUi = new GridUi(main, this.rightContainer);
 
-    // Create preset manager with ALL UI components
-    this.presetManager = new PresetManager(
-      this.paramUi,
-      this.particleUi,
-      this.gravityUi,
-      this.collisionUi,
-      this.boundaryUi,
-      this.restStateUi,
-      this.pulseModUi,
-      this.inputModUi,
-      this.turbulenceUi,
-      this.voronoiUi,
-      this.organicUi
-    );
-
-    this.inputModUi.initWithPresetManager(this.presetManager);
-    this.pulseModUi.initWithPresetManager(this.presetManager);
-    this.turbulenceUi.initWithPresetManager(this.presetManager);
-    this.voronoiUi.initWithPresetManager(this.presetManager);
-    this.presetUi.initWithPresetManager(this.presetManager);
-
     this.initializeUiComponents();
     this.stats = new Stats();
     this.initStats();
     this.allTargets = {};
+
+    this.initializePresetManager();
   }
 
   createContainer(position) {
@@ -157,5 +138,43 @@ export class UiManager {
     } else {
       console.warn("ModulatorManager not available in main!");
     }
+  }
+
+  // Add this method to UiManager to properly initialize preset management
+  initializePresetManager() {
+    // Create a collection of all UI components that can have presets
+    const presetComponents = {
+      paramUi: this.paramUi,
+      particleUi: this.particleUi,
+      gravityUi: this.gravityUi,
+      collisionUi: this.collisionUi,
+      boundaryUi: this.boundaryUi,
+      restStateUi: this.restStateUi,
+      pulseModUi: this.pulseModUi,
+      inputModUi: this.inputModUi,
+      turbulenceUi: this.turbulenceUi,
+      voronoiUi: this.voronoiUi,
+      organicUi: this.organicUi,
+      gridUi: this.gridUi,
+    };
+
+    // Create the preset manager with all components
+    this.presetManager = new PresetManager(presetComponents);
+
+    // Initialize each UI component with the preset manager
+    // Simple presets
+    if (this.turbulenceUi)
+      this.turbulenceUi.initWithPresetManager(this.presetManager);
+    if (this.voronoiUi)
+      this.voronoiUi.initWithPresetManager(this.presetManager);
+
+    // Complex presets (modulators)
+    if (this.pulseModUi)
+      this.pulseModUi.initWithPresetManager(this.presetManager);
+    if (this.inputModUi)
+      this.inputModUi.initWithPresetManager(this.presetManager);
+
+    // Initialize the preset UI
+    if (this.presetUi) this.presetUi.initWithPresetManager(this.presetManager);
   }
 }
