@@ -39,6 +39,9 @@ class VoronoiField {
 
     // Generate initial cells (DO NOT use this.regenerateCells() here to avoid possible circular dependencies)
     this.initializeCells();
+
+    this.velocityBlendFactor = 0.7; // How much the voronoi affects existing velocity
+    this.forceSmoothingFactor = 0.3; // Lower = smoother transitions
   }
 
   initializeCells() {
@@ -289,8 +292,12 @@ class VoronoiField {
           ? this.decayRate * 0.7 // Strong damping on edges
           : this.decayRate; // Normal decay elsewhere
 
-      let newVx = vx * edgeDecay;
-      let newVy = vy * edgeDecay;
+      let newVx =
+        vx * edgeDecay * this.velocityBlendFactor +
+        vx * (1 - this.velocityBlendFactor);
+      let newVy =
+        vy * edgeDecay * this.velocityBlendFactor +
+        vy * (1 - this.velocityBlendFactor);
 
       // Apply position forces only if enabled
       if (this.strength > 0) {
@@ -307,8 +314,8 @@ class VoronoiField {
 
         if (movingTowardEdge || !isOnEdge) {
           // Apply full force if not on edge or moving toward it
-          newVx += gx * forceMagnitude * dt;
-          newVy += gy * forceMagnitude * dt;
+          newVx += gx * forceMagnitude * this.forceSmoothingFactor * dt;
+          newVy += gy * forceMagnitude * this.forceSmoothingFactor * dt;
         } else {
           // Apply reduced force if already on edge - just enough to stay on it
           // This creates the "sticking" to edges effect
@@ -327,7 +334,11 @@ class VoronoiField {
 
         // Add velocity limit for edge particles to ensure they stay slow
         if (isOnEdge || edgeFactor > 0.7) {
-          const maxEdgeSpeed = 0.1 * this.strength;
+          const initialSpeed = Math.sqrt(vx * vx + vy * vy);
+          const maxEdgeSpeed = Math.max(
+            0.1 * this.strength,
+            initialSpeed * 0.6
+          );
           const speed = Math.sqrt(newVx * newVx + newVy * newVy);
           if (speed > maxEdgeSpeed) {
             newVx = (newVx / speed) * maxEdgeSpeed;

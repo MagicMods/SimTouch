@@ -64,6 +64,10 @@ export class VoronoiUi extends BaseUi {
     this.voronoiDecayRateController = this.gui
       .add(voronoi, "decayRate", 0.9, 1)
       .name("Decay Rate");
+
+    this.voronoiBlendController = this.gui
+      .add(voronoi, "velocityBlendFactor", 0, 1)
+      .name("Force Blend");
   }
 
   getControlTargets() {
