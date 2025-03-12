@@ -56,9 +56,7 @@ export class PresetUi extends BaseUi {
   _createActionButtons(containerElement) {
     const actionsContainer = document.createElement("div");
     actionsContainer.style.display = "flex";
-    // actionsContainer.style.justifyContent = "space-between";
     actionsContainer.style.margin = "5px 0";
-    // actionsContainer.style.flexWrap = "wrap";
 
     const saveButton = this._createButton("Save", () => {
       const name = prompt("Enter preset name:");
@@ -77,7 +75,32 @@ export class PresetUi extends BaseUi {
     });
 
     const exportButton = this._createButton("Export", () => {
-      this.presetManager.exportPresets();
+      try {
+        const exportData = this.presetManager.exportPresets();
+
+        // Create a data URL for the JSON file
+        const blob = new Blob([exportData], { type: "application/json" });
+        const url = URL.createObjectURL(blob);
+
+        // Create a temporary link to download the file
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `svibe_presets_${new Date()
+          .toISOString()
+          .slice(0, 10)}.json`;
+        link.style.display = "none";
+        document.body.appendChild(link);
+        link.click();
+
+        // Clean up
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+          document.body.removeChild(link);
+        }, 100);
+      } catch (error) {
+        console.error("Export failed:", error);
+        alert("Export failed: " + error.message);
+      }
     });
 
     const importButton = this._createButton("Import", () => {
@@ -94,16 +117,34 @@ export class PresetUi extends BaseUi {
 
         const reader = new FileReader();
         reader.onload = (event) => {
-          const importCount = this.presetManager.importPresets(
-            event.target.result
+          // Create import options dialog
+          const shouldMerge = confirm(
+            "Would you like to merge with existing presets?\n\n" +
+              "• Click OK to merge (keep existing presets)\n" +
+              "• Click Cancel to replace all presets"
           );
-          if (importCount > 0) {
-            alert(`Successfully imported ${importCount} presets`);
+
+          const result = this.presetManager.importPresets(event.target.result, {
+            merge: shouldMerge,
+          });
+
+          if (result.success) {
+            alert(
+              `Successfully imported presets:\n` +
+                `• ${result.count} preset type(s) updated\n` +
+                `• Types: ${result.types.join(", ")}`
+            );
             this.updatePresetDropdown(this.presetControls.selector);
           } else {
-            alert("No presets were imported");
+            alert(`Import failed: ${result.error || "Unknown error"}`);
           }
         };
+
+        reader.onerror = (error) => {
+          console.error("File reading error:", error);
+          alert("Failed to read file");
+        };
+
         reader.readAsText(file);
 
         // Remove the file input after use

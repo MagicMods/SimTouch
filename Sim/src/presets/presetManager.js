@@ -347,37 +347,102 @@ export class PresetManager {
   }
 
   exportPresets() {
-    const exportData = {};
+    // Create object with metadata for versioning
+    const exportData = {
+      _meta: {
+        version: "1.0",
+        exportDate: new Date().toISOString(),
+        appName: "Svibe_FlipSim",
+      },
+      presets: {},
+    };
 
+    // Add all presets by type
     for (const type in this.handlers) {
       const handler = this.handlers[type];
       if (handler) {
-        exportData[type] = handler.presets;
+        exportData.presets[type] = handler.presets;
       }
     }
 
     return JSON.stringify(exportData, null, 2);
   }
 
-  importPresets(jsonData) {
+  importPresets(jsonData, options = { merge: false }) {
     try {
       const data = JSON.parse(jsonData);
-      let successCount = 0;
 
-      for (const type in data) {
+      // Validate data structure
+      if (!this._validateImportData(data)) {
+        console.error("Invalid preset data format");
+        return { success: false, error: "Invalid data format", count: 0 };
+      }
+
+      const presetData = data.presets || data; // Support both new and old format
+      let importCount = 0;
+      const importedTypes = [];
+
+      for (const type in presetData) {
         const handler = this.handlers[type];
         if (handler) {
-          handler.presets = data[type];
+          // Check if presets are valid
+          if (!presetData[type] || typeof presetData[type] !== "object") {
+            console.warn(`Invalid preset data for type: ${type}`);
+            continue;
+          }
+
+          if (options.merge) {
+            // Merge with existing presets
+            const existingPresets = handler.presets;
+            handler.presets = { ...existingPresets, ...presetData[type] };
+
+            // Don't overwrite protected presets
+            handler.protectedPresets.forEach((name) => {
+              if (existingPresets[name]) {
+                handler.presets[name] = existingPresets[name];
+              }
+            });
+          } else {
+            // Replace everything except protected presets
+            const protectedData = {};
+            handler.protectedPresets.forEach((name) => {
+              if (handler.presets[name]) {
+                protectedData[name] = handler.presets[name];
+              }
+            });
+            handler.presets = { ...presetData[type], ...protectedData };
+          }
+
           handler.saveToStorage();
           this._updateAllPresetDropdowns(type);
-          successCount++;
+          importCount++;
+          importedTypes.push(type);
         }
       }
 
-      return successCount > 0;
+      return {
+        success: importCount > 0,
+        count: importCount,
+        types: importedTypes,
+      };
     } catch (error) {
       console.error("Error importing presets:", error);
-      return false;
+      return {
+        success: false,
+        error: error.message,
+        count: 0,
+      };
+    }
+  }
+
+  _validateImportData(data) {
+    // Accept both new format (with _meta) and old format (direct presets object)
+    if (data._meta) {
+      // New format - validate version if needed
+      return typeof data.presets === "object" && data.presets !== null;
+    } else {
+      // Old format - just make sure it's an object
+      return typeof data === "object" && data !== null;
     }
   }
 
