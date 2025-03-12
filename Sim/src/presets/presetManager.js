@@ -1,9 +1,6 @@
-// Add these imports
-import {
-  SimplePresetHandler,
-  ModulatorPresetHandler,
-  MasterPresetHandler,
-} from "./presetHandlers.js";
+import { MasterPresetHandler } from "./masterPresetHandler.js";
+import { SimplePresetHandler } from "./simplePresetHandler.js";
+import { ModulatorPresetHandler } from "./modulatorPresetHandler.js";
 
 export class PresetManager {
   static TYPES = {
@@ -12,14 +9,13 @@ export class PresetManager {
     VORONOI: "voronoi",
     PULSE: "pulse",
     INPUT: "input",
+    RAMDOMIZER: "randomizer",
   };
 
   constructor(uiComponents) {
-    // Store UI component references
     this.uiComponents = uiComponents;
     this.presetControls = {};
 
-    // Fix the default preset structure for handlers
     this.handlers = {
       [PresetManager.TYPES.TURBULENCE]: new SimplePresetHandler(
         "savedTurbPresets",
@@ -56,11 +52,8 @@ export class PresetManager {
       ),
     };
 
-    // Set components for master handler
     this.handlers[PresetManager.TYPES.MASTER].setComponents(uiComponents);
   }
-
-  //#region Ui
 
   createPresetControls(presetType, parentElement, options = {}) {
     if (!parentElement || !presetType || !this.handlers[presetType]) {
@@ -206,10 +199,6 @@ export class PresetManager {
       });
   }
 
-  //#endregion
-
-  //#region Getter
-
   getHandler(type) {
     return this.handlers[type] || null;
   }
@@ -225,7 +214,7 @@ export class PresetManager {
       case PresetManager.TYPES.VORONOI:
         return this.uiComponents.voronoiUi;
       case PresetManager.TYPES.MASTER:
-        return this.uiComponents; // Return all components
+        return this.uiComponents;
       default:
         return null;
     }
@@ -240,11 +229,7 @@ export class PresetManager {
     const handler = this.getHandler(type);
     return handler ? handler.getSelectedPreset() : null;
   }
-  //#endregion
 
-  //#region Presets
-
-  // Save preset - standardized version
   savePreset(type, presetName) {
     const handler = this.handlers[type];
     if (!handler) return false;
@@ -260,7 +245,6 @@ export class PresetManager {
     return false;
   }
 
-  // Load preset - standardized version
   loadPreset(type, presetName) {
     const handler = this.handlers[type];
     if (!handler) return false;
@@ -277,7 +261,6 @@ export class PresetManager {
     return false;
   }
 
-  // Helper method to extract data for master presets
   extractMasterPresetData() {
     const data = {
       param: {},
@@ -297,7 +280,6 @@ export class PresetManager {
       },
     };
 
-    // Extract data from each UI component that supports getControlTargets
     [
       "param",
       "particle",
@@ -311,14 +293,13 @@ export class PresetManager {
     ].forEach((key) => {
       const uiProp = `${key}Ui`;
       if (
-        this.uiComponents[uiProp] && // Changed from this[uiProp]
+        this.uiComponents[uiProp] &&
         typeof this.uiComponents[uiProp].getControlTargets === "function"
       ) {
         data[key] = this.uiComponents[uiProp].getControlTargets();
       }
     });
 
-    // Get modulator data
     if (
       this.uiComponents.pulseModUi &&
       typeof this.uiComponents.pulseModUi.getModulatorsData === "function"
@@ -347,7 +328,6 @@ export class PresetManager {
   }
 
   exportPresets() {
-    // Create object with metadata for versioning
     const exportData = {
       _meta: {
         version: "1.0",
@@ -357,7 +337,6 @@ export class PresetManager {
       presets: {},
     };
 
-    // Add all presets by type
     for (const type in this.handlers) {
       const handler = this.handlers[type];
       if (handler) {
@@ -372,38 +351,33 @@ export class PresetManager {
     try {
       const data = JSON.parse(jsonData);
 
-      // Validate data structure
       if (!this._validateImportData(data)) {
         console.error("Invalid preset data format");
         return { success: false, error: "Invalid data format", count: 0 };
       }
 
-      const presetData = data.presets || data; // Support both new and old format
+      const presetData = data.presets || data;
       let importCount = 0;
       const importedTypes = [];
 
       for (const type in presetData) {
         const handler = this.handlers[type];
         if (handler) {
-          // Check if presets are valid
           if (!presetData[type] || typeof presetData[type] !== "object") {
             console.warn(`Invalid preset data for type: ${type}`);
             continue;
           }
 
           if (options.merge) {
-            // Merge with existing presets
             const existingPresets = handler.presets;
             handler.presets = { ...existingPresets, ...presetData[type] };
 
-            // Don't overwrite protected presets
             handler.protectedPresets.forEach((name) => {
               if (existingPresets[name]) {
                 handler.presets[name] = existingPresets[name];
               }
             });
           } else {
-            // Replace everything except protected presets
             const protectedData = {};
             handler.protectedPresets.forEach((name) => {
               if (handler.presets[name]) {
@@ -436,22 +410,16 @@ export class PresetManager {
   }
 
   _validateImportData(data) {
-    // Accept both new format (with _meta) and old format (direct presets object)
     if (data._meta) {
-      // New format - validate version if needed
       return typeof data.presets === "object" && data.presets !== null;
     } else {
-      // Old format - just make sure it's an object
       return typeof data === "object" && data !== null;
     }
   }
 
-  //#endregion
-
   setDebug(enabled) {
     this.debug = !!enabled;
 
-    // Set debug on all handlers
     for (const type in this.handlers) {
       if (
         this.handlers[type] &&
