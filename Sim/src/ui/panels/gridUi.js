@@ -7,19 +7,31 @@ export class GridUi extends BaseUi {
     // Change the GUI title
     this.gui.title("Grid");
 
-    // Create the main folder
-    // this.gridFolder = this.createFolder("Grid Controls");
-    this.gradientPointControllers = [];
     this.initGridControls();
 
     // Open GUI by default
     this.gui.open(false);
-    // this.gridFolder.open();
   }
 
   initGridControls() {
     const gridRenderer = this.main.gridRenderer;
     if (!gridRenderer) return;
+
+    const gradient = this.main.gridRenderer.gradient;
+
+    // Add theme selector at the top level
+    const presetOptions = {};
+    gradient.getPresetNames().forEach((name) => {
+      presetOptions[name] = name;
+    });
+
+    this.themeController = this.gui
+      .add({ theme: gradient.getCurrentPreset() }, "theme", presetOptions)
+      .name("Theme")
+      .onChange((presetName) => {
+        // Apply the preset
+        gradient.applyPreset(presetName);
+      });
 
     // Grid parameters
     if (gridRenderer.gridParams) {
@@ -51,34 +63,7 @@ export class GridUi extends BaseUi {
       stats.add(gridRenderer.gridParams, "rows").name("Rows").listen();
       stats.add(gridRenderer.gridParams, "width").name("Rect Width").listen();
       stats.add(gridRenderer.gridParams, "height").name("Rect Height").listen();
-
-      // this.gridParamFolder.open(false);
     }
-
-    // Gradient controls - store in arrays if needed
-    const gradientFolder = this.gui.addFolder("Gradient");
-    const gradientPoints = this.main.gridRenderer.gradient.points;
-
-    gradientPoints.forEach((point, index) => {
-      const pointFolder = gradientFolder.addFolder(`Point ${index + 1}`);
-      const posController = pointFolder
-        .add(point, "pos", 0, 100, 1)
-        .name("Position")
-        .onChange(() => this.main.gridRenderer.gradient.update());
-
-      const colorController = pointFolder
-        .addColor(point, "color")
-        .name("Color")
-        .onChange(() => this.main.gridRenderer.gradient.update());
-
-      this.gradientPointControllers.push({
-        position: posController,
-        color: colorController,
-      });
-    });
-
-    // this.gridParamFolder.open(false);
-    // this.gradientFolder.open(false);
   }
 
   getControlTargets() {
@@ -106,16 +91,13 @@ export class GridUi extends BaseUi {
       }
     };
 
+    // Update theme controller
+    safeUpdateDisplay(this.themeController);
+
     // Update grid controllers
     safeUpdateDisplay(this.gridTargetCellsController);
     safeUpdateDisplay(this.gridGapController);
     safeUpdateDisplay(this.gridAspectRatioController);
     safeUpdateDisplay(this.gridScaleController);
-
-    // Update gradient controllers
-    this.gradientPointControllers.forEach((controllers) => {
-      safeUpdateDisplay(controllers.position);
-      safeUpdateDisplay(controllers.color);
-    });
   }
 }

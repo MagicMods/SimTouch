@@ -1,14 +1,58 @@
+import c0 from "./gradients/c0.js";
+import c1 from "./gradients/c1.js";
+import c2 from "./gradients/c2.js";
+import c3 from "./gradients/c3.js";
+import c4 from "./gradients/c4.js";
+import c5 from "./gradients/c5.js";
+import c6 from "./gradients/c6.js";
+import c7 from "./gradients/c7.js";
+import c8 from "./gradients/c8.js";
+import c9 from "./gradients/c9.js";
+import c10 from "./gradients/c10.js";
+
 export class Gradient {
-  constructor() {
-    this.points = [
-      { pos: 0, color: { r: 0, g: 0, b: 0 } },
-      { pos: 30, color: { r: 0.4, g: 0, b: 0 } },
-      { pos: 60, color: { r: 1, g: 0, b: 0 } },
-      { pos: 97, color: { r: 0.992, g: 1, b: 0.5 } },
-      { pos: 100, color: { r: 1, g: 1, b: 1 } },
-    ];
+  // Use FastLED palettes as presets
+  static PRESETS = {
+    c0,
+    c1,
+    c2,
+    c3,
+    c4,
+    c5,
+    c6,
+    c7,
+    c8,
+    c9,
+    c10,
+  };
+
+  constructor(presetName = "c0") {
+    this.currentPreset = presetName;
+    this.points = [];
     this.values = new Array(256).fill(0).map(() => ({ r: 0, g: 0, b: 0 }));
+    this.applyPreset(presetName);
+  }
+
+  applyPreset(presetName) {
+    if (!Gradient.PRESETS[presetName]) {
+      console.warn(`Preset "${presetName}" not found, using default`);
+      presetName = "c0";
+    }
+
+    this.currentPreset = presetName;
+    // Deep clone the preset points to avoid modifying the original
+    this.points = JSON.parse(JSON.stringify(Gradient.PRESETS[presetName]));
     this.update();
+
+    return this.points;
+  }
+
+  getPresetNames() {
+    return Object.keys(Gradient.PRESETS);
+  }
+
+  getCurrentPreset() {
+    return this.currentPreset;
   }
 
   update() {
