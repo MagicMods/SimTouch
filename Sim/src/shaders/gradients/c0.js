@@ -96,10 +96,10 @@ export const c0 = [
   { pos: 93, color: { r: 1, g: 0.675, b: 0 } },
   { pos: 94, color: { r: 1, g: 0.722, b: 0 } },
   { pos: 95, color: { r: 1, g: 0.773, b: 0 } },
-  { pos: 96, color: { r: 1, g: 0.82, b: 0.208 } },
-  { pos: 97, color: { r: 1, g: 0.867, b: 0.42 } },
-  { pos: 98, color: { r: 1, g: 0.914, b: 0.631 } },
-  { pos: 99, color: { r: 1, g: 0.965, b: 0.843 } },
+  { pos: 96, color: { r: 1, g: 0.82, b: 0.12 } },
+  { pos: 97, color: { r: 1, g: 0.86, b: 0.25 } },
+  { pos: 98, color: { r: 1, g: 0.9, b: 0.4 } },
+  { pos: 99, color: { r: 1, g: 0.95, b: 0.7 } },
   { pos: 100, color: { r: 1, g: 1, b: 1 } },
 ];
 

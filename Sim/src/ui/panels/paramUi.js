@@ -62,7 +62,7 @@ export class ParamUi extends BaseUi {
       // Store as class property instead of in this.controls
       this.behaviorTypeController = this.gui
         .add(behaviorControl, "behavior", Object.values(Behaviors))
-        .name("Organic Behavior")
+        .name("Behavior")
         .onChange((value) => {
           console.log("Behavior changed to:", value);
           particles.organicBehavior.currentBehavior = value;
@@ -97,13 +97,13 @@ export class ParamUi extends BaseUi {
       // Store as class property
       this.fadeInSpeedController = this.gui
         .add(smoothing, "rateIn", 0.01, 0.5)
-        .name("Fade In Speed")
+        .name("FIn Speed")
         .onFinishChange(() => console.log("Smoothing in:", smoothing.rateIn));
 
       // Store as class property
       this.fadeOutSpeedController = this.gui
         .add(smoothing, "rateOut", 0.01, 0.5)
-        .name("Fade Out Speed")
+        .name("FOut Speed")
         .onFinishChange(() => console.log("Smoothing out:", smoothing.rateOut));
 
       // Store as class property
@@ -123,7 +123,7 @@ export class ParamUi extends BaseUi {
       // Store as class property
       this.velocityDampingController = this.gui
         .add(particles, "velocityDamping", 0.8, 1, 0.01)
-        .name("Velocity Damping")
+        .name("VeloDamping")
         .onFinishChange((value) => {
           console.log(`Velocity damping set to ${value}`);
         });
@@ -138,14 +138,14 @@ export class ParamUi extends BaseUi {
     if (this.maxDensityController)
       targets["Max Density"] = this.maxDensityController;
     if (this.fadeInSpeedController)
-      targets["Fade In Speed"] = this.fadeInSpeedController;
+      targets["FIn Speed"] = this.fadeInSpeedController;
     if (this.fadeOutSpeedController)
-      targets["Fade Out Speed"] = this.fadeOutSpeedController;
+      targets["FOut Speed"] = this.fadeOutSpeedController;
     if (this.timeStepController) targets["Time Step"] = this.timeStepController;
     if (this.timeScaleController)
       targets["Animation Speed"] = this.timeScaleController;
     if (this.velocityDampingController)
-      targets["Velocity Damping"] = this.velocityDampingController;
+      targets["VeloDamping"] = this.velocityDampingController;
     return targets;
   }
 
