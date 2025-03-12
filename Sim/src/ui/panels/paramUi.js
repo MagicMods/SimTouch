@@ -114,7 +114,7 @@ export class ParamUi extends BaseUi {
 
       // Store as class property
       this.timeScaleController = this.gui
-        .add(particles, "timeScale", 0, 2, 0.1)
+        .add(particles, "timeScale", 0, 4, 0.1)
         .name("Speed")
         .onFinishChange((value) => {
           console.log(`Animation speed: ${value}x`);

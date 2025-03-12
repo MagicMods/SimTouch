@@ -497,6 +497,10 @@ export class InputModulationUi extends BaseUi {
         const bandLevels = analyzer.calculateBandLevels();
         const globalVolume = analyzer.smoothedVolume || 0;
 
+        // Get global sensitivity
+        const globalSensitivity =
+          this.main.externalInput?.micForces?.sensitivity || 1.0;
+
         // Update each modulator with its appropriate audio data
         audioModulators.forEach((modulator) => {
           try {
@@ -520,7 +524,10 @@ export class InputModulationUi extends BaseUi {
               bandValue = globalVolume;
             }
 
-            // CRITICAL: Set the input value on the modulator
+            // CRITICAL FIX: Apply global sensitivity before sending to modulator
+            bandValue = bandValue * globalSensitivity;
+
+            // Set the input value on the modulator
             modulator.setInputValue(bandValue);
           } catch (e) {
             console.error(`Error updating modulator with audio data:`, e);

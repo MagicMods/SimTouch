@@ -107,19 +107,6 @@ class GridRenderer extends BaseRenderer {
         );
         byteArray[i + 1] = Math.round(normalizedValue * 100);
       }
-
-      // Only log if UDP debug is enabled
-      // if (udpNetwork.debug) {
-      //   console.log(
-      //     "Grid data:",
-      //     `Type: ${byteArray[0]}, First 10 values:`,
-      //     Array.from(byteArray.slice(1, 11))
-      //   );
-      // }
-
-      // Only send if UDP is enabled
-      // if (udpNetwork.enable && udpNetwork.isConnected) {
-      // udpNetwork.sendUDPMessage(byteArray);
       this.sendGridData(byteArray);
     }
 
@@ -369,7 +356,6 @@ class GridRenderer extends BaseRenderer {
       this.drawRectangle(rect.x, rect.y, rect.width, rect.height, color);
 
       // For additional clarity, add index numbers
-      // This would require text rendering capabilities which might not be available
     });
 
     // Save a reference image to compare with the microcontroller output
