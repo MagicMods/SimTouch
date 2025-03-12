@@ -19,6 +19,27 @@ export class OrganicUi extends BaseUi {
     const particles = this.main.particleSystem;
     if (!particles?.organicBehavior) return;
 
+    const behaviorControl = {
+      behavior: particles.organicBehavior.currentBehavior,
+    };
+
+    // Store as class property instead of in this.controls
+    this.behaviorTypeController = this.gui
+      .add(behaviorControl, "behavior", Object.values(Behaviors))
+      .name("Behavior")
+      .onChange((value) => {
+        console.log("Behavior changed to:", value);
+        particles.organicBehavior.currentBehavior = value;
+
+        if (this.main.ui?.organicUi?.updateOrganicFolders) {
+          this.main.ui.organicUi.updateOrganicFolders(value);
+        }
+
+        this.behaviorTypeController.updateDisplay();
+      });
+
+    this.behaviorTypeController.domElement.classList.add("full-width");
+
     // Add global force control to the organic folder root
     this.addGlobalForceControl();
 

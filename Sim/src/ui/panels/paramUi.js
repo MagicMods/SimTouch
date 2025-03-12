@@ -55,26 +55,6 @@ export class ParamUi extends BaseUi {
 
       this.fieldTypeController.domElement.classList.add("full-width");
 
-      const behaviorControl = {
-        behavior: particles.organicBehavior.currentBehavior,
-      };
-
-      // Store as class property instead of in this.controls
-      this.behaviorTypeController = this.gui
-        .add(behaviorControl, "behavior", Object.values(Behaviors))
-        .name("Behavior")
-        .onChange((value) => {
-          console.log("Behavior changed to:", value);
-          particles.organicBehavior.currentBehavior = value;
-
-          if (this.main.ui?.organicUi?.updateOrganicFolders) {
-            this.main.ui.organicUi.updateOrganicFolders(value);
-          }
-
-          this.behaviorTypeController.updateDisplay();
-        });
-
-      this.behaviorTypeController.domElement.classList.add("full-width");
       // Store as class property
       this.boundaryModeController = this.gui
         .add(this.main.particleSystem.boundary, "mode", {
