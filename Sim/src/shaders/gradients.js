@@ -9,6 +9,7 @@ import c7 from "./gradients/c7.js";
 import c8 from "./gradients/c8.js";
 import c9 from "./gradients/c9.js";
 import c10 from "./gradients/c10.js";
+import { socketManager } from "../network/socketManager.js";
 
 export class Gradient {
   // Use FastLED palettes as presets
@@ -30,6 +31,9 @@ export class Gradient {
     this.currentPreset = presetName;
     this.points = [];
     this.values = new Array(256).fill(0).map(() => ({ r: 0, g: 0, b: 0 }));
+    this.socket = socketManager;
+    this.lastSentGradient = null;
+    this.lastSentTime = 0;
     this.applyPreset(presetName);
   }
 
@@ -39,12 +43,56 @@ export class Gradient {
       presetName = "c0";
     }
 
+    const oldPreset = this.currentPreset;
     this.currentPreset = presetName;
+
     // Deep clone the preset points to avoid modifying the original
     this.points = JSON.parse(JSON.stringify(Gradient.PRESETS[presetName]));
     this.update();
 
+    // If preset actually changed, send notification over socket
+    if (oldPreset !== presetName) {
+      this.sendGradientUpdate(presetName);
+    }
+
     return this.points;
+  }
+
+  // Send gradient update to hardware over WebSocket with redundancy
+  sendGradientUpdate(presetName) {
+    const presetIndex = this.getPresetIndex(presetName);
+
+    // Don't send duplicate messages within 500ms
+    const now = Date.now();
+    if (this.lastSentGradient === presetName && now - this.lastSentTime < 500) {
+      return false;
+    }
+
+    this.lastSentGradient = presetName;
+    this.lastSentTime = now;
+
+    if (this.socket.isConnected) {
+      const byteArray = new Uint8Array([6, presetIndex]);
+
+      // Send immediately
+      this.socket.send(byteArray);
+
+      // Send again after a short delay for reliability
+      setTimeout(() => {
+        if (this.socket.isConnected) {
+          this.socket.send(byteArray);
+        }
+      }, 50); // 50ms delay between messages
+
+      return true;
+    }
+    return false;
+  }
+
+  // Get the numeric index of a preset (c0=0, c1=1, etc.)
+  getPresetIndex(presetName) {
+    const presetNames = this.getPresetNames();
+    return presetNames.indexOf(presetName);
   }
 
   getPresetNames() {
