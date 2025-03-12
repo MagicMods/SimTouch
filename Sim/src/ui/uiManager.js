@@ -54,7 +54,13 @@ export class UiManager {
     this.organicUi = new OrganicUi(main, this.rightContainer);
     this.gridUi = new GridUi(main, this.rightContainer);
 
-    this.initializeUiComponents();
+    if (this.main.gridRenderer && this.organicUi) {
+      this.main.gridRenderer.renderModes.onModeChange = (mode) => {
+        this.organicUi.updateOrganicFolders(mode);
+      };
+    }
+    this.initializeModulatorManager();
+
     this.stats = new Stats();
     this.initStats();
     this.allTargets = {};
@@ -104,17 +110,7 @@ export class UiManager {
     }
   }
 
-  initializeUiComponents() {
-    // Set up event listeners for changes in grid render modes
-    if (this.main.gridRenderer && this.organicUi) {
-      this.main.gridRenderer.renderModes.onModeChange = (mode) => {
-        this.organicUi.updateOrganicFolders(mode);
-      };
-    }
 
-    // Initialize ModulatorManager with all separate components
-    this.initializeModulatorManager();
-  }
 
   initializeModulatorManager() {
     if (this.main.modulatorManager) {
@@ -145,7 +141,7 @@ export class UiManager {
     }
   }
 
-  // Add this method to UiManager to properly initialize preset management
+
   initializePresetManager() {
     // Create a collection of all UI components that can have presets
     const presetComponents = {

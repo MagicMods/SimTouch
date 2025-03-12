@@ -51,9 +51,7 @@ export class RandomizerUi extends BaseUi {
     this.gui.open();
   }
 
-  /**
-   * Try different methods to get access to the UiManager
-   */
+
   getUiManager() {
     // First try the standard approach - it might be assigned by now
     if (this.main.uiManager) {
@@ -92,9 +90,7 @@ export class RandomizerUi extends BaseUi {
     return null;
   }
 
-  /**
-   * Initialize controls with UiManager reference
-   */
+
   initRandomizerControls(uiManager) {
     // Store reference to UiManager
     this.uiManager = uiManager;
@@ -119,9 +115,6 @@ export class RandomizerUi extends BaseUi {
     this.initParameterTargets();
   }
 
-  /**
-   * Create main randomize button directly in the GUI root
-   */
   createRandomizeButton() {
     // Create a custom HTML button
     const buttonContainer = document.createElement("div");
@@ -187,9 +180,6 @@ export class RandomizerUi extends BaseUi {
     }
   }
 
-  /**
-   * Initialize parameter targets directly from ModulatorManager
-   */
   initParameterTargets() {
     console.log("RandomizerUi: Initializing parameter targets");
 
@@ -256,9 +246,6 @@ export class RandomizerUi extends BaseUi {
     }
   }
 
-  /**
-   * Randomize all selected parameters
-   */
   randomizeAll() {
     console.log("RandomizerUI: Starting randomization");
 
@@ -313,10 +300,6 @@ export class RandomizerUi extends BaseUi {
     return { success: true, totalChanged };
   }
 
-  /**
-   * Check if a controller is a slider
-   * @private
-   */
   _isSlider(controller) {
     if (!controller || typeof controller.getValue !== "function") {
       return false;
@@ -327,10 +310,6 @@ export class RandomizerUi extends BaseUi {
     return typeof value === "number";
   }
 
-  /**
-   * Check if a controller is a checkbox
-   * @private
-   */
   _isCheckbox(controller) {
     if (!controller || typeof controller.getValue !== "function") {
       return false;
@@ -341,10 +320,6 @@ export class RandomizerUi extends BaseUi {
     return typeof value === "boolean";
   }
 
-  /**
-   * Randomize a specific controller
-   * @private
-   */
   _randomizeController(controller, target) {
     try {
       // Get current value
@@ -394,18 +369,12 @@ export class RandomizerUi extends BaseUi {
     }
   }
 
-  /**
-   * Update the button style based on intensity
-   */
   updateButtonStyle() {
     if (!this.randomizeButton) return;
 
     this.randomizeButton.style.backgroundColor = this.getButtonColor();
   }
 
-  /**
-   * Get button color based on intensity
-   */
   getButtonColor(hover = false) {
     // Color ranges from blue (low intensity) to red (high intensity)
     const intensity = this.settings.intensity;
@@ -441,26 +410,17 @@ export class RandomizerUi extends BaseUi {
     return `rgb(${r}, ${g}, ${b})`;
   }
 
-  /**
-   * Add flash effect to button
-   */
   flashButton(button) {
     button.classList.add("randomizer-flash");
     setTimeout(() => button.classList.remove("randomizer-flash"), 300);
   }
 
-  /**
-   * Standard method for getting control targets - implements BaseUI interface
-   */
   getControlTargets() {
     const targets = {};
 
     return targets;
   }
 
-  /**
-   * Standard method for data extraction - implements BaseUI interface
-   */
   getData() {
     return {
       settings: { ...this.settings },
@@ -468,9 +428,6 @@ export class RandomizerUi extends BaseUi {
     };
   }
 
-  /**
-   * Standard method for data application - implements BaseUI interface
-   */
   setData(data) {
     if (!data) return false;
 
@@ -500,9 +457,6 @@ export class RandomizerUi extends BaseUi {
     }
   }
 
-  /**
-   * Standard method for updating controller displays - implements BaseUI interface
-   */
   updateControllerDisplays() {
     // Helper function to safely update a controller's display
     const safeUpdateDisplay = (controller) => {

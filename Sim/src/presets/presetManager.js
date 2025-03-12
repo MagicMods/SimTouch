@@ -1,6 +1,7 @@
 import { MasterPresetHandler } from "./masterPresetHandler.js";
 import { SimplePresetHandler } from "./simplePresetHandler.js";
 import { ModulatorPresetHandler } from "./modulatorPresetHandler.js";
+import { RandomizerPresetHandler } from "./randomizerPresetHandler.js";
 
 export class PresetManager {
   static TYPES = {
@@ -45,6 +46,14 @@ export class PresetManager {
         },
         ["None"]
       ),
+      [PresetManager.TYPES.RANDOMIZER]: new RandomizerPresetHandler(
+        "savedRandomizerPresets",
+        {
+          None: { controllers: {} },
+        },
+        ["None"]
+      ),
+
       [PresetManager.TYPES.MASTER]: new MasterPresetHandler(
         "savedPresets",
         { Default: {} },
@@ -213,6 +222,8 @@ export class PresetManager {
         return this.uiComponents.turbulenceUi;
       case PresetManager.TYPES.VORONOI:
         return this.uiComponents.voronoiUi;
+      case PresetManager.TYPES.RANDOMIZER:
+        return this.uiComponents.randomizerUi;
       case PresetManager.TYPES.MASTER:
         return this.uiComponents;
       default:

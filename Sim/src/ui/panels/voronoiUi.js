@@ -172,7 +172,7 @@ export class VoronoiUi extends BaseUi {
         "Voronoi Strength": this.voronoiStrengthController,
         "Cell Speed": this.voronoiSpeedController,
         "Edge Width": this.voronoiEdgeWidthController,
-        Attraction: this.voronoiAttractionController,
+        "Attraction": this.voronoiAttractionController,
         "Cell Count": this.voronoiCellCountController,
         "Decay Rate": this.voronoiDecayRateController,
       };
