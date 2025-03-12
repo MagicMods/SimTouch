@@ -15,6 +15,7 @@ import { GravityUi } from "./panels/gravityUi.js";
 import { CollisionUi } from "./panels/collisionUi.js";
 import { BoundaryUi } from "./panels/boundaryUi.js";
 import { RestStateUi } from "./panels/restStateUi.js";
+import { RandomizerUi } from "./panels/randomizerUi.js";
 
 import Stats from "../util/statsModule.js";
 
@@ -28,7 +29,7 @@ export class UiManager {
     this.rightContainer = this.createContainer("right");
 
     this.pulseModContainer = this.createContainer("left-middle");
-    this.presetContainer = this.createContainer("left-center");
+    this.presetContainer = this.createContainer("center");
     this.networkContainer = this.createContainer("right-center");
     this.inputModContainer = this.createContainer("right-middle");
 
@@ -44,7 +45,7 @@ export class UiManager {
 
     // Right UI
     this.pulseModUi = new PulseModulationUi(main, this.pulseModContainer);
-    this.networkUi = new NetworkUi(main, this.networkContainer);
+    this.networkUi = new NetworkUi(main, this.leftContainer);
     this.inputModUi = new InputModulationUi(main, this.inputModContainer);
     this.presetUi = new PresetUi(main, this.presetContainer);
 
@@ -59,6 +60,9 @@ export class UiManager {
     this.allTargets = {};
 
     this.initializePresetManager();
+
+    // Initialize RandomizerUi
+    this.randomizerUi = new RandomizerUi(main, this.presetContainer);
   }
 
   createContainer(position) {
@@ -93,6 +97,7 @@ export class UiManager {
     this.inputModUi.dispose();
     this.networkUi.dispose();
     this.presetUi.dispose();
+    this.randomizerUi.dispose();
     if (this.stats) {
       this.stats.dom.remove();
       this.stats = null;
@@ -130,6 +135,7 @@ export class UiManager {
         turbulenceUi: this.turbulenceUi,
         voronoiUi: this.voronoiUi,
         organicUi: this.organicUi,
+        randomizerUi: this.randomizerUi,
       };
 
       // Register UI components instead of controller targets

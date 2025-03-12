@@ -44,32 +44,37 @@ canvas {
 .gui-container-left-middle {
     position: absolute;
     top: 0;
-    left: calc(220px + (100% - 440px) * 0.150);
-    transform: translateX(-50%); /* Center at position point */
+    left: 22%;
+    /* transform: translateX(-50%);   */
 }
 
 .gui-container-left-center {
     position: absolute;
     top: 0;
-    left: calc(220px + (100% - 440px) * 0.38);
-    transform: translateX(-50%); /* Center at position point */
+    left: 35%;
+    /* transform: translateX(-50%);   */
 }
 
 .gui-container-right-center {
     position: absolute;
     top: 0;
-    left: calc(220px + (100% - 440px) * 0.62);
-    transform: translateX(-50%); /* Center at position point */
+    right: 35%;
+    /* transform: translateX(-50%);   */
 }
 
 .gui-container-right-middle {
     position: absolute;
     top: 0;
-    left: calc(220px + (100% - 440px) * 0.85);
-    transform: translateX(-50%); /* Center at position point */
+    right: 22%;
+    /* transform: translateX(-50%);   */
 }
 
-
+.gui-container-center {
+    position: absolute;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);  
+}
 
 .gui-container-left-bottom {
     position: absolute;
