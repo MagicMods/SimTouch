@@ -96,10 +96,6 @@ canvas {
     transform: translateX(-50%);
 }
 
-
-
-
-
 /* Stats container */
 .stats-container {
     position: absolute;
@@ -192,18 +188,10 @@ canvas {
     gap: 5px;
 }
 
-
-
 .full-width .widget {
     width: 100% !important;
     display: block !important;
 }
-
-
-
-
-
-
 
 /* Notification message */
 .notification {
@@ -269,4 +257,32 @@ canvas {
 .toggle-button.active {
     background-color: #ebac00;
     color: #000000;
+}
+
+/* Parameter flex layout for randomizer */
+.parameter-flex-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0;
+    margin: 0 0 0 0;
+}
+
+.parameter-checkbox-item {
+    flex: 0 0 calc(33.33% - 6px);
+    min-width: 100px;
+    margin: 0 !important;
+    padding: 0%;
+}
+
+.parameter-checkbox-item:hover {
+    background-color: var(--hover-color);
+}
+
+.parameter-checkbox-item .property-name {
+    font-size: 9px;
+    text-align: left;
+}
+
+.parameter-checkbox-item .name{
+    width:80%;
 }

@@ -176,6 +176,9 @@ export class RandomizerUi extends BaseUi {
     if (excludedCount > 0) {
       console.log(`RandomizerUI: Excluded ${excludedCount} parameters from randomization`);
     }
+
+    // Apply flex layout after creating all parameters
+    setTimeout(() => this.applyFlexLayoutToParameters(), 0);
   }
 
   categorizeTargets(targetNames) {
@@ -210,7 +213,6 @@ export class RandomizerUi extends BaseUi {
     return categorizedTargets;
   }
 
-  // Update randomizeAll to respect exclusions
   randomizeAll() {
     if (!this.modulatorManager) {
       console.error("RandomizerUI: Cannot randomize, ModulatorManager not set");
@@ -405,6 +407,9 @@ export class RandomizerUi extends BaseUi {
       // Update UI
       this.updateControllerDisplays();
       this.updateParameterAvailability();
+
+      // Reapply flex layout
+      setTimeout(() => this.applyFlexLayoutToParameters(), 0);
       return true;
     } catch (error) {
       console.error("Error applying Randomizer preset:", error);
@@ -441,5 +446,25 @@ export class RandomizerUi extends BaseUi {
 
     // Reset paramTargets object
     this.paramTargets = {};
+  }
+
+  applyFlexLayoutToParameters() {
+    // Apply flex layout to each category folder
+    this.paramFolder.folders.forEach(folder => {
+      const containerEl = folder.domElement.querySelector('.children');
+      if (!containerEl) return;
+
+      // Add flex container class
+      containerEl.classList.add('parameter-flex-container');
+
+      // Find all controllers and add flex item class - use '.controller' instead of '.cr'
+      const controllerEls = containerEl.querySelectorAll('.controller');
+      controllerEls.forEach(el => {
+        el.classList.add('parameter-checkbox-item');
+      });
+
+      // Log for debugging
+      console.log(`Applied flex layout to folder ${folder.title}, found ${controllerEls.length} controllers`);
+    });
   }
 }
