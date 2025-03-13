@@ -107,7 +107,7 @@ export class InputModulationUi extends BaseUi {
 
   // Initialize with preset manager
   initWithPresetManager(presetManager) {
-    console.log("PulseModulationUi initialized with preset manager");
+    console.log("InputModulationUi initialized with preset manager");
     if (presetManager) {
       this.initPresetControls(presetManager);
     }

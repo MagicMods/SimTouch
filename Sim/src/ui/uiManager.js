@@ -59,6 +59,9 @@ export class UiManager {
         this.organicUi.updateOrganicFolders(mode);
       };
     }
+
+    this.randomizerUi = new RandomizerUi(main, this.presetContainer);
+
     this.initializeModulatorManager();
 
     this.stats = new Stats();
@@ -68,7 +71,7 @@ export class UiManager {
     this.initializePresetManager();
 
     // Initialize RandomizerUi
-    this.randomizerUi = new RandomizerUi(main, this.presetContainer);
+
   }
 
   createContainer(position) {
@@ -119,6 +122,7 @@ export class UiManager {
       // Pass ModulatorManager to UI components
       this.pulseModUi.setModulatorManager(this.main.modulatorManager);
       this.inputModUi.setModulatorManager(this.main.modulatorManager);
+      this.randomizerUi.setModulatorManager(this.main.modulatorManager);
 
       // Register actual UI components with a meaningful name for each
       const uiComponents = {
@@ -136,6 +140,7 @@ export class UiManager {
 
       // Register UI components instead of controller targets
       this.main.modulatorManager.registerUiComponents(uiComponents);
+      this.randomizerUi.initParameterTargets();
     } else {
       console.warn("ModulatorManager not available in main!");
     }

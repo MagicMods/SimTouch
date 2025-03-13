@@ -4,101 +4,22 @@ export class RandomizerUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
 
-    // Store reference to main
-    this.main = main;
-
-    console.log("RandomizerUi constructor - this.main:", this.main);
-
     // Settings with defaults
     this.settings = {
       intensity: 0.5,
       includeCheckboxes: false,
     };
 
-    // Tracking which parameter targets to randomize (will be populated later)
+    // Tracking which parameter targets to randomize
     this.paramTargets = {};
 
     // Initialize UI
     this.gui.title("Randomizer");
 
-    // Delay initialization since we're created inside UiManager constructor
-    // and need UiManager to be fully constructed before we access it
-    setTimeout(() => {
-      // Get a reference to UiManager or ModulatorManager
-      const uiManager = this.getUiManager();
-      console.log("RandomizerUi delayed init - uiManager found:", !!uiManager);
-
-      if (uiManager) {
-        this.initRandomizerControls(uiManager);
-      } else {
-        console.error("RandomizerUi: Failed to find UiManager after delay");
-
-        // Add error message to GUI
-        const errorDiv = document.createElement("div");
-        errorDiv.textContent =
-          "Error: UiManager not found. Randomizer may not work properly.";
-        errorDiv.style.padding = "10px";
-        errorDiv.style.color = "red";
-
-        const guiContainer = this.gui.domElement.querySelector(".children");
-        if (guiContainer) {
-          guiContainer.appendChild(errorDiv);
-        }
-      }
-    }, 1000);
-
-    // Open GUI by default
-    this.gui.open();
-  }
-
-
-  getUiManager() {
-    // First try the standard approach - it might be assigned by now
-    if (this.main.uiManager) {
-      return this.main.uiManager;
-    }
-
-    // Next, make an educated guess - 'this' is created by the UiManager,
-    // so the UiManager should be in the closure scope for events
-    try {
-      // The UiManager instance that created us should be accessible
-      // as "this" in the parent scope
-      const thisObj = this;
-
-      // Find the UiManager from the constructor's context
-      if (thisObj && thisObj.__proto__ && thisObj.__proto__.constructor) {
-        const constructorName = thisObj.__proto__.constructor.name;
-        console.log("Constructor name:", constructorName);
-      }
-
-      // Another approach: look for UiManager properties in main
-      for (const key in this.main) {
-        const value = this.main[key];
-        if (
-          value &&
-          value.constructor &&
-          value.constructor.name === "UiManager"
-        ) {
-          console.log("Found UiManager at main." + key);
-          return value;
-        }
-      }
-    } catch (e) {
-      console.log("Error trying to find UiManager:", e);
-    }
-
-    return null;
-  }
-
-
-  initRandomizerControls(uiManager) {
-    // Store reference to UiManager
-    this.uiManager = uiManager;
-
-    // Create the main randomize button directly in the UI
+    // Create the main randomize button
     this.createRandomizeButton();
 
-    // Settings folder for global settings
+    // Settings folder
     const settingsFolder = this.gui.addFolder("Settings");
 
     // Intensity slider
@@ -107,12 +28,25 @@ export class RandomizerUi extends BaseUi {
       .name("Intensity")
       .onChange(() => this.updateButtonStyle());
 
+    // Include toggle parameters checkbox
     this.includeCheckboxesController = settingsFolder
       .add(this.settings, "includeCheckboxes")
       .name("Include Toggles");
 
-    // Initialize Parameters folder with all available targets
-    this.initParameterTargets();
+    // Parameters folder will be populated when modulatorManager is set
+    this.paramFolder = this.gui.addFolder("Parameters");
+    this.paramFolder.close();
+
+    // Open GUI by default
+    this.gui.open();
+  }
+
+  // Method to be called from UiManager.initializeModulatorManager()
+  setModulatorManager(modulatorManager) {
+    this.modulatorManager = modulatorManager;
+    console.log("RandomizerUi initialized with preset manager");
+    // Initialize parameters now that we have the modulatorManager
+    // this.initParameterTargets();
   }
 
   createRandomizeButton() {
@@ -181,87 +115,72 @@ export class RandomizerUi extends BaseUi {
   }
 
   initParameterTargets() {
-    console.log("RandomizerUi: Initializing parameter targets");
-
-    // Create the parameters folder
-    const paramFolder = this.gui.addFolder("Parameters");
-    paramFolder.close(); // Closed by default as it can be large
-
-    // Try to get ModulatorManager from main
-    const modulatorManager = this.main.modulatorManager;
-    if (!modulatorManager) {
-      console.error("RandomizerUI: ModulatorManager not found");
+    if (!this.modulatorManager) {
+      console.warn("RandomizerUI: ModulatorManager not set");
       return;
     }
 
-    // Get all available targets from the ModulatorManager
-    const targets = modulatorManager.targets;
-    if (!targets || Object.keys(targets).length === 0) {
+    // Get all available targets
+    const targetNames = this.modulatorManager.getTargetNames();
+
+    if (targetNames.length === 0) {
       console.warn("RandomizerUI: No targets found in ModulatorManager");
       return;
     }
 
-    console.log("RandomizerUI: Found targets:", Object.keys(targets));
-
     // Group targets by component for better organization
-    const categorizedTargets = {};
+    const categorizedTargets = this.categorizeTargets(targetNames);
 
-    // Function to extract component name from target name
-    const getComponentName = (targetName) => {
-      // Try to identify component from target name using pattern matching
-      if (/Particle|Size|Opacity/i.test(targetName)) return "Particles";
-      if (/Gravity|Force/i.test(targetName)) return "Gravity";
-      if (/Collision|Repulsion|Bounce/i.test(targetName)) return "Collision";
-      if (/Boundary|Wall/i.test(targetName)) return "Boundary";
-      if (/Turbulence|Scale|Octave|Noise/i.test(targetName))
-        return "Turbulence";
-      if (/Voronoi|Cell|Edge/i.test(targetName)) return "Voronoi";
-      if (/Organic|Fluid|Swarm|Automata/i.test(targetName)) return "Organic";
-      if (/Velocity|Time|Speed|Animation/i.test(targetName))
-        return "Simulation";
-      return "Other";
-    };
-
-    // Categorize all targets
-    for (const targetName in targets) {
-      const component = getComponentName(targetName);
-      if (!categorizedTargets[component]) {
-        categorizedTargets[component] = {};
-      }
-      // Initialize all targets as selected (true)
-      this.paramTargets[targetName] = true;
-      // Store in categorized structure for UI organization
-      categorizedTargets[component][targetName] = true;
-    }
-
-    // Create a subfolder for each component
-    for (const component in categorizedTargets) {
-      const componentFolder = paramFolder.addFolder(component);
+    // Create a subfolder for each category
+    for (const category in categorizedTargets) {
+      const componentFolder = this.paramFolder.addFolder(category);
       componentFolder.close(); // Closed by default
 
-      // Add checkbox for each parameter in this component
-      for (const paramName in categorizedTargets[component]) {
-        componentFolder.add(this.paramTargets, paramName).name(paramName);
+      // Add checkbox for each parameter in this category
+      for (const targetName of categorizedTargets[category]) {
+        // Initialize all targets as selected (true)
+        this.paramTargets[targetName] = true;
+        componentFolder.add(this.paramTargets, targetName).name(targetName);
       }
     }
   }
 
-  randomizeAll() {
-    console.log("RandomizerUI: Starting randomization");
+  categorizeTargets(targetNames) {
+    const categorizedTargets = {};
 
-    // Get ModulatorManager
-    const modulatorManager = this.main.modulatorManager;
-    if (!modulatorManager) {
-      console.error(
-        "RandomizerUI: Cannot randomize, ModulatorManager not found"
-      );
+    // Function to extract component name from target name
+    const getComponentName = (targetName) => {
+      if (/Particle|Size|Opacity/i.test(targetName)) return "Particles";
+      if (/Gravity|Force/i.test(targetName)) return "Gravity";
+      if (/Collision|Repulsion|Bounce/i.test(targetName)) return "Collision";
+      if (/Boundary|Wall/i.test(targetName)) return "Boundary";
+      if (/Turbulence|Scale|Octave|Noise/i.test(targetName)) return "Turbulence";
+      if (/Voronoi|Cell|Edge/i.test(targetName)) return "Voronoi";
+      if (/Organic|Fluid|Swarm|Automata/i.test(targetName)) return "Organic";
+      if (/Velocity|Time|Speed|Animation/i.test(targetName)) return "Simulation";
+      return "Other";
+    };
+
+    // Categorize all targets
+    for (const targetName of targetNames) {
+      const component = getComponentName(targetName);
+      if (!categorizedTargets[component]) {
+        categorizedTargets[component] = [];
+      }
+      categorizedTargets[component].push(targetName);
+    }
+
+    return categorizedTargets;
+  }
+
+  randomizeAll() {
+    if (!this.modulatorManager) {
+      console.error("RandomizerUI: Cannot randomize, ModulatorManager not set");
       return { success: false, totalChanged: 0 };
     }
 
     let totalChanged = 0;
-
-    // Get all available targets from the ModulatorManager
-    const targets = modulatorManager.targets;
+    const targets = this.modulatorManager.targets;
 
     // Randomize all selected targets
     for (const targetName in this.paramTargets) {
@@ -329,10 +248,6 @@ export class RandomizerUi extends BaseUi {
       let min = target.min !== undefined ? target.min : 0;
       let max = target.max !== undefined ? target.max : 1;
 
-      // If min/max aren't available, try to get them from controller
-      if (controller.__min !== undefined) min = controller.__min;
-      if (controller.__max !== undefined) max = controller.__max;
-
       // Calculate range
       const range = max - min;
 
@@ -343,13 +258,11 @@ export class RandomizerUi extends BaseUi {
       // Apply offset to current value
       let newValue = currentValue + offset;
 
+      // Clamp to range
       newValue = Math.max(min, Math.min(max, newValue));
 
-      // If the value is likely an integer (based on current value or property name)
-      if (
-        Number.isInteger(currentValue) ||
-        /count|particles|octaves/i.test(target.name)
-      ) {
+      // Round to integer if appropriate
+      if (Number.isInteger(currentValue) || /count|particles|octaves/i.test(target.name)) {
         newValue = Math.round(newValue);
       }
 
@@ -361,7 +274,6 @@ export class RandomizerUi extends BaseUi {
         controller.updateDisplay();
       }
 
-      console.log(`Randomized ${target.name}: ${currentValue} → ${newValue}`);
       return true;
     } catch (err) {
       console.warn(`Error randomizing ${target?.name || "unknown"}:`, err);
@@ -371,7 +283,6 @@ export class RandomizerUi extends BaseUi {
 
   updateButtonStyle() {
     if (!this.randomizeButton) return;
-
     this.randomizeButton.style.backgroundColor = this.getButtonColor();
   }
 
@@ -416,9 +327,8 @@ export class RandomizerUi extends BaseUi {
   }
 
   getControlTargets() {
-    const targets = {};
-
-    return targets;
+    // Return empty object as RandomizerUi doesn't provide targets to other components
+    return {};
   }
 
   getData() {
