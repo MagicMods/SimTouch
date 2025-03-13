@@ -4,7 +4,7 @@ export class GravityForces {
 
     // Default direction is downward (positive y in our coordinate system)
     this.directionX = 0;
-    this.directionY = 1;
+    this.directionY = 0;
     this.directionZ = 0;
 
     // For visualization and UI control
@@ -24,6 +24,11 @@ export class GravityForces {
       this.directionX = x / length;
       this.directionY = y / length;
       this.directionZ = z / length;
+    } else {
+      // When given a zero vector, disable gravity by setting strength to 0
+      this.directionX = 0;
+      this.directionY = 0;
+      this.directionZ = 0;
     }
     return this;
   }

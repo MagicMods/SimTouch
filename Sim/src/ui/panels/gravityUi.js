@@ -18,13 +18,8 @@ export class GravityUi extends BaseUi {
     const particles = this.main.particleSystem;
     if (!particles || !particles.gravity) return;
 
-    // Add gravity strength control
-    this.gravityStrengthController = this.gui
-      .add({ strength: particles.gravity.strength }, "strength", 0, 20, 0.1)
-      .name("Gravity Strength")
-      .onChange((value) => {
-        particles.gravity.strength = value;
-      });
+    // Set a fixed strength value for gravity
+    particles.gravity.setStrength(9.8); // Using the default value
 
     // Add gravity direction controls
     const gravityDirection = {
@@ -36,14 +31,30 @@ export class GravityUi extends BaseUi {
       .add(gravityDirection, "x", -1, 1, 0.1)
       .name("Gravity X")
       .onChange((value) => {
-        particles.gravity.directionX = value;
+        // Special handling for zero gravity case
+        const bothZero = value === 0 && gravityDirection.y === 0;
+        if (bothZero) {
+          // This effectively disables gravity
+          particles.gravity.directionX = 0;
+          particles.gravity.directionY = 0;
+        } else {
+          particles.gravity.setDirection(value, gravityDirection.y);
+        }
       });
 
     this.gravityYController = this.gui
       .add(gravityDirection, "y", -1, 1, 0.1)
       .name("Gravity Y")
       .onChange((value) => {
-        particles.gravity.directionY = value;
+        // Special handling for zero gravity case
+        const bothZero = gravityDirection.x === 0 && value === 0;
+        if (bothZero) {
+          // This effectively disables gravity
+          particles.gravity.directionX = 0;
+          particles.gravity.directionY = 0;
+        } else {
+          particles.gravity.setDirection(gravityDirection.x, value);
+        }
       });
   }
   //#endregion
@@ -51,8 +62,7 @@ export class GravityUi extends BaseUi {
   getControlTargets() {
     const targets = {};
 
-    if (this.gravityStrengthController)
-      targets["Gravity Strength"] = this.gravityStrengthController;
+    // Only include X and Y controllers
     if (this.gravityXController) targets["Gravity X"] = this.gravityXController;
     if (this.gravityYController) targets["Gravity Y"] = this.gravityYController;
 
@@ -110,7 +120,8 @@ export class GravityUi extends BaseUi {
         }
       }
     };
-    safeUpdateDisplay(this.gravityStrengthController);
+
+    // Only update X and Y controllers
     safeUpdateDisplay(this.gravityXController);
     safeUpdateDisplay(this.gravityYController);
     safeUpdateDisplay(this.gravityEnabledController);
