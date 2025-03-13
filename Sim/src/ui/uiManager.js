@@ -61,7 +61,6 @@ export class UiManager {
     }
 
     this.randomizerUi = new RandomizerUi(main, this.presetContainer);
-
     this.initializeModulatorManager();
 
     this.stats = new Stats();

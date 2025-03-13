@@ -34,16 +34,16 @@ export class DebugUi extends BaseUi {
         .name("Show Debug");
     }
 
-    // Display FPS if property exists
-    if (this.main.fps !== undefined) {
-      this.debugFpsController = this.gui
-        .add(this.main, "fps")
-        .name("FPS")
-        .listen();
-    } else {
-      // Add a dummy FPS display
-      this.debugFpsController = this.gui.add(debugDisplay, "fps").name("FPS");
-    }
+    // // Display FPS if property exists
+    // if (this.main.fps !== undefined) {
+    //   this.debugFpsController = this.gui
+    //     .add(this.main, "fps")
+    //     .name("FPS")
+    //     .listen();
+    // } else {
+    //   // Add a dummy FPS display
+    //   this.debugFpsController = this.gui.add(debugDisplay, "fps").name("FPS");
+    // }
 
     // Toggle velocity display if present
     if (

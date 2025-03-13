@@ -29,7 +29,7 @@ export class GravityUi extends BaseUi {
 
     this.gravityXController = this.gui
       .add(gravityDirection, "x", -1, 1, 0.1)
-      .name("Gravity X")
+      .name("G-X")
       .onChange((value) => {
         // Special handling for zero gravity case
         const bothZero = value === 0 && gravityDirection.y === 0;
@@ -44,7 +44,7 @@ export class GravityUi extends BaseUi {
 
     this.gravityYController = this.gui
       .add(gravityDirection, "y", -1, 1, 0.1)
-      .name("Gravity Y")
+      .name("G-Y")
       .onChange((value) => {
         // Special handling for zero gravity case
         const bothZero = gravityDirection.x === 0 && value === 0;
@@ -63,8 +63,8 @@ export class GravityUi extends BaseUi {
     const targets = {};
 
     // Only include X and Y controllers
-    if (this.gravityXController) targets["Gravity X"] = this.gravityXController;
-    if (this.gravityYController) targets["Gravity Y"] = this.gravityYController;
+    if (this.gravityXController) targets["G-X"] = this.gravityXController;
+    if (this.gravityYController) targets["G-Y"] = this.gravityYController;
 
     return targets;
   }

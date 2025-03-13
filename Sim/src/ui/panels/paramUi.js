@@ -72,18 +72,18 @@ export class ParamUi extends BaseUi {
       // Store as class property
       this.maxDensityController = this.gui
         .add(this.main.gridRenderer, "maxDensity", 0.1, 10, 0.1)
-        .name("Max Density");
+        .name("Density");
 
       // Store as class property
       this.fadeInSpeedController = this.gui
         .add(smoothing, "rateIn", 0.01, 0.5)
-        .name("FIn Speed")
+        .name("FadInSpd")
         .onFinishChange(() => console.log("Smoothing in:", smoothing.rateIn));
 
       // Store as class property
       this.fadeOutSpeedController = this.gui
         .add(smoothing, "rateOut", 0.01, 0.5)
-        .name("FOut Speed")
+        .name("FadOutSpd")
         .onFinishChange(() => console.log("Smoothing out:", smoothing.rateOut));
 
       // Store as class property
@@ -95,7 +95,7 @@ export class ParamUi extends BaseUi {
       // Store as class property
       this.timeScaleController = this.gui
         .add(particles, "timeScale", 0, 4, 0.1)
-        .name("Speed")
+        .name("SimSpeed")
         .onFinishChange((value) => {
           console.log(`Animation speed: ${value}x`);
         });
@@ -103,7 +103,7 @@ export class ParamUi extends BaseUi {
       // Store as class property
       this.velocityDampingController = this.gui
         .add(particles, "velocityDamping", 0.8, 1, 0.01)
-        .name("VeloDamping")
+        .name("VeloDamp")
         .onFinishChange((value) => {
           console.log(`Velocity damping set to ${value}`);
         });
@@ -114,18 +114,12 @@ export class ParamUi extends BaseUi {
 
   getControlTargets() {
     const targets = {};
-
-    if (this.maxDensityController)
-      targets["Max Density"] = this.maxDensityController;
-    if (this.fadeInSpeedController)
-      targets["FIn Speed"] = this.fadeInSpeedController;
-    if (this.fadeOutSpeedController)
-      targets["FOut Speed"] = this.fadeOutSpeedController;
+    if (this.maxDensityController) targets["Density"] = this.maxDensityController;
+    if (this.fadeInSpeedController) targets["FadInSpd"] = this.fadeInSpeedController;
+    if (this.fadeOutSpeedController) targets["FadOutSpd"] = this.fadeOutSpeedController;
     if (this.timeStepController) targets["Time Step"] = this.timeStepController;
-    if (this.timeScaleController)
-      targets["Animation Speed"] = this.timeScaleController;
-    if (this.velocityDampingController)
-      targets["VeloDamping"] = this.velocityDampingController;
+    if (this.timeScaleController) targets["SimSpeed"] = this.timeScaleController;
+    if (this.velocityDampingController) targets["VeloDamp"] = this.velocityDampingController;
     return targets;
   }
 

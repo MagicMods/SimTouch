@@ -22,7 +22,7 @@ export class BoundaryUi extends BaseUi {
     if (boundary.radius !== undefined) {
       this.boundarySizeController = this.gui
         .add(boundary, "radius", 0.3, 0.55, 0.005)
-        .name("Size")
+        .name("B-Size")
         .onChange((value) => {
           if (boundary.update) boundary.update({ radius: value });
         });
@@ -32,19 +32,19 @@ export class BoundaryUi extends BaseUi {
     if (particles.boundaryDamping !== undefined) {
       this.boundaryFrictionController = this.gui
         .add(particles, "boundaryDamping", 0.0, 1.0, 0.01)
-        .name("Wall Friction");
+        .name("B-Friction");
     }
 
     if (boundary.cBoundaryRestitution !== undefined) {
       this.boundaryBounceController = this.gui
         .add(boundary, "cBoundaryRestitution", 0.0, 1.0, 0.05)
-        .name("Bounce");
+        .name("B-Bounce");
     }
 
     if (boundary.boundaryRepulsion !== undefined) {
       this.boundaryRepulsionController = this.gui
         .add(boundary, "boundaryRepulsion", 0.0, 20, 0.01)
-        .name("Wall Repulsion");
+        .name("B-Repulse");
     }
   }
 
@@ -52,13 +52,13 @@ export class BoundaryUi extends BaseUi {
     const targets = {};
 
     if (this.boundarySizeController)
-      targets["Boundary Size"] = this.boundarySizeController;
+      targets["B-Size"] = this.boundarySizeController;
     if (this.boundaryRepulsionController)
-      targets["Wall Repulsion"] = this.boundaryRepulsionController;
+      targets["B-Repulse"] = this.boundaryRepulsionController;
     if (this.boundaryFrictionController)
-      targets["Wall Friction"] = this.boundaryFrictionController;
+      targets["B-Friction"] = this.boundaryFrictionController;
     if (this.boundaryBounceController)
-      targets["Boundary Bounce"] = this.boundaryBounceController;
+      targets["B-Bounce"] = this.boundaryBounceController;
 
     return targets;
   }

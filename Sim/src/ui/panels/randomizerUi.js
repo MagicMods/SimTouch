@@ -4,37 +4,34 @@ export class RandomizerUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
 
-    // Settings with defaults
     this.settings = {
       intensity: 0.5,
       includeCheckboxes: false,
-      useExclusions: true,  // Enable exclusions by default
+      useExclusions: true,
     };
 
-    // List of parameters to exclude from randomization
     this.exclusions = [
-      "Particle Count",      // Exclude particle count to prevent performance issues
-      "Cell Count",          // Excluding cell count prevents regenerating voronoi cells too often
-      "Time Step",           // Time step can cause stability issues when randomized
-      "Boundary Size",       // Boundary size changes can be disruptive
-      "Particle Opacity",             // Keep existing exclusions
-      "Color"                // Keep existing exclusions
+      "Time Step",
+      "Boundary Size",
+      "Particle Opacity",
+      "Color"
     ];
 
     this.paramTargets = {};
     this.gui.title("Randomizer");
+    const titleElement = this.gui.domElement.querySelector(".title");
+    titleElement.style.textAlign = "center";
+
     this.createRandomizeButton();
 
-    const settingsFolder = this.gui.addFolder("Settings");
-    this.intensityController = settingsFolder
+    this.intensityController = this.gui
       .add(this.settings, "intensity", 0, 1)
       .name("Intensity")
       .onChange(() => this.updateButtonStyle());
-
     this.paramFolder = this.gui.addFolder("Parameters");
     this.paramFolder.close();
 
-    this.gui.open();
+    this.gui.open(false);
   }
 
   setModulatorManager(modulatorManager) {
@@ -160,7 +157,7 @@ export class RandomizerUi extends BaseUi {
 
     for (const category in categorizedTargets) {
       const componentFolder = this.paramFolder.addFolder(category);
-      componentFolder.open(false);
+      componentFolder.open(true);
 
       for (const targetName of categorizedTargets[category]) {
         // All parameters start unchecked
@@ -185,19 +182,18 @@ export class RandomizerUi extends BaseUi {
     const categorizedTargets = {};
 
     const getComponentName = (targetName) => {
-
-      if (/^Particle (Count|Size|Opacity|Color)$/i.test(targetName)) return "Particles";
-      if (/^Gravity (Strength|X|Y)$/i.test(targetName)) return "Gravity";
-      if (/^(CRepulsion|CBounce|CDamping)$/i.test(targetName)) return "Collision";
-      if (/^(Boundary (Size|Bounce)|Wall (Repulsion|Friction))$/i.test(targetName)) return "Boundary";
-      if (/^(Turbulence |)(Strength|Scale|Speed|Octaves|Persistence|Rotation|Rotation Speed|Inward Pull|Decay Rate|Scale Strength|Min Scale|Max Scale|X Bias|Y Bias)$/i.test(targetName)) return "Turbulence";
-      if (/^(Voronoi |)(Strength|Edge Width|Attraction|Cell (Count|Speed)|Decay Rate|Force Blend)$/i.test(targetName)) return "Voronoi";
-      if (/^(Force|Radius|Surface Tension|Viscosity|Damping|Cohesion|Alignment|Separation|Max Speed|Repulsion|Attraction|Threshold)$/i.test(targetName)) return "Organic";
-      if (/^(Max Density|FIn Speed|FOut Speed|Time Step|Speed|VeloDamping)$/i.test(targetName)) return "Simulation";
-      if (/^(Rest Density|Gas Constant|Velocity Threshold|Position Threshold)$/i.test(targetName)) return "Rest State";
-      if (/^(Target Cells|Grid Gap|Grid Scale)$/i.test(targetName)) return "Grid";
-
-
+      if (/^(Density|FadInSpd|FadOutSpd|Time Step|SimSpeed|VeloDamp)$/i.test(targetName)) return "Simulation";
+      if (/^P-(Count|Size|Opacity|Color)$/i.test(targetName)) return "Particles";
+      if (/^G-(X|Y)$/i.test(targetName)) return "Gravity";
+      if (/^C-(Repulse|Bounce|Damping)$/i.test(targetName)) return "Collision";
+      if (/^B-(Repulse|Friction|Size|Bounce)$/i.test(targetName)) return "Boundary";
+      if (/^T-(Strength|Scale|Speed|Octaves|Persist|Rot|RotSpd|Pull|Decay|ScaleS|MinScale|MaxScale|X|Y)$/i.test(targetName)) return "Turbulence";
+      if (/^V-(Strength|EdgeWidth|Attract|Cell(Count|Speed)|Decay|ForceBlend)$/i.test(targetName)) return "Voronoi";
+      if (/^F-(Radius|SurfaceT|Visco|Damp)$/i.test(targetName)) return "Organic Fluid";
+      if (/^S-(Radius|Cohesion|Align|Separation|MaxSpeed)$/i.test(targetName)) return "Organic Swarm";
+      if (/^A-(Radius|Repulse|Attract|Threshold)$/i.test(targetName)) return "Organic Automata";
+      if (/^RS-(VeloTH|PosTH)$/i.test(targetName)) return "Rest State";
+      if (/^(O-Force)$/i.test(targetName)) return "Organic";
       return "Other";
     };
 
@@ -370,7 +366,6 @@ export class RandomizerUi extends BaseUi {
     return {};
   }
 
-  // Don't forget to update getData and setData to include the new settings
   getData() {
     return {
       settings: { ...this.settings },
@@ -437,14 +432,11 @@ export class RandomizerUi extends BaseUi {
     this.updateButtonStyle();
   }
 
-  // Add this helper method to clear existing parameters UI
   clearParameterUI() {
     // Remove all folders from paramFolder
     while (this.paramFolder.folders.length > 0) {
       this.paramFolder.removeFolder(this.paramFolder.folders[0]);
     }
-
-    // Reset paramTargets object
     this.paramTargets = {};
   }
 
@@ -457,7 +449,6 @@ export class RandomizerUi extends BaseUi {
       // Add flex container class
       containerEl.classList.add('parameter-flex-container');
 
-      // Find all controllers and add flex item class - use '.controller' instead of '.cr'
       const controllerEls = containerEl.querySelectorAll('.controller');
       controllerEls.forEach(el => {
         el.classList.add('parameter-checkbox-item');

@@ -43,14 +43,14 @@ export class RestStateUi extends BaseUi {
     if (particles.velocityThreshold !== undefined) {
       this.velocityThresholdController = this.gui
         .add(controls, "velocityThreshold", 0, 0.1)
-        .name("Velocity Threshold")
+        .name("RS-VeloTH")
         .onChange((value) => (particles.velocityThreshold = value));
     }
 
     if (particles.positionThreshold !== undefined) {
       this.positionThresholdController = this.gui
         .add(controls, "positionThreshold", 0, 0.1)
-        .name("Position Threshold")
+        .name("RS-PosTH")
         .onChange((value) => (particles.positionThreshold = value));
     }
   }
@@ -63,9 +63,9 @@ export class RestStateUi extends BaseUi {
     if (this.gasConstantController)
       targets["Gas Constant"] = this.gasConstantController;
     if (this.velocityThresholdController)
-      targets["Velocity Threshold"] = this.velocityThresholdController;
+      targets["RS-VeloTH"] = this.velocityThresholdController;
     if (this.positionThresholdController)
-      targets["Position Threshold"] = this.positionThresholdController;
+      targets["RS-PosTH"] = this.positionThresholdController;
 
     return targets;
   }

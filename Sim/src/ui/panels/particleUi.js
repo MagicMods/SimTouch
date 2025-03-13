@@ -21,14 +21,14 @@ export class ParticleUi extends BaseUi {
     // Store controllers as class properties with clear naming
     this.particleCountController = this.gui
       .add(particles, "numParticles", 1, 2000, 10)
-      .name("Count")
+      .name("P-Count")
       .onFinishChange((value) => {
         particles.reinitializeParticles(value);
       });
 
     this.particleSizeController = this.gui
       .add(particles, "particleRadius", 0.005, 0.03, 0.001)
-      .name("Size")
+      .name("P-Size")
       .onChange((value) => {
         particles.collisionSystem.particleRadius = value * 2;
         // Reset all particles to new base radius before turbulence affects them
@@ -37,11 +37,11 @@ export class ParticleUi extends BaseUi {
 
     this.particleOpacityController = this.gui
       .add(this.main.particleRenderer, "particleOpacity", 0.0, 1.0, 0.01)
-      .name("Opacity");
+      .name("P-Opacity");
 
     this.particleColorController = this.gui
       .addColor(this.main.particleRenderer.config, "color")
-      .name("Color");
+      .name("P-Color");
   }
   //#endregion
 
@@ -49,11 +49,11 @@ export class ParticleUi extends BaseUi {
     const targets = {};
     // // Particle controllers
     if (this.particleCountController)
-      targets["Particle Count"] = this.particleCountController;
+      targets["P-Count"] = this.particleCountController;
     if (this.particleSizeController)
-      targets["Particle Size"] = this.particleSizeController;
+      targets["P-Size"] = this.particleSizeController;
     if (this.particleOpacityController)
-      targets["Particle Opacity"] = this.particleOpacityController;
+      targets["P-Opacity"] = this.particleOpacityController;
     return targets;
   }
 

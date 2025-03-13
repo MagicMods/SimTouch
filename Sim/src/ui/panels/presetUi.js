@@ -56,7 +56,7 @@ export class PresetUi extends BaseUi {
   _createActionButtons(containerElement) {
     const actionsContainer = document.createElement("div");
     actionsContainer.style.display = "flex";
-    actionsContainer.style.margin = "5px 0";
+    actionsContainer.style.margin = "10px 0";
 
     const saveButton = this._createButton("Save", () => {
       const name = prompt("Enter preset name:");
@@ -120,8 +120,8 @@ export class PresetUi extends BaseUi {
           // Create import options dialog
           const shouldMerge = confirm(
             "Would you like to merge with existing presets?\n\n" +
-              "• Click OK to merge (keep existing presets)\n" +
-              "• Click Cancel to replace all presets"
+            "• Click OK to merge (keep existing presets)\n" +
+            "• Click Cancel to replace all presets"
           );
 
           const result = this.presetManager.importPresets(event.target.result, {
@@ -131,8 +131,8 @@ export class PresetUi extends BaseUi {
           if (result.success) {
             alert(
               `Successfully imported presets:\n` +
-                `• ${result.count} preset type(s) updated\n` +
-                `• Types: ${result.types.join(", ")}`
+              `• ${result.count} preset type(s) updated\n` +
+              `• Types: ${result.types.join(", ")}`
             );
             this.updatePresetDropdown(this.presetControls.selector);
           } else {
@@ -192,7 +192,7 @@ export class PresetUi extends BaseUi {
     const navContainer = document.createElement("div");
     navContainer.style.display = "flex";
     navContainer.style.justifyContent = "space-between";
-    navContainer.style.margin = "10px 0 5px 0";
+    navContainer.style.margin = "10px 0 10px 0";
 
     const prevButton = this._createButton("← Prev", () => {
       this.navigatePreset(-1);

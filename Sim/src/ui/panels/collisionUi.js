@@ -21,19 +21,19 @@ export class CollisionUi extends BaseUi {
 
     this.collisionRepulsionController = this.gui
       .add(collisionSystem, "repulsion", 0, 5, 0.01)
-      .name("CRepulsion");
+      .name("C-Repulse");
 
     // Check if properties exist before adding them
     if (collisionSystem.particleRestitution !== undefined) {
       this.collisionBounceController = this.gui
         .add(collisionSystem, "particleRestitution", 0.0, 1.0, 0.05)
-        .name("CBounce");
+        .name("C-Bounce");
     }
 
     if (collisionSystem.damping !== undefined) {
       this.collisionDampingController = this.gui
         .add(collisionSystem, "damping", 0.5, 1.0, 0.01)
-        .name("CDamping");
+        .name("C-Damping");
     }
   }
 
@@ -42,11 +42,11 @@ export class CollisionUi extends BaseUi {
 
     // Collision controllers
     if (this.collisionRepulsionController)
-      targets["CRepulsion"] = this.collisionRepulsionController;
+      targets["C-Repulse"] = this.collisionRepulsionController;
     if (this.collisionBounceController)
-      targets["CBounce"] = this.collisionBounceController;
+      targets["C-Bounce"] = this.collisionBounceController;
     if (this.collisionDampingController)
-      targets["CDamping"] = this.collisionDampingController;
+      targets["C-Damping"] = this.collisionDampingController;
 
     return targets;
   }

@@ -27,7 +27,7 @@ export class PulseModulationUi extends BaseUi {
     // Add master frequency slider
     const masterFreqController = this.gui
       .add(this, "masterFrequency", 0.01, 3, 0.01)
-      .name("Master Frequency (Hz)")
+      .name("PM-Freq")
       .onChange((value) => {
         // When master frequency changes, update all modulators that are synced
         if (this.modulatorManager) {
@@ -173,7 +173,6 @@ export class PulseModulationUi extends BaseUi {
         "square",
         "triangle",
         "sawtooth",
-        "sustainedPulse",
       ])
       .name("Wave Type");
 
@@ -198,7 +197,7 @@ export class PulseModulationUi extends BaseUi {
     // Add frequency control
     const frequencyController = folder
       .add(modulator, "frequency", 0.01, 3, 0.01)
-      .name("Frequency (Hz)");
+      .name("PM-Freq)");
 
     // Initially hide the frequency controller if sync is enabled
     if (modulator.sync) {

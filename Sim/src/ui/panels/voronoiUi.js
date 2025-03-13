@@ -42,49 +42,49 @@ export class VoronoiUi extends BaseUi {
     // Basic voronoi controls - store as class properties
     this.voronoiStrengthController = this.gui
       .add(voronoi, "strength", 0, 10)
-      .name("Strength");
+      .name("V-Strength");
 
     this.voronoiEdgeWidthController = this.gui
       .add(voronoi, "edgeWidth", 0.1, 50)
-      .name("Edge Width");
+      .name("V-EdgeWidth");
 
     this.voronoiAttractionController = this.gui
       .add(voronoi, "attractionFactor", 0, 8)
-      .name("Attraction");
+      .name("V-Attract");
 
     this.voronoiCellCountController = this.gui
       .add(voronoi, "cellCount", 1, 10, 1)
-      .name("Cell Count")
+      .name("V-CellCount")
       .onChange(() => voronoi.regenerateCells());
 
     this.voronoiSpeedController = this.gui
       .add(voronoi, "cellMovementSpeed", 0, 4)
-      .name("Cell Speed");
+      .name("V-CellSpeed");
 
     this.voronoiDecayRateController = this.gui
       .add(voronoi, "decayRate", 0.9, 1)
-      .name("Decay Rate");
+      .name("V-Decay");
 
     this.voronoiBlendController = this.gui
       .add(voronoi, "velocityBlendFactor", 0, 1)
-      .name("Force Blend");
+      .name("V-ForceBlend");
   }
 
   getControlTargets() {
     const targets = {};
 
     if (this.voronoiStrengthController)
-      targets["Voronoi Strength"] = this.voronoiStrengthController;
+      targets["V-Strength"] = this.voronoiStrengthController;
     if (this.voronoiSpeedController)
-      targets["Cell Speed"] = this.voronoiSpeedController;
+      targets["V-CellSpeed"] = this.voronoiSpeedController;
     if (this.voronoiEdgeWidthController)
-      targets["Edge Width"] = this.voronoiEdgeWidthController;
+      targets["V-EdgeWidth"] = this.voronoiEdgeWidthController;
     if (this.voronoiAttractionController)
-      targets["Attraction"] = this.voronoiAttractionController;
+      targets["V-Attract"] = this.voronoiAttractionController;
     if (this.voronoiCellCountController)
-      targets["Cell Count"] = this.voronoiCellCountController;
+      targets["V-CellCount"] = this.voronoiCellCountController;
     if (this.voronoiDecayRateController)
-      targets["Decay Rate"] = this.voronoiDecayRateController;
+      targets["V-Decay"] = this.voronoiDecayRateController;
 
     return targets;
   }
@@ -169,12 +169,12 @@ export class VoronoiUi extends BaseUi {
 
       // Use all available controllers
       const controllerMap = {
-        "Voronoi Strength": this.voronoiStrengthController,
+        "Voronoi V-Strength": this.voronoiStrengthController,
         "Cell Speed": this.voronoiSpeedController,
         "Edge Width": this.voronoiEdgeWidthController,
         "Attraction": this.voronoiAttractionController,
         "Cell Count": this.voronoiCellCountController,
-        "Decay Rate": this.voronoiDecayRateController,
+        "VDecay": this.voronoiDecayRateController,
       };
 
       // Apply values from preset to controllers

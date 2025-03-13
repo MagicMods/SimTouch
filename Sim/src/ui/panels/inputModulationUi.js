@@ -50,7 +50,7 @@ export class InputModulationUi extends BaseUi {
         10.0,
         0.1
       )
-      .name("Global Sensitivity")
+      .name("IM-Sensitivity")
       .onChange((value) => {
         if (externalInput && externalInput.micForces) {
           externalInput.setMicSensitivity(value);
@@ -68,7 +68,7 @@ export class InputModulationUi extends BaseUi {
         1,
         0.01
       )
-      .name("Smoothing")
+      .name("IM-Smooth")
       .onChange((value) => {
         if (externalInput && externalInput.micForces) {
           externalInput.setMicSmoothing(value);
