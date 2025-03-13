@@ -8,45 +8,38 @@ export class RandomizerUi extends BaseUi {
     this.settings = {
       intensity: 0.5,
       includeCheckboxes: false,
+      useExclusions: true,  // Enable exclusions by default
     };
 
-    // Tracking which parameter targets to randomize
+    // List of parameters to exclude from randomization
+    this.exclusions = [
+      "Particle Count",      // Exclude particle count to prevent performance issues
+      "Cell Count",          // Excluding cell count prevents regenerating voronoi cells too often
+      "Time Step",           // Time step can cause stability issues when randomized
+      "Boundary Size",       // Boundary size changes can be disruptive
+      "Particle Opacity",             // Keep existing exclusions
+      "Color"                // Keep existing exclusions
+    ];
+
     this.paramTargets = {};
-
-    // Initialize UI
     this.gui.title("Randomizer");
-
-    // Create the main randomize button
     this.createRandomizeButton();
 
-    // Settings folder
     const settingsFolder = this.gui.addFolder("Settings");
-
-    // Intensity slider
     this.intensityController = settingsFolder
       .add(this.settings, "intensity", 0, 1)
       .name("Intensity")
       .onChange(() => this.updateButtonStyle());
 
-    // Include toggle parameters checkbox
-    this.includeCheckboxesController = settingsFolder
-      .add(this.settings, "includeCheckboxes")
-      .name("Include Toggles");
-
-    // Parameters folder will be populated when modulatorManager is set
     this.paramFolder = this.gui.addFolder("Parameters");
     this.paramFolder.close();
 
-    // Open GUI by default
     this.gui.open();
   }
 
-  // Method to be called from UiManager.initializeModulatorManager()
   setModulatorManager(modulatorManager) {
     this.modulatorManager = modulatorManager;
     console.log("RandomizerUi initialized with preset manager");
-    // Initialize parameters now that we have the modulatorManager
-    // this.initParameterTargets();
   }
 
   createRandomizeButton() {
@@ -114,13 +107,45 @@ export class RandomizerUi extends BaseUi {
     }
   }
 
+  updateParameterAvailability() {
+    if (!this.paramTargets) return;
+
+    for (const targetName in this.paramTargets) {
+      const controller = this.findControllerByName(targetName);
+      if (!controller) continue;
+
+      // If exclusions are enabled and this parameter is in the exclusion list
+      if (this.exclusions.includes(targetName)) {
+        // Disable the checkbox
+        controller.disable();
+        // Uncheck it
+        this.paramTargets[targetName] = false;
+        controller.updateDisplay();
+      } else {
+        // Otherwise enable it
+        controller.enable();
+      }
+    }
+  }
+
+  findControllerByName(name) {
+    // Look through all folders in paramFolder
+    for (const folder of this.paramFolder.folders) {
+      for (const controller of folder.controllers) {
+        if (controller.property === name) {
+          return controller;
+        }
+      }
+    }
+    return null;
+  }
+
   initParameterTargets() {
     if (!this.modulatorManager) {
       console.warn("RandomizerUI: ModulatorManager not set");
       return;
     }
 
-    // Get all available targets
     const targetNames = this.modulatorManager.getTargetNames();
 
     if (targetNames.length === 0) {
@@ -128,40 +153,52 @@ export class RandomizerUi extends BaseUi {
       return;
     }
 
-    // Group targets by component for better organization
-    const categorizedTargets = this.categorizeTargets(targetNames);
+    // Filter out excluded parameters before categorizing
+    const filteredTargetNames = targetNames.filter(name => !this.exclusions.includes(name));
 
-    // Create a subfolder for each category
+    const categorizedTargets = this.categorizeTargets(filteredTargetNames);
+
     for (const category in categorizedTargets) {
       const componentFolder = this.paramFolder.addFolder(category);
-      componentFolder.close(); // Closed by default
+      componentFolder.open(false);
 
-      // Add checkbox for each parameter in this category
       for (const targetName of categorizedTargets[category]) {
-        // Initialize all targets as selected (true)
-        this.paramTargets[targetName] = true;
+        // All parameters start unchecked
+        this.paramTargets[targetName] = false;
+
+        // Add controller to the folder
         componentFolder.add(this.paramTargets, targetName).name(targetName);
       }
+    }
+
+    // Log how many parameters were excluded
+    const excludedCount = targetNames.length - filteredTargetNames.length;
+    if (excludedCount > 0) {
+      console.log(`RandomizerUI: Excluded ${excludedCount} parameters from randomization`);
     }
   }
 
   categorizeTargets(targetNames) {
     const categorizedTargets = {};
 
-    // Function to extract component name from target name
     const getComponentName = (targetName) => {
-      if (/Particle|Size|Opacity/i.test(targetName)) return "Particles";
-      if (/Gravity|Force/i.test(targetName)) return "Gravity";
-      if (/Collision|Repulsion|Bounce/i.test(targetName)) return "Collision";
-      if (/Boundary|Wall/i.test(targetName)) return "Boundary";
-      if (/Turbulence|Scale|Octave|Noise/i.test(targetName)) return "Turbulence";
-      if (/Voronoi|Cell|Edge/i.test(targetName)) return "Voronoi";
-      if (/Organic|Fluid|Swarm|Automata/i.test(targetName)) return "Organic";
-      if (/Velocity|Time|Speed|Animation/i.test(targetName)) return "Simulation";
+
+      if (/^Particle (Count|Size|Opacity|Color)$/i.test(targetName)) return "Particles";
+      if (/^Gravity (Strength|X|Y)$/i.test(targetName)) return "Gravity";
+      if (/^(CRepulsion|CBounce|CDamping)$/i.test(targetName)) return "Collision";
+      if (/^(Boundary (Size|Bounce)|Wall (Repulsion|Friction))$/i.test(targetName)) return "Boundary";
+      if (/^(Turbulence |)(Strength|Scale|Speed|Octaves|Persistence|Rotation|Rotation Speed|Inward Pull|Decay Rate|Scale Strength|Min Scale|Max Scale|X Bias|Y Bias)$/i.test(targetName)) return "Turbulence";
+      if (/^(Voronoi |)(Strength|Edge Width|Attraction|Cell (Count|Speed)|Decay Rate|Force Blend)$/i.test(targetName)) return "Voronoi";
+      if (/^(Force|Radius|Surface Tension|Viscosity|Damping|Cohesion|Alignment|Separation|Max Speed|Repulsion|Attraction|Threshold)$/i.test(targetName)) return "Organic";
+      if (/^(Max Density|FIn Speed|FOut Speed|Time Step|Speed|VeloDamping)$/i.test(targetName)) return "Simulation";
+      if (/^(Rest Density|Gas Constant|Velocity Threshold|Position Threshold)$/i.test(targetName)) return "Rest State";
+      if (/^(Target Cells|Grid Gap|Grid Scale)$/i.test(targetName)) return "Grid";
+
+
       return "Other";
     };
 
-    // Categorize all targets
+
     for (const targetName of targetNames) {
       const component = getComponentName(targetName);
       if (!categorizedTargets[component]) {
@@ -173,6 +210,7 @@ export class RandomizerUi extends BaseUi {
     return categorizedTargets;
   }
 
+  // Update randomizeAll to respect exclusions
   randomizeAll() {
     if (!this.modulatorManager) {
       console.error("RandomizerUI: Cannot randomize, ModulatorManager not set");
@@ -182,20 +220,22 @@ export class RandomizerUi extends BaseUi {
     let totalChanged = 0;
     const targets = this.modulatorManager.targets;
 
-    // Randomize all selected targets
     for (const targetName in this.paramTargets) {
-      // Skip if target is not selected for randomization
+      // Skip if parameter isn't selected
       if (!this.paramTargets[targetName]) {
         continue;
       }
 
-      // Get target info
+      // In case the exclusions list changed after initialization
+      if (this.settings.useExclusions && this.exclusions.includes(targetName)) {
+        continue;
+      }
+
       const target = targets[targetName];
       if (!target || !target.controller) {
         continue;
       }
 
-      // Randomize this controller if it's a slider
       const controller = target.controller;
       if (this._isSlider(controller)) {
         const success = this._randomizeController(controller, target);
@@ -206,7 +246,6 @@ export class RandomizerUi extends BaseUi {
         this.settings.includeCheckboxes &&
         this._isCheckbox(controller)
       ) {
-        // Randomize checkboxes if that option is enabled
         if (Math.random() < this.settings.intensity) {
           const currentValue = controller.getValue();
           controller.setValue(!currentValue);
@@ -224,7 +263,6 @@ export class RandomizerUi extends BaseUi {
       return false;
     }
 
-    // Check if it has a numeric value
     const value = controller.getValue();
     return typeof value === "number";
   }
@@ -234,14 +272,13 @@ export class RandomizerUi extends BaseUi {
       return false;
     }
 
-    // Check if it has a boolean value
     const value = controller.getValue();
     return typeof value === "boolean";
   }
 
   _randomizeController(controller, target) {
     try {
-      // Get current value
+
       const currentValue = controller.getValue();
 
       // Get range from target info
@@ -331,10 +368,12 @@ export class RandomizerUi extends BaseUi {
     return {};
   }
 
+  // Don't forget to update getData and setData to include the new settings
   getData() {
     return {
       settings: { ...this.settings },
       paramTargets: { ...this.paramTargets },
+      exclusions: [...this.exclusions]
     };
   }
 
@@ -358,8 +397,14 @@ export class RandomizerUi extends BaseUi {
         Object.assign(this.paramTargets, data.paramTargets);
       }
 
+      // Apply exclusions if present
+      if (data.exclusions) {
+        this.exclusions = [...data.exclusions];
+      }
+
       // Update UI
       this.updateControllerDisplays();
+      this.updateParameterAvailability();
       return true;
     } catch (error) {
       console.error("Error applying Randomizer preset:", error);
@@ -381,8 +426,20 @@ export class RandomizerUi extends BaseUi {
 
     safeUpdateDisplay(this.intensityController);
     safeUpdateDisplay(this.includeCheckboxesController);
+    safeUpdateDisplay(this.useExclusionsController);
 
     // Update button color based on intensity
     this.updateButtonStyle();
+  }
+
+  // Add this helper method to clear existing parameters UI
+  clearParameterUI() {
+    // Remove all folders from paramFolder
+    while (this.paramFolder.folders.length > 0) {
+      this.paramFolder.removeFolder(this.paramFolder.folders[0]);
+    }
+
+    // Reset paramTargets object
+    this.paramTargets = {};
   }
 }
