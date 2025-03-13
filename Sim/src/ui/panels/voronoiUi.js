@@ -19,7 +19,6 @@ export class VoronoiUi extends BaseUi {
   initWithPresetManager(presetManager) {
     this.presetManager = presetManager;
 
-    // Create standardized preset controls for voronoi
     const voronoiContainer = this.gui.domElement.querySelector(".children");
     if (voronoiContainer) {
       this.presetControls = this.presetManager.createPresetControls(
@@ -29,7 +28,6 @@ export class VoronoiUi extends BaseUi {
       );
     }
 
-    // Store reference to voronoiField for preset management
     if (this.main && this.main.voronoiField && this.presetManager) {
       this.presetManager.setVoronoiField(this.main.voronoiField);
     }
@@ -39,52 +37,24 @@ export class VoronoiUi extends BaseUi {
     const voronoi = this.main.voronoiField;
     if (!voronoi) return;
 
-    // Basic voronoi controls - store as class properties
-    this.voronoiStrengthController = this.gui
-      .add(voronoi, "strength", 0, 10)
-      .name("V-Strength");
-
-    this.voronoiEdgeWidthController = this.gui
-      .add(voronoi, "edgeWidth", 0.1, 50)
-      .name("V-EdgeWidth");
-
-    this.voronoiAttractionController = this.gui
-      .add(voronoi, "attractionFactor", 0, 8)
-      .name("V-Attract");
-
-    this.voronoiCellCountController = this.gui
-      .add(voronoi, "cellCount", 1, 10, 1)
-      .name("V-CellCount")
-      .onChange(() => voronoi.regenerateCells());
-
-    this.voronoiSpeedController = this.gui
-      .add(voronoi, "cellMovementSpeed", 0, 4)
-      .name("V-CellSpeed");
-
-    this.voronoiDecayRateController = this.gui
-      .add(voronoi, "decayRate", 0.9, 1)
-      .name("V-Decay");
-
-    this.voronoiBlendController = this.gui
-      .add(voronoi, "velocityBlendFactor", 0, 1)
-      .name("V-ForceBlend");
+    this.voronoiStrengthController = this.gui.add(voronoi, "strength", 0, 10).name("V-Strength");
+    this.voronoiEdgeWidthController = this.gui.add(voronoi, "edgeWidth", 0.1, 50).name("V-EdgeWidth");
+    this.voronoiAttractionController = this.gui.add(voronoi, "attractionFactor", 0, 8).name("V-Attract");
+    this.voronoiCellCountController = this.gui.add(voronoi, "cellCount", 1, 10, 1).name("V-CellCount").onChange(() => voronoi.regenerateCells());
+    this.voronoiSpeedController = this.gui.add(voronoi, "cellMovementSpeed", 0, 4).name("V-CellSpeed");
+    this.voronoiDecayRateController = this.gui.add(voronoi, "decayRate", 0.9, 1).name("V-Decay");
+    this.voronoiBlendController = this.gui.add(voronoi, "velocityBlendFactor", 0, 1).name("V-ForceBlend");
   }
 
   getControlTargets() {
     const targets = {};
 
-    if (this.voronoiStrengthController)
-      targets["V-Strength"] = this.voronoiStrengthController;
-    if (this.voronoiSpeedController)
-      targets["V-CellSpeed"] = this.voronoiSpeedController;
-    if (this.voronoiEdgeWidthController)
-      targets["V-EdgeWidth"] = this.voronoiEdgeWidthController;
-    if (this.voronoiAttractionController)
-      targets["V-Attract"] = this.voronoiAttractionController;
-    if (this.voronoiCellCountController)
-      targets["V-CellCount"] = this.voronoiCellCountController;
-    if (this.voronoiDecayRateController)
-      targets["V-Decay"] = this.voronoiDecayRateController;
+    if (this.voronoiStrengthController) targets["V-Strength"] = this.voronoiStrengthController;
+    if (this.voronoiSpeedController) targets["V-CellSpeed"] = this.voronoiSpeedController;
+    if (this.voronoiEdgeWidthController) targets["V-EdgeWidth"] = this.voronoiEdgeWidthController;
+    if (this.voronoiAttractionController) targets["V-Attract"] = this.voronoiAttractionController;
+    if (this.voronoiCellCountController) targets["V-CellCount"] = this.voronoiCellCountController;
+    if (this.voronoiDecayRateController) targets["V-Decay"] = this.voronoiDecayRateController;
 
     return targets;
   }
@@ -124,7 +94,6 @@ export class VoronoiUi extends BaseUi {
     return { controllers };
   }
 
-  // Fix the setData method to handle "None" correctly
   setData(data) {
     console.log("VoronoiUi.setData called with:", data);
 
@@ -133,29 +102,14 @@ export class VoronoiUi extends BaseUi {
       console.log("Resetting voronoi to default");
 
       // Properly reset using controllers
-      if (this.voronoiStrengthController) {
-        this.voronoiStrengthController.setValue(0);
-      }
-      if (this.voronoiSpeedController) {
-        this.voronoiSpeedController.setValue(0);
-      }
-      if (this.voronoiEdgeWidthController) {
-        this.voronoiEdgeWidthController.setValue(10);
-      }
-      if (this.voronoiAttractionController) {
-        this.voronoiAttractionController.setValue(0);
-      }
-      if (this.voronoiCellCountController) {
-        this.voronoiCellCountController.setValue(3);
-        if (this.main && this.main.voronoiField) {
-          this.main.voronoiField.regenerateCells();
-        }
-      }
-      if (this.voronoiDecayRateController) {
-        this.voronoiDecayRateController.setValue(0.95);
-      }
+      if (this.voronoiStrengthController) this.voronoiStrengthController.setValue(0);
+      if (this.voronoiSpeedController) this.voronoiSpeedController.setValue(0);
+      if (this.voronoiEdgeWidthController) this.voronoiEdgeWidthController.setValue(10);
+      if (this.voronoiAttractionController) this.voronoiAttractionController.setValue(0);
+      if (this.voronoiCellCountController) this.voronoiCellCountController.setValue(3);
+      if (this.main && this.main.voronoiField) this.main.voronoiField.regenerateCells();
+      if (this.voronoiDecayRateController) this.voronoiDecayRateController.setValue(0.95);
 
-      // Update UI display
       this.updateControllerDisplays();
       return true;
     }
@@ -167,7 +121,6 @@ export class VoronoiUi extends BaseUi {
         return false;
       }
 
-      // Use all available controllers
       const controllerMap = {
         "Voronoi V-Strength": this.voronoiStrengthController,
         "Cell Speed": this.voronoiSpeedController,
@@ -194,7 +147,6 @@ export class VoronoiUi extends BaseUi {
         this.main.voronoiField.regenerateCells();
       }
 
-      // Update UI display
       this.updateControllerDisplays();
       return true;
     } catch (error) {

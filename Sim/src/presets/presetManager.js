@@ -10,7 +10,7 @@ export class PresetManager {
     VORONOI: "voronoi",
     PULSE: "pulse",
     INPUT: "input",
-    RAMDOMIZER: "randomizer",
+    RANDOMIZER: "randomizer",
   };
 
   constructor(uiComponents) {

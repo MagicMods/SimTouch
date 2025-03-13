@@ -1,9 +1,10 @@
 import { BaseUi } from "../baseUi.js";
+import { PresetManager } from "../../presets/presetManager.js";
 
 export class RandomizerUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-
+    this.presetManager = null;
     this.settings = {
       intensity: 0.5,
       includeCheckboxes: false,
@@ -29,9 +30,22 @@ export class RandomizerUi extends BaseUi {
       .name("Intensity")
       .onChange(() => this.updateButtonStyle());
     this.paramFolder = this.gui.addFolder("Parameters");
-    this.paramFolder.close();
 
+
+    this.paramFolder.close();
     this.gui.open(false);
+  }
+
+  initWithPresetManager(presetManager) {
+    this.presetManager = presetManager;
+
+
+    this.presetControls = this.presetManager.createPresetControls(
+      PresetManager.TYPES.RANDOMIZER,
+      this.paramFolder.domElement,
+      { insertFirst: true }
+    );
+
   }
 
   setModulatorManager(modulatorManager) {

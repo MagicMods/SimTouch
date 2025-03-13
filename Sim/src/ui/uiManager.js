@@ -171,8 +171,8 @@ export class UiManager {
     this.pulseModUi.initWithPresetManager(this.presetManager);
     this.inputModUi.initWithPresetManager(this.presetManager);
 
-    // Initialize the preset UI
     this.presetUi.initWithPresetManager(this.presetManager);
+    this.randomizerUi.initWithPresetManager(this.presetManager);
   }
 
   // Add update method to UiManager
