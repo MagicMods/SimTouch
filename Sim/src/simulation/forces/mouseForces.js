@@ -294,23 +294,34 @@ class MouseForces {
     // Temporarily scale down gravity when mouse is active
     if (particleSystem.gravity && particleSystem.gravity.enabled) {
       // Store original strength if not already stored
-      if (!this._originalGravity) {
+      if (this._originalGravity === undefined) {
         this._originalGravity = particleSystem.gravity.strength;
       }
 
-      // Reduce gravity by 80% during mouse interaction
+      // Reduce gravity by 90% during mouse interaction
       particleSystem.gravity.strength = this._originalGravity * 0.1;
     }
 
-    // Similarly handle turbulence if needed
+    // Handle turbulence reduction
     if (particleSystem.turbulence) {
-      if (!this._originalTurbulenceStrength) {
+      if (this._originalTurbulenceStrength === undefined) {
         this._originalTurbulenceStrength = particleSystem.turbulence.strength;
       }
 
       // Reduce turbulence by 80%
       particleSystem.turbulence.strength =
         this._originalTurbulenceStrength * 0.2;
+    }
+
+    // Add voronoi field reduction
+    if (particleSystem.voronoi) {
+      if (this._originalVoronoiStrength === undefined) {
+        this._originalVoronoiStrength = particleSystem.voronoi.strength;
+      }
+
+      // Reduce voronoi by 80% during mouse interaction
+      particleSystem.voronoi.strength =
+        this._originalVoronoiStrength * 0.2;
     }
   }
 
@@ -331,6 +342,15 @@ class MouseForces {
     ) {
       particleSystem.turbulence.strength = this._originalTurbulenceStrength;
       this._originalTurbulenceStrength = undefined;
+    }
+
+    // Restore original voronoi strength
+    if (
+      particleSystem.voronoi &&
+      this._originalVoronoiStrength !== undefined
+    ) {
+      particleSystem.voronoi.strength = this._originalVoronoiStrength;
+      this._originalVoronoiStrength = undefined;
     }
   }
 }

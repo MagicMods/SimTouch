@@ -70,6 +70,12 @@ export class EmuForces {
   apply(dt) {
     if (!this.enabled) return;
 
+    // When manually controlling EMU through the visualization,
+    // set mouseForces.isActive to true to reduce other forces
+    if (this.manualOverride && this.gravity?.particleSystem?.mouseForces) {
+      this.gravity.particleSystem.mouseForces.isActive = true;
+    }
+
     // Apply accelerometer data to gravity using raw values (not normalized)
     if (this.gravity && this.gravity.setRawDirection) {
       // We're using accelY for X and accelX for Y (after 90° rotation)
