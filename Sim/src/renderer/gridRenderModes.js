@@ -226,7 +226,7 @@ class GridRenderModes {
   calculateVelocity(particleSystem) {
     this.targetValues.fill(0);
     if (!particleSystem) return this.targetValues;
-    const tune = 50;
+    const tune = 5;
     const particles = particleSystem.getParticles();
     if (!particles?.length) return this.targetValues;
 
@@ -482,6 +482,7 @@ class GridRenderModes {
     // Otherwise, approximate partial overlap (this could be refined further)
     return overlapWidth * overlapHeight * 0.785; // 0.785 ≈ π/4, rough circle area adjustment
   }
+
   calculateOverlap(particleSystem) {
     this.targetValues.fill(0);
     if (!particleSystem) return this.targetValues;

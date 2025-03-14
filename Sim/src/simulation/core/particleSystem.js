@@ -10,7 +10,7 @@ class ParticleSystem {
     particleCount = 500,
     timeStep = 1 / 60,
     gravity = 0, // Default gravity strength
-    picFlipRatio = 1,
+    picFlipRatio = 0,
     turbulence = null, // Keep turbulence as optional parameter
     voronoi = null, // Add voronoi as optional parameter
     boundaryMode = "WARP", // Add boundary mode parameter
