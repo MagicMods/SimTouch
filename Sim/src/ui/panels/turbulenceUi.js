@@ -123,7 +123,45 @@ export class TurbulenceUi extends BaseUi {
 
   getControlTargets() {
     const targets = {};
+    const turbulence = this.main.turbulenceField;
 
+    // Add toggle button wrappers that mimic controller interface
+    if (turbulence) {
+      // Position toggle wrapper
+      targets["T-AfPosition"] = {
+        getValue: () => turbulence.affectPosition,
+        setValue: (value) => {
+          turbulence.affectPosition = Boolean(value);
+          if (this.positionButton) {
+            this.positionButton.classList.toggle("active", turbulence.affectPosition);
+          }
+        }
+      };
+
+      // Scale Field toggle wrapper
+      targets["T-AfScaleF"] = {
+        getValue: () => turbulence.scaleField,
+        setValue: (value) => {
+          turbulence.scaleField = Boolean(value);
+          if (this.fieldButton) {
+            this.fieldButton.classList.toggle("active", turbulence.scaleField);
+          }
+        }
+      };
+
+      // Scale toggle wrapper
+      targets["T-AfScale"] = {
+        getValue: () => turbulence.affectScale,
+        setValue: (value) => {
+          turbulence.affectScale = Boolean(value);
+          if (this.scaleButton) {
+            this.scaleButton.classList.toggle("active", turbulence.affectScale);
+          }
+        }
+      };
+    }
+
+    // Add regular controllers
     if (this.turbulenceStrengthController) targets["T-Strength"] = this.turbulenceStrengthController;
     if (this.turbulenceScaleController) targets["T-Scale"] = this.turbulenceScaleController;
     if (this.turbulenceSpeedController) targets["T-Speed"] = this.turbulenceSpeedController;
@@ -194,22 +232,26 @@ export class TurbulenceUi extends BaseUi {
   }
 
   setData(data) {
-
     if (!data || data === "None") {
       // console.log("Resetting turbulence to None preset");
+      const targets = this.getControlTargets();
 
-      this.turbulenceStrengthController.setValue(0);
-      this.turbulenceScaleStrengthController.setValue(0);
-      this.turbulenceBiasXController.setValue(0);
-      this.turbulenceBiasYController.setValue(0);
+      // Reset all numerical values
+      if (targets["T-Strength"]) targets["T-Strength"].setValue(0);
+      if (targets["T-ScaleS"]) targets["T-ScaleS"].setValue(0);
+      if (targets["T-X"]) targets["T-X"].setValue(0);
+      if (targets["T-Y"]) targets["T-Y"].setValue(0);
 
-      // Update UI display
+      // Reset toggle buttons
+      if (targets["T-AfPosition"]) targets["T-AfPosition"].setValue(false);
+      if (targets["T-AfScaleF"]) targets["T-AfScaleF"].setValue(false);
+      if (targets["T-AfScale"]) targets["T-AfScale"].setValue(false);
+
       this.updateControllerDisplays();
-
       return true;
     }
 
-    // Regular preset handling (existing code)
+    // Regular preset handling
     if (!data || !data.controllers) {
       console.warn("Invalid turbulence preset data");
       return false;
