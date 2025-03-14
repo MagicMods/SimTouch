@@ -6,14 +6,8 @@ export class TurbulenceUi extends BaseUi {
     super(main, container);
     this.presetManager = null;
     this.presetControls = null;
-
-    // Change the GUI title
     this.gui.title("Turbulence");
-
-    // Create the main folder
     this.initTurbulenceControls();
-
-    // Open GUI by default
     this.gui.open();
   }
 
@@ -173,7 +167,6 @@ export class TurbulenceUi extends BaseUi {
   getControlTargets() {
     const targets = {};
 
-    // Main controllers (already included)
     if (this.turbulenceStrengthController)
       targets["T-Strength"] = this.turbulenceStrengthController;
     if (this.turbulenceScaleController)
@@ -207,8 +200,8 @@ export class TurbulenceUi extends BaseUi {
 
     return targets;
   }
+
   updateControllerDisplays() {
-    // Update button states
     const turbulence = this.main.turbulenceField;
     if (turbulence) {
       if (this.positionButton) {
@@ -225,7 +218,6 @@ export class TurbulenceUi extends BaseUi {
       }
     }
 
-    // Helper function to safely update controllers
     const safeUpdateDisplay = (controller) => {
       if (controller && typeof controller.updateDisplay === "function") {
         try {
@@ -236,7 +228,6 @@ export class TurbulenceUi extends BaseUi {
       }
     };
 
-    // Update all turbulence controllers
     safeUpdateDisplay(this.turbulenceStrengthController);
     safeUpdateDisplay(this.turbulenceScaleController);
     safeUpdateDisplay(this.turbulenceSpeedController);
@@ -253,7 +244,6 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulenceBiasYController);
   }
 
-  // Standard data extraction method - implement in all UI components
   getData() {
     const controllers = {};
     const targets = this.getControlTargets();
@@ -268,7 +258,6 @@ export class TurbulenceUi extends BaseUi {
     return { controllers };
   }
 
-  // Standard data application method - implement in all UI components
   setData(data) {
     // Handle "None" preset case specifically
     if (

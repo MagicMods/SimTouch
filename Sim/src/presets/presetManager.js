@@ -21,14 +21,14 @@ export class PresetManager {
       [PresetManager.TYPES.TURBULENCE]: new SimplePresetHandler(
         "savedTurbPresets",
         {
-          None: { controllers: {} },
+          None: { controllers: { "T-Strength": 0 } },
         },
         ["None"]
       ),
       [PresetManager.TYPES.VORONOI]: new SimplePresetHandler(
         "savedVoronoiPresets",
         {
-          None: { controllers: {} },
+          None: { controllers: { "V-Strength": 0 } },
         },
         ["None"]
       ),
@@ -49,9 +49,10 @@ export class PresetManager {
       [PresetManager.TYPES.RANDOMIZER]: new RandomizerPresetHandler(
         "savedRandomizerPresets",
         {
-          None: { controllers: {} },
+          None: { paramTargets: {} },
+          All: { paramTargets: {} }
         },
-        ["None"]
+        ["None", "All"]
       ),
 
       [PresetManager.TYPES.MASTER]: new MasterPresetHandler(
@@ -151,10 +152,18 @@ export class PresetManager {
   }
 
   _handleSave(presetType) {
+    console.log(`Save requested for ${presetType}`);
     const presetName = prompt(`Enter ${presetType} preset name:`);
+    console.log(`User entered name: ${presetName}`);
     if (!presetName) return;
 
-    if (this.savePreset(presetType, presetName)) {
+    const uiComponent = this.getUIComponent(presetType);
+    console.log(`UI component found:`, uiComponent ? "yes" : "no");
+
+    const success = this.savePreset(presetType, presetName);
+    console.log(`Save result: ${success}`);
+
+    if (success) {
       this._updateAllPresetDropdowns(presetType);
       alert(`Preset "${presetName}" saved.`);
     } else {
@@ -212,6 +221,16 @@ export class PresetManager {
     return this.handlers[type] || null;
   }
 
+  getPresetOptions(type) {
+    const handler = this.getHandler(type);
+    return handler ? handler.getPresetOptions() : [];
+  }
+
+  getSelectedPreset(type) {
+    const handler = this.getHandler(type);
+    return handler ? handler.getSelectedPreset() : null;
+  }
+
   getUIComponent(type) {
     switch (type) {
       case PresetManager.TYPES.PULSE:
@@ -231,16 +250,6 @@ export class PresetManager {
     }
   }
 
-  getPresetOptions(type) {
-    const handler = this.getHandler(type);
-    return handler ? handler.getPresetOptions() : [];
-  }
-
-  getSelectedPreset(type) {
-    const handler = this.getHandler(type);
-    return handler ? handler.getSelectedPreset() : null;
-  }
-
   savePreset(type, presetName) {
     const handler = this.handlers[type];
     if (!handler) return false;
@@ -249,7 +258,8 @@ export class PresetManager {
 
     if (type === PresetManager.TYPES.MASTER) {
       return handler.savePresetFromUI(presetName);
-    } else if (uiComponent) {
+    }
+    else if (uiComponent) {
       return handler.savePresetFromUI(presetName, uiComponent);
     }
 
@@ -268,7 +278,6 @@ export class PresetManager {
         return handler.applyPreset(presetName, uiComponent);
       }
     }
-
     return false;
   }
 

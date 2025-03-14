@@ -5,11 +5,9 @@ export class RandomizerUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
     this.presetManager = null;
-    this.settings = {
-      intensity: 0.5,
-      includeCheckboxes: false,
-      useExclusions: true,
-    };
+    this.intensity = 0.5;
+    this.includeCheckboxes = true;
+    this.useExclusions = true;
 
     this.exclusions = [
       "Time Step",
@@ -18,7 +16,7 @@ export class RandomizerUi extends BaseUi {
       "Color"
     ];
 
-    this.paramTargets = {};
+    this.controllers = {};
     this.gui.title("Randomizer");
     const titleElement = this.gui.domElement.querySelector(".title");
     titleElement.style.textAlign = "center";
@@ -26,7 +24,7 @@ export class RandomizerUi extends BaseUi {
     this.createRandomizeButton();
 
     this.intensityController = this.gui
-      .add(this.settings, "intensity", 0, 1)
+      .add(this, "intensity", 0, 1)
       .name("Intensity")
       .onChange(() => this.updateButtonStyle());
     this.paramFolder = this.gui.addFolder("Parameters");
@@ -50,7 +48,11 @@ export class RandomizerUi extends BaseUi {
 
   setModulatorManager(modulatorManager) {
     this.modulatorManager = modulatorManager;
-    console.log("RandomizerUi initialized with preset manager");
+    // console.log("RandomizerUi initialized with preset manager");
+
+    if (this.presetManager && Object.keys(this.controllers).length === 0) {
+      this.initParameterTargets();
+    }
   }
 
   createRandomizeButton() {
@@ -119,23 +121,9 @@ export class RandomizerUi extends BaseUi {
   }
 
   updateParameterAvailability() {
-    if (!this.paramTargets) return;
-
-    for (const targetName in this.paramTargets) {
+    for (const targetName in this.controllers) {
       const controller = this.findControllerByName(targetName);
-      if (!controller) continue;
-
-      // If exclusions are enabled and this parameter is in the exclusion list
-      if (this.exclusions.includes(targetName)) {
-        // Disable the checkbox
-        controller.disable();
-        // Uncheck it
-        this.paramTargets[targetName] = false;
-        controller.updateDisplay();
-      } else {
-        // Otherwise enable it
-        controller.enable();
-      }
+      controller.updateDisplay();
     }
   }
 
@@ -175,10 +163,10 @@ export class RandomizerUi extends BaseUi {
 
       for (const targetName of categorizedTargets[category]) {
         // All parameters start unchecked
-        this.paramTargets[targetName] = false;
+        this.controllers[targetName] = false;
 
         // Add controller to the folder
-        componentFolder.add(this.paramTargets, targetName).name(targetName);
+        componentFolder.add(this.controllers, targetName).name(targetName);
       }
     }
 
@@ -232,14 +220,14 @@ export class RandomizerUi extends BaseUi {
     let totalChanged = 0;
     const targets = this.modulatorManager.targets;
 
-    for (const targetName in this.paramTargets) {
+    for (const targetName in this.controllers) {
       // Skip if parameter isn't selected
-      if (!this.paramTargets[targetName]) {
+      if (!this.controllers[targetName]) {
         continue;
       }
 
       // In case the exclusions list changed after initialization
-      if (this.settings.useExclusions && this.exclusions.includes(targetName)) {
+      if (this.useExclusions && this.exclusions.includes(targetName)) {
         continue;
       }
 
@@ -255,10 +243,10 @@ export class RandomizerUi extends BaseUi {
           totalChanged++;
         }
       } else if (
-        this.settings.includeCheckboxes &&
+        this.includeCheckboxes &&
         this._isCheckbox(controller)
       ) {
-        if (Math.random() < this.settings.intensity) {
+        if (Math.random() < this.intensity) {
           const currentValue = controller.getValue();
           controller.setValue(!currentValue);
           totalChanged++;
@@ -301,7 +289,7 @@ export class RandomizerUi extends BaseUi {
       const range = max - min;
 
       // Calculate random offset based on intensity
-      const randomFactor = (Math.random() * 2 - 1) * this.settings.intensity;
+      const randomFactor = (Math.random() * 2 - 1) * this.intensity;
       let offset = range * randomFactor;
 
       // Apply offset to current value
@@ -337,7 +325,7 @@ export class RandomizerUi extends BaseUi {
 
   getButtonColor(hover = false) {
     // Color ranges from blue (low intensity) to red (high intensity)
-    const intensity = this.settings.intensity;
+    const intensity = this.intensity;
 
     // Base colors
     const lowColor = [65, 105, 225]; // Royal Blue
@@ -376,48 +364,63 @@ export class RandomizerUi extends BaseUi {
   }
 
   getControlTargets() {
-    // Return empty object as RandomizerUi doesn't provide targets to other components
-    return {};
-  }
+    // We need to return the actual controllers, not just the boolean values
+    const targets = {};
 
-  getData() {
-    return {
-      settings: { ...this.settings },
-      paramTargets: { ...this.paramTargets },
-      exclusions: [...this.exclusions]
-    };
+    // Search through all parameter folders to find controllers
+    for (const folder of this.paramFolder.folders) {
+      for (const controller of folder.controllers) {
+        // The property name will match the parameter name
+        const paramName = controller.property;
+
+        // Only include controllers for parameters in our controllers
+        if (this.controllers.hasOwnProperty(paramName)) {
+          targets[paramName] = controller;
+        }
+      }
+    }
+
+    return targets;
   }
 
   setData(data) {
-    if (!data) return false;
-
-    try {
-      // Apply settings if present
-      if (data.settings) {
-        Object.assign(this.settings, data.settings);
+    console.warn("RandomizerUI: Setting data", data);
+    if (!data || data === "None") {
+      for (const key in this.controllers) {
+        this.controllers[key] = false;
+        console.log(`Setting ${key} to false`);
       }
-
-      // Apply parameter targets if present
-      if (data.paramTargets) {
-        // Reset all current targets to true first
-        for (const key in this.paramTargets) {
-          this.paramTargets[key] = true;
-        }
-
-        // Apply the ones from the preset
-        Object.assign(this.paramTargets, data.paramTargets);
-      }
-
-      // Apply exclusions if present
-      if (data.exclusions) {
-        this.exclusions = [...data.exclusions];
-      }
-
-      // Update UI
-      this.updateControllerDisplays();
       this.updateParameterAvailability();
+      setTimeout(() => this.applyFlexLayoutToParameters(), 0);
+      return true;
+    }
 
-      // Reapply flex layout
+    if (data === "All") {
+      // Set all parameters to true
+      console.warn("Setting all parameters to true");
+      for (const key in this.controllers) {
+        this.controllers[key] = true;
+        console.log(`Setting ${key} to true`);
+      }
+      this.updateParameterAvailability();
+      setTimeout(() => this.applyFlexLayoutToParameters(), 0);
+      return true;
+    }
+
+    // Normal case handling with object containing controllers
+    try {
+      if (data.controllers) {
+        // Reset all to false first
+        for (const key in this.controllers) {
+          this.controllers[key] = false;
+        }
+        // Apply the ones from the preset
+        Object.assign(this.controllers, data.controllers);
+      } else {
+        console.warn("RandomizerUI: No controllers found in preset data");
+      }
+
+      this.updateParameterAvailability();
       setTimeout(() => this.applyFlexLayoutToParameters(), 0);
       return true;
     } catch (error) {
@@ -426,8 +429,13 @@ export class RandomizerUi extends BaseUi {
     }
   }
 
+  getData() {
+    return {
+      controllers: this.controllers
+    }
+  }
+
   updateControllerDisplays() {
-    // Helper function to safely update a controller's display
     const safeUpdateDisplay = (controller) => {
       if (controller && typeof controller.updateDisplay === "function") {
         try {
@@ -439,11 +447,13 @@ export class RandomizerUi extends BaseUi {
     };
 
     safeUpdateDisplay(this.intensityController);
-    safeUpdateDisplay(this.includeCheckboxesController);
-    safeUpdateDisplay(this.useExclusionsController);
-
-    // Update button color based on intensity
     this.updateButtonStyle();
+
+    for (const folder of this.paramFolder.folders) {
+      for (const controller of folder.controllers) {
+        safeUpdateDisplay(controller);
+      }
+    }
   }
 
   clearParameterUI() {
@@ -451,7 +461,7 @@ export class RandomizerUi extends BaseUi {
     while (this.paramFolder.folders.length > 0) {
       this.paramFolder.removeFolder(this.paramFolder.folders[0]);
     }
-    this.paramTargets = {};
+    this.controllers = {};
   }
 
   applyFlexLayoutToParameters() {
@@ -460,16 +470,13 @@ export class RandomizerUi extends BaseUi {
       const containerEl = folder.domElement.querySelector('.children');
       if (!containerEl) return;
 
-      // Add flex container class
       containerEl.classList.add('parameter-flex-container');
 
       const controllerEls = containerEl.querySelectorAll('.controller');
       controllerEls.forEach(el => {
         el.classList.add('parameter-checkbox-item');
       });
-
-      // Log for debugging
-      console.log(`Applied flex layout to folder ${folder.title}, found ${controllerEls.length} controllers`);
+      // console.log(`Applied flex layout to folder ${folder.title}, found ${controllerEls.length} controllers`);
     });
   }
 }

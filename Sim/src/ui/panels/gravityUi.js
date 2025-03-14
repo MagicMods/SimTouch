@@ -3,13 +3,8 @@ import { BaseUi } from "../baseUi.js";
 export class GravityUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-
-    // Initialize controls collection to store references
     this.controls = {};
-    // Change the GUI title
     this.gui.title("Gravity");
-
-    // Initialize folders and controllers
     this.initGravityControls();
   }
 
@@ -19,7 +14,7 @@ export class GravityUi extends BaseUi {
     if (!particles || !particles.gravity) return;
 
     // Set a fixed strength value for gravity
-    particles.gravity.setStrength(9.8); // Using the default value
+    particles.gravity.setStrength(10); // Using the default value
 
     // Add gravity direction controls
     const gravityDirection = {

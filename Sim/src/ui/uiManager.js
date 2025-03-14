@@ -87,33 +87,6 @@ export class UiManager {
     document.body.appendChild(statsContainer);
   }
 
-  dispose() {
-    // Dispose all UI components
-    this.paramUi.dispose();
-    this.particleUi.dispose();
-    this.gravityUi.dispose();
-    this.collisionUi.dispose();
-    this.boundaryUi.dispose();
-    this.restStateUi.dispose();
-    this.inputsUi.dispose();
-    this.debugUi.dispose();
-    this.turbulenceUi.dispose();
-    this.voronoiUi.dispose();
-    this.organicUi.dispose();
-    this.gridUi.dispose();
-    this.pulseModUi.dispose();
-    this.inputModUi.dispose();
-    this.networkUi.dispose();
-    this.presetUi.dispose();
-    this.randomizerUi.dispose();
-    if (this.stats) {
-      this.stats.dom.remove();
-      this.stats = null;
-    }
-  }
-
-
-
   initializeModulatorManager() {
     if (this.main.modulatorManager) {
       console.log("Initializing ModulatorManager with UI components");
@@ -160,6 +133,7 @@ export class UiManager {
       turbulenceUi: this.turbulenceUi,
       voronoiUi: this.voronoiUi,
       organicUi: this.organicUi,
+      randomizerUi: this.randomizerUi,
     };
 
     // Create the preset manager with all components
@@ -182,4 +156,31 @@ export class UiManager {
       this.inputModUi.update(deltaTime);
     }
   }
+
+
+  dispose() {
+    // Dispose all UI components
+    this.paramUi.dispose();
+    this.particleUi.dispose();
+    this.gravityUi.dispose();
+    this.collisionUi.dispose();
+    this.boundaryUi.dispose();
+    this.restStateUi.dispose();
+    this.inputsUi.dispose();
+    this.debugUi.dispose();
+    this.turbulenceUi.dispose();
+    this.voronoiUi.dispose();
+    this.organicUi.dispose();
+    this.gridUi.dispose();
+    this.pulseModUi.dispose();
+    this.inputModUi.dispose();
+    this.networkUi.dispose();
+    this.presetUi.dispose();
+    this.randomizerUi.dispose();
+    if (this.stats) {
+      this.stats.dom.remove();
+      this.stats = null;
+    }
+  }
+
 }

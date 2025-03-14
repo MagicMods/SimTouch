@@ -6,10 +6,10 @@ export class RandomizerPresetHandler extends PresetBaseHandler {
   }
 
   applyPreset(presetName, uiComponent) {
-    if (presetName === "None") {
+    if (presetName === "None" || presetName === "All") {
       if (uiComponent && typeof uiComponent.setData === "function") {
-        const success = uiComponent.setData("None");
-        if (success) this.selectedPreset = "None";
+        const success = uiComponent.setData(presetName);
+        if (success) this.selectedPreset = presetName;
         return success;
       }
       return false;
@@ -45,4 +45,27 @@ export class RandomizerPresetHandler extends PresetBaseHandler {
     const data = uiComponent.getData();
     return this.savePreset(presetName, data);
   }
+
+  deletePreset(presetName) {
+    if (this.protectedPresets.includes(presetName)) {
+      console.warn(`Cannot delete protected preset: ${presetName}`);
+      return false;
+    }
+
+    if (!this.presets[presetName]) {
+      console.warn(`Preset not found: ${presetName}`);
+      return false;
+    }
+
+    delete this.presets[presetName];
+    this.saveToStorage();
+
+    if (this.selectedPreset === presetName) {
+      this.selectedPreset = null;
+    }
+
+    return true;
+  }
 }
+
+
