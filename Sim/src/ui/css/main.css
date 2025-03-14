@@ -227,9 +227,12 @@ canvas {
     --border-radius: 4px;
     --slider-knob-width: 4px;
     --name-width: 33%;
-    --slider-input-min-width: 35px;
+    --slider-input-min-width: 25px;
+    --slider-input-width: 18%;
     --widget-border-radius: 0px;
     --color-input-width: 92%;
+    --spacing: 5px;
+    --padding:8px;
 }
 
 /* Turbulence toggle buttons */

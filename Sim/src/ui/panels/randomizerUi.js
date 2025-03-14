@@ -185,7 +185,7 @@ export class RandomizerUi extends BaseUi {
       if (/^G-(X|Y)$/i.test(targetName)) return "Gravity";
       if (/^C-(Repulse|Bounce|Damping)$/i.test(targetName)) return "Collision";
       if (/^B-(Repulse|Friction|Size|Bounce)$/i.test(targetName)) return "Boundary";
-      if (/^T-(Strength|Scale|Speed|Octaves|Persist|Rot|RotSpd|Pull|Decay|ScaleS|MinScale|MaxScale|X|Y)$/i.test(targetName)) return "Turbulence";
+      if (/^T-(-Pos|-ScaleField|-ScaleStrength|Scale|Speed|Octaves|Persist|Rot|RotSpd|Pull|Decay|ScaleS|MinScale|MaxScale|X|Y)$/i.test(targetName)) return "Turbulence";
       if (/^V-(Strength|EdgeWidth|Attract|Cell(Count|Speed)|Decay|ForceBlend)$/i.test(targetName)) return "Voronoi";
       if (/^F-(Radius|SurfaceT|Visco|Damp)$/i.test(targetName)) return "Organic Fluid";
       if (/^S-(Radius|Cohesion|Align|Separation|MaxSpeed)$/i.test(targetName)) return "Organic Swarm";

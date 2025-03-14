@@ -299,7 +299,7 @@ class MouseForces {
       }
 
       // Reduce gravity by 80% during mouse interaction
-      particleSystem.gravity.strength = this._originalGravity * 0.2;
+      particleSystem.gravity.strength = this._originalGravity * 0.1;
     }
 
     // Similarly handle turbulence if needed

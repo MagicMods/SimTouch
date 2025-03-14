@@ -13,44 +13,41 @@ export class GravityUi extends BaseUi {
     const particles = this.main.particleSystem;
     if (!particles || !particles.gravity) return;
 
-    // Set a fixed strength value for gravity
-    particles.gravity.setStrength(10); // Using the default value
+    // Create a reference object to track magnitude
+    this.magnitudeObj = { magnitude: 0 };
 
-    // Add gravity direction controls
+    // Add gravity direction controls that directly control magnitude
     const gravityDirection = {
-      x: particles.gravity.directionX,
-      y: particles.gravity.directionY,
+      x: 0,
+      y: 0,
     };
 
+    // Wider range for X and Y to control both direction and strength
     this.gravityXController = this.gui
-      .add(gravityDirection, "x", -1, 1, 0.1)
+      .add(gravityDirection, "x", -10, 10, 0.5)
       .name("G-X")
       .onChange((value) => {
-        // Special handling for zero gravity case
-        const bothZero = value === 0 && gravityDirection.y === 0;
-        if (bothZero) {
-          // This effectively disables gravity
-          particles.gravity.directionX = 0;
-          particles.gravity.directionY = 0;
-        } else {
-          particles.gravity.setDirection(value, gravityDirection.y);
-        }
+        // Don't normalize - use raw values
+        particles.gravity.setRawDirection(value, gravityDirection.y);
+        // Update magnitude display
+        this.magnitudeObj.magnitude = Math.sqrt(value * value + gravityDirection.y * gravityDirection.y).toFixed(2);
       });
 
     this.gravityYController = this.gui
-      .add(gravityDirection, "y", -1, 1, 0.1)
+      .add(gravityDirection, "y", -10, 10, 0.5)
       .name("G-Y")
       .onChange((value) => {
-        // Special handling for zero gravity case
-        const bothZero = gravityDirection.x === 0 && value === 0;
-        if (bothZero) {
-          // This effectively disables gravity
-          particles.gravity.directionX = 0;
-          particles.gravity.directionY = 0;
-        } else {
-          particles.gravity.setDirection(gravityDirection.x, value);
-        }
+        // Don't normalize - use raw values
+        particles.gravity.setRawDirection(gravityDirection.x, value);
+        // Update magnitude display
+        this.magnitudeObj.magnitude = Math.sqrt(gravityDirection.x * gravityDirection.x + value * value).toFixed(2);
       });
+
+    // Add magnitude display (read-only)
+    this.magnitudeController = this.gui.add(this.magnitudeObj, 'magnitude')
+      .name("Magnitude")
+      .listen()
+      .domElement.style.pointerEvents = 'none';
   }
   //#endregion
 

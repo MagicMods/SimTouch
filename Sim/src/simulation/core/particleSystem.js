@@ -19,7 +19,6 @@ class ParticleSystem {
     this.numParticles = particleCount;
     this.timeStep = timeStep;
     this.gravity = new GravityForces(gravity);
-    this.gravityFlip = false; // Add gravityFlip flag
     this.particleRadius = 0.02;
     this.renderScale = 2000;
 
