@@ -67,7 +67,7 @@ class VoronoiField {
       // Generate at least 2 cells
       const actualCellCount = Math.max(2, this.cellCount);
 
-      console.log(`Regenerating ${actualCellCount} Voronoi cells`);
+      // console.log(`Regenerating ${actualCellCount} Voronoi cells`);
 
       // Generate cells explicitly
       for (let i = 0; i < actualCellCount; i++) {
@@ -88,7 +88,7 @@ class VoronoiField {
         ]);
       }
 
-      console.log(`Generated ${this.voronoiCenters.length} voronoi cells`);
+      // console.log(`Generated ${this.voronoiCenters.length} voronoi cells`);
     } catch (error) {
       console.error("Error initializing Voronoi cells:", error);
       // Fallback to minimal setup to prevent crashes
@@ -220,9 +220,9 @@ class VoronoiField {
     const edgeDistance = isOnEdge
       ? Math.abs(perpDistance - vLength / 2)
       : Math.abs(
-          Math.sqrt((x - midX) * (x - midX) + (y - midY) * (y - midY)) -
-            vLength / 2
-        );
+        Math.sqrt((x - midX) * (x - midX) + (y - midY) * (y - midY)) -
+        vLength / 2
+      );
 
     // Calculate accurate gradient (direction to nearest Voronoi edge)
     // For true Voronoi edges, it should point perpendicular to the bisector

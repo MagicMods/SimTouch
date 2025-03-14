@@ -13,14 +13,14 @@ export class MasterPresetHandler extends PresetBaseHandler {
   }
 
   captureInitialState() {
-    console.log("Capturing initial UI state for Default preset");
+    // console.log("Capturing initial UI state for Default preset");
     this.initialState = {};
 
     try {
       Object.entries(this.uiComponents).forEach(([key, component]) => {
         try {
           this.initialState[key] = component.getData();
-          console.log(`Captured initial state from ${key}`);
+          // console.log(`Captured initial state from ${key}`);
         } catch (error) {
           console.error(`Error capturing initial state from ${key}:`, error);
         }
@@ -28,7 +28,7 @@ export class MasterPresetHandler extends PresetBaseHandler {
 
       this.presets["Default"] = this.initialState;
       this.saveToStorage();
-      console.log("Initial state captured and saved as Default preset");
+      // console.log("Initial state captured and saved as Default preset");
     } catch (error) {
       console.error("Error in captureInitialState:", error);
     }
@@ -105,7 +105,7 @@ export class MasterPresetHandler extends PresetBaseHandler {
 
   applyPreset(presetName) {
     if (presetName === "Default") {
-      console.log("Loading Default master preset");
+      // console.log("Loading Default master preset");
       return this.applyDefaultPreset();
     }
 
@@ -116,7 +116,7 @@ export class MasterPresetHandler extends PresetBaseHandler {
     }
 
     let success = true;
-    console.log(`Applying master preset: ${presetName}`);
+    // console.log(`Applying master preset: ${presetName}`);
 
     try {
       [
@@ -144,13 +144,13 @@ export class MasterPresetHandler extends PresetBaseHandler {
       });
 
       if (this.uiComponents.pulseModUi && preset.pulseModUi) {
-        console.log("Applying pulse modulation preset");
+        // console.log("Applying pulse modulation preset");
         const pulseSuccess = this.uiComponents.pulseModUi.setData(preset.pulseModUi);
         success = success && pulseSuccess;
       }
 
       if (this.uiComponents.inputModUi && preset.inputModUi) {
-        console.log("Applying input modulation preset");
+        // console.log("Applying input modulation preset");
         const inputSuccess = this.uiComponents.inputModUi.setData(preset.inputModUi);
         success = success && inputSuccess;
       }
@@ -161,7 +161,7 @@ export class MasterPresetHandler extends PresetBaseHandler {
 
     if (success) {
       this.selectedPreset = presetName;
-      console.log(`Successfully applied master preset: ${presetName}`);
+      // console.log(`Successfully applied master preset: ${presetName}`);
     }
 
     return success;
@@ -169,7 +169,7 @@ export class MasterPresetHandler extends PresetBaseHandler {
 
   savePresetFromUI(presetName) {
     if (!this.uiComponents) {
-      console.warn("No UI components registered");
+      // console.warn("No UI components registered");
       return false;
     }
 
@@ -179,7 +179,7 @@ export class MasterPresetHandler extends PresetBaseHandler {
         if (component && typeof component.getData === "function") {
           try {
             data[key] = component.getData();
-            console.log(`Saved data from ${key}`);
+            // console.log(`Saved data from ${key}`);
           } catch (error) {
             console.error(`Error getting data from ${key}:`, error);
           }

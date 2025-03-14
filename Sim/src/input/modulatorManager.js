@@ -86,7 +86,7 @@ export class ModulatorManager {
       Object.keys(this.targets).length === 0 &&
       Object.keys(this.uiComponents).length > 0
     ) {
-      console.log("ModulatorManager: No targets found, auto-registering");
+      // console.log("ModulatorManager: No targets found, auto-registering");
       this.registerTargetsFromUi();
     }
 
@@ -95,18 +95,18 @@ export class ModulatorManager {
 
   registerUiComponents(components = {}) {
     this.uiComponents = components;
-    console.log(
-      `ModulatorManager: Registered ${
-        Object.keys(components).length
-      } UI components`
-    );
+    // console.log(
+    //   `ModulatorManager: Registered ${
+    //     Object.keys(components).length
+    //   } UI components`
+    // );
 
     // Register targets from all components
     this.registerTargetsFromUi();
   }
 
   registerTargetsFromUi() {
-    console.log("ModulatorManager: Registering targets from UI components");
+    // console.log("ModulatorManager: Registering targets from UI components");
 
     try {
       // Clear existing targets to avoid duplicates
@@ -122,7 +122,7 @@ export class ModulatorManager {
       // Register targets from all components
       Object.entries(this.uiComponents).forEach(([name, component]) => {
         if (component && typeof component.getControlTargets === "function") {
-          console.log(`Registering targets from ${name}`);
+          // console.log(`Registering targets from ${name}`);
           const targets = component.getControlTargets();
           this.registerTargetsFromObject(targets);
         } else {
@@ -131,9 +131,9 @@ export class ModulatorManager {
       });
 
       const targetCount = Object.keys(this.targets).length;
-      console.log(`ModulatorManager: Registered ${targetCount} targets`);
+      // console.log(`ModulatorManager: Registered ${targetCount} targets`);
       if (targetCount > 0) {
-        console.log("Available targets:", Object.keys(this.targets));
+        // console.log("Available targets:", Object.keys(this.targets));
       } else {
         console.warn("No targets were registered!");
       }

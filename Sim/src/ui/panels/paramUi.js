@@ -25,7 +25,7 @@ export class ParamUi extends BaseUi {
       togglePause: () => {
         this.main.paused = !this.main.paused;
         this.pauseButtonController.name(this.main.paused ? "Resume" : "Pause");
-        console.log(`Simulation is ${this.main.paused ? "paused" : "running"}`);
+        // console.log(`Simulation is ${this.main.paused ? "paused" : "running"}`);
       },
     };
 
@@ -78,14 +78,14 @@ export class ParamUi extends BaseUi {
       this.fadeInSpeedController = this.gui
         .add(smoothing, "rateIn", 0.01, 0.5)
         .name("FadInSpd")
-        .onFinishChange(() => console.log("Smoothing in:", smoothing.rateIn));
+      // .onFinishChange(() => console.log("Smoothing in:", smoothing.rateIn));
 
       // Store as class property
       this.fadeOutSpeedController = this.gui
         .add(smoothing, "rateOut", 0.01, 0.5)
         .name("FadOutSpd")
-        .onFinishChange(() => console.log("Smoothing out:", smoothing.rateOut));
-
+      // .onFinishChange(() => console.log("Smoothing out:", smoothing.rateOut));
+      // 
       // Store as class property
       this.timeStepController = this.gui
         .add(particles, "timeStep", 0.001, 0.05, 0.001)
@@ -96,17 +96,17 @@ export class ParamUi extends BaseUi {
       this.timeScaleController = this.gui
         .add(particles, "timeScale", 0, 4, 0.1)
         .name("SimSpeed")
-        .onFinishChange((value) => {
-          console.log(`Animation speed: ${value}x`);
-        });
+      // .onFinishChange((value) => {
+      // console.log(`Animation speed: ${value}x`);
+      // });
 
       // Store as class property
       this.velocityDampingController = this.gui
         .add(particles, "velocityDamping", 0.8, 1, 0.01)
         .name("VeloDamp")
-        .onFinishChange((value) => {
-          console.log(`Velocity damping set to ${value}`);
-        });
+      // .onFinishChange((value) => {
+      //   console.log(`Velocity damping set to ${value}`);
+      // });
       this.velocityDampingController.domElement.style.marginTop = "10px";
     }
   }

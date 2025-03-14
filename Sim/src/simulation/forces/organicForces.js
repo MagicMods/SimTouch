@@ -21,11 +21,11 @@ class OrganicForces {
   calculateFluidForces(particle, neighbors, force, params) {
     const pixelParticle = this.toPixelSpace(particle);
     const maxForce = 0.5; // Limit maximum force magnitude
-    
-    if (this.debugEnabled && particle.y > 0.7) {
-      console.log(`Computing fluid forces for particle at y=${particle.y.toFixed(3)}`);
-      console.log(`Neighbor count: ${neighbors.length}`);
-    }
+
+    // if (this.debugEnabled && particle.y > 0.7) {
+    //   console.log(`Computing fluid forces for particle at y=${particle.y.toFixed(3)}`);
+    //   console.log(`Neighbor count: ${neighbors.length}`);
+    // }
 
     neighbors.forEach((n) => {
       const other = this.toPixelSpace(n.particle);
@@ -36,22 +36,22 @@ class OrganicForces {
       if (dist > 0 && dist < params.radius) {
         // Normalize distance to 0-1 range
         const t = 1.0 - (dist / params.radius);
-        
+
         // Surface tension with distance-based scaling
         const tensionStrength = t * t * params.surfaceTension;
         const tensionScale = this.forceScales.Fluid.surfaceTension * 0.1;
-        
+
         // Add repulsion at very close distances
         const repulsion = dist < params.radius * 0.2 ? 1.0 / (dist + 0.1) : 0;
-        
+
         // Calculate normalized direction
         const nx = dx / (dist + 0.0001);
         const ny = dy / (dist + 0.0001);
-        
+
         // Combine attraction and repulsion
         const fx = (tensionStrength * nx - repulsion * nx) * tensionScale;
         const fy = (tensionStrength * ny - repulsion * ny) * tensionScale;
-        
+
         // Apply viscosity
         const viscosityScale = this.forceScales.Fluid.viscosity * 0.05;
         const relVelX = (other.vx - pixelParticle.vx) * params.viscosity * viscosityScale;
@@ -61,9 +61,9 @@ class OrganicForces {
         force.x = Math.max(-maxForce, Math.min(maxForce, force.x + fx + relVelX));
         force.y = Math.max(-maxForce, Math.min(maxForce, force.y + fy + relVelY));
 
-        if (this.debugEnabled && particle.y > 0.7) {
-          console.log(`Applied force: (${force.x.toFixed(3)}, ${force.y.toFixed(3)})`);
-        }
+        // if (this.debugEnabled && particle.y > 0.7) {
+        //   console.log(`Applied force: (${force.x.toFixed(3)}, ${force.y.toFixed(3)})`);
+        // }
       }
     });
 
@@ -173,12 +173,12 @@ class OrganicForces {
       const separationForce = params.separation * 0.05;
 
       // Combine forces
-      force.x = (centerX * cohesionForce) + 
-                (avgVelX * alignmentForce) + 
-                (sepX * separationForce);
-      force.y = (centerY * cohesionForce) + 
-                (avgVelY * alignmentForce) + 
-                (sepY * separationForce);
+      force.x = (centerX * cohesionForce) +
+        (avgVelX * alignmentForce) +
+        (sepX * separationForce);
+      force.y = (centerY * cohesionForce) +
+        (avgVelY * alignmentForce) +
+        (sepY * separationForce);
 
       // Clamp force magnitude
       const magnitude = Math.hypot(force.x, force.y);
@@ -193,17 +193,17 @@ class OrganicForces {
       force.y *= this.forceDamping;
     }
 
-    if (this.debugEnabled) {
-      console.log(`Swarm force for particle at (${particle.x.toFixed(2)}, ${particle.y.toFixed(2)}):`, {
-        force: `(${force.x.toFixed(3)}, ${force.y.toFixed(3)})`,
-        neighbors: count,
-        params: {
-          cohesion: params.cohesion,
-          alignment: params.alignment,
-          separation: params.separation
-        }
-      });
-    }
+    // if (this.debugEnabled) {
+    //   console.log(`Swarm force for particle at (${particle.x.toFixed(2)}, ${particle.y.toFixed(2)}):`, {
+    //     force: `(${force.x.toFixed(3)}, ${force.y.toFixed(3)})`,
+    //     neighbors: count,
+    //     params: {
+    //       cohesion: params.cohesion,
+    //       alignment: params.alignment,
+    //       separation: params.separation
+    //     }
+    //   });
+    // }
   }
 
   calculateAutomataForces(particle, neighbors, force, params) {
@@ -211,12 +211,12 @@ class OrganicForces {
     const maxForce = 0.5;
     let totalForce = { x: 0, y: 0 };
 
-    if (this.debugEnabled) {
-      console.log(`Automata force calculation for particle ${particle.index}:`, {
-        state: particle.state,
-        neighbors: neighbors.length
-      });
-    }
+    // if (this.debugEnabled) {
+    //   console.log(`Automata force calculation for particle ${particle.index}:`, {
+    //     state: particle.state,
+    //     neighbors: neighbors.length
+    //   });
+    // }
 
     neighbors.forEach((n) => {
       const other = this.toPixelSpace(n.particle);
@@ -231,15 +231,15 @@ class OrganicForces {
 
         // Calculate state difference (-1 to 1 range)
         const stateDiff = Math.abs(n.particle.state - particle.state);
-        
+
         // Force calculation based on states
         let magnitude;
         if (stateDiff < params.threshold) {
           // Similar states attract
-          magnitude = params.attraction * (1 - dist/params.radius);
+          magnitude = params.attraction * (1 - dist / params.radius);
         } else {
           // Different states repel
-          magnitude = -params.repulsion * (1 - dist/params.radius);
+          magnitude = -params.repulsion * (1 - dist / params.radius);
         }
 
         // Apply force with distance falloff
@@ -261,9 +261,9 @@ class OrganicForces {
     force.x *= this.forceDamping;
     force.y *= this.forceDamping;
 
-    if (this.debugEnabled) {
-      console.log(`Applied automata force: (${force.x.toFixed(3)}, ${force.y.toFixed(3)})`);
-    }
+    // if (this.debugEnabled) {
+    //   console.log(`Applied automata force: (${force.x.toFixed(3)}, ${force.y.toFixed(3)})`);
+    // }
   }
 
   logForceCalculation(type, force, neighborCount) {

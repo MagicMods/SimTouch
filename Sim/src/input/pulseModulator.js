@@ -49,9 +49,9 @@ class PulseModulator {
       this.min = !isNaN(target.min) ? target.min : 0;
       this.max = !isNaN(target.max) ? target.max : 1;
 
-      console.log(
-        `Set target ${targetName} with range: ${this.min} - ${this.max}`
-      );
+      // console.log(
+      //   `Set target ${targetName} with range: ${this.min} - ${this.max}`
+      // );
     } else {
       console.log(
         `Set target ${targetName} keeping preset range: ${this.min} - ${this.max}`
@@ -65,9 +65,9 @@ class PulseModulator {
   resetToOriginal() {
     if (this.targetController && this.originalValue !== null) {
       try {
-        console.log(
-          `Resetting target ${this.targetName} to original value ${this.originalValue}`
-        );
+        // console.log(
+        //   `Resetting target ${this.targetName} to original value ${this.originalValue}`
+        // );
         this.targetController.setValue(this.originalValue);
         if (this.targetController.updateDisplay) {
           this.targetController.updateDisplay();

@@ -80,7 +80,7 @@ export class InputsUi extends BaseUi {
           mouseForces.externalMouseState.isPressed
         );
 
-        console.log("Button type changed to:", value);
+        // console.log("Button type changed to:", value);
       });
 
     // Update the UI when external data changes button type

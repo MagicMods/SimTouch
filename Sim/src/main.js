@@ -83,7 +83,7 @@ class Main {
       // Initialize audio analyzer if needed
       if (this.micForces && this.micForces.analyzer) {
         this.audioAnalyzer = this.micForces.analyzer;
-        console.log("Audio analyzer referenced from micForces");
+        // console.log("Audio analyzer referenced from micForces");
       }
 
       this.ui = new UiManager(this); // Use UiManager instead of UI
@@ -163,16 +163,16 @@ class Main {
         },
       });
 
-      // Log boundary info from ParticleSystem, if available
-      if (this.particleSystem.centerX && this.particleSystem.centerY) {
-        console.log("Boundary:", {
-          center: {
-            x: this.particleSystem.centerX.toFixed(3),
-            y: this.particleSystem.centerY.toFixed(3),
-          },
-          radius: this.particleSystem.radius.toFixed(3),
-        });
-      }
+      // // Log boundary info from ParticleSystem, if available
+      // if (this.particleSystem.centerX && this.particleSystem.centerY) {
+      //   console.log("Boundary:", {
+      //     center: {
+      //       x: this.particleSystem.centerX.toFixed(3),
+      //       y: this.particleSystem.centerY.toFixed(3),
+      //     },
+      //     radius: this.particleSystem.radius.toFixed(3),
+      //   });
+      // }
     });
   }
 }

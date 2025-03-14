@@ -14,7 +14,6 @@ export class TurbulenceUi extends BaseUi {
   initWithPresetManager(presetManager) {
     this.presetManager = presetManager;
 
-    // Create standardized preset controls for turbulence
     const turbulenceContainer = this.gui.domElement.querySelector(".children");
     if (turbulenceContainer) {
       this.presetControls = this.presetManager.createPresetControls(
@@ -39,6 +38,10 @@ export class TurbulenceUi extends BaseUi {
           );
         }
       }
+    }
+
+    if (this.main && this.main.turbulenceField && this.presetManager) {
+      this.presetManager.setTurbulenceField(this.main.turbulenceField);
     }
   }
 
@@ -90,132 +93,64 @@ export class TurbulenceUi extends BaseUi {
 
     // Add the button container to the GUI children
     const guiChildren = this.gui.domElement.querySelector(".children");
-    if (guiChildren) {
-      guiChildren.insertBefore(buttonContainer, guiChildren.firstChild);
-    }
+    if (guiChildren) { guiChildren.insertBefore(buttonContainer, guiChildren.firstChild); }
 
-    // Store references for later updating
     this.positionButton = posButton;
     this.fieldButton = fieldButton;
     this.scaleButton = scaleButton;
 
-    // Store these key controllers that will be targeted by modulators
-    this.turbulenceStrengthController = this.gui
-      .add(turbulence, "strength", 0, 10)
-      .name("T-Strength");
+    this.turbulenceStrengthController = this.gui.add(turbulence, "strength", 0, 10).name("T-Strength");
+    this.turbulenceScaleController = this.gui.add(turbulence, "scale", 0.1, 10).name("T-Scale");
+    this.turbulenceSpeedController = this.gui.add(turbulence, "speed", 0, 20).name("T-Speed");
 
-    this.turbulenceScaleController = this.gui
-      .add(turbulence, "scale", 0.1, 10)
-      .name("T-Scale");
-
-    this.turbulenceSpeedController = this.gui
-      .add(turbulence, "speed", 0, 20)
-      .name("T-Speed");
-
-    // Add min/max scale controls
     const scaleRangeFolder = this.gui.addFolder("Scale Range");
-
-    this.turbulenceScaleStrengthController = scaleRangeFolder
-      .add(turbulence, "scaleStrength", 0, 1)
-      .name("T-ScaleS");
-
-    this.turbulenceMinScaleController = scaleRangeFolder
-      .add(turbulence, "minScale", 0.1, 1.0)
-      .name("T-MinScale");
-
-    this.turbulenceMaxScaleController = scaleRangeFolder
-      .add(turbulence, "maxScale", 1.0, 4.0)
-      .name("T-MaxScale");
+    this.turbulenceScaleStrengthController = scaleRangeFolder.add(turbulence, "scaleStrength", 0, 1).name("T-ScaleS");
+    this.turbulenceMinScaleController = scaleRangeFolder.add(turbulence, "minScale", 0.1, 1.0).name("T-MinScale");
+    this.turbulenceMaxScaleController = scaleRangeFolder.add(turbulence, "maxScale", 1.0, 4.0).name("T-MaxScale");
 
     const advancedFolder = this.gui.addFolder("Advanced");
-
-    this.turbulenceOctavesController = advancedFolder
-      .add(turbulence, "octaves", 1, 8, 1)
-      .name("T-Octaves");
-
-    this.turbulencePersistenceController = advancedFolder
-      .add(turbulence, "persistence", 0, 1)
-      .name("T-Persist");
-
-    this.turbulenceRotationController = advancedFolder
-      .add(turbulence, "rotation", 0, Math.PI * 2)
-      .name("T-Rot");
-
-    this.turbulenceRotationSpeedController = advancedFolder
-      .add(turbulence, "rotationSpeed", 0, 1)
-      .name("T-RotSpd");
-
-    this.turbulenceInwardFactorController = advancedFolder
-      .add(turbulence, "inwardFactor", 0, 5)
-      .name("T-Pull");
-
-    this.turbulenceDecayRateController = advancedFolder
-      .add(turbulence, "decayRate", 0.9, 1)
-      .name("T-Decay");
+    this.turbulenceOctavesController = advancedFolder.add(turbulence, "octaves", 1, 8, 1).name("T-Octaves");
+    this.turbulencePersistenceController = advancedFolder.add(turbulence, "persistence", 0, 1).name("T-Persist");
+    this.turbulenceRotationController = advancedFolder.add(turbulence, "rotation", 0, Math.PI * 2).name("T-Rot");
+    this.turbulenceRotationSpeedController = advancedFolder.add(turbulence, "rotationSpeed", 0, 1).name("T-RotSpd");
+    this.turbulenceInwardFactorController = advancedFolder.add(turbulence, "inwardFactor", 0, 5).name("T-Pull");
+    this.turbulenceDecayRateController = advancedFolder.add(turbulence, "decayRate", 0.9, 1).name("T-Decay");
 
     const biasFolder = this.gui.addFolder("Direction Bias");
-
-    this.turbulenceBiasXController = biasFolder
-      .add(turbulence.directionBias, "0", -1, 1)
-      .name("T-X");
-
-    this.turbulenceBiasYController = biasFolder
-      .add(turbulence.directionBias, "1", -1, 1)
-      .name("T-Y");
+    this.turbulenceBiasXController = biasFolder.add(turbulence.directionBias, "0", -1, 1).name("T-X");
+    this.turbulenceBiasYController = biasFolder.add(turbulence.directionBias, "1", -1, 1).name("T-Y");
   }
 
   getControlTargets() {
     const targets = {};
 
-    if (this.turbulenceStrengthController)
-      targets["T-Strength"] = this.turbulenceStrengthController;
-    if (this.turbulenceScaleController)
-      targets["T-Scale"] = this.turbulenceScaleController;
-    if (this.turbulenceSpeedController)
-      targets["T-Speed"] = this.turbulenceSpeedController;
-    if (this.turbulenceScaleStrengthController)
-      targets["T-ScaleS"] = this.turbulenceScaleStrengthController;
-    if (this.turbulenceMinScaleController)
-      targets["T-MinScale"] = this.turbulenceMinScaleController;
-    if (this.turbulenceMaxScaleController)
-      targets["T-MaxScale"] = this.turbulenceMaxScaleController;
+    if (this.turbulenceStrengthController) targets["T-Strength"] = this.turbulenceStrengthController;
+    if (this.turbulenceScaleController) targets["T-Scale"] = this.turbulenceScaleController;
+    if (this.turbulenceSpeedController) targets["T-Speed"] = this.turbulenceSpeedController;
+    if (this.turbulenceScaleStrengthController) targets["T-ScaleS"] = this.turbulenceScaleStrengthController;
+    if (this.turbulenceMinScaleController) targets["T-MinScale"] = this.turbulenceMinScaleController;
+    if (this.turbulenceMaxScaleController) targets["T-MaxScale"] = this.turbulenceMaxScaleController;
 
-    if (this.turbulenceOctavesController)
-      targets["T-Octaves"] = this.turbulenceOctavesController;
-    if (this.turbulencePersistenceController)
-      targets["T-Persist"] = this.turbulencePersistenceController;
-    if (this.turbulenceRotationController)
-      targets["T-Rot"] = this.turbulenceRotationController;
-    if (this.turbulenceRotationSpeedController)
-      targets["T-RotSpd"] = this.turbulenceRotationSpeedController;
-    if (this.turbulenceInwardFactorController)
-      targets["T-Pull"] = this.turbulenceInwardFactorController;
-    if (this.turbulenceDecayRateController)
-      targets["T-Decay"] = this.turbulenceDecayRateController;
+    if (this.turbulenceOctavesController) targets["T-Octaves"] = this.turbulenceOctavesController;
+    if (this.turbulencePersistenceController) targets["T-Persist"] = this.turbulencePersistenceController;
+    if (this.turbulenceRotationController) targets["T-Rot"] = this.turbulenceRotationController;
+    if (this.turbulenceRotationSpeedController) targets["T-RotSpd"] = this.turbulenceRotationSpeedController;
+    if (this.turbulenceInwardFactorController) targets["T-Pull"] = this.turbulenceInwardFactorController;
+    if (this.turbulenceDecayRateController) targets["T-Decay"] = this.turbulenceDecayRateController;
 
-    if (this.turbulenceBiasXController)
-      targets["T-X"] = this.turbulenceBiasXController;
-    if (this.turbulenceBiasYController)
-      targets["T-Y"] = this.turbulenceBiasYController;
+    if (this.turbulenceBiasXController) targets["T-X"] = this.turbulenceBiasXController;
+    if (this.turbulenceBiasYController) targets["T-Y"] = this.turbulenceBiasYController;
 
     return targets;
   }
 
   updateControllerDisplays() {
+
     const turbulence = this.main.turbulenceField;
     if (turbulence) {
-      if (this.positionButton) {
-        this.positionButton.classList.toggle(
-          "active",
-          turbulence.affectPosition
-        );
-      }
-      if (this.fieldButton) {
-        this.fieldButton.classList.toggle("active", turbulence.scaleField);
-      }
-      if (this.scaleButton) {
-        this.scaleButton.classList.toggle("active", turbulence.affectScale);
-      }
+      if (this.positionButton) { this.positionButton.classList.toggle("active", turbulence.affectPosition); }
+      if (this.fieldButton) { this.fieldButton.classList.toggle("active", turbulence.scaleField); }
+      if (this.scaleButton) { this.scaleButton.classList.toggle("active", turbulence.affectScale); }
     }
 
     const safeUpdateDisplay = (controller) => {
@@ -259,15 +194,10 @@ export class TurbulenceUi extends BaseUi {
   }
 
   setData(data) {
-    // Handle "None" preset case specifically
-    if (
-      !data ||
-      data === "None" ||
-      (data.controllers && Object.keys(data.controllers).length === 0)
-    ) {
+
+    if (!data || data === "None") {
       // console.log("Resetting turbulence to None preset");
 
-      // Set strength to 0 to disable turbulence
       this.turbulenceStrengthController.setValue(0);
       this.turbulenceScaleStrengthController.setValue(0);
       this.turbulenceBiasXController.setValue(0);
@@ -295,10 +225,8 @@ export class TurbulenceUi extends BaseUi {
         }
       }
 
-      // Update UI display
       this.updateControllerDisplays();
 
-      // Update the field directly if needed
       if (this.main && this.main.turbulenceField) {
         this.main.turbulenceField.setParameters(targets);
       }

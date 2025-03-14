@@ -80,7 +80,7 @@ class TurbulenceField {
         phaseY: Math.random() * 6.28,
       });
     }
-    console.log(`Regenerated noise bases for ${this._octaves} octaves`);
+    // console.log(`Regenerated noise bases for ${this._octaves} octaves`);
   }
 
   // Improved noise function with domain warping

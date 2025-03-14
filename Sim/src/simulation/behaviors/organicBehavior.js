@@ -100,9 +100,9 @@ class OrganicBehavior {
       particles.push(particle);
 
       // Debug particles in top region
-      if (this.debugEnabled && particle.y > 0.7) {
-        console.log(`Particle ${i / 2} at y=${particle.y.toFixed(3)}`);
-      }
+      // if (this.debugEnabled && particle.y > 0.7) {
+      //   console.log(`Particle ${i / 2} at y=${particle.y.toFixed(3)}`);
+      // }
     }
 
     const neighbors = this.neighborSearch.findNeighbors(
@@ -110,9 +110,9 @@ class OrganicBehavior {
       currentParams.radius
     );
 
-    if (this.debugEnabled) {
-      console.log(`Total neighbors found: ${neighbors.size}`);
-    }
+    // if (this.debugEnabled) {
+    //   console.log(`Total neighbors found: ${neighbors.size}`);
+    // }
 
     // Handle Automata state updates
     if (this.currentBehavior === "Automata") {
@@ -141,13 +141,13 @@ class OrganicBehavior {
     }
 
     forces.forEach((force, idx) => {
-      if (this.debugEnabled && particles[idx].y > 0.7) {
-        console.log(
-          `Force at y=${particles[idx].y.toFixed(3)}: (${force.x.toFixed(
-            3
-          )}, ${force.y.toFixed(3)})`
-        );
-      }
+      // if (this.debugEnabled && particles[idx].y > 0.7) {
+      //   console.log(
+      //     `Force at y=${particles[idx].y.toFixed(3)}: (${force.x.toFixed(
+      //       3
+      //     )}, ${force.y.toFixed(3)})`
+      //   );
+      // }
       particleSystem.velocitiesX[idx] += force.x * dt;
       particleSystem.velocitiesY[idx] += force.y * dt;
     });

@@ -136,7 +136,7 @@ class ParticleSystem {
       }
     }
 
-    console.log(`Initialized ${particleIndex} particles in spherical pattern`);
+    // console.log(`Initialized ${particleIndex} particles in spherical pattern`);
   }
 
   reinitializeParticles(newCount = null) {

@@ -89,7 +89,7 @@ export class UiManager {
 
   initializeModulatorManager() {
     if (this.main.modulatorManager) {
-      console.log("Initializing ModulatorManager with UI components");
+      // console.log("Initializing ModulatorManager with UI components");
 
       // Pass ModulatorManager to UI components
       this.pulseModUi.setModulatorManager(this.main.modulatorManager);

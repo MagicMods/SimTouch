@@ -21,14 +21,14 @@ export class PresetManager {
       [PresetManager.TYPES.TURBULENCE]: new SimplePresetHandler(
         "savedTurbPresets",
         {
-          None: { controllers: { "T-Strength": 0 } },
+          None: { controllers: {} },
         },
         ["None"]
       ),
       [PresetManager.TYPES.VORONOI]: new SimplePresetHandler(
         "savedVoronoiPresets",
         {
-          None: { controllers: { "V-Strength": 0 } },
+          None: { controllers: {} },
         },
         ["None"]
       ),

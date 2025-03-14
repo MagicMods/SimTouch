@@ -33,10 +33,10 @@ export class ExternalInputConnector {
 
   handleConnectionChange(data) {
     if (data.type === "connect" && this.autoEnableOnConnection) {
-      console.log("WebSocket connected - enabling external input");
+      // console.log("WebSocket connected - enabling external input");
       this.enable();
     } else if (data.type === "disconnect") {
-      console.log("WebSocket disconnected - disabling external input");
+      // console.log("WebSocket disconnected - disabling external input");
       this.disable();
     }
   }

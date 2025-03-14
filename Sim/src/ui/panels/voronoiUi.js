@@ -6,13 +6,8 @@ export class VoronoiUi extends BaseUi {
     super(main, container);
     this.presetManager = null;
     this.presetControls = null;
-
-    // Change the GUI title
     this.gui.title("Voronoi Field");
-
     this.initVoronoiControls();
-
-    // Open GUI by default
     this.gui.open();
   }
 
@@ -60,7 +55,7 @@ export class VoronoiUi extends BaseUi {
   }
 
   updateControllerDisplays() {
-    // Helper function to safely update controllers
+
     const safeUpdateDisplay = (controller) => {
       if (controller && typeof controller.updateDisplay === "function") {
         try {
@@ -98,17 +93,17 @@ export class VoronoiUi extends BaseUi {
     console.log("VoronoiUi.setData called with:", data);
 
     // Handle "None" preset case
-    if (!data || data === "None" || data.name === "None") {
+    if (!data || data === "None") {
       console.log("Resetting voronoi to default");
 
       // Properly reset using controllers
-      if (this.voronoiStrengthController) this.voronoiStrengthController.setValue(0);
-      if (this.voronoiSpeedController) this.voronoiSpeedController.setValue(0);
-      if (this.voronoiEdgeWidthController) this.voronoiEdgeWidthController.setValue(10);
-      if (this.voronoiAttractionController) this.voronoiAttractionController.setValue(0);
-      if (this.voronoiCellCountController) this.voronoiCellCountController.setValue(3);
-      if (this.main && this.main.voronoiField) this.main.voronoiField.regenerateCells();
-      if (this.voronoiDecayRateController) this.voronoiDecayRateController.setValue(0.95);
+      this.voronoiStrengthController.setValue(0);
+      // this.voronoiSpeedController.setValue(0);
+      // this.voronoiEdgeWidthController.setValue(0);
+      // this.voronoiAttractionController.setValue(0);
+      // this.voronoiCellCountController.setValue(3);
+      // this.main.voronoiField.regenerateCells();
+      // this.voronoiDecayRateController.setValue(0.95);
 
       this.updateControllerDisplays();
       return true;
@@ -122,12 +117,12 @@ export class VoronoiUi extends BaseUi {
       }
 
       const controllerMap = {
-        "Voronoi V-Strength": this.voronoiStrengthController,
-        "Cell Speed": this.voronoiSpeedController,
-        "Edge Width": this.voronoiEdgeWidthController,
-        "Attraction": this.voronoiAttractionController,
-        "Cell Count": this.voronoiCellCountController,
-        "VDecay": this.voronoiDecayRateController,
+        "V-Strength": this.voronoiStrengthController,
+        "V-CellSpeed": this.voronoiSpeedController,
+        "V-EdgeWidth": this.voronoiEdgeWidthController,
+        "V-Attract": this.voronoiAttractionController,
+        "V-CellCount": this.voronoiCellCountController,
+        "V-Decay": this.voronoiDecayRateController,
       };
 
       // Apply values from preset to controllers

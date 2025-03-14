@@ -26,7 +26,7 @@ export class ModulatorPresetHandler extends PresetBaseHandler {
       return false;
     }
 
-    console.log(`Applying preset ${presetName}:`, JSON.stringify(preset));
+    // console.log(`Applying preset ${presetName}:`, JSON.stringify(preset));
 
     if (typeof uiComponent.setData === "function") {
       const success = uiComponent.setData(preset);
