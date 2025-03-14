@@ -191,7 +191,7 @@ export class RandomizerUi extends BaseUi {
       if (/^S-(Radius|Cohesion|Align|Separation|MaxSpeed)$/i.test(targetName)) return "Organic Swarm";
       if (/^A-(Radius|Repulse|Attract|Threshold)$/i.test(targetName)) return "Organic Automata";
       if (/^RS-(VeloTH|PosTH)$/i.test(targetName)) return "Rest State";
-      if (/^(O-Force)$/i.test(targetName)) return "Organic";
+      if (/^O-(Force|Radius)$/i.test(targetName)) return "Organic";
       return "Other";
     };
 

@@ -88,11 +88,31 @@ export class OrganicUi extends BaseUi {
 
     forceTypes.forEach((type) => { if (behavior.forceScales[type]) { behavior.forceScales[type].base = defaultForce; } });
 
-    this.globalForceController = this.gui.add(this.globalForceControl, "force", 0, 5).name("Force")
+    this.globalForceController = this.gui.add(this.globalForceControl, "force", 0, 5).name("O-Force")
       .onChange((value) => {
         forceTypes.forEach((type) => {
           if (behavior.forceScales[type]) {
             behavior.forceScales[type].base = value;
+          }
+        });
+      });
+
+    // Add global radius control
+    const defaultRadius = 30;
+    this.globalRadiusControl = { radius: defaultRadius };
+
+    // Update all behavior types to use the global radius
+    forceTypes.forEach((type) => {
+      if (behavior.params && behavior.params[type]) {
+        behavior.params[type].radius = defaultRadius;
+      }
+    });
+
+    this.globalRadiusController = this.gui.add(this.globalRadiusControl, "radius", 5, 100).name("O-Radius")
+      .onChange((value) => {
+        forceTypes.forEach((type) => {
+          if (behavior.params && behavior.params[type]) {
+            behavior.params[type].radius = value;
           }
         });
       });
@@ -103,7 +123,6 @@ export class OrganicUi extends BaseUi {
     if (!particles?.organicBehavior?.params?.Fluid) return;
 
     const fluid = particles.organicBehavior.params.Fluid;
-    this.fluidRadiusController = this.fluidFolder.add(fluid, "radius", 5, 50).name("F-Radius");
     this.fluidSurfaceTensionController = this.fluidFolder.add(fluid, "surfaceTension", 0, 1).name("F-SurfaceT");
     this.fluidViscosityController = this.fluidFolder.add(fluid, "viscosity", 0, 1).name("F-Visco");
     this.fluidDampingController = this.fluidFolder.add(fluid, "damping", 0, 1).name("F-Damp");
@@ -114,7 +133,6 @@ export class OrganicUi extends BaseUi {
     if (!particles?.organicBehavior?.params?.Swarm) return;
 
     const swarm = particles.organicBehavior.params.Swarm;
-    this.swarmRadiusController = this.swarmFolder.add(swarm, "radius", 5, 50).name("S-Radius");
     this.swarmCohesionController = this.swarmFolder.add(swarm, "cohesion", 0, 2).name("S-Cohesion");
     this.swarmAlignmentController = this.swarmFolder.add(swarm, "alignment", 0, 2).name("S-Align");
     this.swarmSeparationController = this.swarmFolder.add(swarm, "separation", 0, 2).name("S-Separation");
@@ -126,7 +144,6 @@ export class OrganicUi extends BaseUi {
     if (!particles?.organicBehavior?.params?.Automata) return;
 
     const automata = particles.organicBehavior.params.Automata;
-    this.automataRadiusController = this.automataFolder.add(automata, "radius", 5, 200).name("A-Radius");
     this.automataRepulsionController = this.automataFolder.add(automata, "repulsion", 0, 2).name("A-Repulse");
     this.automataAttractionController = this.automataFolder.add(automata, "attraction", 0, 10).name("A-Attract");
     this.automataThresholdController = this.automataFolder.add(automata, "threshold", 0, 1).name("A-Threshold");
@@ -178,19 +195,17 @@ export class OrganicUi extends BaseUi {
     const targets = {};
 
     if (this.globalForceController) targets["O-Force"] = this.globalForceController;
+    if (this.globalRadiusController) targets["O-Radius"] = this.globalRadiusController;
 
-    if (this.fluidRadiusController) targets["F-Radius"] = this.fluidRadiusController;
     if (this.fluidSurfaceTensionController) targets["F-SurfaceT"] = this.fluidSurfaceTensionController;
     if (this.fluidViscosityController) targets["F-Visco"] = this.fluidViscosityController;
     if (this.fluidDampingController) targets["F-Damp"] = this.fluidDampingController;
 
-    if (this.swarmRadiusController) targets["S-Radius"] = this.swarmRadiusController;
     if (this.swarmCohesionController) targets["S-Cohesion"] = this.swarmCohesionController;
     if (this.swarmAlignmentController) targets["S-Align"] = this.swarmAlignmentController;
     if (this.swarmSeparationController) targets["S-Separation"] = this.swarmSeparationController;
     if (this.swarmMaxSpeedController) targets["S-MaxSpeed"] = this.swarmMaxSpeedController;
 
-    if (this.automataRadiusController) targets["A-Radius"] = this.automataRadiusController;
     if (this.automataRepulsionController) targets["A-Repulse"] = this.automataRepulsionController;
     if (this.automataAttractionController) targets["A-Attract"] = this.automataAttractionController;
     if (this.automataThresholdController) targets["A-Threshold"] = this.automataThresholdController;
@@ -241,21 +256,18 @@ export class OrganicUi extends BaseUi {
       }
     };
 
-
     safeUpdateDisplay(this.globalForceController);
+    safeUpdateDisplay(this.globalRadiusController);
 
-    safeUpdateDisplay(this.fluidRadiusController);
     safeUpdateDisplay(this.fluidSurfaceTensionController);
     safeUpdateDisplay(this.fluidViscosityController);
     safeUpdateDisplay(this.fluidDampingController);
 
-    safeUpdateDisplay(this.swarmRadiusController);
     safeUpdateDisplay(this.swarmCohesionController);
     safeUpdateDisplay(this.swarmAlignmentController);
     safeUpdateDisplay(this.swarmSeparationController);
     safeUpdateDisplay(this.swarmMaxSpeedController);
 
-    safeUpdateDisplay(this.automataRadiusController);
     safeUpdateDisplay(this.automataRepulsionController);
     safeUpdateDisplay(this.automataAttractionController);
     safeUpdateDisplay(this.automataThresholdController);
