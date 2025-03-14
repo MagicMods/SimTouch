@@ -5,7 +5,7 @@ export class RandomizerUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
     this.presetManager = null;
-    this.intensity = 0.5;
+    this.intensity = 0.1;
     this.includeCheckboxes = true;
     this.useExclusions = true;
 
@@ -29,21 +29,17 @@ export class RandomizerUi extends BaseUi {
       .onChange(() => this.updateButtonStyle());
     this.paramFolder = this.gui.addFolder("Parameters");
 
-
     this.paramFolder.close();
     this.gui.open(false);
   }
 
   initWithPresetManager(presetManager) {
     this.presetManager = presetManager;
-
-
     this.presetControls = this.presetManager.createPresetControls(
       PresetManager.TYPES.RANDOMIZER,
       this.paramFolder.domElement,
       { insertFirst: true }
     );
-
   }
 
   setModulatorManager(modulatorManager) {

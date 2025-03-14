@@ -50,7 +50,7 @@ export class ModulatorPresetHandler extends PresetBaseHandler {
       console.warn("UI component doesn't implement getModulatorsData() or getData()");
       return false;
     }
-
+    this.selectedPreset = presetName;
     return this.savePreset(presetName, data);
   }
 }

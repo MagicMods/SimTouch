@@ -43,6 +43,7 @@ export class RandomizerPresetHandler extends PresetBaseHandler {
     }
 
     const data = uiComponent.getData();
+    this.selectedPreset = presetName;
     return this.savePreset(presetName, data);
   }
 
