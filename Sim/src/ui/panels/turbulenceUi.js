@@ -84,6 +84,15 @@ export class TurbulenceUi extends BaseUi {
     scaleButton.addEventListener("click", () => {
       turbulence.affectScale = !turbulence.affectScale;
       scaleButton.classList.toggle("active", turbulence.affectScale);
+
+      // Toggle Scale Range folder visibility
+      if (this.scaleRangeFolder) {
+        if (turbulence.affectScale) {
+          this.scaleRangeFolder.open();
+        } else {
+          this.scaleRangeFolder.close();
+        }
+      }
     });
 
     // Add buttons to container
@@ -104,6 +113,15 @@ export class TurbulenceUi extends BaseUi {
     this.turbulenceSpeedController = this.gui.add(turbulence, "speed", 0, 20).name("T-Speed");
 
     const scaleRangeFolder = this.gui.addFolder("Scale Range");
+    this.scaleRangeFolder = scaleRangeFolder; // Store reference
+
+    // Initial state of folder based on affectScale
+    if (turbulence.affectScale) {
+      scaleRangeFolder.open();
+    } else {
+      scaleRangeFolder.close();
+    }
+
     this.turbulenceScaleStrengthController = scaleRangeFolder.add(turbulence, "scaleStrength", 0, 1).name("T-ScaleS");
     this.turbulenceMinScaleController = scaleRangeFolder.add(turbulence, "minScale", 0.1, 1.0).name("T-MinScale");
     this.turbulenceMaxScaleController = scaleRangeFolder.add(turbulence, "maxScale", 1.0, 4.0).name("T-MaxScale");
@@ -156,6 +174,15 @@ export class TurbulenceUi extends BaseUi {
           turbulence.affectScale = Boolean(value);
           if (this.scaleButton) {
             this.scaleButton.classList.toggle("active", turbulence.affectScale);
+          }
+
+          // Update folder visibility when value changes
+          if (this.scaleRangeFolder) {
+            if (turbulence.affectScale) {
+              this.scaleRangeFolder.open();
+            } else {
+              this.scaleRangeFolder.close();
+            }
           }
         }
       };
