@@ -328,8 +328,15 @@ export class ModulatorManager {
     const dt = deltaTime || (now - this.lastUpdateTime) / 1000; // seconds
     this.lastUpdateTime = now;
 
-    // Increment global time
-    this.globalTime += deltaTime;
+    // Increment global time using dt
+    this.globalTime += dt;
+
+    // Ensure all sync'd modulators have latest master frequency before updating
+    this.getModulatorsByType("pulse").forEach((mod) => {
+      if (mod.sync) {
+        mod.frequency = this.masterFrequency;
+      }
+    });
 
     for (const modulator of this.modulators) {
       if (modulator.enabled) {

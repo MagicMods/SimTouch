@@ -359,19 +359,7 @@ export class PulseModulationUi extends BaseUi {
 
   update() {
     if (!this.modulatorManager) return;
-
-    // Update sync state with master frequency
-    this.modulatorManager.modulators
-      .filter((modulator) => modulator.type === "pulse" && modulator.sync)
-      .forEach((modulator) => {
-        modulator.frequency = this.masterFrequency;
-      });
-
-    // Let the manager handle the actual updates
     this.modulatorManager.update();
-
-    // Update displays
-    // this.updateControllerDisplays();
   }
 
   updateControllerDisplays() {
