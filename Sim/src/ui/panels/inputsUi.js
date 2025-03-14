@@ -166,14 +166,6 @@ export class InputsUi extends BaseUi {
         emuForces.setAccelGravityMultiplier(value);
       });
 
-    // Add a toggle for 360-degree gravity
-    this.emuInputFolder
-      .add({ enabled: true }, "enabled")
-      .name("360° Gravity")
-      .onChange((value) => {
-        // This is already the default behavior, but adding a UI control for clarity
-      });
-
     // Calibration button
     const calibrateButton = {
       calibrate: () => {

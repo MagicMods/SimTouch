@@ -3,6 +3,9 @@ export class EmuRenderer {
     this.emuForces = emuForces;
     this.visible = false;
 
+    // Track if we're currently dragging
+    this.isDragging = false;
+
     // Create overlay canvas
     this.canvas = document.createElement("canvas");
     this.canvas.className = "emu-visualization";
@@ -20,9 +23,144 @@ export class EmuRenderer {
     // Add to container
     container.appendChild(this.canvas);
 
+    // Setup mouse interaction
+    this.setupMouseInteraction();
+
     // Animation frame
     this.animationFrameId = null;
     this.startAnimation();
+  }
+
+  setupMouseInteraction() {
+    // Mouse events
+    this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
+    document.addEventListener('mousemove', this.handleMouseMove.bind(this));
+    document.addEventListener('mouseup', this.handleMouseUp.bind(this));
+
+    // Touch events for mobile support - add {passive: false} option
+    this.canvas.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      this.handleMouseDown({
+        clientX: e.touches[0].clientX,
+        clientY: e.touches[0].clientY
+      });
+    }, { passive: false }); // Explicitly mark as non-passive
+
+    document.addEventListener('touchmove', (e) => {
+      if (this.isDragging) {
+        e.preventDefault();
+        this.handleMouseMove({
+          clientX: e.touches[0].clientX,
+          clientY: e.touches[0].clientY
+        });
+      }
+    }, { passive: false }); // Explicitly mark as non-passive
+
+    document.addEventListener('touchend', this.handleMouseUp.bind(this));
+  }
+
+  handleMouseDown(e) {
+    if (!this.visible || !this.emuForces?.enabled) return;
+
+    // Get canvas-relative coordinates
+    const rect = this.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Check if click is inside the circle (using center coordinates from drawAccelerationIndicator)
+    const centerX = this.canvas.width / 2;  // 75
+    const centerY = this.canvas.height / 2; // 75
+    const radius = 45; // Same as used in drawAccelerationIndicator
+
+    const distFromCenter = Math.sqrt(
+      Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2)
+    );
+
+    if (distFromCenter <= radius) {
+      this.isDragging = true;
+
+      // Set manual override flag to stop EMU data updates
+      if (this.emuForces && typeof this.emuForces.setManualOverride === 'function') {
+        this.emuForces.setManualOverride(true);
+      }
+
+      this.updateFromMouse(x, y);
+    }
+  }
+
+  handleMouseMove(e) {
+    if (!this.isDragging) return;
+
+    const rect = this.canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    this.updateFromMouse(x, y);
+  }
+
+  handleMouseUp() {
+    if (this.isDragging) {
+      this.isDragging = false;
+
+      // Clear manual override flag when done dragging
+      if (this.emuForces && typeof this.emuForces.setManualOverride === 'function') {
+        this.emuForces.setManualOverride(false);
+      }
+    }
+  }
+
+  updateFromMouse(x, y) {
+    const centerX = this.canvas.width / 2;
+    const centerY = this.canvas.height / 2;
+    const radius = 45;
+
+    // Convert canvas coordinates to normalized values (-radius to +radius)
+    const normX = (x - centerX) / (radius / 10); // Scale by 10 to match acceleration scale
+    const normY = (centerY - y) / (radius / 10); // Invert Y for correct direction
+
+    // Clamp values to prevent extremes
+    const clampedX = Math.max(-10, Math.min(10, normX));
+    const clampedY = Math.max(-10, Math.min(10, normY));
+
+    // Update EMU data (with axes swapped as per existing visualization)
+    this.emuForces.emuData.accelX = clampedY;
+    this.emuForces.emuData.accelY = clampedX;
+
+    // Apply to gravity immediately
+    this.emuForces.apply(0.016); // Apply with default timestep
+
+    // Update gravity UI
+    this.updateGravityUI();
+  }
+
+  updateGravityUI() {
+    // Find all gravity UI instances
+    const gravityControllers = document.querySelectorAll('.dg .c input[type="text"]');
+
+    // Loop through them to find G-X and G-Y controllers
+    gravityControllers.forEach(input => {
+      const label = input.parentElement?.parentElement?.querySelector('.property-name');
+      if (label) {
+        const name = label.textContent?.trim();
+
+        if (name === 'G-X' && this.emuForces.gravity) {
+          // Update the X input value
+          input.value = this.emuForces.gravity.directionX.toFixed(1);
+
+          // Trigger change event to update internal state
+          const event = new Event('change', { bubbles: true });
+          input.dispatchEvent(event);
+        }
+        else if (name === 'G-Y' && this.emuForces.gravity) {
+          // Update the Y input value
+          input.value = this.emuForces.gravity.directionY.toFixed(1);
+
+          // Trigger change event to update internal state
+          const event = new Event('change', { bubbles: true });
+          input.dispatchEvent(event);
+        }
+      }
+    });
   }
 
   startAnimation() {

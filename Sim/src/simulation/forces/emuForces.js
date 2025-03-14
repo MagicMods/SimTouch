@@ -8,6 +8,9 @@ export class EmuForces {
     this.emuData = new EmuData();
     this.enabled = false;
 
+    // Add flag for manual override
+    this.manualOverride = false;
+
     // Force multiplier
     this.accelGravityMultiplier = 1.0;
   }
@@ -22,16 +25,31 @@ export class EmuForces {
     return this;
   }
 
+  // Set manual override flag when mouse input is active
+  setManualOverride(override) {
+    this.manualOverride = override;
+    return this;
+  }
+
   handleEmuData(accelX, accelY, accelZ) {
-    this.emuData.update(accelX, accelY, accelZ);
+    // Only update if not in manual override mode
+    if (!this.manualOverride) {
+      this.emuData.update(accelX, accelY, accelZ);
+    }
   }
 
   handleBinaryData(buffer) {
-    this.emuData.updateFromBinary(buffer);
+    // Only update if not in manual override mode
+    if (!this.manualOverride) {
+      this.emuData.updateFromBinary(buffer);
+    }
   }
 
   handleStringData(dataString) {
-    this.emuData.updateFromString(dataString);
+    // Only update if not in manual override mode
+    if (!this.manualOverride) {
+      this.emuData.updateFromString(dataString);
+    }
   }
 
   setAccelGravityMultiplier(value) {
@@ -52,26 +70,15 @@ export class EmuForces {
   apply(dt) {
     if (!this.enabled) return;
 
-    // Apply accelerometer data to gravity vector in 360 degrees
-    if (this.gravity && this.gravity.setDirection) {
-      // Fix: Invert the X axis to match visualization
+    // Apply accelerometer data to gravity using raw values (not normalized)
+    if (this.gravity && this.gravity.setRawDirection) {
       // We're using accelY for X and accelX for Y (after 90° rotation)
-      const gravityX = this.emuData.accelY * this.accelGravityMultiplier; // REMOVED the negative sign
-      const gravityY = this.emuData.accelX * this.accelGravityMultiplier; // Keep this positive
-      const gravityZ = -this.emuData.accelZ * this.accelGravityMultiplier; // Z stays the same
+      const gravityX = this.emuData.accelY * this.accelGravityMultiplier;
+      const gravityY = this.emuData.accelX * this.accelGravityMultiplier;
+      const gravityZ = -this.emuData.accelZ * this.accelGravityMultiplier;
 
-      // Normalize the vector to ensure consistent gravity strength
-      const length = Math.sqrt(
-        gravityX * gravityX + gravityY * gravityY + gravityZ * gravityZ
-      );
-      if (length > 0) {
-        const normalizedX = gravityX / length;
-        const normalizedY = gravityY / length;
-        const normalizedZ = gravityZ / length;
-
-        // Set the gravity direction using the normalized vector
-        this.gravity.setDirection(normalizedX, normalizedY, normalizedZ);
-      }
+      // Use setRawDirection to control both direction and magnitude
+      this.gravity.setRawDirection(gravityX, gravityY, gravityZ);
     }
   }
 }

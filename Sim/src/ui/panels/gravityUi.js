@@ -5,7 +5,17 @@ export class GravityUi extends BaseUi {
     super(main, container);
     this.controls = {};
     this.gui.title("Gravity");
+
+    // Add class to identify gravity controllers
+    this.gui.domElement.classList.add('gravity-controller');
+
+    // Store reference to this instance on the DOM element
+    this.gui.domElement.__controller = this;
+
     this.initGravityControls();
+
+    // Set up periodic UI refresh (every 100ms)
+    this.refreshInterval = setInterval(() => this.updateFromGravity(), 100);
   }
 
   //#region Physics
@@ -17,30 +27,34 @@ export class GravityUi extends BaseUi {
     this.magnitudeObj = { magnitude: 0 };
 
     // Add gravity direction controls that directly control magnitude
-    const gravityDirection = {
+    this.gravityDirection = {
       x: 0,
       y: 0,
     };
 
     // Wider range for X and Y to control both direction and strength
     this.gravityXController = this.gui
-      .add(gravityDirection, "x", -10, 10, 0.5)
+      .add(this.gravityDirection, "x", -10, 10, 0.5)
       .name("G-X")
       .onChange((value) => {
         // Don't normalize - use raw values
-        particles.gravity.setRawDirection(value, gravityDirection.y);
+        particles.gravity.setRawDirection(value, this.gravityDirection.y);
         // Update magnitude display
-        this.magnitudeObj.magnitude = Math.sqrt(value * value + gravityDirection.y * gravityDirection.y).toFixed(2);
+        this.magnitudeObj.magnitude = Math.sqrt(
+          value * value + this.gravityDirection.y * this.gravityDirection.y
+        ).toFixed(2);
       });
 
     this.gravityYController = this.gui
-      .add(gravityDirection, "y", -10, 10, 0.5)
+      .add(this.gravityDirection, "y", -10, 10, 0.5)
       .name("G-Y")
       .onChange((value) => {
         // Don't normalize - use raw values
-        particles.gravity.setRawDirection(gravityDirection.x, value);
+        particles.gravity.setRawDirection(this.gravityDirection.x, value);
         // Update magnitude display
-        this.magnitudeObj.magnitude = Math.sqrt(gravityDirection.x * gravityDirection.x + value * value).toFixed(2);
+        this.magnitudeObj.magnitude = Math.sqrt(
+          this.gravityDirection.x * this.gravityDirection.x + value * value
+        ).toFixed(2);
       });
 
     // Add magnitude display (read-only)
@@ -48,8 +62,26 @@ export class GravityUi extends BaseUi {
       .name("Magnitude")
       .listen()
       .domElement.style.pointerEvents = 'none';
+
+    // Initialize with current gravity values
+    this.updateFromGravity();
   }
-  //#endregion
+
+  // New method to update UI from gravity values
+  updateFromGravity() {
+    const gravity = this.main.particleSystem?.gravity;
+    if (!gravity) return;
+
+    // Update the local direction values
+    this.gravityDirection.x = gravity.directionX;
+    this.gravityDirection.y = gravity.directionY;
+
+    // Update the magnitude display
+    this.magnitudeObj.magnitude = gravity.strength.toFixed(2);
+
+    // Update the controller UI elements
+    this.updateControllerDisplays();
+  }
 
   getControlTargets() {
     const targets = {};
@@ -117,5 +149,13 @@ export class GravityUi extends BaseUi {
     safeUpdateDisplay(this.gravityXController);
     safeUpdateDisplay(this.gravityYController);
     safeUpdateDisplay(this.gravityEnabledController);
+  }
+
+  // Clean up when UI is destroyed
+  destroy() {
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+    }
+    super.destroy && super.destroy();
   }
 }
