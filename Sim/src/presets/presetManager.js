@@ -8,6 +8,7 @@ export class PresetManager {
     MASTER: "master",
     TURBULENCE: "turb",
     VORONOI: "voronoi",
+    ORGANIC: "organic",
     PULSE: "pulse",
     INPUT: "input",
     RANDOMIZER: "randomizer",
@@ -21,14 +22,21 @@ export class PresetManager {
       [PresetManager.TYPES.TURBULENCE]: new SimplePresetHandler(
         "savedTurbPresets",
         {
-          None: { controllers: {} },
+          Default: { controllers: {} },
         },
         ["None"]
       ),
       [PresetManager.TYPES.VORONOI]: new SimplePresetHandler(
         "savedVoronoiPresets",
         {
-          None: { controllers: {} },
+          Default: { controllers: {} },
+        },
+        ["None"]
+      ),
+      [PresetManager.TYPES.ORGANIC]: new SimplePresetHandler(
+        "savedOrganicPresets",
+        {
+          Default: { controllers: {} },
         },
         ["None"]
       ),
@@ -241,6 +249,8 @@ export class PresetManager {
         return this.uiComponents.turbulenceUi;
       case PresetManager.TYPES.VORONOI:
         return this.uiComponents.voronoiUi;
+      case PresetManager.TYPES.ORGANIC:
+        return this.uiComponents.organicUi;
       case PresetManager.TYPES.RANDOMIZER:
         return this.uiComponents.randomizerUi;
       case PresetManager.TYPES.MASTER:

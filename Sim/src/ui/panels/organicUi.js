@@ -1,12 +1,46 @@
 import { BaseUi } from "../baseUi.js";
 import { Behaviors } from "../../simulation/behaviors/organicBehavior.js";
-
+import { PresetManager } from "../../presets/presetManager.js";
 export class OrganicUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
     this.gui.title("Organic Behavior");
     this.initOrganicControls();
     this.gui.open();
+  }
+
+  initWithPresetManager(presetManager) {
+    this.presetManager = presetManager;
+
+    const organicContainer = this.gui.domElement.querySelector(".children");
+    if (organicContainer) {
+      this.presetControls = this.presetManager.createPresetControls(
+        PresetManager.TYPES.ORGANIC,
+        organicContainer,
+        { insertFirst: true }
+      );
+
+      // Add the button controls after the preset controls
+      if (this.buttonContainer) {
+        const presetElement =
+          organicContainer.querySelector(".preset-controls");
+        if (presetElement && presetElement.nextSibling) {
+          organicContainer.insertBefore(
+            this.buttonContainer,
+            presetElement.nextSibling
+          );
+        } else {
+          organicContainer.insertBefore(
+            this.buttonContainer,
+            organicContainer.firstChild.nextSibling
+          );
+        }
+      }
+    }
+
+    // if (this.main && this.main.turbulenceField && this.presetManager) {
+    //   this.presetManager.setTurbulenceField(this.main.turbulenceField);
+    // }
   }
 
   initOrganicControls() {
@@ -23,9 +57,9 @@ export class OrganicUi extends BaseUi {
       .onChange((value) => {
         console.log("Behavior changed to:", value);
         particles.organicBehavior.currentBehavior = value;
-        if (this.main.ui?.organicUi?.updateOrganicFolders) {
-          this.main.ui.organicUi.updateOrganicFolders(value);
-        }
+
+        this.updateOrganicFolders(value);
+
         this.behaviorTypeController.updateDisplay();
       });
 
@@ -111,9 +145,9 @@ export class OrganicUi extends BaseUi {
       });
     };
 
-    enableControllers(this.fluidFolder, fluidEnabled);
-    enableControllers(this.swarmFolder, swarmEnabled);
-    enableControllers(this.automataFolder, automataEnabled);
+    // enableControllers(this.fluidFolder, fluidEnabled);
+    // enableControllers(this.swarmFolder, swarmEnabled);
+    // enableControllers(this.automataFolder, automataEnabled);
 
     if (fluidEnabled) {
       this.fluidFolder.open();
@@ -127,10 +161,11 @@ export class OrganicUi extends BaseUi {
       this.fluidFolder.close();
       this.swarmFolder.close();
       this.automataFolder.open();
-    } else {
-      this.fluidFolder.close();
-      this.swarmFolder.close();
-      this.automataFolder.close();
+    }
+    else {
+      this.fluidFolder.open();
+      this.swarmFolder.open();
+      this.automataFolder.open();
     }
 
     // Update the organic behavior mode

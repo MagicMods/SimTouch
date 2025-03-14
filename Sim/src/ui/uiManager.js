@@ -68,9 +68,6 @@ export class UiManager {
     this.allTargets = {};
 
     this.initializePresetManager();
-
-    // Initialize RandomizerUi
-
   }
 
   createContainer(position) {
@@ -141,6 +138,7 @@ export class UiManager {
 
     this.turbulenceUi.initWithPresetManager(this.presetManager);
     this.voronoiUi.initWithPresetManager(this.presetManager);
+    this.organicUi.initWithPresetManager(this.presetManager);
 
     this.pulseModUi.initWithPresetManager(this.presetManager);
     this.inputModUi.initWithPresetManager(this.presetManager);
