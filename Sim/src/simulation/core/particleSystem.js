@@ -33,6 +33,10 @@ class ParticleSystem {
     this.velocityThreshold = 0.001;
     this.positionThreshold = 0.0001;
 
+    // Add rest state properties for fluid simulation
+    this.restDensity = 1.0;
+    this.gasConstant = 2.0;
+
     // Animation control
     this.timeScale = 1.0;
 
@@ -71,10 +75,12 @@ class ParticleSystem {
 
     // Then create FLIP system with boundary reference
     this.fluid = new FluidFLIP({
-      // gridSize: 32,
-      // picFlipRatio: this.picFlipRatio,
-      // dt: timeStep,
+      gridSize: 32,
+      picFlipRatio: this.picFlipRatio,
+      dt: timeStep,
       boundary: this.boundary,
+      restDensity: this.restDensity,
+      gasConstant: this.gasConstant
     });
 
     // Initialize mouse forces
@@ -166,37 +172,23 @@ class ParticleSystem {
   step() {
     const dt = this.timeStep * this.timeScale;
 
-    // Allow mouse forces to neutralize other forces if active
-    if (this.mouseForces.isActive) {
-      this.mouseForces.neutralizeOtherForces(this);
-    } else {
-      this.mouseForces.restoreOtherForces(this);
-    }
-
-    // Update the time for field generators
-    if (this.turbulence) {
-      this.turbulence.update(dt);
-    }
-
-    if (this.voronoi) {
-      this.voronoi.update(dt);
-    }
-
-    // 1. Apply external forces (including turbulence)
+    // Update forces etc.
     this.applyExternalForces(dt);
 
-    // 2. Apply organic behavior forces
+    // Organic behavior
     if (this.organicBehavior.currentBehavior !== "None") {
       this.organicBehavior.updateParticles(this, dt);
     }
 
-    // 3. Update positions and handle collisions
-    this.collisionSystem.update(
-      this.particles,
-      this.velocitiesX,
-      this.velocitiesY
-    );
+    // FLIP simulation
+    if (this.picFlipRatio > 0) {
+      this.updateFLIP(dt);
+    }
+
+    // Update positions - this will handle ALL boundary collisions
     this.updateParticles(dt);
+
+    // REMOVE handleBoundaries() call - it's causing the vibration!
   }
 
   applyExternalForces(dt) {
@@ -279,24 +271,11 @@ class ParticleSystem {
       if (this.checkRestState(i, dt)) continue;
 
       // 3. Update position
-      const position = [this.particles[i * 2], this.particles[i * 2 + 1]];
-      const velocity = [this.velocitiesX[i], this.velocitiesY[i]];
-
-      // Apply position update
-      position[0] += velocity[0] * dt;
-      position[1] += velocity[1] * dt;
-
-      // 4. Resolve boundary collision - REMOVE THIS FIRST CALL
-      // this.boundary.resolveCollision(position, velocity);
-
-      // 5. Store updated values
-      this.particles[i * 2] = position[0];
-      this.particles[i * 2 + 1] = position[1];
-      this.velocitiesX[i] = velocity[0];
-      this.velocitiesY[i] = velocity[1];
+      this.particles[i * 2] += this.velocitiesX[i] * dt;
+      this.particles[i * 2 + 1] += this.velocitiesY[i] * dt;
     }
 
-    // Only use the new collision system
+    // Use collision system ONCE - not twice
     this.collisionSystem.update(
       this.particles,
       this.velocitiesX,
@@ -345,23 +324,34 @@ class ParticleSystem {
 
   updateFLIP(dt) {
     if (this.picFlipRatio > 0) {
-      // Only do FLIP steps if ratio > 0
-      // Transfer particle velocities to grid
-      this.fluid.transferToGrid(
-        this.particles,
-        this.velocitiesX,
-        this.velocitiesY
-      );
+      // Update parameters first
+      this.fluid.setParameters(this.restDensity, this.gasConstant);
 
-      // Solve incompressibility
-      this.fluid.solveIncompressibility();
+      try {
+        // Transfer particle velocities to grid
+        this.fluid.transferToGrid(
+          this.particles,
+          this.velocitiesX,
+          this.velocitiesY
+        );
 
-      // Update particle velocities with PIC/FLIP mix
-      this.fluid.transferToParticles(
-        this.particles,
-        this.velocitiesX,
-        this.velocitiesY
-      );
+        // Solve incompressibility
+        this.fluid.solveIncompressibility();
+
+        // Transfer back to particles with PIC/FLIP mix
+        if (typeof this.fluid.transferToParticles === 'function') {
+          this.fluid.transferToParticles(
+            this.particles,
+            this.velocitiesX,
+            this.velocitiesY
+          );
+        }
+      } catch (error) {
+        console.error("FLIP update failed:", error);
+
+        // Fall back to non-FLIP mode if an error occurs
+        this.picFlipRatio = 0;
+      }
     }
   }
 

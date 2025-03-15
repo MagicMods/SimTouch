@@ -1,11 +1,13 @@
 class FluidFLIP {
   constructor({
     gridSize = 32,
-    picFlipRatio = 0.97, // Default should be high for FLIP
+    picFlipRatio = 0.95,
     dt = 1 / 60,
     iterations = 20,
-    overRelaxation = 1.9,
+    overRelaxation = 1.5,  // LOWER THIS to 1.5 for stability
     boundary = null,
+    restDensity = 1.0,
+    gasConstant = 2.0,
     ...params
   } = {}) {
     // Core parameters
@@ -23,6 +25,8 @@ class FluidFLIP {
     // Add update listener
     this.boundary.addUpdateCallback(() => {
       this.radius = this.boundary.getRadius();
+      this.centerX = this.boundary.centerX;
+      this.centerY = this.boundary.centerY;
     });
 
     // Add missing scale factors
@@ -60,6 +64,19 @@ class FluidFLIP {
 
     // Initialize solid cells for circular boundary
     this.initializeBoundary();
+
+    // Add new parameters
+    this.restDensity = restDensity;
+    this.gasConstant = gasConstant;
+    this.pressureMultiplier = this.gasConstant / (this.restDensity * this.restDensity);
+
+    // Add these properties
+    this.centerX = this.boundary.centerX;
+    this.centerY = this.boundary.centerY;
+    this.boundaryMargin = 0.05; // Default value
+
+    // Add this - critical for stability
+    this.velocityDampingFLIP = 0.98;
   }
 
   worldToGrid(x, y) {
@@ -173,124 +190,58 @@ class FluidFLIP {
   }
 
   transferToParticles(particles, velocitiesX, velocitiesY) {
-    // Transfer grid velocities back to particles using PIC/FLIP blend
-    for (let i = 0; i < particles.length; i += 2) {
-      const x = particles[i];
-      const y = particles[i + 1];
-      const pIndex = i / 2;
+    const n = this.gridSize;
+    const h = this.h;
 
-      // Get grid cell
-      const cellX = Math.floor(x * this.gridSize);
-      const cellY = Math.floor(y * this.gridSize);
+    for (let i = 0; i < particles.length / 2; i++) {
+      const x = particles[i * 2];
+      const y = particles[i * 2 + 1];
 
-      // Compute weights
-      const fx = x * this.gridSize - cellX;
-      const fy = y * this.gridSize - cellY;
+      // Ensure coordinates are within grid bounds
+      if (x < 0 || x > 1 || y < 0 || y > 1) continue;
 
-      // Interpolate current and old velocities
-      let picVelX = 0,
-        picVelY = 0;
-      let oldVelX = 0,
-        oldVelY = 0;
+      // Get grid cell containing particle
+      const gx = Math.min(Math.max(Math.floor(x * n), 0), n - 1);
+      const gy = Math.min(Math.max(Math.floor(y * n), 0), n - 1);
 
-      // Sample from U grid
-      for (let ix = 0; ix <= 1; ix++) {
-        for (let iy = 0; iy <= 1; iy++) {
-          const wx = ix === 0 ? 1 - fx : fx;
-          const wy = iy === 0 ? 1 - fy : fy;
-          const weight = wx * wy;
+      // Use interpolation instead of cell-center for better results
+      const [gridVx, gridVy] = this.interpolateVelocity(x, y);
 
-          const idx = cellY * (this.gridSize + 1) + cellX + ix;
-          if (idx < this.u.length) {
-            picVelX += this.u[idx] * weight;
-            oldVelX += this.oldU[idx] * weight;
-          }
-        }
-      }
-
-      // Sample from V grid
-      for (let ix = 0; ix <= 1; ix++) {
-        for (let iy = 0; iy <= 1; iy++) {
-          const wx = ix === 0 ? 1 - fx : fx;
-          const wy = iy === 0 ? 1 - fy : fy;
-          const weight = wx * wy;
-
-          const idx = (cellY + iy) * this.gridSize + cellX;
-          if (idx < this.v.length) {
-            picVelY += this.v[idx] * weight;
-            oldVelY += this.oldV[idx] * weight;
-          }
-        }
-      }
-
-      // Convert grid velocities to world space
-      picVelX *= this.gridToWorldScale;
-      picVelY *= this.gridToWorldScale;
-      oldVelX *= this.gridToWorldScale;
-      oldVelY *= this.gridToWorldScale;
-
-      // FLIP update
-      const flipVelX = velocitiesX[pIndex] + (picVelX - oldVelX);
-      const flipVelY = velocitiesY[pIndex] + (picVelY - oldVelY);
-
-      // Corrected PIC/FLIP blend
-      // FLIP = 1.0, pure FLIP behavior
-      // FLIP = 0.0, pure PIC behavior
-      velocitiesX[pIndex] =
-        picVelX * (1.0 - this.picFlipRatio) + // PIC contribution
-        flipVelX * this.picFlipRatio; // FLIP contribution
-
-      velocitiesY[pIndex] =
-        picVelY * (1.0 - this.picFlipRatio) + // PIC contribution
-        flipVelY * this.picFlipRatio; // FLIP contribution
-
-      // Apply damping
-      velocitiesX[pIndex] *= this.velocityDamping;
-      velocitiesY[pIndex] *= this.velocityDamping;
+      // PIC/FLIP mixing with proper damping
+      velocitiesX[i] = this.picFlipRatio * gridVx +
+        (1 - this.picFlipRatio) * velocitiesX[i] * this.velocityDampingFLIP;
+      velocitiesY[i] = this.picFlipRatio * gridVy +
+        (1 - this.picFlipRatio) * velocitiesY[i] * this.velocityDampingFLIP;
     }
 
-    // Modified boundary handling
-    for (let i = 0; i < particles.length; i += 2) {
-      const pIndex = i / 2;
-      const x = particles[i];
-      const y = particles[i + 1];
+    // After transferring velocities, apply rest density effect
+    // Higher rest density = more space between particles
+    const restEffect = Math.sqrt(this.restDensity);
+    const repulsionStrength = 0.005 * restEffect;
 
-      const dx = x - this.centerX;
-      const dy = y - this.centerY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
+    // Apply mild repulsion based on rest density
+    for (let i = 0; i < particles.length / 2; i++) {
+      const x = particles[i * 2];
+      const y = particles[i * 2 + 1];
 
-      // Only apply boundary correction when very close to boundary
-      if (dist > this.radius * (1.0 - this.boundaryMargin)) {
-        // CORRECT
-        const nx = dx / dist;
-        const ny = dy / dist;
+      for (let j = i + 1; j < particles.length / 2; j++) {
+        const x2 = particles[j * 2];
+        const y2 = particles[j * 2 + 1];
 
-        const vx = velocitiesX[pIndex];
-        const vy = velocitiesY[pIndex];
+        const dx = x - x2;
+        const dy = y - y2;
+        const distSq = dx * dx + dy * dy;
 
-        // Only remove radial component if moving outward
-        const radialVel = vx * nx + vy * ny;
-        if (radialVel > 0) {
-          // Remove radial component and apply soft damping
-          velocitiesX[pIndex] = (vx - radialVel * nx) * this.boundaryDamping;
-          velocitiesY[pIndex] = (vy - radialVel * ny) * this.boundaryDamping;
-        }
-      }
+        if (distSq < 0.01) {
+          const dist = Math.sqrt(distSq);
+          const nx = dx / dist;
+          const ny = dy / dist;
 
-      // Additional boundary handling for particles very close to or outside boundary
-      if (dist > this.radius * 0.95) {
-        const nx = dx / dist;
-        const ny = dy / dist;
-        const radialVel = velocitiesX[pIndex] * nx + velocitiesY[pIndex] * ny;
-
-        if (radialVel > 0) {
-          // Remove outward velocity and add small inward push
-          const inwardFactor =
-            (0.1 * (dist - this.radius * 0.95)) / (this.radius * 0.05);
-          velocitiesX[pIndex] =
-            (velocitiesX[pIndex] - radialVel * nx) * 0.8 - nx * inwardFactor;
-          velocitiesY[pIndex] =
-            (velocitiesY[pIndex] - radialVel * ny) * 0.8 - ny * inwardFactor;
+          // Apply repulsion proportional to rest density
+          velocitiesX[i] += nx * repulsionStrength;
+          velocitiesY[i] += ny * repulsionStrength;
+          velocitiesX[j] -= nx * repulsionStrength;
+          velocitiesY[j] -= ny * repulsionStrength;
         }
       }
     }
@@ -323,66 +274,55 @@ class FluidFLIP {
     // Add boundary conditions before pressure solve
     this.applyBoundaryConditions();
 
-    // Solve pressure Poisson equation
+    // Solve pressure Poisson equation ONCE
     this.pressure.fill(0);
-    const scale = (this.dt / (h * h)) * this.gridToWorldScale;
 
-    // Modified pressure solve near boundaries
+    // Compute base scale and density effect
+    const baseScale = this.dt / (this.h * this.h);
+    const densityScaling = Math.pow(this.gasConstant, 1.5) / this.restDensity;
+    const pressureCoefficient = baseScale * Math.min(Math.max(densityScaling * 0.5, 0.1), 10.0);
+
+    console.log(`Effective pressure coefficient: ${pressureCoefficient}`);
+
+    // ONE pressure solve loop
     for (let iter = 0; iter < this.iterations; iter++) {
       for (let i = 0; i < n; i++) {
         for (let j = 0; j < n; j++) {
           if (this.solid[i * n + j]) continue;
 
           const center = i * n + j;
-          const wx = (j + 0.5) * this.gridToWorldScale;
-          const wy = (i + 0.5) * this.gridToWorldScale;
-          const dx = wx - this.centerX;
-          const dy = wy - this.centerY;
-          const dist = Math.sqrt(dx * dx + dy * dy);
-
-          // Reduce pressure influence near boundary
-          const boundaryFactor =
-            dist > this.radius * 0.9
-              ? Math.pow(
-                  1 - (dist - this.radius * 0.9) / (this.radius * 0.1),
-                  2
-                )
-              : 1.0;
-
-          const left = i * n + (j - 1);
           const right = i * n + (j + 1);
-          const bottom = (i - 1) * n + j;
+          const left = i * n + (j - 1);
           const top = (i + 1) * n + j;
+          const bottom = (i - 1) * n + j;
 
-          let p = 0;
-          let numNeighbors = 0;
+          let s = 0;
+          let weightSum = 0;
 
-          // Add pressure from non-solid neighbors
-          if (j > 0 && !this.solid[left]) {
-            p += this.pressure[left];
-            numNeighbors++;
-          }
+          // Check and add contributions from neighboring cells
           if (j < n - 1 && !this.solid[right]) {
-            p += this.pressure[right];
-            numNeighbors++;
+            s += this.pressure[right];
+            weightSum++;
           }
-          if (i > 0 && !this.solid[bottom]) {
-            p += this.pressure[bottom];
-            numNeighbors++;
+          if (j > 0 && !this.solid[left]) {
+            s += this.pressure[left];
+            weightSum++;
           }
           if (i < n - 1 && !this.solid[top]) {
-            p += this.pressure[top];
-            numNeighbors++;
+            s += this.pressure[top];
+            weightSum++;
+          }
+          if (i > 0 && !this.solid[bottom]) {
+            s += this.pressure[bottom];
+            weightSum++;
           }
 
-          // Update pressure using over-relaxation
-          if (numNeighbors > 0) {
-            p =
-              (p - this.divergence[center] * scale * boundaryFactor) /
-              numNeighbors;
-            this.pressure[center] =
-              p * this.overRelaxation +
-              this.pressure[center] * (1 - this.overRelaxation);
+          // Calculate new pressure with proper scaling
+          if (weightSum > 0) {
+            const densityDeviation = -this.divergence[center];
+            const newP = (s / weightSum) + pressureCoefficient * densityDeviation;
+            this.pressure[center] = this.pressure[center] * (1 - this.overRelaxation) +
+              newP * this.overRelaxation;
           }
         }
       }
@@ -400,32 +340,55 @@ class FluidFLIP {
 
           if (!this.solid[center] && !this.solid[right]) {
             const gradP = (this.pressure[right] - this.pressure[center]) / h;
+
+            // THIS IS THE CRITICAL LINE - Apply pressure scale directly to gradient
             this.u[uIdx] -= gradP * this.dt * this.pressureScale;
           }
         }
 
-        // Update vertical velocities
+        // Similarly for vertical velocities
         if (i < n - 1) {
           const top = (i + 1) * n + j;
-          const vIdx = center;
+          const vIdx = top;
 
           if (!this.solid[center] && !this.solid[top]) {
             const gradP = (this.pressure[top] - this.pressure[center]) / h;
+
+            // THIS IS THE CRITICAL LINE - Apply pressure scale directly to gradient 
             this.v[vIdx] -= gradP * this.dt * this.pressureScale;
           }
         }
       }
     }
 
-    // Reapply boundary conditions after velocity update
-    this.applyBoundaryConditions();
-
-    // Add velocity damping after pressure solve
-    for (let i = 0; i < this.u.length; i++) {
-      this.u[i] *= this.velocityDamping;
+    // Add this AFTER applying pressure to velocities
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n * n; j++) {
+        if (this.u[j] !== undefined) {
+          // Scale velocity based on gas constant (more dramatic effect)
+          this.u[j] *= 1.0 + (this.gasConstant - 1.0) * 0.1;
+        }
+        if (this.v[j] !== undefined) {
+          // Scale velocity based on gas constant (more dramatic effect)
+          this.v[j] *= 1.0 + (this.gasConstant - 1.0) * 0.1;
+        }
+      }
     }
-    for (let i = 0; i < this.v.length; i++) {
-      this.v[i] *= this.velocityDamping;
+
+    // Add Direct Parameter Effect - creates visible difference
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n * n; j++) {
+        if (this.u[j] !== undefined) {
+          // Directly scale velocities with gas constant
+          const gasEffect = Math.max(0.8, Math.min(1.5, this.gasConstant / 50));
+          this.u[j] *= gasEffect;
+        }
+        if (this.v[j] !== undefined) {
+          // Directly scale velocities with gas constant
+          const gasEffect = Math.max(0.8, Math.min(1.5, this.gasConstant / 50));
+          this.v[j] *= gasEffect;
+        }
+      }
     }
   }
 
@@ -483,9 +446,10 @@ class FluidFLIP {
         const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist > this.radius * 0.9) {
+          // Make this a softer drop-off
           const factor = Math.pow(
-            1 - (dist - this.radius * 0.9) / (this.radius * 0.1),
-            2
+            1 - (dist - this.radius * 0.9) / (this.radius * 0.2), // Changed from 0.1 to 0.2
+            1.5 // Changed from 2 to 1.5 for a gentler curve
           );
           const center = i * n + j;
 
@@ -505,6 +469,74 @@ class FluidFLIP {
     // Reset grid and pressure fields
     this.velocityField = new Float32Array(this.gridSize * this.gridSize * 2);
     this.pressureField = new Float32Array(this.gridSize * this.gridSize);
+  }
+
+  setParameters(restDensity, gasConstant) {
+    this.restDensity = restDensity;
+    this.gasConstant = gasConstant;
+
+    // Use a more conservative scaling that maintains visible effects
+    // without causing instability
+    this.pressureScale = 0.05 * this.gasConstant / Math.max(0.5, this.restDensity);
+
+    console.log(`Pressure scale: ${this.pressureScale} (from gasConstant=${this.gasConstant}, restDensity=${this.restDensity})`);
+  }
+
+  // Fix the interpolateVelocity function with proper boundary checking
+  interpolateVelocity(x, y) {
+    const n = this.gridSize;
+    const h = this.h;
+
+    // Force coordinates to stay well within grid bounds (2 cells in from edge)
+    const gx = Math.min(Math.max(Math.floor(x / h), 1), n - 3);
+    const gy = Math.min(Math.max(Math.floor(y / h), 1), n - 3);
+
+    // Safe grid access with bounds checks
+    const getU = (i, j) => {
+      if (i < 0 || i >= n || j < 0 || j >= n) return 0;
+      return this.u[i * n + j] || 0;
+    };
+
+    const getV = (i, j) => {
+      if (i < 0 || i >= n || j < 0 || j >= n) return 0;
+      return this.v[i * n + j] || 0;
+    };
+
+    // Calculate fractional position within cell
+    const fx = (x / h) - gx;
+    const fy = (y / h) - gy;
+
+    // Safely get velocity values with bounds checking
+    const u00 = getU(gy, gx);
+    const u01 = getU(gy, gx + 1);
+    const u10 = getU(gy + 1, gx);
+    const u11 = getU(gy + 1, gx + 1);
+
+    const v00 = getV(gy, gx);
+    const v01 = getV(gy, gx + 1);
+    const v10 = getV(gy + 1, gx);
+    const v11 = getV(gy + 1, gx + 1);
+
+    // Bilinear interpolation as before
+    const vx = (1 - fx) * (1 - fy) * u00 +
+      fx * (1 - fy) * u01 +
+      (1 - fx) * fy * u10 +
+      fx * fy * u11;
+
+    const vy = (1 - fx) * (1 - fy) * v00 +
+      fx * (1 - fy) * v01 +
+      (1 - fx) * fy * v10 +
+      fx * fy * v11;
+
+    // Velocity magnitude clamping to prevent explosions
+    const maxVelocity = 1.0;
+    const vMag = Math.sqrt(vx * vx + vy * vy);
+
+    if (vMag > maxVelocity) {
+      return [vx / vMag * maxVelocity, vy / vMag * maxVelocity];
+    }
+
+    return [vx, vy];
   }
 }
 

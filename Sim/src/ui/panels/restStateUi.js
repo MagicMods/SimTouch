@@ -28,14 +28,14 @@ export class RestStateUi extends BaseUi {
     // Only add controllers if the corresponding properties exist
     if (particles.restDensity !== undefined) {
       this.restDensityController = this.gui
-        .add(controls, "density", 0, 10)
+        .add(controls, "density", 0.01, 10)
         .name("Rest Density")
         .onChange((value) => (particles.restDensity = value));
     }
 
     if (particles.gasConstant !== undefined) {
       this.gasConstantController = this.gui
-        .add(controls, "gasConstant", 0, 100)
+        .add(controls, "gasConstant", 0.01, 100)
         .name("Gas Constant")
         .onChange((value) => (particles.gasConstant = value));
     }

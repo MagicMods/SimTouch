@@ -32,7 +32,7 @@ export class CollisionUi extends BaseUi {
 
     if (collisionSystem.damping !== undefined) {
       this.collisionDampingController = this.gui
-        .add(collisionSystem, "damping", 0.5, 1.0, 0.01)
+        .add(collisionSystem, "damping", 0.01, 1.0, 0.01)
         .name("C-Damping");
     }
   }

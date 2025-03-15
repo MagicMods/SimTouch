@@ -107,6 +107,11 @@ export class ParamUi extends BaseUi {
       // .onFinishChange((value) => {
       //   console.log(`Velocity damping set to ${value}`);
       // });
+      this.ratioPicFlip = this.gui
+        .add(particles, "picFlipRatio", 0, 1, 0.01)
+        .name("PicFlipRatio")
+      // .onFinishChange((value) => {
+
       this.velocityDampingController.domElement.style.marginTop = "10px";
     }
   }

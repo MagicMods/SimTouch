@@ -7,6 +7,7 @@ export const Behaviors = {
   FLUID: "Fluid",
   SWARM: "Swarm",
   AUTOMATA: "Automata",
+  CHAIN: "Chain",
 };
 
 class OrganicBehavior {
@@ -37,6 +38,16 @@ class OrganicBehavior {
         threshold: 0.2,
         mode: "Automata",
       },
+      Chain: {
+        radius: 30,
+        linkDistance: 20,
+        linkStrength: 0.7,   // Now works like O-Force
+        alignment: 0.5,      // Controls straightness (0 = curly, 1 = straight)
+        branchProb: 2,       // Maximum branches per particle
+        maxLinks: 10,        // Maximum chain length
+        maxChains: 5,        // Maximum number of chains
+        mode: "Chain",
+      },
     };
 
     // Force scales
@@ -53,6 +64,9 @@ class OrganicBehavior {
       },
       Automata: {
         base: 0.1, // Increased base force
+      },
+      Chain: {
+        base: 1.5,  // Increased significantly 
       },
     };
 
@@ -110,9 +124,15 @@ class OrganicBehavior {
       currentParams.radius
     );
 
-    // if (this.debugEnabled) {
-    //   console.log(`Total neighbors found: ${neighbors.size}`);
-    // }
+    // Reset chain data when switching to Chain behavior
+    if (this.currentBehavior === "Chain" && this.lastBehavior !== "Chain") {
+      console.log("Resetting chain data on all particles");
+      // Reset chain data on all particles
+      particles.forEach(p => {
+        p.chainData = { links: [] };
+      });
+    }
+    this.lastBehavior = this.currentBehavior;
 
     // Handle Automata state updates
     if (this.currentBehavior === "Automata") {

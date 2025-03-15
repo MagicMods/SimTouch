@@ -110,7 +110,7 @@ export class TurbulenceUi extends BaseUi {
 
     this.turbulenceStrengthController = this.gui.add(turbulence, "strength", 0, 10).name("T-Strength");
     this.turbulenceScaleController = this.gui.add(turbulence, "scale", 0.1, 10).name("T-Scale");
-    this.turbulenceSpeedController = this.gui.add(turbulence, "speed", 0, 20).name("T-Speed");
+    this.turbulenceSpeedController = this.gui.add(turbulence, "speed", 0, 2).name("T-Speed");
 
     const scaleRangeFolder = this.gui.addFolder("Scale Range");
     this.scaleRangeFolder = scaleRangeFolder; // Store reference

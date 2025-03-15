@@ -69,10 +69,12 @@ export class OrganicUi extends BaseUi {
     this.fluidFolder = this.gui.addFolder("Fluid Parameters");
     this.swarmFolder = this.gui.addFolder("Swarm Parameters");
     this.automataFolder = this.gui.addFolder("Automata Parameters");
+    this.chainFolder = this.gui.addFolder("Chain Parameters");
 
     this.initFluidControls();
     this.initSwarmControls();
     this.initAutomataControls();
+    this.initChainControls();  // Add this if missing
 
     this.updateOrganicFolders(this.main.gridRenderer.renderModes.currentMode);
   }
@@ -81,7 +83,7 @@ export class OrganicUi extends BaseUi {
     const behavior = this.main.particleSystem?.organicBehavior;
     if (!behavior?.forceScales) return;
 
-    const forceTypes = ["Fluid", "Swarm", "Automata"];
+    const forceTypes = ["Fluid", "Swarm", "Automata", "Chain"];
     const defaultForce = 5.0;
 
     this.globalForceControl = { force: defaultForce };
@@ -149,10 +151,38 @@ export class OrganicUi extends BaseUi {
     this.automataThresholdController = this.automataFolder.add(automata, "threshold", 0, 1).name("A-Threshold");
   }
 
+  initChainControls() {
+    console.log("Initializing Chain controls");
+    const particles = this.main.particleSystem;
+    if (!particles?.organicBehavior?.params?.Chain) {
+      console.log("Chain params not found, initializing");
+      // Initialize Chain parameters if they don't exist yet
+      if (particles?.organicBehavior?.params) {
+        particles.organicBehavior.params.Chain = {
+          linkDistance: 20,    // Distance between chain links
+          linkStrength: 0.7,   // Spring force strength
+          alignment: 0.5,      // Straight (1) vs curly (0) chains 
+          branchProb: 2,       // Max branches per particle
+          maxLinks: 10,        // Max links per chain
+          mode: "Chain"
+        };
+      }
+      return;
+    }
+
+    const chain = particles.organicBehavior.params.Chain;
+    this.chainLinkDistController = this.chainFolder.add(chain, "linkDistance", 0.01, 50, 0.1).name("C-LinkDist");
+    this.chainLinkStrengthController = this.chainFolder.add(chain, "linkStrength", 0, 10).name("C-LinkStr");
+    this.chainAlignController = this.chainFolder.add(chain, "alignment", 0, 10, 0.1).name("C-Align");
+    this.chainBranchController = this.chainFolder.add(chain, "branchProb", 0, 5, 1).name("C-Branch");
+    this.chainMaxLinksController = this.chainFolder.add(chain, "maxLinks", 2, 100, 1).name("C-MaxLen");
+  }
+
   updateOrganicFolders(mode) {
     const fluidEnabled = mode === "Fluid";
     const swarmEnabled = mode === "Swarm";
     const automataEnabled = mode === "Automata";
+    const chainEnabled = mode === "Chain";  // Add this
     console.log(`Updating organic folders for mode: ${mode}`);
 
     const enableControllers = (folder, enabled) => {
@@ -170,19 +200,27 @@ export class OrganicUi extends BaseUi {
       this.fluidFolder.open();
       this.swarmFolder.close();
       this.automataFolder.close();
+      this.chainFolder.close();  // Add this
     } else if (swarmEnabled) {
       this.fluidFolder.close();
       this.swarmFolder.open();
       this.automataFolder.close();
+      this.chainFolder.close();  // Add this
     } else if (automataEnabled) {
       this.fluidFolder.close();
       this.swarmFolder.close();
       this.automataFolder.open();
-    }
-    else {
+      this.chainFolder.close();  // Add this
+    } else if (chainEnabled) {  // Add this block
+      this.fluidFolder.close();
+      this.swarmFolder.close();
+      this.automataFolder.close();
+      this.chainFolder.open();
+    } else {
       this.fluidFolder.open();
       this.swarmFolder.open();
       this.automataFolder.open();
+      this.chainFolder.open();  // Add this
     }
 
     // Update the organic behavior mode
@@ -209,6 +247,14 @@ export class OrganicUi extends BaseUi {
     if (this.automataRepulsionController) targets["A-Repulse"] = this.automataRepulsionController;
     if (this.automataAttractionController) targets["A-Attract"] = this.automataAttractionController;
     if (this.automataThresholdController) targets["A-Threshold"] = this.automataThresholdController;
+
+    // Add chain controllers
+    if (this.chainLinkDistController) targets["C-LinkDist"] = this.chainLinkDistController;
+    if (this.chainLinkStrengthController) targets["C-LinkStr"] = this.chainLinkStrengthController;
+    if (this.chainAlignController) targets["C-Align"] = this.chainAlignController;
+    if (this.chainBranchController) targets["C-Branch"] = this.chainBranchController;
+    if (this.chainMaxLinksController) targets["C-MaxLinks"] = this.chainMaxLinksController;
+    if (this.chainRepelController) targets["C-Repel"] = this.chainRepelController; // Add this controller
 
     return targets;
   }
@@ -271,5 +317,13 @@ export class OrganicUi extends BaseUi {
     safeUpdateDisplay(this.automataRepulsionController);
     safeUpdateDisplay(this.automataAttractionController);
     safeUpdateDisplay(this.automataThresholdController);
+
+    // Add chain controllers
+    safeUpdateDisplay(this.chainLinkDistController);
+    safeUpdateDisplay(this.chainLinkStrengthController);
+    safeUpdateDisplay(this.chainAlignController);
+    safeUpdateDisplay(this.chainBranchController);
+    safeUpdateDisplay(this.chainMaxLinksController);
+    safeUpdateDisplay(this.chainRepelController); // Add this controller
   }
 }

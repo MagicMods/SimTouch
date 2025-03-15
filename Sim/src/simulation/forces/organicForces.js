@@ -4,14 +4,13 @@ class OrganicForces {
     this.TARGET_HEIGHT = 240;
     this.forceScales = forceScales;
     this.debugEnabled = false;
-    // Add force damping to prevent excessive accumulation
     this.forceDamping = 0.85;
   }
 
   toPixelSpace(p) {
     return {
       x: p.x * this.TARGET_WIDTH,
-      y: p.y * this.TARGET_HEIGHT, // Keep original Y coordinate system
+      y: p.y * this.TARGET_HEIGHT,
       vx: p.vx * this.TARGET_WIDTH,
       vy: p.vy * this.TARGET_HEIGHT,
       state: p.state
@@ -98,6 +97,9 @@ class OrganicForces {
           break;
         case "Automata":
           this.calculateAutomataForces(particle, neighborList, force, params);
+          break;
+        case "Chain":
+          this.calculateChainForces(particle, neighborList, force, params);
           break;
       }
 
@@ -266,13 +268,186 @@ class OrganicForces {
     // }
   }
 
-  logForceCalculation(type, force, neighborCount) {
-    console.log(`${type} force:`, {
-      magnitude: Math.hypot(force.x, force.y).toFixed(3),
-      direction: `${force.x.toFixed(3)},${force.y.toFixed(3)}`,
-      neighbors: neighborCount,
-    });
+  calculateChainForces(particle, neighbors, force, params) {
+    // Skip if no neighbors
+    if (!neighbors.length) return;
+
+    // // Debug logging
+    // console.log("CHAIN FORCES:", {
+    //   particleIndex: particle.index,
+    //   neighbors: neighbors.length,
+    //   params: params
+    // });
+
+    // Make sure chain data exists on particle
+    if (!particle.chainData) {
+      particle.chainData = {
+        links: []    // Array of particle indices this particle is linked to
+      };
+    }
+
+    const pixelParticle = this.toPixelSpace(particle);
+    const maxForce = 2.0; // Strong force for visibility
+
+    // STEP 1: Form new links if needed
+    if (particle.chainData.links.length < params.maxLinks) {
+      // Sort neighbors by distance
+      const sortedNeighbors = [...neighbors].sort((a, b) => a.distance - b.distance);
+
+      // Try to link with closest neighbors first
+      for (const neighbor of sortedNeighbors) {
+        // Skip if already linked or if we've reached max links
+        if (particle.chainData.links.includes(neighbor.particle.index) ||
+          particle.chainData.links.length >= params.maxLinks) {
+          continue;
+        }
+
+        // Initialize neighbor's chain data if needed
+        if (!neighbor.particle.chainData) {
+          neighbor.particle.chainData = {
+            links: []
+          };
+        }
+
+        // Skip if neighbor already has maximum links
+        if (neighbor.particle.chainData.links.length >= params.maxLinks) {
+          continue;
+        }
+
+        // Skip if adding this link would exceed branch limit
+        const branchCount = neighbor.particle.chainData.links.length;
+        if (branchCount >= params.branchProb) {
+          continue;
+        }
+
+        // Always create links with closest neighbors for testing
+        if (sortedNeighbors.length > 0 && sortedNeighbors.indexOf(neighbor) < 2) {
+          // Add bidirectional link
+          particle.chainData.links.push(neighbor.particle.index);
+          neighbor.particle.chainData.links.push(particle.index);
+
+          // Log link creation
+          // console.log(`Created link: ${particle.index} <-> ${neighbor.particle.index}`);
+        }
+      }
+    }
+
+    // STEP 2: Apply chain forces to maintain links
+    let totalForce = { x: 0, y: 0 };
+    const linkedNeighbors = [];
+
+    // Find all linked neighbors
+    for (const neighborIdx of particle.chainData.links) {
+      const linkedNeighbor = neighbors.find(n => n.particle.index === neighborIdx);
+      if (linkedNeighbor) {
+        linkedNeighbors.push(linkedNeighbor);
+      }
+    }
+
+    // Log linked neighbors count
+    // console.log(`Particle ${particle.index} has ${linkedNeighbors.length} linked neighbors`);
+
+    // Apply link maintenance forces
+    for (const linkedNeighbor of linkedNeighbors) {
+      const other = this.toPixelSpace(linkedNeighbor.particle);
+      const dx = other.x - pixelParticle.x;
+      const dy = other.y - pixelParticle.y;
+      const dist = Math.hypot(dx, dy);
+
+      if (dist > 0) {
+        // Calculate direction vector
+        const nx = dx / dist;
+        const ny = dy / dist;
+
+        // Apply spring force to maintain target distance
+        const targetDist = params.linkDistance;
+        const distDiff = dist - targetDist;
+
+        // Link strength controls spring force - much stronger now
+        const springForce = distDiff * params.linkStrength * 2.0;
+        totalForce.x += nx * springForce;
+        totalForce.y += ny * springForce;
+      }
+    }
+
+    // STEP 3: Apply alignment forces
+    if (linkedNeighbors.length >= 2 && params.alignment > 0) {
+      // Get positions of all linked neighbors
+      const positions = linkedNeighbors.map(n => this.toPixelSpace(n.particle));
+
+      // Calculate vectors from particle to each linked neighbor
+      const vectors = positions.map(p => ({
+        x: p.x - pixelParticle.x,
+        y: p.y - pixelParticle.y
+      }));
+
+      // Normalize all vectors
+      const normVectors = vectors.map(v => {
+        const len = Math.hypot(v.x, v.y);
+        return (len > 0) ? { x: v.x / len, y: v.y / len } : { x: 0, y: 0 };
+      });
+
+      // Compare each pair of vectors
+      for (let i = 0; i < normVectors.length - 1; i++) {
+        for (let j = i + 1; j < normVectors.length; j++) {
+          const v1 = normVectors[i];
+          const v2 = normVectors[j];
+
+          // Calculate dot product
+          const dot = v1.x * v2.x + v1.y * v2.y;
+
+          // For perfect alignment (straight line), dot should be -1
+          // Apply strong alignment force based on parameter
+          const alignForce = (1 + dot) * params.alignment * 2.0;
+
+          if (alignForce > 0.01) {
+            const perpX = -(v1.y + v2.y);
+            const perpY = (v1.x + v2.x);
+
+            const perpLen = Math.hypot(perpX, perpY);
+            if (perpLen > 0) {
+              totalForce.x += (perpX / perpLen) * alignForce;
+              totalForce.y += (perpY / perpLen) * alignForce;
+            }
+          }
+        }
+      }
+    }
+
+    // Apply forces
+    force.x += totalForce.x;
+    force.y += totalForce.y;
+
+    // Apply base force scale - make sure this is used
+    if (this.forceScales && this.forceScales.Chain) {
+      const baseScale = this.forceScales.Chain.base || 1.0;
+      force.x *= baseScale;
+      force.y *= baseScale;
+
+      // Log actual force applied
+      // console.log(`Applied force: ${force.x.toFixed(3)}, ${force.y.toFixed(3)}, scale: ${baseScale}`);
+    }
+
+    // Limit maximum force
+    const magnitude = Math.hypot(force.x, force.y);
+    if (magnitude > maxForce) {
+      const scale = maxForce / magnitude;
+      force.x *= scale;
+      force.y *= scale;
+    }
+
+    // Apply damping
+    force.x *= this.forceDamping;
+    force.y *= this.forceDamping;
   }
+
+  // logForceCalculation(type, force, neighborCount) {
+  //   console.log(`${type} force:`, {
+  //     magnitude: Math.hypot(force.x, force.y).toFixed(3),
+  //     direction: `${force.x.toFixed(3)},${force.y.toFixed(3)}`,
+  //     neighbors: neighborCount,
+  //   });
+  // }
 }
 
 export { OrganicForces };

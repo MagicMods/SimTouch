@@ -4,19 +4,24 @@ class CollisionSystem {
     gridSize = 10,
     repulsion = 0.5,
     damping = 0.98,
-    particleRestitution = 0.8, // Renamed to be specific
+    particleRestitution = 0.8,
     particleRadius = 0.01,
   } = {}) {
     this.enabled = enabled;
     this.gridSize = gridSize;
-    this.cellSize = 1.0 / gridSize;
+    this.cellSize = 1 / gridSize;
     this.repulsion = repulsion;
     this.damping = damping;
-    this.particleRestitution = particleRestitution; // Clear naming
-    this.particleRadius = particleRadius * 2; // Double the radius for collision distance
+    this.particleRestitution = particleRestitution;
+    this.particleRadius = particleRadius;
 
-    // Initialize spatial grid
-    this.grid = new Array(this.gridSize * this.gridSize).fill().map(() => []);
+    // INITIALIZE THIS - it was missing
+    this.grid = [];
+    for (let i = 0; i < gridSize * gridSize; i++) {
+      this.grid.push([]);
+    }
+
+    this.particleSystem = null;
   }
 
   update(particles, velocitiesX, velocitiesY) {
@@ -27,27 +32,29 @@ class CollisionSystem {
   }
 
   updateGrid(particles) {
-    // Clear grid
-    this.grid.forEach((cell) => (cell.length = 0));
+    // Reset grid at the start of each update
+    this.grid = [];
+    for (let i = 0; i < this.gridSize * this.gridSize; i++) {
+      this.grid.push([]);
+    }
 
-    // Add particles to cells
-    for (let i = 0; i < particles.length / 2; i++) {
+    // Then add particles to grid cells
+    const numParticles = particles.length / 2;
+    for (let i = 0; i < numParticles; i++) {
       const x = particles[i * 2];
       const y = particles[i * 2 + 1];
 
+      // Ensure coordinates are within bounds
+      if (x < 0 || x > 1 || y < 0 || y > 1) continue;
+
       const cellX = Math.floor(x * this.gridSize);
       const cellY = Math.floor(y * this.gridSize);
-
-      if (
-        cellX < 0 ||
-        cellX >= this.gridSize ||
-        cellY < 0 ||
-        cellY >= this.gridSize
-      )
-        continue;
-
       const cellIndex = cellY * this.gridSize + cellX;
-      this.grid[cellIndex].push(i);
+
+      // Ensure the cell exists before pushing
+      if (this.grid[cellIndex]) {
+        this.grid[cellIndex].push(i);
+      }
     }
   }
 
@@ -128,10 +135,26 @@ class CollisionSystem {
     const dy = particles[j * 2 + 1] - particles[i * 2 + 1];
     const distSq = dx * dx + dy * dy;
 
-    // Get actual radii for both particles
-    const radiusI = this.particleSystem.particleRadii[i];
-    const radiusJ = this.particleSystem.particleRadii[j];
-    const minDist = radiusI + radiusJ;
+    // Fix missing reference - use a default radius if particleSystem is undefined
+    let radiusI = this.particleRadius;
+    let radiusJ = this.particleRadius;
+
+    // Only try to access particleRadii if the reference exists
+    if (this.particleSystem && this.particleSystem.particleRadii) {
+      radiusI = this.particleSystem.particleRadii[i];
+      radiusJ = this.particleSystem.particleRadii[j];
+    }
+
+    // Access rest density from particleSystem reference
+    let densityFactor = 1.0;
+    if (this.particleSystem && this.particleSystem.restDensity) {
+      densityFactor = Math.max(0.5, Math.min(2.0, this.particleSystem.restDensity / 3));
+    }
+
+    // Modify minimum separation distance based on rest density
+    // Higher density = particles should be closer (smaller minDist)
+    const minDist = (radiusI + radiusJ) * (1 / densityFactor);
+
     const minDistSq = minDist * minDist;
 
     if (distSq < minDistSq) {
