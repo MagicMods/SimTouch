@@ -180,6 +180,18 @@ export class InputModulationUi extends BaseUi {
         controllers.customFreq.show(showCustom);
         controllers.customWidth.show(showCustom);
 
+        // Update visualizer marker if available
+        if (this.main.micForces && this.main.micForces.visualizer) {
+          if (showCustom) {
+            this.main.micForces.visualizer.setCustomBandMarker(
+              modulator.customFreq,
+              modulator.customWidth,
+              true
+            );
+          } else {
+            this.main.micForces.visualizer.setCustomBandMarker(0, 0, false);
+          }
+        }
       });
 
     controllers.frequencyBand.domElement.classList.add("full-width");
@@ -187,12 +199,32 @@ export class InputModulationUi extends BaseUi {
     // Add custom center frequency
     controllers.customFreq = folder
       .add(modulator, "customFreq", 20, 20000, 10)
-      .name("Freq Center (Hz)");
+      .name("Freq Center (Hz)")
+      .onChange((value) => {
+        // Update visualizer if available
+        if (this.main.audioVisualizer && modulator.frequencyBand === "custom") {
+          this.main.audioVisualizer.setCustomBandMarker(
+            value,
+            modulator.customWidth,
+            true
+          );
+        }
+      });
 
     // Add custom bandwidth
     controllers.customWidth = folder
       .add(modulator, "customWidth", 10, 1000, 10)
-      .name("Band Width (Hz)");
+      .name("Band Width (Hz)")
+      .onChange((value) => {
+        // Update visualizer if available
+        if (this.main.audioVisualizer && modulator.frequencyBand === "custom") {
+          this.main.audioVisualizer.setCustomBandMarker(
+            modulator.customFreq,
+            value,
+            true
+          );
+        }
+      });
 
     controllers.customFreq.show(false);
     controllers.customWidth.show(false);

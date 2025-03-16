@@ -26,6 +26,13 @@ export class SoundVisualizer {
     this.frameCount = 0;
     this.fps = 0;
 
+    // Add custom band marker data
+    this.customBandMarker = {
+      enabled: false,
+      centerFreq: 1000,
+      bandwidth: 100
+    };
+
     // Canvas and drawing context
     this.container = null;
     this.canvas = null;
@@ -378,6 +385,44 @@ export class SoundVisualizer {
 
       // Draw bar with full width (no gap)
       this.ctx.fillRect(x, y, barWidth, barHeight);
+    }
+
+    // Draw custom frequency band marker if enabled
+    if (this.customBandMarker && this.customBandMarker.enabled) {
+      console.warn("Custom band marker enabled");
+      // Convert frequency to x-position on the spectrum
+      const nyquistFreq = 22050; // Standard maximum frequency (half sample rate)
+
+      // Calculate positions as a ratio of the maximum frequency
+      const centerX = padding + (this.customBandMarker.centerFreq / nyquistFreq) * drawableWidth;
+      const halfBandwidth = (this.customBandMarker.bandwidth / 2) / nyquistFreq * drawableWidth;
+
+      // Draw a semi-transparent overlay for the band
+      this.ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
+      this.ctx.fillRect(
+        centerX - halfBandwidth,
+        yOffset + padding,
+        halfBandwidth * 2,
+        drawableHeight
+      );
+
+      // Draw center line
+      this.ctx.strokeStyle = this.colors.secondary;
+      this.ctx.lineWidth = 2;
+      this.ctx.beginPath();
+      this.ctx.moveTo(centerX, yOffset + padding);
+      this.ctx.lineTo(centerX, yOffset + padding + drawableHeight);
+      this.ctx.stroke();
+
+      // Add frequency label
+      this.ctx.fillStyle = this.colors.text;
+      this.ctx.font = "10px sans-serif";
+      this.ctx.textAlign = "center";
+      this.ctx.fillText(
+        `${this.customBandMarker.centerFreq} Hz ±${this.customBandMarker.bandwidth / 2}`,
+        centerX,
+        yOffset + padding + 10
+      );
     }
 
     // Label
@@ -755,6 +800,21 @@ export class SoundVisualizer {
       this.canvas.height = height;
     }
 
+    return this;
+  }
+
+  /**
+   * Set custom frequency band marker
+   * @param {number} centerFreq - Center frequency in Hz
+   * @param {number} bandwidth - Bandwidth in Hz
+   * @param {boolean} enabled - Whether to show the marker
+   */
+  setCustomBandMarker(centerFreq, bandwidth, enabled = true) {
+    this.customBandMarker = {
+      enabled: enabled,
+      centerFreq: centerFreq,
+      bandwidth: bandwidth
+    };
     return this;
   }
 
