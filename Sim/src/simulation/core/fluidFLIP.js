@@ -193,31 +193,57 @@ class FluidFLIP {
     const n = this.gridSize;
     const h = this.h;
 
+    // Get dragged particle if any
+    const draggedIndex = this.particleSystem?.draggedParticleIndex ?? -1;
+
     for (let i = 0; i < particles.length / 2; i++) {
+      // Skip dragged particles
+      if (i === draggedIndex) continue;
+
       const x = particles[i * 2];
       const y = particles[i * 2 + 1];
 
-      // Ensure coordinates are within grid bounds
-      if (x < 0 || x > 1 || y < 0 || y > 1) continue;
+      // Skip out-of-bounds particles
+      if (x < 0 || x >= 1 || y < 0 || y >= 1) continue;
 
       // Get grid cell containing particle
       const gx = Math.min(Math.max(Math.floor(x * n), 0), n - 1);
       const gy = Math.min(Math.max(Math.floor(y * n), 0), n - 1);
 
-      // Use interpolation instead of cell-center for better results
-      const [gridVx, gridVy] = this.interpolateVelocity(x, y);
+      // Get grid velocities (simple approach)
+      const center = gy * n + gx;
+      const gridVx = this.u[center] || 0;
+      const gridVy = this.v[center] || 0;
 
-      // PIC/FLIP mixing with proper damping
-      velocitiesX[i] = this.picFlipRatio * gridVx +
-        (1 - this.picFlipRatio) * velocitiesX[i] * this.velocityDampingFLIP;
-      velocitiesY[i] = this.picFlipRatio * gridVy +
-        (1 - this.picFlipRatio) * velocitiesY[i] * this.velocityDampingFLIP;
+      // THIS IS KEY: Apply PIC/FLIP ratio
+      // PIC = directly use grid velocity (stable but loses energy)
+      // FLIP = add grid velocity delta (energetic but unstable)
+
+      // Store old velocity for FLIP
+      const oldVx = velocitiesX[i];
+      const oldVy = velocitiesY[i];
+
+      // Apply gas constant effect to grid velocity 
+      const gasEffect = Math.sqrt(Math.max(1.0, this.gasConstant) * 0.1);
+      const scaledGridVx = gridVx * gasEffect;
+      const scaledGridVy = gridVy * gasEffect;
+
+      // PIC/FLIP mixing
+      velocitiesX[i] = this.picFlipRatio * scaledGridVx +
+        (1 - this.picFlipRatio) * oldVx;
+      velocitiesY[i] = this.picFlipRatio * scaledGridVy +
+        (1 - this.picFlipRatio) * oldVy;
     }
 
-    // After transferring velocities, apply rest density effect
-    // Higher rest density = more space between particles
-    const restEffect = Math.sqrt(this.restDensity);
-    const repulsionStrength = 0.005 * restEffect;
+    // Apply rest density effect (separate from velocity transfer)
+    this.applyRestDensityEffect(particles, velocitiesX, velocitiesY);
+  }
+
+  applyRestDensityEffect(particles, velocitiesX, velocitiesY) {
+    // Rest density controls particle spacing preference
+    // Lower rest density = more spacing between particles
+    const restEffect = 1.0 / Math.max(0.01, this.restDensity);
+    const repulsionStrength = 0.002 * restEffect;
 
     // Apply mild repulsion based on rest density
     for (let i = 0; i < particles.length / 2; i++) {

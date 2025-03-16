@@ -169,26 +169,36 @@ class ParticleSystem {
     }
   }
 
+  // REMOVE the direct gas effect from step() - that was the wrong approach
   step() {
     const dt = this.timeStep * this.timeScale;
 
-    // Update forces etc.
+    // Allow mouse forces to neutralize other forces if active
+    if (this.mouseForces.isActive) {
+      this.mouseForces.neutralizeOtherForces(this);
+    } else {
+      this.mouseForces.restoreOtherForces(this);
+    }
+
+    // Update field generators
+    if (this.turbulence) this.turbulence.update(dt);
+    if (this.voronoi) this.voronoi.update(dt);
+
+    // Apply external forces
     this.applyExternalForces(dt);
 
-    // Organic behavior
+    // Apply organic behavior forces
     if (this.organicBehavior.currentBehavior !== "None") {
       this.organicBehavior.updateParticles(this, dt);
     }
 
-    // FLIP simulation
+    // Apply FLIP fluid simulation if enabled
     if (this.picFlipRatio > 0) {
       this.updateFLIP(dt);
     }
 
-    // Update positions - this will handle ALL boundary collisions
+    // Update positions
     this.updateParticles(dt);
-
-    // REMOVE handleBoundaries() call - it's causing the vibration!
   }
 
   applyExternalForces(dt) {
