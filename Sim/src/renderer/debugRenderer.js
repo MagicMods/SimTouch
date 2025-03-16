@@ -13,14 +13,21 @@ class DebugRenderer extends BaseRenderer {
     this.showGrid = false;
     this.showBoundary = false;
     this.showNoiseField = true;
+
+    // Add the missing property
     this.showParticlesInfo = false;
+
+    // Split field visualization controls
+    this.showTurbulenceField = true;
+    this.showVoronoiField = true;
+    this.turbulenceOpacity = 0.7; // Single opacity control
   }
 
   draw(particleSystem, turbulenceField, voronoiField) {
     if (!this.enabled) return;
 
     if (this.showGrid) {
-      this.drawGrid(particleSystem.fluid.gridSize || 10);
+      this.drawGrid(particleSystem.fluid?.gridSize || 48);
     }
 
     if (this.showVelocityField) {
@@ -31,8 +38,10 @@ class DebugRenderer extends BaseRenderer {
       this.drawBoundary(particleSystem.boundary);
     }
 
-    if (this.showNoiseField && turbulenceField) {
-      this.drawNoiseField(turbulenceField, voronoiField);
+    if (this.showNoiseField) {
+      if (this.showTurbulenceField || this.showVoronoiField) {
+        this.drawNoiseField(turbulenceField, voronoiField);
+      }
     }
 
     if (this.showParticlesInfo) {
@@ -150,29 +159,14 @@ class DebugRenderer extends BaseRenderer {
     const program = this.shaderManager.use('basic');
     if (!program) return;
 
-    // Full-screen background quad
-    const vertices = new Float32Array([
-      -1, -1,  // bottom-left
-      1, -1,   // bottom-right
-      -1, 1,   // top-left
-      1, 1     // top-right
-    ]);
-
-    const vertexBuffer = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
-
-    this.gl.enableVertexAttribArray(program.attributes.position);
-    this.gl.vertexAttribPointer(program.attributes.position, 2, this.gl.FLOAT, false, 0, 0);
-
-    // Draw dark background
-    this.gl.uniform4f(program.uniforms.color, 0, 0, 0.1, 0.3);
-    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+    // Enable proper blending for transparency
+    this.gl.enable(this.gl.BLEND);
+    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 
     // Using appropriate resolution for visualization
     const resolution = 30;
 
-    // Visualize both fields
+    // Visualize fields
     for (let y = 0; y < resolution; y++) {
       for (let x = 0; x < resolution; x++) {
         // Normalize coordinates to [0,1] range for sampling
@@ -181,17 +175,19 @@ class DebugRenderer extends BaseRenderer {
 
         // Sample turbulence - use noise2D method
         let turbValue = 0.5;
-        if (turbulenceField && typeof turbulenceField.noise2D === 'function') {
+        if (this.showTurbulenceField && turbulenceField && typeof turbulenceField.noise2D === 'function') {
           try {
             turbValue = turbulenceField.noise2D(nx * turbulenceField.scale, ny * turbulenceField.scale);
+            // Normalize to [0,1] range
+            turbValue = (turbValue + 1) * 0.5;
           } catch (e) {
             // Fallback on error
           }
         }
 
         // Sample voronoi - use getVoronoiEdgeDistance method
-        let voroValue = 0.5;
-        if (voronoiField && typeof voronoiField.getVoronoiEdgeDistance === 'function') {
+        let voroValue = 0;
+        if (this.showVoronoiField && voronoiField && typeof voronoiField.getVoronoiEdgeDistance === 'function') {
           try {
             const edgeInfo = voronoiField.getVoronoiEdgeDistance(nx, ny);
             // Normalize the distance based on edge width
@@ -205,8 +201,17 @@ class DebugRenderer extends BaseRenderer {
         const screenX = nx * 2 - 1;
         const screenY = ny * 2 - 1;
 
-        // Size based on values
-        const pointSize = 0.02 + Math.max(turbValue, voroValue) * 0.04;
+        // Size based on values - different handling based on which fields are shown
+        let pointSize;
+        if (this.showTurbulenceField && this.showVoronoiField) {
+          pointSize = 0.02 + Math.max(turbValue, voroValue) * 0.04;
+        } else if (this.showTurbulenceField) {
+          pointSize = 0.02 + turbValue * 0.04;
+        } else if (this.showVoronoiField) {
+          pointSize = 0.02 + voroValue * 0.04;
+        } else {
+          pointSize = 0.02; // Default size
+        }
 
         // Create a cell quad
         const x1 = screenX - pointSize;
@@ -228,26 +233,34 @@ class DebugRenderer extends BaseRenderer {
         this.gl.enableVertexAttribArray(program.attributes.position);
         this.gl.vertexAttribPointer(program.attributes.position, 2, this.gl.FLOAT, false, 0, 0);
 
-        // Color based on field values:
-        // - Red: Voronoi edges
-        // - Blue: Turbulence
-        // - Purple: Both combined
-        this.gl.uniform4f(
-          program.uniforms.color,
-          voroValue,        // Red channel - voronoi
-          turbValue * voroValue * 0.7,  // Green channel - interaction
-          turbValue,        // Blue channel - turbulence
-          0.7               // Alpha
-        );
+        // IMPORTANT CHANGE: Use a single opacity value (turbulenceOpacity) for both fields
+        // But keep colors at full intensity - just vary the alpha channel
+        let r = 0, g = 0, b = 0;
 
+        if (this.showVoronoiField) {
+          g = voroValue; // Red component for voronoi
+        }
+
+        if (this.showTurbulenceField) {
+          b = turbValue; // Blue component for turbulence
+        }
+
+        // Use interaction effect in green channel when both are active
+        if (this.showTurbulenceField && this.showVoronoiField) {
+          r = turbValue * voroValue * 0.7;
+        }
+
+        // Only the alpha varies with opacity - not the color intensity
+        const alpha = this.turbulenceOpacity * 0.7;
+
+        this.gl.uniform4f(program.uniforms.color, r, g, b, alpha);
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
         this.gl.deleteBuffer(cellBuffer);
       }
     }
 
-    // Clean up
-    this.gl.disableVertexAttribArray(program.attributes.position);
-    this.gl.deleteBuffer(vertexBuffer);
+    // Restore WebGL state
+    this.gl.disable(this.gl.BLEND);
   }
 
   drawParticlesInfo(particleSystem) {
