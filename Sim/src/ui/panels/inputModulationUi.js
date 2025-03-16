@@ -169,9 +169,33 @@ export class InputModulationUi extends BaseUi {
         "mid",
         "highMid",
         "presence",
-        "brilliance"
+        "brilliance",
+        "custom"  // Add custom option
       ])
-      .name("Frequency Band");
+      .name("Frequency Band")
+      .onChange((value) => {
+        // Show/hide custom controls when band changes
+        const showCustom = value === "custom";
+
+        controllers.customFreq.show(showCustom);
+        controllers.customWidth.show(showCustom);
+
+      });
+
+    controllers.frequencyBand.domElement.classList.add("full-width");
+    // Add these controls after the frequency band control
+    // Add custom center frequency
+    controllers.customFreq = folder
+      .add(modulator, "customFreq", 20, 20000, 10)
+      .name("Freq Center (Hz)");
+
+    // Add custom bandwidth
+    controllers.customWidth = folder
+      .add(modulator, "customWidth", 10, 1000, 10)
+      .name("Band Width (Hz)");
+
+    controllers.customFreq.show(false);
+    controllers.customWidth.show(false);
 
     // Add target selector - done after frequency band so it's more prominent
     const targetNames = this.modulatorManager.getTargetNames();
@@ -217,6 +241,8 @@ export class InputModulationUi extends BaseUi {
           }
         }
       });
+
+    controllers.targetName.domElement.classList.add("full-width");
 
     // Add sensitivity slider (0-1 range) - this acts as the enable control
     controllers.sensitivity = folder
@@ -349,9 +375,13 @@ export class InputModulationUi extends BaseUi {
               frequencyBand: "none",
               sensitivity: 0,
               smoothing: 0.7,
+              threshold: 0,
               min: 0,
               max: 1,
               targetName: "None",
+              // Use center frequency and width instead of min/max
+              customFreq: 1000,
+              customWidth: 100
             };
 
             // Extract values from controllers
@@ -390,7 +420,7 @@ export class InputModulationUi extends BaseUi {
             inputSource: "mic",
             enabled: mod.enabled,
             frequencyBand: mod.frequencyBand || "none",
-            sensitivity: mod.sensitivity || 0,
+            sensitivity: mod.sensitivity || 1,
             smoothing: mod.smoothing || 0.7,
             min: mod.min || 0,
             max: mod.max || 1,
@@ -514,18 +544,26 @@ export class InputModulationUi extends BaseUi {
             // Get the appropriate frequency band value based on modulator's band setting
             let bandValue = 0;
 
-            if (modulator.frequencyBand && modulator.frequencyBand !== "none") {
+            if (modulator.frequencyBand === "custom") {
+              // Calculate min/max from center frequency and width
+              const centerFreq = modulator.customFreq || 1000;
+              const width = modulator.customWidth || 100;
+
+              const minFreq = Math.max(20, centerFreq - width / 2);
+              const maxFreq = Math.min(20000, centerFreq + width / 2);
+
+              // Get energy for custom frequency range
+              bandValue = analyzer.getFrequencyRangeValue(minFreq, maxFreq) || 0;
+            } else if (modulator.frequencyBand && modulator.frequencyBand !== "none") {
               // Get band-specific audio level
               bandValue = bandLevels[modulator.frequencyBand] || 0;
 
-              // Log value for debugging when significant
-              if (bandValue > 0.1) {
-                console.log(
-                  `Band ${modulator.frequencyBand} level: ${bandValue.toFixed(
-                    2
-                  )}`
-                );
-              }
+              // // Log value for debugging when significant
+              // if (bandValue > 0.1) {
+              //   console.log(
+              //     `Band ${modulator.frequencyBand} level: ${bandValue.toFixed(2)}`
+              //   );
+              // }
             } else {
               // Use global volume if no specific band is selected
               bandValue = globalVolume;
@@ -765,13 +803,16 @@ export class InputModulationUi extends BaseUi {
 
         // Update label with proper percentage
         if (modulator.ui.label) {
-          const bandName =
-            modulator.frequencyBand === "none"
-              ? "All"
-              : modulator.frequencyBand;
-          modulator.ui.label.textContent = `${bandName}: ${Math.round(
-            percent
-          )}%`;
+          let bandName = modulator.frequencyBand === "none" ? "All" : modulator.frequencyBand;
+
+          // For custom band, show the frequency range
+          if (bandName === "custom") {
+            const centerFreq = modulator.customFreq || 1000;
+            const width = modulator.customWidth || 100;
+            bandName = `${centerFreq}±${width / 2}Hz`;
+          }
+
+          modulator.ui.label.textContent = `${bandName}: ${Math.round(percent)}%`;
         }
       } catch (e) {
         // Silently ignore visualization errors

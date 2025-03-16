@@ -39,6 +39,7 @@ export class SoundAnalyzer {
       highMid: { min: 2000, max: 4000 }, // High midrange
       presence: { min: 4000, max: 6000 }, // Presence
       brilliance: { min: 6000, max: 20000 }, // Brilliance
+      custom: { min: 500, max: 2000 }, // Custom band (default range)
     };
 
     // Beat detection

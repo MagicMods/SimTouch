@@ -440,7 +440,7 @@ class FluidFLIP {
   // Simplify setParameters to only handle rest density
   setParameters(restDensity) {
     this.restDensity = restDensity;
-    console.log(`Rest density set to: ${this.restDensity}`);
+    // console.log(`Rest density set to: ${this.restDensity}`);
   }
 
   // Fix the interpolateVelocity function with proper boundary checking

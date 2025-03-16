@@ -1,5 +1,4 @@
 export class InputModulator {
-  // Update the constructor to not set any default target
   constructor(manager) {
     this.manager = manager;
     this.enabled = false; // Start disabled
@@ -16,6 +15,10 @@ export class InputModulator {
     this.originalValue = 0;
     this.currentInputValue = 0;
     this.lastOutputValue = 0;
+
+    // Replace min/max with center frequency and width
+    this.customFreq = 1000; // Center frequency (Hz)
+    this.customWidth = 100;  // Width of band (Hz)
   }
 
   setTarget(targetName) {
