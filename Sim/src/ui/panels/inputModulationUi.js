@@ -234,10 +234,16 @@ export class InputModulationUi extends BaseUi {
         }
       });
 
-    // Set initial state based on sensitivity
-    modulator.enabled = modulator.sensitivity > 0;
+    // Add threshold slider after the sensitivity slider
+    controllers.threshold = folder
+      .add(modulator, "threshold", 0, 1, 0.01)
+      .name("Threshold")
+      .onChange((value) => {
+        // Force visualization update
+        this.updateAllBandVisualizations();
+      });
 
-    // Add smoothing slider
+    // Add smoothing slider (moved after threshold)
     controllers.smoothing = folder
       .add(modulator, "smoothing", 0, 0.99, 0.01)
       .name("Smoothing");
@@ -657,6 +663,16 @@ export class InputModulationUi extends BaseUi {
     bar.style.borderRadius = "3px";
     container.appendChild(bar);
 
+    // Create threshold marker (initially hidden)
+    const thresholdMarker = document.createElement("div");
+    thresholdMarker.style.position = "absolute";
+    thresholdMarker.style.width = "2px";
+    thresholdMarker.style.height = "100%";
+    thresholdMarker.style.backgroundColor = "rgba(255, 255, 255, 0.7)";
+    thresholdMarker.style.zIndex = "2";
+    thresholdMarker.style.display = "none"; // Initially hidden
+    container.appendChild(thresholdMarker);
+
     const label = document.createElement("div");
     label.style.position = "absolute";
     label.style.width = "100%";
@@ -668,7 +684,7 @@ export class InputModulationUi extends BaseUi {
     container.appendChild(label);
 
     // Store UI references
-    modulator.ui = { container, bar, label };
+    modulator.ui = { container, bar, label, threshold: thresholdMarker };
 
     // Add to folder DOM carefully
     try {
@@ -734,6 +750,18 @@ export class InputModulationUi extends BaseUi {
         const percent = Math.min(100, Math.max(0, value * 100));
         modulator.ui.bar.style.width = `${percent}%`;
         modulator.ui.bar.style.backgroundColor = this.getIntensityColor(value);
+
+        // Update threshold marker visibility and position
+        if (modulator.ui.threshold) {
+          if (modulator.threshold > 0) {
+            // Show and position threshold marker
+            modulator.ui.threshold.style.display = "block";
+            modulator.ui.threshold.style.left = `${modulator.threshold * 100}%`;
+          } else {
+            // Hide threshold marker when not used
+            modulator.ui.threshold.style.display = "none";
+          }
+        }
 
         // Update label with proper percentage
         if (modulator.ui.label) {

@@ -7,6 +7,7 @@ export class InputModulator {
     this.frequencyBand = "none";
     this.sensitivity = 1.0;
     this.smoothing = 0.7;
+    this.threshold = 0; // Add threshold property (0 = disabled)
     this.min = 0;
     this.max = 1;
     this.targetName = null; // Start with no target
@@ -98,7 +99,7 @@ export class InputModulator {
     }
   }
 
-  // Add missing processInput method if it doesn't exist
+  // Update processInput to apply threshold logic
   processInput() {
     // Make sure we have a valid input value
     if (
@@ -113,6 +114,16 @@ export class InputModulator {
       1,
       Math.max(0, this.currentInputValue * this.sensitivity)
     );
+
+    // Apply threshold logic
+    if (this.threshold > 0) {
+      if (value < this.threshold) {
+        value = 0; // Below threshold, no effect (will map to minimum)
+      } else {
+        // Rescale the value so threshold->1 maps to 0->1
+        value = (value - this.threshold) / (1 - this.threshold);
+      }
+    }
 
     // Apply smoothing between this and the last value
     if (this.smoothing > 0 && this.lastOutputValue !== undefined) {
