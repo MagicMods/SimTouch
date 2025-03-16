@@ -32,13 +32,21 @@ export class VoronoiUi extends BaseUi {
     const voronoi = this.main.voronoiField;
     if (!voronoi) return;
 
+    // Add pullMode if it doesn't exist
+    if (voronoi.pullMode === undefined) {
+      voronoi.pullMode = false;
+    }
+
     this.voronoiStrengthController = this.gui.add(voronoi, "strength", 0, 10).name("V-Strength");
-    this.voronoiEdgeWidthController = this.gui.add(voronoi, "edgeWidth", 0.1, 50).name("V-EdgeWidth");
+    this.voronoiEdgeWidthController = this.gui.add(voronoi, "edgeWidth", 0.01, 3, 0.01).name("V-EdgeWidth");
     this.voronoiAttractionController = this.gui.add(voronoi, "attractionFactor", 0, 8).name("V-Attract");
     this.voronoiCellCountController = this.gui.add(voronoi, "cellCount", 1, 10, 1).name("V-CellCount").onChange(() => voronoi.regenerateCells());
     this.voronoiSpeedController = this.gui.add(voronoi, "cellMovementSpeed", 0, 4).name("V-CellSpeed");
-    this.voronoiDecayRateController = this.gui.add(voronoi, "decayRate", 0.9, 1).name("V-Decay");
+    this.voronoiDecayRateController = this.gui.add(voronoi, "decayRate", 0.1, 1).name("V-Decay");
     this.voronoiBlendController = this.gui.add(voronoi, "velocityBlendFactor", 0, 1).name("V-ForceBlend");
+
+    // NEW: Add pull mode toggle
+    this.voronoiPullModeController = this.gui.add(voronoi, "pullMode").name("V-Pull Mode");
   }
 
   getControlTargets() {
@@ -50,6 +58,7 @@ export class VoronoiUi extends BaseUi {
     if (this.voronoiAttractionController) targets["V-Attract"] = this.voronoiAttractionController;
     if (this.voronoiCellCountController) targets["V-CellCount"] = this.voronoiCellCountController;
     if (this.voronoiDecayRateController) targets["V-Decay"] = this.voronoiDecayRateController;
+    if (this.voronoiPullModeController) targets["V-Pull Mode"] = this.voronoiPullModeController;
 
     return targets;
   }
@@ -73,6 +82,7 @@ export class VoronoiUi extends BaseUi {
     safeUpdateDisplay(this.voronoiSpeedController);
     safeUpdateDisplay(this.voronoiCellCountController);
     safeUpdateDisplay(this.voronoiDecayRateController);
+    safeUpdateDisplay(this.voronoiPullModeController);
   }
 
   getData() {

@@ -8,6 +8,7 @@ class VoronoiField {
     boundary = null,
     timeOffset = Math.random() * 1000,
     decayRate = 0.99,
+    pullMode = false,  // NEW: Pull particles to edges instead of pushing away
   } = {}) {
     if (!boundary) {
       console.warn("VoronoiField: No boundary provided, using default");
@@ -26,6 +27,7 @@ class VoronoiField {
     this.attractionFactor = attractionFactor;
     this.decayRate = decayRate;
     this.timeOffset = timeOffset;
+    this.pullMode = pullMode;  // NEW: Store the pull mode
 
     this.time = 0;
     this.scaleStrength = 0;
@@ -306,7 +308,13 @@ class VoronoiField {
           edgeFactor * this.strength * this.attractionFactor;
 
         // Get gradient direction (points toward edge)
-        const [gx, gy] = gradient;
+        let [gx, gy] = gradient;
+
+        // PULL MODE: Invert gradient direction for pull mode to attract to edges
+        if (this.pullMode) {
+          gx = -gx;
+          gy = -gy;
+        }
 
         // CRITICAL CHANGE: Check if we're already moving toward the edge
         // This prevents overshooting and ping-ponging across edges
@@ -468,6 +476,7 @@ class VoronoiField {
     edgeWidth,
     attractionFactor,
     decayRate,
+    pullMode,  // NEW: Add pullMode to parameters
   }) {
     if (strength !== undefined) this.strength = strength;
 
@@ -483,6 +492,7 @@ class VoronoiField {
     if (attractionFactor !== undefined)
       this.attractionFactor = attractionFactor;
     if (decayRate !== undefined) this.decayRate = decayRate;
+    if (pullMode !== undefined) this.pullMode = pullMode;  // NEW: Set pullMode
   }
 }
 

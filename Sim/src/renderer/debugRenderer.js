@@ -18,7 +18,7 @@ class DebugRenderer extends BaseRenderer {
     this.showParticlesInfo = false;
 
     // Split field visualization controls
-    this.showTurbulenceField = true;
+    this.showTurbulenceField = false;
     this.showVoronoiField = true;
     this.turbulenceOpacity = 0.7; // Single opacity control
   }
@@ -190,12 +190,33 @@ class DebugRenderer extends BaseRenderer {
         if (this.showVoronoiField && voronoiField && typeof voronoiField.getVoronoiEdgeDistance === 'function') {
           try {
             const edgeInfo = voronoiField.getVoronoiEdgeDistance(nx, ny);
-            // Normalize the distance based on edge width
-            voroValue = Math.max(0, 1.0 - Math.pow(edgeInfo.distance / voronoiField.edgeWidth, 1.5));
+
+            // IMPROVED EDGE VISUALIZATION: Use a better formula that maintains contrast
+            // at different edge width values
+
+            // First, apply a hard cutoff based on a fraction of the edge width
+            const scaledDistance = edgeInfo.distance / (voronoiField.edgeWidth * 0.33);
+
+            // Use sharper falloff curve
+            if (scaledDistance <= 1.0) {
+              // Close to edge - use smoothstep-like function for smooth transition
+              voroValue = 1.0 - Math.pow(scaledDistance, 0.75);
+            } else {
+              // Far from edge - no value
+              voroValue = 0;
+            }
           } catch (e) {
             // Fallback on error
           }
         }
+
+        // Skip rendering cells with no effect (performance improvement)
+        const hasVisibleValue =
+          (this.showTurbulenceField && turbValue > 0.01) ||
+          (this.showVoronoiField && voroValue > 0.01);
+
+        // Skip cells with no visible effect
+        if (!hasVisibleValue) continue;
 
         // Map to screen coordinates [-1,1]
         const screenX = nx * 2 - 1;
@@ -233,19 +254,19 @@ class DebugRenderer extends BaseRenderer {
         this.gl.enableVertexAttribArray(program.attributes.position);
         this.gl.vertexAttribPointer(program.attributes.position, 2, this.gl.FLOAT, false, 0, 0);
 
-        // IMPORTANT CHANGE: Use a single opacity value (turbulenceOpacity) for both fields
+        // Use a single opacity value (turbulenceOpacity) for both fields
         // But keep colors at full intensity - just vary the alpha channel
         let r = 0, g = 0, b = 0;
 
         if (this.showVoronoiField) {
-          g = voroValue; // Red component for voronoi
+          g = voroValue; // Green component for voronoi
         }
 
         if (this.showTurbulenceField) {
           b = turbValue; // Blue component for turbulence
         }
 
-        // Use interaction effect in green channel when both are active
+        // Use interaction effect in red channel when both are active
         if (this.showTurbulenceField && this.showVoronoiField) {
           r = turbValue * voroValue * 0.7;
         }
