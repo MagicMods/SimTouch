@@ -202,8 +202,8 @@ export class InputModulationUi extends BaseUi {
       .name("Freq Center (Hz)")
       .onChange((value) => {
         // Update visualizer if available
-        if (this.main.audioVisualizer && modulator.frequencyBand === "custom") {
-          this.main.audioVisualizer.setCustomBandMarker(
+        if (this.main.micForces.visualizer && modulator.frequencyBand === "custom") {
+          this.main.micForces.visualizer.setCustomBandMarker(
             value,
             modulator.customWidth,
             true
@@ -213,12 +213,12 @@ export class InputModulationUi extends BaseUi {
 
     // Add custom bandwidth
     controllers.customWidth = folder
-      .add(modulator, "customWidth", 10, 1000, 10)
+      .add(modulator, "customWidth", 10, 10000, 10)
       .name("Band Width (Hz)")
       .onChange((value) => {
         // Update visualizer if available
-        if (this.main.audioVisualizer && modulator.frequencyBand === "custom") {
-          this.main.audioVisualizer.setCustomBandMarker(
+        if (this.main.micForces.visualizer && modulator.frequencyBand === "custom") {
+          this.main.micForces.visualizer.setCustomBandMarker(
             modulator.customFreq,
             value,
             true

@@ -389,7 +389,7 @@ export class SoundVisualizer {
 
     // Draw custom frequency band marker if enabled
     if (this.customBandMarker && this.customBandMarker.enabled) {
-      console.warn("Custom band marker enabled");
+      // console.warn("Custom band marker enabled");
       // Convert frequency to x-position on the spectrum
       const nyquistFreq = 22050; // Standard maximum frequency (half sample rate)
 
@@ -425,11 +425,11 @@ export class SoundVisualizer {
       );
     }
 
-    // Label
-    this.ctx.fillStyle = this.colors.text;
-    this.ctx.font = "12px sans-serif";
-    this.ctx.textAlign = "left";
-    this.ctx.fillText("Spectrum", padding, yOffset + padding + 12);
+    // // Label
+    // this.ctx.fillStyle = this.colors.text;
+    // this.ctx.font = "12px sans-serif";
+    // this.ctx.textAlign = "left";
+    // this.ctx.fillText("Spectrum", padding, yOffset + padding + 12);
 
     this.ctx.restore();
 
@@ -487,11 +487,11 @@ export class SoundVisualizer {
 
     this.ctx.stroke();
 
-    // Label
-    this.ctx.fillStyle = this.colors.text;
-    this.ctx.font = "12px sans-serif";
-    this.ctx.textAlign = "left";
-    this.ctx.fillText("Waveform", padding, yOffset + padding + 12);
+    // // Label
+    // this.ctx.fillStyle = this.colors.text;
+    // this.ctx.font = "12px sans-serif";
+    // this.ctx.textAlign = "left";
+    // this.ctx.fillText("Waveform", padding, yOffset + padding + 12);
 
     this.ctx.restore();
 
@@ -557,8 +557,8 @@ export class SoundVisualizer {
       yOffset + padding + height / 2 + 4
     );
 
-    this.ctx.textAlign = "left";
-    this.ctx.fillText("Volume", padding, yOffset + padding + 12);
+    // this.ctx.textAlign = "left";
+    // this.ctx.fillText("Volume", padding, yOffset + padding + 12);
 
     this.ctx.restore();
 
@@ -623,11 +623,11 @@ export class SoundVisualizer {
       );
     }
 
-    // Label
-    this.ctx.fillStyle = this.colors.text;
-    this.ctx.font = "12px sans-serif";
-    this.ctx.textAlign = "left";
-    this.ctx.fillText("Frequency Bands", padding, yOffset + padding + 12);
+    // // Label
+    // this.ctx.fillStyle = this.colors.text;
+    // this.ctx.font = "12px sans-serif";
+    // this.ctx.textAlign = "left";
+    // this.ctx.fillText("Frequency Bands", padding, yOffset + padding + 12);
 
     this.ctx.restore();
 
@@ -696,10 +696,10 @@ export class SoundVisualizer {
     this.ctx.fill();
 
     // Label
-    this.ctx.fillStyle = this.colors.text;
-    this.ctx.font = "12px sans-serif";
-    this.ctx.textAlign = "left";
-    this.ctx.fillText("History", padding, yOffset + padding + 12);
+    // this.ctx.fillStyle = this.colors.text;
+    // this.ctx.font = "12px sans-serif";
+    // this.ctx.textAlign = "left";
+    // this.ctx.fillText("History", padding, yOffset + padding + 12);
 
     this.ctx.restore();
 
