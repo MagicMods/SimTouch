@@ -168,7 +168,8 @@ export class InputModulationUi extends BaseUi {
         "lowMid",
         "mid",
         "highMid",
-        "treble",
+        "presence",
+        "brilliance"
       ])
       .name("Frequency Band");
 
