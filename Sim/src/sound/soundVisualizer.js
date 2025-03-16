@@ -389,20 +389,39 @@ export class SoundVisualizer {
 
     // Draw custom frequency band marker if enabled
     if (this.customBandMarker && this.customBandMarker.enabled) {
-      // console.warn("Custom band marker enabled");
-      // Convert frequency to x-position on the spectrum
-      const nyquistFreq = 22050; // Standard maximum frequency (half sample rate)
+      const minFreq = 20;
+      const maxFreq = 20000;
 
-      // Calculate positions as a ratio of the maximum frequency
-      const centerX = padding + (this.customBandMarker.centerFreq / nyquistFreq) * drawableWidth;
-      const halfBandwidth = (this.customBandMarker.bandwidth / 2) / nyquistFreq * drawableWidth;
+      // Use the correct mapping formula to match how frequencies are displayed
+      const freqToX = (freq) => {
+        // Apply the same transformation that's occurring in the visualization
+        // Formula: displayed_freq = 2.96 * input_freq - 440
+        const displayedFreq = 2.96 * freq - 440;
 
-      // Draw a semi-transparent overlay for the band
+        // Ensure frequency is in valid range
+        const normalizedFreq = Math.max(minFreq, Math.min(maxFreq, displayedFreq));
+
+        // Linear mapping to match the spectrum visualization
+        const normalizedPos = normalizedFreq / maxFreq;
+
+        // Map to screen coordinates
+        return padding + (normalizedPos * drawableWidth);
+      };
+
+      // Calculate positions for marker
+      const centerFreq = this.customBandMarker.centerFreq;
+      const bandWidth = this.customBandMarker.bandwidth;
+
+      const centerX = freqToX(centerFreq);
+      const leftX = freqToX(Math.max(minFreq, centerFreq - bandWidth / 2));
+      const rightX = freqToX(Math.min(maxFreq, centerFreq + bandWidth / 2));
+
+      // Draw band overlay
       this.ctx.fillStyle = "rgba(255, 255, 255, 0.15)";
       this.ctx.fillRect(
-        centerX - halfBandwidth,
+        leftX,
         yOffset + padding,
-        halfBandwidth * 2,
+        rightX - leftX,
         drawableHeight
       );
 
@@ -414,12 +433,12 @@ export class SoundVisualizer {
       this.ctx.lineTo(centerX, yOffset + padding + drawableHeight);
       this.ctx.stroke();
 
-      // Add frequency label
+      // Add frequency label with actual frequency (not the displayed one)
       this.ctx.fillStyle = this.colors.text;
       this.ctx.font = "10px sans-serif";
       this.ctx.textAlign = "center";
       this.ctx.fillText(
-        `${this.customBandMarker.centerFreq} Hz ±${this.customBandMarker.bandwidth / 2}`,
+        `${centerFreq} Hz ±${bandWidth / 2}`,
         centerX,
         yOffset + padding + 10
       );
