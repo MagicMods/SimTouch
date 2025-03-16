@@ -9,39 +9,29 @@ class DebugRenderer extends BaseRenderer {
 
     // Debug visualization flags
     this.enabled = true;
-    this.showVelocityField = false;
-    this.showGrid = false;
-    this.showBoundary = false;
-    this.showNoiseField = true;
 
-    // Add the missing property
+    // Remove redundant flags and directly expose the field controls
+    this.showVelocityField = false;
     this.showParticlesInfo = false;
 
-    // Split field visualization controls
+    // Direct field controls (no nested showNoiseField)
     this.showTurbulenceField = false;
     this.showVoronoiField = true;
-    this.turbulenceOpacity = 0.7; // Single opacity control
+    this.turbulenceOpacity = 0.2; // Single opacity control
   }
 
   draw(particleSystem, turbulenceField, voronoiField) {
     if (!this.enabled) return;
 
-    if (this.showGrid) {
-      this.drawGrid(particleSystem.fluid?.gridSize || 48);
-    }
+    // Remove grid and boundary drawing
 
     if (this.showVelocityField) {
       this.drawVelocityField(particleSystem);
     }
 
-    if (this.showBoundary && particleSystem.boundary) {
-      this.drawBoundary(particleSystem.boundary);
-    }
-
-    if (this.showNoiseField) {
-      if (this.showTurbulenceField || this.showVoronoiField) {
-        this.drawNoiseField(turbulenceField, voronoiField);
-      }
+    // Always check both turbulence and voronoi fields directly
+    if (this.showTurbulenceField || this.showVoronoiField) {
+      this.drawNoiseField(turbulenceField, voronoiField);
     }
 
     if (this.showParticlesInfo) {

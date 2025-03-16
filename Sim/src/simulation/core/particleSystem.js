@@ -19,7 +19,7 @@ class ParticleSystem {
     this.numParticles = particleCount;
     this.timeStep = timeStep;
     this.gravity = new GravityForces(gravity);
-    this.particleRadius = 0.02;
+    this.particleRadius = 0.01;
     this.renderScale = 2000;
 
     // Add radius array to track individual particle sizes

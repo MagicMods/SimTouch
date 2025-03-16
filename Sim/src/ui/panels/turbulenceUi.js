@@ -49,6 +49,16 @@ export class TurbulenceUi extends BaseUi {
     const turbulence = this.main.turbulenceField;
     if (!turbulence) return;
 
+    // Initialize pullFactor if it doesn't exist (backward compatibility)
+    if (turbulence.pullFactor === undefined) {
+      // Convert from old format if possible
+      if (turbulence.pullMode === true) {
+        turbulence.pullFactor = 1.0; // Full pull mode
+      } else {
+        turbulence.pullFactor = 0.0; // Default to push mode
+      }
+    }
+
     // Create button group container
     const buttonContainer = document.createElement("div");
     buttonContainer.className = "turbulence-toggle-buttons";
@@ -112,6 +122,15 @@ export class TurbulenceUi extends BaseUi {
     this.turbulenceScaleController = this.gui.add(turbulence, "scale", 0.1, 20).name("T-Scale");
     this.turbulenceSpeedController = this.gui.add(turbulence, "speed", 0, 2).name("T-Speed");
 
+    // COMBINED: Replace both controls with a single pullFactor slider from -1 to 1
+    this.turbulencePullFactorController = this.gui.add(turbulence, "pullFactor", -1, 1)
+      .name("T-Pull Mode")
+      .onChange((value) => {
+        // Optional: Add tooltip or indicator that shows the current mode
+        const mode = value > 0 ? "Peak Attraction" : "Flow Following";
+        // Could update a UI element here if needed
+      });
+
     const scaleRangeFolder = this.gui.addFolder("Scale Range");
     this.scaleRangeFolder = scaleRangeFolder; // Store reference
 
@@ -131,12 +150,17 @@ export class TurbulenceUi extends BaseUi {
     this.turbulencePersistenceController = advancedFolder.add(turbulence, "persistence", 0, 1).name("T-Persist");
     this.turbulenceRotationController = advancedFolder.add(turbulence, "rotation", 0, Math.PI * 2).name("T-Rot");
     this.turbulenceRotationSpeedController = advancedFolder.add(turbulence, "rotationSpeed", 0, 1).name("T-RotSpd");
-    this.turbulenceInwardFactorController = advancedFolder.add(turbulence, "inwardFactor", 0, 5).name("T-Pull");
+    // REMOVED: inwardFactor controller is now combined into pullFactor
     this.turbulenceDecayRateController = advancedFolder.add(turbulence, "decayRate", 0.9, 1).name("T-Decay");
 
+    // Restore XY bias controllers
     const biasFolder = this.gui.addFolder("Direction Bias");
     this.turbulenceBiasXController = biasFolder.add(turbulence.directionBias, "0", -1, 1).name("T-X");
     this.turbulenceBiasYController = biasFolder.add(turbulence.directionBias, "1", -1, 1).name("T-Y");
+
+
+    this.turbulenceDomainWarpController = advancedFolder.add(turbulence, "domainWarp", 0, 100).name("T-DomainWarp");
+
   }
 
   getControlTargets() {
@@ -206,6 +230,12 @@ export class TurbulenceUi extends BaseUi {
     if (this.turbulenceBiasXController) targets["T-X"] = this.turbulenceBiasXController;
     if (this.turbulenceBiasYController) targets["T-Y"] = this.turbulenceBiasYController;
 
+    // Add domain warp controller
+    if (this.turbulenceDomainWarpController) targets["T-DomainWarp"] = this.turbulenceDomainWarpController;
+
+    // Add pull mode controller
+    if (this.turbulencePullFactorController) targets["T-Pull Mode"] = this.turbulencePullFactorController;
+
     return targets;
   }
 
@@ -242,6 +272,8 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulenceRotationSpeedController);
     safeUpdateDisplay(this.turbulenceBiasXController);
     safeUpdateDisplay(this.turbulenceBiasYController);
+    safeUpdateDisplay(this.turbulenceDomainWarpController);
+    safeUpdateDisplay(this.turbulencePullFactorController);
   }
 
   getData() {

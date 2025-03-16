@@ -95,6 +95,21 @@ class Main {
     }
   }
 
+  initialize() {
+    // Existing initialization code...
+
+    // Add a global reference for debugging
+    if (typeof window !== 'undefined') {
+      window.svibeSim = window.svibeSim || {};
+      window.svibeSim.turbulenceField = this.turbulenceField;
+      window.svibeSim.voronoiField = this.voronoiField;
+      window.svibeSim.particleSystem = this.particleSystem;
+      console.log("Debug objects available via window.svibeSim");
+    }
+
+    // Rest of initialization...
+  }
+
   animate() {
     if (!this.paused) {
       this.render();

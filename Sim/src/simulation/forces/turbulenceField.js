@@ -7,7 +7,7 @@ class TurbulenceField {
     persistence = 0.5,
     rotation = 0.0,
     rotationSpeed = 0.0, // Add new rotation speed parameter
-    inwardFactor = 1.0,
+    pullFactor = 0.0, // -1 to +1 range parameter replacing inwardFactor and pullMode
     boundary = null,
     directionBias = [0, 0], // New: directional bias
     decayRate = 0.99, // New: decay over time
@@ -34,7 +34,8 @@ class TurbulenceField {
     this.persistence = persistence;
     this.rotation = rotation;
     this.rotationSpeed = rotationSpeed; // Store the rotation speed
-    this.inwardFactor = inwardFactor;
+    this.pullFactor = pullFactor; // Store the unified pull factor
+    this.inwardFactor = Math.abs(pullFactor); // For backward compatibility - remove if not needed
     this.time = 0;
     this.directionBias = directionBias;
     this.decayRate = decayRate;
@@ -70,102 +71,187 @@ class TurbulenceField {
 
   // Method to regenerate noise bases when octaves change
   regenerateNoiseBases() {
-    // Clear existing bases and regenerate
-    this.noiseBases = [];
-    for (let i = 0; i < this._octaves; i++) {
-      this.noiseBases.push({
-        freqX: Math.random() * 0.1 + 0.95,
-        freqY: Math.random() * 0.1 + 0.95,
-        phaseX: Math.random() * 6.28,
-        phaseY: Math.random() * 6.28,
-      });
-    }
-    // console.log(`Regenerated noise bases for ${this._octaves} octaves`);
-  }
+    try {
+      this.noiseBases = [];
 
-  // Improved noise function with domain warping
-  noise2D(x, y) {
-    const cos = Math.cos(this.rotation);
-    const sin = Math.sin(this.rotation);
+      // Use fixed values for testing to ensure consistency
+      const baseFrequencies = [
+        { freqX: 1.0, freqY: 1.0, phaseX: 0, phaseY: 0 },
+        { freqX: 1.0, freqY: 1.0, phaseX: 2.1, phaseY: 1.3 },
+        { freqX: 0.9, freqY: 1.1, phaseX: 4.2, phaseY: 3.8 },
+        { freqX: 1.1, freqY: 0.9, phaseX: 0.7, phaseY: 5.1 },
+        { freqX: 1.0, freqY: 1.0, phaseX: 3.3, phaseY: 2.2 },
+        { freqX: 1.0, freqY: 1.0, phaseX: 1.4, phaseY: 4.3 },
+        { freqX: 1.0, freqY: 1.0, phaseX: 5.6, phaseY: 0.5 },
+        { freqX: 1.0, freqY: 1.0, phaseX: 2.8, phaseY: 3.7 }
+      ];
 
-    // Apply domain warping
-    const warpX = this.domainWarp * Math.sin(y * 0.1 + this.time * 0.05);
-    const warpY = this.domainWarp * Math.sin(x * 0.1 + this.time * 0.07);
-
-    let rx = (x + warpX) * cos - (y + warpY) * sin;
-    let ry = (x + warpX) * sin + (y + warpY) * cos;
-
-    let noise = 0;
-    let amplitude = 1;
-    let maxValue = 0;
-
-    // Safety check: ensure we have enough noise bases
-    const actualOctaves = Math.min(this._octaves, this.noiseBases.length);
-
-    // Safety check: regenerate if needed
-    if (this.noiseBases.length < this._octaves) {
-      this.regenerateNoiseBases();
-    }
-
-    for (let i = 0; i < actualOctaves; i++) {
-      // Check if base exists
-      if (!this.noiseBases[i]) {
-        console.warn(`Missing noise base for octave ${i}`);
-        continue;
+      // Use fixed bases for octaves up to 8
+      for (let i = 0; i < this._octaves; i++) {
+        // Use modulo to wrap around if we need more than the predefined bases
+        const baseIdx = i % baseFrequencies.length;
+        this.noiseBases.push(baseFrequencies[baseIdx]);
       }
 
-      const base = this.noiseBases[i];
-      const frequencyX = Math.pow(2, i) * base.freqX;
-      const frequencyY = Math.pow(2, i) * base.freqY;
-
-      // Use varied phases and frequencies per octave
-      const val =
-        Math.sin(rx * frequencyX + this.time * this.speed + base.phaseX) *
-        Math.cos(ry * frequencyY + this.time * this.speed * 0.7 + base.phaseY);
-
-      noise += amplitude * val;
-      maxValue += amplitude;
-      amplitude *= this.persistence;
+      console.log("Regenerated noise bases with center:",
+        this.boundary.centerX, this.boundary.centerY);
+    } catch (err) {
+      console.error("Error regenerating noise bases:", err);
+      // Create fallback bases
+      this.noiseBases = [];
+      for (let i = 0; i < this._octaves; i++) {
+        this.noiseBases.push({
+          freqX: 1.0,
+          freqY: 1.0,
+          phaseX: i * 1.0,
+          phaseY: i * 2.0,
+        });
+      }
     }
+  }
 
-    return (noise / maxValue + 1) * 0.5;
+  // Completely redesigned noise2D function
+  noise2D(x, y) {
+    try {
+      // Get exact boundary center coordinates - these must be correct!
+      // Use 0.5, 0.5 as fallback values if boundary is invalid
+      const centerX = (this.boundary && typeof this.boundary.centerX === 'number') ? this.boundary.centerX : 0.5;
+      const centerY = (this.boundary && typeof this.boundary.centerY === 'number') ? this.boundary.centerY : 0.5;
+
+      // FIXED APPROACH: Create a very recognizable pattern that clearly shows rotation
+      // We'll use a simple checkerboard pattern first WITHOUT rotation
+
+      // Scale coordinates based on noise scale
+      const scaledX = x * this.scale;
+      const scaledY = y * this.scale;
+
+      // Simple noise function with clear sine patterns aligned with axes
+      // This pattern will clearly show proper rotation
+      const basePattern = Math.sin(scaledX * 6) * Math.sin(scaledY * 6);
+
+      // Only apply rotation if non-zero - calculate a rotated version of the pattern
+      let rotatedPattern = basePattern;
+
+      if (Math.abs(this.rotation) > 0.0001) {
+        // 1. Translate to center
+        const tx = x - centerX;
+        const ty = y - centerY;
+
+        // 2. Rotate point
+        const cos = Math.cos(-this.rotation); // Negative for proper visual rotation
+        const sin = Math.sin(-this.rotation);
+        const rx = tx * cos - ty * sin;
+        const ry = tx * sin + ty * cos;
+
+        // 3. Translate back
+        const rotX = rx + centerX;
+        const rotY = ry + centerY;
+
+        // 4. Sample pattern at rotated position
+        const rotScaledX = rotX * this.scale;
+        const rotScaledY = rotY * this.scale;
+        rotatedPattern = Math.sin(rotScaledX * 6) * Math.sin(rotScaledY * 6);
+      }
+
+      // Now use the rotated pattern as the base for our noise
+      let noise = rotatedPattern;
+
+      // Apply time animation if speed > 0
+      if (this.speed > 0) {
+        noise = Math.sin(noise + this.time * this.speed);
+      }
+
+      // Normalize to [0,1]
+      return (noise + 1) * 0.5;
+
+    } catch (err) {
+      console.error("Error in noise2D:", err);
+      return 0.5;
+    }
   }
 
   applyTurbulence(position, velocity, dt, particleIndex, system) {
     const [x, y] = position;
     const [vx, vy] = velocity;
 
-    // Calculate noise at particle position
-    const n1 = this.noise2D(x * this.scale, y * this.scale);
-    const n2 = this.noise2D(y * this.scale + 1.234, x * this.scale + 5.678);
-
     // Initialize with current velocities
     let newVx = vx * this.decayRate;
     let newVy = vy * this.decayRate;
 
-    // Apply position forces only if enabled
-    if (this.affectPosition) {
-      const forceX = (n1 - 0.5) * this.strength + this.directionBias[0];
-      const forceY = (n2 - 0.5) * this.strength + this.directionBias[1];
-      newVx += forceX * dt;
-      newVy += forceY * dt;
+    // If strength is zero, we're done - just return the damped velocity
+    if (Math.abs(this.strength) < 0.001) {
+      return [newVx, newVy];
     }
 
-    // Apply velocity scaling if enabled
-    if (this.scaleField) {
-      const scaleFactorField = 1.0 + (n1 - 0.5) * this.strength * 0.1;
-      newVx *= scaleFactorField;
-      newVy *= scaleFactorField;
-    }
+    try {
+      // APPLY DIRECTION BIAS FIRST - this should work in either mode
+      // Scale direction bias by strength and apply it consistently
+      if ((this.directionBias[0] !== 0 || this.directionBias[1] !== 0) && this.affectPosition) {
+        newVx += this.directionBias[0] * this.strength * dt;
+        newVy += this.directionBias[1] * this.strength * dt;
+      }
 
-    // Apply particle radius scaling if enabled
-    if (this.affectScale && system?.particleRadii) {
-      const noiseValue = n1 * this.scaleStrength; // Use same noise as forces for consistency
-      // Map noise [0,1] to [minScale,maxScale]
-      const scalePartFactor =
-        this.minScale + noiseValue * (this.maxScale - this.minScale);
-      system.particleRadii[particleIndex] =
-        system.particleRadius * scalePartFactor;
+      // Calculate noise and determine mode based on pullFactor
+      if (this.pullFactor > 0 && this.affectPosition) {
+        // PULL MODE: Move toward noise peaks (positive pullFactor)
+
+        // Sample noise at multiple points to calculate gradient
+        const epsilon = 0.01;  // Small sampling distance
+        const n0 = this.noise2D(x, y);
+        const nx = this.noise2D(x + epsilon, y);
+        const ny = this.noise2D(x, y + epsilon);
+
+        // Calculate approximate gradient (direction toward higher values)
+        const gradX = (nx - n0) / epsilon;
+        const gradY = (ny - n0) / epsilon;
+
+        // Calculate gradient magnitude and normalize
+        const gradMag = Math.sqrt(gradX * gradX + gradY * gradY);
+        if (gradMag > 0.001) {
+          // Apply force toward higher noise values, scaled by pullFactor
+          const normalizedGradX = gradX / gradMag;
+          const normalizedGradY = gradY / gradMag;
+
+          // Scale force by pull factor (0 to 1 range) and noise value for stronger effect at peaks
+          const pullStrength = this.pullFactor * this.strength;
+          newVx += normalizedGradX * pullStrength * dt;
+          newVy += normalizedGradY * pullStrength * dt;
+        }
+      } else if (this.affectPosition) {
+        // STANDARD MODE: Use the existing implementation for pushing particles
+        // Calculate noise at particle position
+        const n1 = this.noise2D(x, y);
+        const n2 = this.noise2D(y + 1.234, x + 5.678);
+
+        // Determine how much "push" to apply (full when pullFactor is 0 or negative)
+        const pushStrength = this.strength * (1 + Math.min(0, this.pullFactor));
+        const forceX = (n1 - 0.5) * pushStrength;
+        const forceY = (n2 - 0.5) * pushStrength;
+        newVx += forceX * dt;
+        newVy += forceY * dt;
+      }
+
+      // Rest of the method remains unchanged...
+      // Apply velocity scaling if enabled - works the same in either mode
+      if (this.scaleField) {
+        const n1 = this.noise2D(x * this.scale, y * this.scale);
+        const scaleFactorField = 1.0 + (n1 - 0.5) * this.strength * 0.1;
+        newVx *= scaleFactorField;
+        newVy *= scaleFactorField;
+      }
+
+      // Apply particle radius scaling if enabled - works the same in either mode
+      if (this.affectScale && system?.particleRadii) {
+        const n1 = this.noise2D(x * this.scale, y * this.scale);
+        const noiseValue = n1 * this.scaleStrength;
+        // Map noise [0,1] to [minScale,maxScale]
+        const scalePartFactor =
+          this.minScale + noiseValue * (this.maxScale - this.minScale);
+        system.particleRadii[particleIndex] =
+          system.particleRadius * scalePartFactor;
+      }
+    } catch (err) {
+      console.error("Error in turbulenceField.applyTurbulence:", err);
     }
 
     return [newVx, newVy];
@@ -216,6 +302,42 @@ class TurbulenceField {
     if (decayRate !== undefined) this.decayRate = decayRate;
     if (domainWarp !== undefined) this.domainWarp = domainWarp;
     if (timeOffset !== undefined) this.timeOffset = timeOffset;
+  }
+
+  // Debug function to help diagnose rotation issues
+  debugRotation() {
+    console.log("=== Turbulence Field Debug ===");
+    console.log("Boundary center:", this.boundary.centerX, this.boundary.centerY);
+    console.log("Current rotation:", this.rotation);
+
+    // Test noise values at fixed points to verify rotation
+    const testPoints = [
+      { x: 0.3, y: 0.3 },
+      { x: 0.7, y: 0.3 },
+      { x: 0.7, y: 0.7 },
+      { x: 0.3, y: 0.7 },
+      { x: 0.5, y: 0.5 }  // Center
+    ];
+
+    console.log("Testing noise values:");
+    testPoints.forEach(pt => {
+      // Original coordinates
+      console.log(`Point (${pt.x}, ${pt.y}): ${this.noise2D(pt.x, pt.y)}`);
+
+      // Compute what the rotated coordinates should be
+      const centerX = this.boundary.centerX;
+      const centerY = this.boundary.centerY;
+      const tx = pt.x - centerX;
+      const ty = pt.y - centerY;
+      const cos = Math.cos(this.rotation);
+      const sin = Math.sin(this.rotation);
+      const rx = tx * cos - ty * sin + centerX;
+      const ry = tx * sin + ty * cos + centerY;
+
+      console.log(`Should rotate to (${rx.toFixed(3)}, ${ry.toFixed(3)})`);
+    });
+
+    console.log("=== End Debug ===");
   }
 }
 
