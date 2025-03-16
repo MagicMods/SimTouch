@@ -32,7 +32,7 @@ class DebugRenderer extends BaseRenderer {
     }
 
     if (this.showNoiseField && turbulenceField) {
-      this.drawNoiseField(turbulenceField);
+      this.drawNoiseField(turbulenceField, voronoiField);
     }
 
     if (this.showParticlesInfo) {
@@ -146,12 +146,11 @@ class DebugRenderer extends BaseRenderer {
     this.gl.deleteBuffer(vertexBuffer);
   }
 
-  drawNoiseField(turbulenceField) {
-    // Single quad approach with texture-style sampling
+  drawNoiseField(turbulenceField, voronoiField) {
     const program = this.shaderManager.use('basic');
     if (!program) return;
 
-    // Use [-1,1] coordinate system for the main background
+    // Full-screen background quad
     const vertices = new Float32Array([
       -1, -1,  // bottom-left
       1, -1,   // bottom-right
@@ -159,83 +158,90 @@ class DebugRenderer extends BaseRenderer {
       1, 1     // top-right
     ]);
 
-    // Create background quad
     const vertexBuffer = this.gl.createBuffer();
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
     this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
 
     this.gl.enableVertexAttribArray(program.attributes.position);
-    this.gl.vertexAttribPointer(
-      program.attributes.position,
-      2, this.gl.FLOAT, false, 0, 0
-    );
+    this.gl.vertexAttribPointer(program.attributes.position, 2, this.gl.FLOAT, false, 0, 0);
 
-    // Draw semi-transparent background
-    this.gl.uniform4f(program.uniforms.color, 0, 0, 0.3, 0.1);
+    // Draw dark background
+    this.gl.uniform4f(program.uniforms.color, 0, 0, 0.1, 0.3);
     this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
 
-    // Now draw a grid of points to visualize the noise
-    const resolution = 20;
+    // Using appropriate resolution for visualization
+    const resolution = 30;
 
-    // Sample with different coordinate mappings for visualization
+    // Visualize both fields
     for (let y = 0; y < resolution; y++) {
       for (let x = 0; x < resolution; x++) {
-        // Map to the normalized [0,1] coordinate space
+        // Normalize coordinates to [0,1] range for sampling
         const nx = x / (resolution - 1);
         const ny = y / (resolution - 1);
 
-        let noiseValue = 0.5;
-        try {
-          if (typeof turbulenceField.sampleNoise === 'function') {
-            noiseValue = turbulenceField.sampleNoise(nx, ny);
-            // Normalize to 0-1 range for visualization
-            noiseValue = (noiseValue + 1) * 0.5;
+        // Sample turbulence - use noise2D method
+        let turbValue = 0.5;
+        if (turbulenceField && typeof turbulenceField.noise2D === 'function') {
+          try {
+            turbValue = turbulenceField.noise2D(nx * turbulenceField.scale, ny * turbulenceField.scale);
+          } catch (e) {
+            // Fallback on error
           }
-        } catch (error) {
-          // Silent fallback
         }
 
-        // Map points to cover the full screen in [-1,1] space
+        // Sample voronoi - use getVoronoiEdgeDistance method
+        let voroValue = 0.5;
+        if (voronoiField && typeof voronoiField.getVoronoiEdgeDistance === 'function') {
+          try {
+            const edgeInfo = voronoiField.getVoronoiEdgeDistance(nx, ny);
+            // Normalize the distance based on edge width
+            voroValue = Math.max(0, 1.0 - Math.pow(edgeInfo.distance / voronoiField.edgeWidth, 1.5));
+          } catch (e) {
+            // Fallback on error
+          }
+        }
+
+        // Map to screen coordinates [-1,1]
         const screenX = nx * 2 - 1;
         const screenY = ny * 2 - 1;
 
-        // Visualize with small colored squares, size based on noise value
-        const pointSize = 0.02 + noiseValue * 0.05;
+        // Size based on values
+        const pointSize = 0.02 + Math.max(turbValue, voroValue) * 0.04;
 
-        // Draw a small quad for each sample point
+        // Create a cell quad
         const x1 = screenX - pointSize;
         const y1 = screenY - pointSize;
         const x2 = screenX + pointSize;
         const y2 = screenY + pointSize;
 
-        const pointVertices = new Float32Array([
+        const cellVertices = new Float32Array([
           x1, y1,
           x2, y1,
           x1, y2,
           x2, y2
         ]);
 
-        const pointBuffer = this.gl.createBuffer();
-        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, pointBuffer);
-        this.gl.bufferData(this.gl.ARRAY_BUFFER, pointVertices, this.gl.STATIC_DRAW);
+        const cellBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, cellBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, cellVertices, this.gl.STATIC_DRAW);
 
         this.gl.enableVertexAttribArray(program.attributes.position);
-        this.gl.vertexAttribPointer(
-          program.attributes.position,
-          2, this.gl.FLOAT, false, 0, 0
-        );
+        this.gl.vertexAttribPointer(program.attributes.position, 2, this.gl.FLOAT, false, 0, 0);
 
-        // Color based on noise value (blue gradient)
+        // Color based on field values:
+        // - Red: Voronoi edges
+        // - Blue: Turbulence
+        // - Purple: Both combined
         this.gl.uniform4f(
           program.uniforms.color,
-          0,
-          0.2,
-          0.5 + noiseValue * 0.5,
-          0.7
+          voroValue,        // Red channel - voronoi
+          turbValue * voroValue * 0.7,  // Green channel - interaction
+          turbValue,        // Blue channel - turbulence
+          0.7               // Alpha
         );
 
         this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
-        this.gl.deleteBuffer(pointBuffer);
+        this.gl.deleteBuffer(cellBuffer);
       }
     }
 
