@@ -28,31 +28,31 @@ export class RestStateUi extends BaseUi {
     // Only add controllers if the corresponding properties exist
     if (particles.restDensity !== undefined) {
       this.restDensityController = this.gui
-        .add(controls, "density", 0.01, 10)
+        .add(controls, "density", 0, 10, 0.1)
         .name("Rest Density")
         .onChange((value) => (particles.restDensity = value));
     }
 
     if (particles.gasConstant !== undefined) {
       this.gasConstantController = this.gui
-        .add(controls, "gasConstant", 0.01, 100)
+        .add(controls, "gasConstant", 0, 100, 0.1)
         .name("Gas Constant")
         .onChange((value) => (particles.gasConstant = value));
     }
 
-    if (particles.velocityThreshold !== undefined) {
-      this.velocityThresholdController = this.gui
-        .add(controls, "velocityThreshold", 0, 0.1)
-        .name("RS-VeloTH")
-        .onChange((value) => (particles.velocityThreshold = value));
-    }
+    // if (particles.velocityThreshold !== undefined) {
+    //   this.velocityThresholdController = this.gui
+    //     .add(controls, "velocityThreshold", 0, 0.1)
+    //     .name("RS-VeloTH")
+    //     .onChange((value) => (particles.velocityThreshold = value));
+    // }
 
-    if (particles.positionThreshold !== undefined) {
-      this.positionThresholdController = this.gui
-        .add(controls, "positionThreshold", 0, 0.1)
-        .name("RS-PosTH")
-        .onChange((value) => (particles.positionThreshold = value));
-    }
+    // if (particles.positionThreshold !== undefined) {
+    //   this.positionThresholdController = this.gui
+    //     .add(controls, "positionThreshold", 0, 0.1)
+    //     .name("RS-PosTH")
+    //     .onChange((value) => (particles.positionThreshold = value));
+    // }
   }
 
   getControlTargets() {

@@ -4,79 +4,34 @@ class FluidFLIP {
     picFlipRatio = 0.95,
     dt = 1 / 60,
     iterations = 20,
-    overRelaxation = 1.5,  // LOWER THIS to 1.5 for stability
+    overRelaxation = 1.5,
     boundary = null,
     restDensity = 1.0,
-    gasConstant = 2.0,
+    // Remove gasConstant parameter
     ...params
   } = {}) {
-    // Core parameters
     this.gridSize = gridSize;
+    this.h = 1.0 / gridSize;
     this.picFlipRatio = picFlipRatio;
     this.dt = dt;
-
-    // Store boundary reference
-    if (!boundary) {
-      throw new Error("FluidFLIP requires a boundary reference");
-    }
-    this.boundary = boundary;
-    this.radius = boundary.getRadius();
-
-    // Add update listener
-    this.boundary.addUpdateCallback(() => {
-      this.radius = this.boundary.getRadius();
-      this.centerX = this.boundary.centerX;
-      this.centerY = this.boundary.centerY;
-    });
-
-    // Add missing scale factors
-    this.gridToWorldScale = 1.0 / gridSize;
-    this.worldToGridScale = gridSize;
-
-    // Grid cell size (assuming [0,1] space)
-    this.h = 1.0 / gridSize;
-
-    // Initialize grid quantities
-    this.u = new Float32Array((gridSize + 1) * gridSize); // Horizontal velocities
-    this.v = new Float32Array(gridSize * (gridSize + 1)); // Vertical velocities
-    this.oldU = new Float32Array(this.u.length); // Previous velocities
-    this.oldV = new Float32Array(this.v.length);
-
-    // Add weight grids for velocity interpolation
-    this.weightU = new Float32Array(this.u.length);
-    this.weightV = new Float32Array(this.v.length);
-
-    // Add pressure solve parameters
-    this.pressure = new Float32Array(gridSize * gridSize);
-    this.divergence = new Float32Array(gridSize * gridSize);
-    this.solid = new Uint8Array(gridSize * gridSize);
-
-    // Solver parameters
     this.iterations = iterations;
     this.overRelaxation = overRelaxation;
-    this.pressureScale = 1.0;
-    this.velocityScale = 1.0;
-
-    // Add boundary parameters
-    this.safetyMargin = 0.01;
-    this.boundaryDamping = 0.85;
-    this.velocityDamping = 0.999;
-
-    // Initialize solid cells for circular boundary
-    this.initializeBoundary();
-
-    // Add new parameters
+    this.boundary = boundary;
     this.restDensity = restDensity;
-    this.gasConstant = gasConstant;
-    this.pressureMultiplier = this.gasConstant / (this.restDensity * this.restDensity);
+    // Remove gasConstant property
 
-    // Add these properties
-    this.centerX = this.boundary.centerX;
-    this.centerY = this.boundary.centerY;
-    this.boundaryMargin = 0.05; // Default value
+    // Initialize simulation arrays
+    const size = gridSize * gridSize;
+    this.u = new Array(size).fill(0);
+    this.v = new Array(size).fill(0);
+    this.newU = new Array(size).fill(0);
+    this.newV = new Array(size).fill(0);
+    this.pressure = new Array(size).fill(0);
+    this.divergence = new Array(size).fill(0);
+    this.solid = new Array(size).fill(false);
 
-    // Add this - critical for stability
-    this.velocityDampingFLIP = 0.98;
+    // Initialize boundary conditions
+    this.initializeBoundary();
   }
 
   worldToGrid(x, y) {
@@ -117,75 +72,48 @@ class FluidFLIP {
   }
 
   transferToGrid(particles, velocitiesX, velocitiesY) {
-    // Store current velocities before update
-    this.oldU.set(this.u);
-    this.oldV.set(this.v);
+    const n = this.gridSize;
+    const h = this.h;
 
-    // Clear velocity and weight grids
-    this.u.fill(0);
-    this.v.fill(0);
-    this.weightU.fill(0);
-    this.weightV.fill(0);
-
-    // Transfer particle velocities to grid using linear interpolation
-    for (let i = 0; i < particles.length; i += 2) {
-      const x = particles[i]; // World space position
-      const y = particles[i + 1];
-      const pIndex = i / 2;
-
-      // Convert particle velocity to grid scale
-      const vx = velocitiesX[pIndex];
-      const vy = velocitiesY[pIndex];
-
-      // Get grid cell
-      const cellX = Math.floor(x * this.gridSize);
-      const cellY = Math.floor(y * this.gridSize);
-
-      // Compute weights
-      const fx = x * this.gridSize - cellX;
-      const fy = y * this.gridSize - cellY;
-
-      // Accumulate to U grid (staggered in x)
-      for (let ix = 0; ix <= 1; ix++) {
-        for (let iy = 0; iy <= 1; iy++) {
-          const wx = ix === 0 ? 1 - fx : fx;
-          const wy = iy === 0 ? 1 - fy : fy;
-          const weight = wx * wy;
-
-          const idx = cellY * (this.gridSize + 1) + cellX + ix;
-          if (idx < this.u.length) {
-            this.u[idx] += vx * weight;
-            this.weightU[idx] += weight;
-          }
-        }
-      }
-
-      // Accumulate to V grid (staggered in y)
-      for (let ix = 0; ix <= 1; ix++) {
-        for (let iy = 0; iy <= 1; iy++) {
-          const wx = ix === 0 ? 1 - fx : fx;
-          const wy = iy === 0 ? 1 - fy : fy;
-          const weight = wx * wy;
-
-          const idx = (cellY + iy) * this.gridSize + cellX;
-          if (idx < this.v.length) {
-            this.v[idx] += vy * weight;
-            this.weightV[idx] += weight;
-          }
-        }
-      }
-    }
-
-    // Normalize velocities by weights
+    // Reset grid velocities to zero first
+    // REPLACE the .set() calls with direct array filling
     for (let i = 0; i < this.u.length; i++) {
-      if (this.weightU[i] > 0) {
-        this.u[i] /= this.weightU[i];
+      this.u[i] = 0;
+    }
+
+    for (let i = 0; i < this.v.length; i++) {
+      this.v[i] = 0;
+    }
+
+    // Also zero out cell weights
+    const cellU = new Array(this.u.length).fill(0);
+    const cellV = new Array(this.v.length).fill(0);
+
+    // Transfer particle velocities to grid
+    for (let i = 0; i < particles.length / 2; i++) {
+      const x = particles[i * 2];
+      const y = particles[i * 2 + 1];
+
+      if (x < 0 || x >= 1 || y < 0 || y >= 1) continue;
+
+      // Get grid cell coordinates
+      const gx = Math.floor(x / h);
+      const gy = Math.floor(y / h);
+
+      // Safety check before accessing array
+      if (gx >= 0 && gx < n && gy >= 0 && gy < n) {
+        const idx = gy * n + gx;
+        this.u[idx] += velocitiesX[i];
+        this.v[idx] += velocitiesY[i];
+        cellU[idx] += 1;
+        cellV[idx] += 1;
       }
     }
-    for (let i = 0; i < this.v.length; i++) {
-      if (this.weightV[i] > 0) {
-        this.v[i] /= this.weightV[i];
-      }
+
+    // Normalize grid velocities
+    for (let i = 0; i < n * n; i++) {
+      if (cellU[i] > 0) this.u[i] /= cellU[i];
+      if (cellV[i] > 0) this.v[i] /= cellV[i];
     }
   }
 
@@ -210,32 +138,44 @@ class FluidFLIP {
       const gx = Math.min(Math.max(Math.floor(x * n), 0), n - 1);
       const gy = Math.min(Math.max(Math.floor(y * n), 0), n - 1);
 
-      // Get grid velocities (simple approach)
+      // Get grid velocities
       const center = gy * n + gx;
       const gridVx = this.u[center] || 0;
       const gridVy = this.v[center] || 0;
 
-      // THIS IS KEY: Apply PIC/FLIP ratio
-      // PIC = directly use grid velocity (stable but loses energy)
-      // FLIP = add grid velocity delta (energetic but unstable)
-
-      // Store old velocity for FLIP
+      // Store old velocities
       const oldVx = velocitiesX[i];
       const oldVy = velocitiesY[i];
 
-      // Apply gas constant effect to grid velocity 
-      const gasEffect = Math.sqrt(Math.max(1.0, this.gasConstant) * 0.1);
-      const scaledGridVx = gridVx * gasEffect;
-      const scaledGridVy = gridVy * gasEffect;
+      // CORRECT PIC/FLIP IMPLEMENTATION (without gas effect)
+      if (this.picFlipRatio <= 0) {
+        // Pure FLIP - use velocity changes
+        velocitiesX[i] = oldVx + gridVx;
+        velocitiesY[i] = oldVy + gridVy;
+      }
+      else if (this.picFlipRatio >= 1.0) {
+        // Pure PIC - use grid velocity directly
+        velocitiesX[i] = gridVx;
+        velocitiesY[i] = gridVy;
+      }
+      else {
+        // Blend PIC and FLIP
+        const picVx = gridVx;
+        const picVy = gridVy;
+        const flipVx = oldVx + gridVx;
+        const flipVy = oldVy + gridVy;
 
-      // PIC/FLIP mixing
-      velocitiesX[i] = this.picFlipRatio * scaledGridVx +
-        (1 - this.picFlipRatio) * oldVx;
-      velocitiesY[i] = this.picFlipRatio * scaledGridVy +
-        (1 - this.picFlipRatio) * oldVy;
+        velocitiesX[i] = this.picFlipRatio * picVx + (1 - this.picFlipRatio) * flipVx;
+        velocitiesY[i] = this.picFlipRatio * picVy + (1 - this.picFlipRatio) * flipVy;
+      }
+
+      // Velocity clamping to prevent instability
+      const maxVelocity = 0.05;
+      velocitiesX[i] = Math.max(-maxVelocity, Math.min(maxVelocity, velocitiesX[i]));
+      velocitiesY[i] = Math.max(-maxVelocity, Math.min(maxVelocity, velocitiesY[i]));
     }
 
-    // Apply rest density effect (separate from velocity transfer)
+    // Apply rest density effect separately - keep this functionality
     this.applyRestDensityEffect(particles, velocitiesX, velocitiesY);
   }
 
@@ -308,7 +248,7 @@ class FluidFLIP {
     const densityScaling = Math.pow(this.gasConstant, 1.5) / this.restDensity;
     const pressureCoefficient = baseScale * Math.min(Math.max(densityScaling * 0.5, 0.1), 10.0);
 
-    console.log(`Effective pressure coefficient: ${pressureCoefficient}`);
+    // console.log(`Effective pressure coefficient: ${pressureCoefficient}`);
 
     // ONE pressure solve loop
     for (let iter = 0; iter < this.iterations; iter++) {
@@ -497,15 +437,10 @@ class FluidFLIP {
     this.pressureField = new Float32Array(this.gridSize * this.gridSize);
   }
 
-  setParameters(restDensity, gasConstant) {
+  // Simplify setParameters to only handle rest density
+  setParameters(restDensity) {
     this.restDensity = restDensity;
-    this.gasConstant = gasConstant;
-
-    // Use a more conservative scaling that maintains visible effects
-    // without causing instability
-    this.pressureScale = 0.05 * this.gasConstant / Math.max(0.5, this.restDensity);
-
-    console.log(`Pressure scale: ${this.pressureScale} (from gasConstant=${this.gasConstant}, restDensity=${this.restDensity})`);
+    console.log(`Rest density set to: ${this.restDensity}`);
   }
 
   // Fix the interpolateVelocity function with proper boundary checking

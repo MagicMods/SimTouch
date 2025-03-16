@@ -283,6 +283,22 @@ class ParticleSystem {
       // 3. Update position
       this.particles[i * 2] += this.velocitiesX[i] * dt;
       this.particles[i * 2 + 1] += this.velocitiesY[i] * dt;
+
+      // After updating position, check if particle escaped and recover
+      // if (isNaN(this.particles[i * 2]) ||
+      //   isNaN(this.particles[i * 2 + 1]) ||
+      //   this.particles[i * 2] < 0 ||
+      //   this.particles[i * 2] > 1 ||
+      //   this.particles[i * 2 + 1] < 0 ||
+      //   this.particles[i * 2 + 1] > 1) {
+
+      //   // Reset escaped particle to center with zero velocity
+      //   this.particles[i * 2] = 0.5;
+      //   this.particles[i * 2 + 1] = 0.5;
+      //   this.velocitiesX[i] = 0;
+      //   this.velocitiesY[i] = 0;
+      //   console.log("Recovered escaped particle");
+      // }
     }
 
     // Use collision system ONCE - not twice
@@ -334,34 +350,25 @@ class ParticleSystem {
 
   updateFLIP(dt) {
     if (this.picFlipRatio > 0) {
-      // Update parameters first
-      this.fluid.setParameters(this.restDensity, this.gasConstant);
+      // Update rest density parameter only
+      this.fluid.setParameters(this.restDensity);
 
-      try {
-        // Transfer particle velocities to grid
-        this.fluid.transferToGrid(
-          this.particles,
-          this.velocitiesX,
-          this.velocitiesY
-        );
+      // Transfer particle velocities to grid
+      this.fluid.transferToGrid(
+        this.particles,
+        this.velocitiesX,
+        this.velocitiesY
+      );
 
-        // Solve incompressibility
-        this.fluid.solveIncompressibility();
+      // Solve incompressibility
+      this.fluid.solveIncompressibility();
 
-        // Transfer back to particles with PIC/FLIP mix
-        if (typeof this.fluid.transferToParticles === 'function') {
-          this.fluid.transferToParticles(
-            this.particles,
-            this.velocitiesX,
-            this.velocitiesY
-          );
-        }
-      } catch (error) {
-        console.error("FLIP update failed:", error);
-
-        // Fall back to non-FLIP mode if an error occurs
-        this.picFlipRatio = 0;
-      }
+      // Transfer back to particles with PIC/FLIP mix
+      this.fluid.transferToParticles(
+        this.particles,
+        this.velocitiesX,
+        this.velocitiesY
+      );
     }
   }
 
