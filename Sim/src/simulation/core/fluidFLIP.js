@@ -1,6 +1,6 @@
 class FluidFLIP {
   constructor({
-    gridSize = 32,
+    gridSize = 64,
     picFlipRatio = 0.95,
     dt = 1 / 60,
     iterations = 20,

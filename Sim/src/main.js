@@ -40,7 +40,7 @@ class Main {
 
     this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager);
     this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
-    this.debugRenderer = new DebugRenderer(this.gl);
+    this.debugRenderer = new DebugRenderer(this.gl, this.shaderManager);
     this.frame = 0;
     this.mouseForces = new MouseForces();
     this.mouseForces.setupMouseInteraction(this.canvas, this.particleSystem);
@@ -121,7 +121,9 @@ class Main {
 
     // Draw particles
     this.particleRenderer.draw(this.particleSystem.getParticles());
-    // this.gridRenderer.drawDebugIndexes();
+
+    // Draw debug visualizations (if enabled)
+    this.debugRenderer.draw(this.particleSystem, this.turbulenceField, this.voronoiField);
 
     // Update UI components to process audio input
     if (this.ui) {

@@ -1,397 +1,337 @@
 import { BaseRenderer } from "./baseRenderer.js";
 
 class DebugRenderer extends BaseRenderer {
-  constructor(gl) {
+  constructor(gl, shaderManager) {
     super(gl);
-    this.programInfo = null; // Will store shader program info
-    this.arrowLength = 2; // Length of velocity arrows
-    this.pressureScale = 0.01; // Scale for pressure visualization
+    this.shaderManager = shaderManager;
+    this.arrowLength = 2;
+    this.pressureScale = 0.01;
+
+    // Debug visualization flags
+    this.enabled = true;
+    this.showVelocityField = false;
+    this.showGrid = false;
+    this.showBoundary = false;
+    this.showNoiseField = true;
+    this.showParticlesInfo = false;
   }
 
-  init() {
-    // Create shader program for debug visualization
-    this.programInfo = createDebugShaderProgram(this.gl);
-  }
+  draw(particleSystem, turbulenceField, voronoiField) {
+    if (!this.enabled) return;
 
-  // Rename render to drawDebugOverlay to match the call in main.js
-  drawDebugOverlay(physics, programInfo) {
-    if (!physics.debugEnabled) return;
-
-    const program = programInfo || this.programInfo;
-    if (!program) {
-      console.warn("No shader program available for debug rendering");
-      return;
+    if (this.showGrid) {
+      this.drawGrid(particleSystem.fluid.gridSize || 10);
     }
 
-    if (physics.debugShowVelocityField) {
-      this.drawVelocityField(physics, program);
+    if (this.showVelocityField) {
+      this.drawVelocityField(particleSystem);
     }
-    if (physics.debugShowPressureField) {
-      this.drawPressureField(physics, program);
+
+    if (this.showBoundary && particleSystem.boundary) {
+      this.drawBoundary(particleSystem.boundary);
     }
-    if (physics.debugShowBoundaries) {
-      this.drawBoundaries(physics, program);
+
+    if (this.showNoiseField && turbulenceField) {
+      this.drawNoiseField(turbulenceField);
     }
-    if (physics.debugShowFlipGrid) {
-      this.drawFlipGrid(physics, program);
-    }
-    if (physics.debugShowNoiseField) {
-      this.drawNoiseField(physics, program);
+
+    if (this.showParticlesInfo) {
+      this.drawParticlesInfo(particleSystem);
     }
   }
 
-  drawVelocityField(physics, programInfo) {
-    // Should be physics.fluid instead of solver
+  drawGrid(gridSize) {
+    const program = this.shaderManager.use('lines');
+    if (!program) return;
+    gridSize = 48;
     const vertices = [];
-    // const scale = this.arrowLength;
-    const scale = 0.1;
+    const gridStep = 2.0 / gridSize;
 
-    // Sample velocity field from FLIP fluid
-    for (let y = 0; y < physics.fluid.gridSize; y += 2) {
-      for (let x = 0; x < physics.fluid.gridSize; x += 2) {
-        const i = x + y * physics.fluid.gridSize;
-        const u = physics.fluid.u[i];
-        const v = physics.fluid.v[i];
-
-        // Convert to screen space
-        const x1 = (x / physics.fluid.gridSize) * 2 - 1;
-        const y1 = -((y / physics.fluid.gridSize) * 2 - 1);
-        const x2 = x1 + u * scale;
-        const y2 = y1 - v * scale;
-
-        // Add arrow line
-        vertices.push(x1, y1, x2, y2);
-      }
+    // Vertical lines
+    for (let i = 0; i <= gridSize; i++) {
+      const x = i * gridStep - 1.0;
+      vertices.push(x, -1.0, x, 1.0);
     }
 
-    this.drawShape(
-      new Float32Array(vertices),
-      [0.0, 1.0, 0.0, 0.5], // Semi-transparent green
-      programInfo,
-      this.gl.BASIC
-    );
-  }
-
-  drawPressureField(physics, programInfo) {
-    const vertices = [];
-    const colors = [];
-    const n = physics.fluid.gridSize;
-
-    for (let i = 0; i < n; i++) {
-      for (let j = 0; j < n; j++) {
-        const idx = i * n + j;
-        const p = physics.fluid.pressure[idx];
-        // ...rest of pressure visualization
-        const intensity = Math.min(Math.abs(p) * this.pressureScale, 1.0);
-        const r = p > 0 ? intensity : 0.0;
-        const b = p < 0 ? intensity : 0.0;
-        const a = 0.5;
-        const x1 = (j / n) * 2 - 1;
-        const y1 = -((i / n) * 2 - 1);
-        const x2 = x1 + 2 / n;
-        const y2 = y1 - 2 / n;
-
-        vertices.push(x1, y1, x2, y1, x1, y2, x2, y1, x2, y2, x1, y2);
-
-        for (let k = 0; k < 6; k++) {
-          colors.push(r, 0, b, a);
-        }
-      }
+    // Horizontal lines
+    for (let i = 0; i <= gridSize; i++) {
+      const y = i * gridStep - 1.0;
+      vertices.push(-1.0, y, 1.0, y);
     }
 
     const vertexBuffer = this.gl.createBuffer();
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      new Float32Array(vertices),
-      this.gl.STATIC_DRAW
-    );
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(vertices), this.gl.STATIC_DRAW);
 
-    const colorBuffer = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, colorBuffer);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      new Float32Array(colors),
-      this.gl.STATIC_DRAW
-    );
+    this.gl.vertexAttribPointer(program.attributes.position, 2, this.gl.FLOAT, false, 0, 0);
+    this.gl.enableVertexAttribArray(program.attributes.position);
 
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
-    this.gl.enableVertexAttribArray(programInfo.attributes.position);
-    this.gl.vertexAttribPointer(
-      programInfo.attributes.position,
-      2,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
+    // Set grid color (light blue, semi-transparent)
+    this.gl.uniform4fv(program.uniforms.color, [0.2, 0.4, 0.8, 0.3]);
 
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, colorBuffer);
-    this.gl.enableVertexAttribArray(programInfo.attributes.color);
-    this.gl.vertexAttribPointer(
-      programInfo.attributes.color,
-      4,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
-
-    this.gl.drawArrays(this.gl.TRIANGLES, 0, vertices.length / 2);
-
-    this.gl.deleteBuffer(vertexBuffer);
-    this.gl.deleteBuffer(colorBuffer);
-  }
-
-  drawBoundaries(physics, programInfo) {
-    const vertices = [];
-    const n = physics.fluid.gridSize;
-
-    for (let i = 0; i < n; i++) {
-      for (let j = 0; j < n; j++) {
-        if (physics.fluid.solid[i * n + j]) {
-          const x = (j / n) * 2 - 1;
-          const y = -((i / n) * 2 - 1);
-          vertices.push(x, y);
-        }
-      }
-    }
-
-    this.drawShape(
-      new Float32Array(vertices),
-      [1.0, 1.0, 1.0, 0.5], // Semi-transparent white
-      programInfo,
-      this.gl.POINTS
-    );
-  }
-
-  drawNoiseField(physics, programInfo) {
-    const vertices = [];
-    const colors = [];
-
-    // Use the configured noise field resolution (default to 20 if undefined)
-    const cellCountX = physics.noiseFieldResolution || 20;
-    const cellCountY = cellCountX;
-    const cellWidth = 2 / cellCountX;
-    const cellHeight = 2 / cellCountY;
-
-    for (let i = 0; i < cellCountY; i++) {
-      for (let j = 0; j < cellCountX; j++) {
-        // Compute cell boundaries in [0,1] space
-        const u1 = j / cellCountX;
-        const v1 = i / cellCountY;
-        const u2 = (j + 1) / cellCountX;
-        const v2 = (i + 1) / cellCountY;
-
-        // Calculate cell center in [0,1] for noise sampling
-        const uCenter = (u1 + u2) / 2;
-        const vCenter = (v1 + v2) / 2;
-
-        // Sample noise – scale the input as desired (here using turbulenceScale)
-        const noiseVal = physics.noise2D(
-          uCenter * physics.turbulenceScale,
-          vCenter * physics.turbulenceScale
-        );
-
-        // Map noise value to a grayscale intensity (assuming noise2D returns [0,1])
-        const r = noiseVal,
-          g = noiseVal,
-          b = noiseVal,
-          a = 0.5;
-
-        // Convert cell boundaries to clip-space ([−1,1])
-        const x1 = u1 * 2 - 1;
-        const y1 = -(v1 * 2 - 1);
-        const x2 = u2 * 2 - 1;
-        const y2 = -(v2 * 2 - 1);
-
-        // Quad defined as two triangles (6 vertices)
-        vertices.push(x1, y1, x2, y1, x1, y2, x2, y1, x2, y2, x1, y2);
-
-        // Same color for all vertices in this cell
-        for (let k = 0; k < 6; k++) {
-          colors.push(r, g, b, a);
-        }
-      }
-    }
-
-    // Create and populate buffers for vertices and colors
-    const vertexBuffer = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      new Float32Array(vertices),
-      this.gl.STATIC_DRAW
-    );
-
-    const colorBuffer = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, colorBuffer);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      new Float32Array(colors),
-      this.gl.STATIC_DRAW
-    );
-
-    // Bind position attribute
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
-    this.gl.enableVertexAttribArray(programInfo.attributes.position);
-    this.gl.vertexAttribPointer(
-      programInfo.attributes.position,
-      2,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
-
-    // Bind color attribute
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, colorBuffer);
-    this.gl.enableVertexAttribArray(programInfo.attributes.color);
-    this.gl.vertexAttribPointer(
-      programInfo.attributes.color,
-      4,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
-
-    // Draw the noise field overlay
-    this.gl.drawArrays(this.gl.TRIANGLES, 0, vertices.length / 2);
-
-    // Cleanup buffers
-    this.gl.deleteBuffer(vertexBuffer);
-    this.gl.deleteBuffer(colorBuffer);
-  }
-
-  drawFlipGrid(physics, programInfo) {
-    const vertices = [];
-    const colors = [];
-    const n = physics.fluid.gridSize;
-    // console.log("FLIP grid size:", n);
-
-    if (!n) {
-      console.warn("Invalid grid size");
-      return;
-    }
-
-    // First draw the centered pressure points (using FLIP's [0,1] space)
-    for (let i = 0; i < n; i++) {
-      for (let j = 0; j < n; j++) {
-        // Cell centers in [0,1] space
-        const x = (j + 0.5) / n;
-        const y = (i + 0.5) / n;
-
-        // Convert to clip space
-        const xClip = x * 2 - 1;
-        const yClip = -(y * 2 - 1); // Flip Y for WebGL
-
-        const size = 0.01; // Increased for visibility
-        vertices.push(
-          xClip - size,
-          yClip,
-          xClip + size,
-          yClip,
-          xClip,
-          yClip - size,
-          xClip,
-          yClip + size
-        );
-
-        // Red crosses for pressure points
-        for (let k = 0; k < 4; k++) {
-          colors.push(1, 0, 0, 1);
-        }
-      }
-    }
-
-    // Draw U velocity points (vertical faces)
-    for (let i = 0; i < n; i++) {
-      for (let j = 0; j <= n; j++) {
-        const x = j / n; // Staggered U positions
-        const y = (i + 0.5) / n; // Cell centers in Y
-
-        const xClip = x * 2 - 1;
-        const yClip = -(y * 2 - 1);
-
-        const size = 0.008;
-        vertices.push(xClip - size, yClip, xClip + size, yClip);
-
-        // Green for U velocities
-        colors.push(0, 1, 0, 1, 0, 1, 0, 1);
-      }
-    }
-
-    // Draw V velocity points (horizontal faces)
-    for (let i = 0; i <= n; i++) {
-      for (let j = 0; j < n; j++) {
-        const x = (j + 0.5) / n; // Cell centers in X
-        const y = i / n; // Staggered V positions
-
-        const xClip = x * 2 - 1;
-        const yClip = -(y * 2 - 1);
-
-        const size = 0.008;
-        vertices.push(xClip, yClip - size, xClip, yClip + size);
-
-        // Blue for V velocities
-        colors.push(0, 0, 1, 1, 0, 0, 1, 1);
-      }
-    }
-
-    // Create buffers
-    const vertexBuffer = this.gl.createBuffer();
-    const colorBuffer = this.gl.createBuffer();
-
-    // Save current WebGL state
-    const lastProgram = this.gl.getParameter(this.gl.CURRENT_PROGRAM);
-
-    // Set up drawing
-    this.gl.useProgram(programInfo.program);
-
-    // Bind vertex buffer
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      new Float32Array(vertices),
-      this.gl.STATIC_DRAW
-    );
-    this.gl.vertexAttribPointer(
-      programInfo.attributes.position,
-      2,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
-    this.gl.enableVertexAttribArray(programInfo.attributes.position);
-
-    // Bind color buffer
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, colorBuffer);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      new Float32Array(colors),
-      this.gl.STATIC_DRAW
-    );
-    this.gl.vertexAttribPointer(
-      programInfo.attributes.color,
-      4,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
-    this.gl.enableVertexAttribArray(programInfo.attributes.color);
-
-    // Draw the grid
     this.gl.drawArrays(this.gl.LINES, 0, vertices.length / 2);
-
-    // Cleanup
     this.gl.deleteBuffer(vertexBuffer);
-    this.gl.deleteBuffer(colorBuffer);
+  }
 
-    // Restore WebGL state
-    this.gl.useProgram(lastProgram);
+  drawVelocityField(particleSystem) {
+    const program = this.shaderManager.use('lines');
+    if (!program) return;
+
+    const particles = particleSystem.getParticles();
+    if (!particles || particles.length === 0) return;
+
+    const vertices = [];
+    const scale = 0.1; // Scale for velocity vectors
+
+    // Sample every nth particle to avoid too many arrows
+    const stride = Math.max(1, Math.floor(particles.length / 1000));
+
+    for (let i = 0; i < particles.length; i += stride) {
+      const p = particles[i];
+      // Convert from [0,1] to [-1,1] coordinate space
+      // const x1 = p.x * 2 - 1;
+      // const y1 = (p.y * 2 - 1); // Y is flipped in WebGL
+      const x1 = p.x;
+      const y1 = (p.y);
+      const x2 = x1 + p.vx * scale;
+      const y2 = y1 - p.vy * scale;
+
+      vertices.push(x1, y1, x2, y2);
+    }
+
+    const vertexBuffer = this.gl.createBuffer();
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(vertices), this.gl.STATIC_DRAW);
+
+    this.gl.vertexAttribPointer(program.attributes.position, 2, this.gl.FLOAT, false, 0, 0);
+    this.gl.enableVertexAttribArray(program.attributes.position);
+
+    // Set vector color (yellow)
+    this.gl.uniform4fv(program.uniforms.color, [1.0, 1.0, 0.0, 0.7]);
+
+    this.gl.drawArrays(this.gl.LINES, 0, vertices.length / 2);
+    this.gl.deleteBuffer(vertexBuffer);
+  }
+
+  drawBoundary(boundary) {
+    if (!boundary) return;
+
+    const program = this.shaderManager.use('circle');
+    if (!program) return;
+
+    // Draw a full-screen quad
+    const vertices = [
+      -1, -1,
+      1, -1,
+      -1, 1,
+      1, 1
+    ];
+
+    const vertexBuffer = this.gl.createBuffer();
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(vertices), this.gl.STATIC_DRAW);
+
+    this.gl.vertexAttribPointer(program.attributes.position, 2, this.gl.FLOAT, false, 0, 0);
+    this.gl.enableVertexAttribArray(program.attributes.position);
+
+    // Set circle parameters
+    this.gl.uniform2f(program.uniforms.resolution, this.gl.canvas.width, this.gl.canvas.height);
+    this.gl.uniform2f(program.uniforms.center, boundary.centerX, boundary.centerY);
+    this.gl.uniform1f(program.uniforms.radius, boundary.radius);
+    this.gl.uniform1f(program.uniforms.aspect, this.gl.canvas.width / this.gl.canvas.height);
+    this.gl.uniform4f(program.uniforms.color, 1.0, 0.5, 0.0, 0.7); // Orange
+    this.gl.uniform1f(program.uniforms.lineWidth, 0.003);
+
+    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+    this.gl.deleteBuffer(vertexBuffer);
+  }
+
+  drawNoiseField(turbulenceField) {
+    // Single quad approach with texture-style sampling
+    const program = this.shaderManager.use('basic');
+    if (!program) return;
+
+    // Use [-1,1] coordinate system for the main background
+    const vertices = new Float32Array([
+      -1, -1,  // bottom-left
+      1, -1,   // bottom-right
+      -1, 1,   // top-left
+      1, 1     // top-right
+    ]);
+
+    // Create background quad
+    const vertexBuffer = this.gl.createBuffer();
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
+
+    this.gl.enableVertexAttribArray(program.attributes.position);
+    this.gl.vertexAttribPointer(
+      program.attributes.position,
+      2, this.gl.FLOAT, false, 0, 0
+    );
+
+    // Draw semi-transparent background
+    this.gl.uniform4f(program.uniforms.color, 0, 0, 0.3, 0.1);
+    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+
+    // Now draw a grid of points to visualize the noise
+    const resolution = 20;
+
+    // Sample with different coordinate mappings for visualization
+    for (let y = 0; y < resolution; y++) {
+      for (let x = 0; x < resolution; x++) {
+        // Map to the normalized [0,1] coordinate space
+        const nx = x / (resolution - 1);
+        const ny = y / (resolution - 1);
+
+        let noiseValue = 0.5;
+        try {
+          if (typeof turbulenceField.sampleNoise === 'function') {
+            noiseValue = turbulenceField.sampleNoise(nx, ny);
+            // Normalize to 0-1 range for visualization
+            noiseValue = (noiseValue + 1) * 0.5;
+          }
+        } catch (error) {
+          // Silent fallback
+        }
+
+        // Map points to cover the full screen in [-1,1] space
+        const screenX = nx * 2 - 1;
+        const screenY = ny * 2 - 1;
+
+        // Visualize with small colored squares, size based on noise value
+        const pointSize = 0.02 + noiseValue * 0.05;
+
+        // Draw a small quad for each sample point
+        const x1 = screenX - pointSize;
+        const y1 = screenY - pointSize;
+        const x2 = screenX + pointSize;
+        const y2 = screenY + pointSize;
+
+        const pointVertices = new Float32Array([
+          x1, y1,
+          x2, y1,
+          x1, y2,
+          x2, y2
+        ]);
+
+        const pointBuffer = this.gl.createBuffer();
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, pointBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, pointVertices, this.gl.STATIC_DRAW);
+
+        this.gl.enableVertexAttribArray(program.attributes.position);
+        this.gl.vertexAttribPointer(
+          program.attributes.position,
+          2, this.gl.FLOAT, false, 0, 0
+        );
+
+        // Color based on noise value (blue gradient)
+        this.gl.uniform4f(
+          program.uniforms.color,
+          0,
+          0.2,
+          0.5 + noiseValue * 0.5,
+          0.7
+        );
+
+        this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+        this.gl.deleteBuffer(pointBuffer);
+      }
+    }
+
+    // Clean up
+    this.gl.disableVertexAttribArray(program.attributes.position);
+    this.gl.deleteBuffer(vertexBuffer);
+  }
+
+  drawParticlesInfo(particleSystem) {
+    const program = this.shaderManager.use('basic');
+    if (!program) return;
+
+    // Get some statistics from the particle system
+    const particles = particleSystem.getParticles();
+    if (!particles || particles.length === 0) return;
+
+    // Find min/max velocities for visualization
+    let maxVel = 0;
+    for (const p of particles) {
+      const velMag = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+      if (velMag > maxVel) maxVel = velMag;
+    }
+
+    // Draw a legend in the corner
+    const size = 0.15; // Size of the legend box
+    const x1 = -1 + 0.1;  // Left position
+    const y1 = -1 + 0.1;  // Bottom position
+    const x2 = x1 + size;
+    const y2 = y1 + size;
+
+    // Draw background
+    this.gl.uniform4f(program.uniforms.color, 0, 0, 0, 0.7);
+
+    const bgVertices = [
+      x1, y1,
+      x2, y1,
+      x1, y2,
+      x2, y2
+    ];
+
+    const bgBuffer = this.gl.createBuffer();
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, bgBuffer);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(bgVertices), this.gl.STATIC_DRAW);
+
+    this.gl.vertexAttribPointer(program.attributes.position, 2, this.gl.FLOAT, false, 0, 0);
+    this.gl.enableVertexAttribArray(program.attributes.position);
+
+    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+    this.gl.deleteBuffer(bgBuffer);
+
+    // We can't easily draw text in WebGL, so drawing indicators in different colors
+    // to show particle count and max velocity
+
+    // Draw particle count indicator (green bar)
+    const countRatio = Math.min(particles.length / 1000, 1); // Normalize to 0-1
+
+    const countVertices = [
+      x1 + 0.01, y1 + 0.02,
+      x1 + 0.01 + (size - 0.02) * countRatio, y1 + 0.02,
+      x1 + 0.01, y1 + 0.06,
+      x1 + 0.01 + (size - 0.02) * countRatio, y1 + 0.06
+    ];
+
+    this.gl.uniform4f(program.uniforms.color, 0, 1, 0, 0.9); // Green
+
+    const countBuffer = this.gl.createBuffer();
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, countBuffer);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(countVertices), this.gl.STATIC_DRAW);
+
+    this.gl.vertexAttribPointer(program.attributes.position, 2, this.gl.FLOAT, false, 0, 0);
+    this.gl.enableVertexAttribArray(program.attributes.position);
+
+    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+    this.gl.deleteBuffer(countBuffer);
+
+    // Draw velocity indicator (blue bar)
+    const velRatio = Math.min(maxVel * 50, 1); // Scale and normalize
+
+    const velVertices = [
+      x1 + 0.01, y1 + 0.08,
+      x1 + 0.01 + (size - 0.02) * velRatio, y1 + 0.08,
+      x1 + 0.01, y1 + 0.12,
+      x1 + 0.01 + (size - 0.02) * velRatio, y1 + 0.12
+    ];
+
+    this.gl.uniform4f(program.uniforms.color, 0, 0.5, 1, 0.9); // Blue
+
+    const velBuffer = this.gl.createBuffer();
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, velBuffer);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(velVertices), this.gl.STATIC_DRAW);
+
+    this.gl.vertexAttribPointer(program.attributes.position, 2, this.gl.FLOAT, false, 0, 0);
+    this.gl.enableVertexAttribArray(program.attributes.position);
+
+    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
+    this.gl.deleteBuffer(velBuffer);
   }
 }
 

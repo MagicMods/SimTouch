@@ -75,7 +75,7 @@ class ParticleSystem {
 
     // Then create FLIP system with boundary reference
     this.fluid = new FluidFLIP({
-      gridSize: 32,
+      gridSize: 64,
       picFlipRatio: this.picFlipRatio,
       dt: timeStep,
       boundary: this.boundary,

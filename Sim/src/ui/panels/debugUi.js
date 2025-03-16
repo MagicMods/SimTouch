@@ -4,65 +4,105 @@ export class DebugUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
 
-    // Initialize controls collection to store references
     this.controls = {};
-    // Change the GUI title
     this.gui.title("Debug");
     this.initDebugControls();
   }
 
   initDebugControls() {
-    const particles = this.main.particleSystem;
-    if (!particles) return;
+    if (!this.main || !this.main.debugRenderer) return;
 
-    // Create a debug display object that will store our debug properties
-    const debugDisplay = {
-      showDebug:
-        this.main.showDebug !== undefined ? this.main.showDebug : false,
-      fps: this.main.fps !== undefined ? this.main.fps : 0,
-    };
+    const debugRenderer = this.main.debugRenderer;
 
-    // Toggle debug display only if property exists
-    if (this.main.showDebug !== undefined) {
-      this.debugDisplayController = this.gui
-        .add(this.main, "showDebug")
-        .name("Show Debug");
-    } else {
-      // Add a dummy control if property doesn't exist
-      this.debugDisplayController = this.gui
-        .add(debugDisplay, "showDebug")
-        .name("Show Debug");
+    // Add master toggle for debug visualizations
+    this.controls.debugEnabled = this.gui
+      .add(debugRenderer, 'enabled')
+      .name("Enable Debug Visualizations")
+      .onChange(value => this.updateDebugVisibility(value));
+
+    // Create a debug visualizations folder
+    const debugFolder = this.gui.addFolder("Debug Visualizations");
+
+    // Add toggles for each visualization type
+    this.controls.showGrid = debugFolder
+      .add(debugRenderer, 'showGrid')
+      .name("Show Grid")
+      .disable();
+
+    this.controls.showVelocityField = debugFolder
+      .add(debugRenderer, 'showVelocityField')
+      .name("Show Velocity Vectors")
+      .disable();
+
+    this.controls.showBoundary = debugFolder
+      .add(debugRenderer, 'showBoundary')
+      .name("Show Boundary")
+      .disable();
+
+    this.controls.showNoiseField = debugFolder
+      .add(debugRenderer, 'showNoiseField')
+      .name("Show Noise Field")
+      .disable();
+
+    this.controls.showParticlesInfo = debugFolder
+      .add(debugRenderer, 'showParticlesInfo')
+      .name("Show Particle Stats")
+      .disable();
+
+    // Open the folder by default
+    debugFolder.open();
+
+    // Add a button to toggle all visualizations at once
+    this.controls.debugShowAll = this.gui
+      .add({
+        showAll: () => {
+          const show = true;
+          debugRenderer.showGrid = show;
+          debugRenderer.showVelocityField = show;
+          debugRenderer.showBoundary = show;
+          debugRenderer.showNoiseField = show;
+          debugRenderer.showParticlesInfo = show;
+          this.updateDebugControllers();
+        }
+      }, 'showAll')
+      .name("Show All Visualizations");
+
+    this.controls.debugHideAll = this.gui
+      .add({
+        hideAll: () => {
+          const show = false;
+          debugRenderer.showGrid = show;
+          debugRenderer.showVelocityField = show;
+          debugRenderer.showBoundary = show;
+          debugRenderer.showNoiseField = show;
+          debugRenderer.showParticlesInfo = show;
+          this.updateDebugControllers();
+        }
+      }, 'hideAll')
+      .name("Hide All Visualizations");
+
+    // Initially hide/disable the debugHideAll button if debug is off
+    this.updateDebugVisibility(debugRenderer.enabled);
+  }
+
+  updateDebugVisibility(enabled) {
+    // Enable/disable all debug visualization controls
+    for (const key in this.controls) {
+      if (key !== 'debugEnabled' && key !== 'debugShowAll' && key !== 'debugHideAll') {
+        this.controls[key].enable(enabled);
+      }
     }
 
-    // // Display FPS if property exists
-    // if (this.main.fps !== undefined) {
-    //   this.debugFpsController = this.gui
-    //     .add(this.main, "fps")
-    //     .name("FPS")
-    //     .listen();
-    // } else {
-    //   // Add a dummy FPS display
-    //   this.debugFpsController = this.gui.add(debugDisplay, "fps").name("FPS");
-    // }
+    // Update controllers to reflect current state
+    this.updateDebugControllers();
+  }
 
-    // Toggle velocity display if present
-    if (
-      this.main.particleRenderer &&
-      this.main.particleRenderer.showVelocity !== undefined
-    ) {
-      this.debugVelocityController = this.gui
-        .add(this.main.particleRenderer, "showVelocity")
-        .name("Show Velocity");
-    }
-
-    // Toggle showing grid if present
-    if (
-      this.main.gridRenderer &&
-      this.main.gridRenderer.showGrid !== undefined
-    ) {
-      this.debugShowGridController = this.gui
-        .add(this.main.gridRenderer, "showGrid")
-        .name("Show Grid");
+  updateDebugControllers() {
+    // Force UI to update to reflect current state
+    for (const key in this.controls) {
+      if (this.controls[key].updateDisplay) {
+        this.controls[key].updateDisplay();
+      }
     }
   }
 }
