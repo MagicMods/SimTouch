@@ -8,7 +8,7 @@ class DebugRenderer extends BaseRenderer {
     this.pressureScale = 0.01;
 
     // Debug visualization flags
-    this.enabled = true;
+    this.enabled = false;
 
     // Remove redundant flags and directly expose the field controls
     this.showVelocityField = false;

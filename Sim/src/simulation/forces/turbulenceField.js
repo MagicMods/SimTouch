@@ -15,6 +15,10 @@ class TurbulenceField {
     noiseSeed = Math.random() * 10000,
     domainWarp = 0.3,
     useOrganicNoise = true, // New parameter to choose between noise styles
+    // New geometric pattern controls
+    patternFrequency = 6.0,
+    patternStyle = "checkerboard", // checkerboard, waves, spiral, grid, circles, maze, ripples, starfield
+    timeInfluence = "phase", // phase, amplitude, frequency
   } = {}) {
     if (
       !boundary ||
@@ -56,6 +60,11 @@ class TurbulenceField {
 
     this.noiseBases = [];
     this.regenerateNoiseBases();
+
+    // Add new geometric pattern controls
+    this.patternFrequency = patternFrequency;
+    this.patternStyle = patternStyle;
+    this.timeInfluence = timeInfluence;
   }
 
   // Add getter and setter for octaves
@@ -109,6 +118,36 @@ class TurbulenceField {
     }
   }
 
+  // Add method to generate preview thumbnails
+  generatePatternPreview(width = 100, height = 100, style = this.patternStyle) {
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.createImageData(width, height);
+    const data = imageData.data;
+
+    // Generate pattern
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const nx = x / width;
+        const ny = y / height;
+        const value = this.noise2D(nx, ny);
+
+        // Convert to grayscale
+        const color = Math.floor(value * 255);
+        const idx = (y * width + x) * 4;
+        data[idx] = color;     // R
+        data[idx + 1] = color; // G
+        data[idx + 2] = color; // B
+        data[idx + 3] = 255;   // A
+      }
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+    return canvas.toDataURL();
+  }
+
   // Completely redesigned noise2D function that supports both styles
   noise2D(x, y) {
     try {
@@ -155,7 +194,42 @@ class TurbulenceField {
         const scaledX = x * this.scale;
         const scaledY = y * this.scale;
 
-        const basePattern = Math.sin(scaledX * 6) * Math.sin(scaledY * 6);
+        // Calculate base pattern based on style
+        let basePattern;
+        switch (this.patternStyle) {
+          case "checkerboard":
+            basePattern = Math.sin(scaledX * this.patternFrequency) * Math.sin(scaledY * this.patternFrequency);
+            break;
+          case "waves":
+            basePattern = Math.sin(scaledX * this.patternFrequency + scaledY * this.patternFrequency * 0.5);
+            break;
+          case "spiral":
+            const angle = Math.atan2(y - centerY, x - centerX);
+            const radius = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+            basePattern = Math.sin(angle * this.patternFrequency + radius * this.patternFrequency * 0.1);
+            break;
+          case "grid":
+            basePattern = Math.sin(scaledX * this.patternFrequency) + Math.sin(scaledY * this.patternFrequency);
+            break;
+          case "circles":
+            const dist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+            basePattern = Math.sin(dist * this.patternFrequency * Math.PI * 2);
+            break;
+          case "maze":
+            basePattern = Math.sin(scaledX * this.patternFrequency * 2) * Math.cos(scaledY * this.patternFrequency * 2);
+            break;
+          case "ripples":
+            const rippleDist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+            basePattern = Math.sin(rippleDist * this.patternFrequency * Math.PI * 2 - this.time * this.speed);
+            break;
+          case "starfield":
+            const starX = (x - centerX) * this.patternFrequency;
+            const starY = (y - centerY) * this.patternFrequency;
+            basePattern = Math.sin(starX * starX + starY * starY);
+            break;
+          default:
+            basePattern = Math.sin(scaledX * this.patternFrequency) * Math.sin(scaledY * this.patternFrequency);
+        }
 
         let rotatedPattern = basePattern;
 
@@ -173,13 +247,42 @@ class TurbulenceField {
 
           const rotScaledX = rotX * this.scale;
           const rotScaledY = rotY * this.scale;
-          rotatedPattern = Math.sin(rotScaledX * 6) * Math.sin(rotScaledY * 6);
+
+          // Recalculate pattern with rotated coordinates
+          switch (this.patternStyle) {
+            case "checkerboard":
+              rotatedPattern = Math.sin(rotScaledX * this.patternFrequency) * Math.sin(rotScaledY * this.patternFrequency);
+              break;
+            case "waves":
+              rotatedPattern = Math.sin(rotScaledX * this.patternFrequency + rotScaledY * this.patternFrequency * 0.5);
+              break;
+            case "spiral":
+              const rotAngle = Math.atan2(rotY - centerY, rotX - centerX);
+              const rotRadius = Math.sqrt(Math.pow(rotX - centerX, 2) + Math.pow(rotY - centerY, 2));
+              rotatedPattern = Math.sin(rotAngle * this.patternFrequency + rotRadius * this.patternFrequency * 0.1);
+              break;
+            case "grid":
+              rotatedPattern = Math.sin(rotScaledX * this.patternFrequency) + Math.sin(rotScaledY * this.patternFrequency);
+              break;
+          }
         }
 
         let noise = rotatedPattern;
 
+        // Apply time influence based on mode
         if (this.speed > 0) {
-          noise = Math.sin(noise + this.time * this.speed);
+          switch (this.timeInfluence) {
+            case "phase":
+              noise = Math.sin(noise + this.time * this.speed);
+              break;
+            case "amplitude":
+              noise *= (1 + Math.sin(this.time * this.speed) * 0.5);
+              break;
+            case "frequency":
+              const timeFreq = this.patternFrequency * (1 + Math.sin(this.time * this.speed) * 0.5);
+              noise = Math.sin(scaledX * timeFreq) * Math.sin(scaledY * timeFreq);
+              break;
+          }
         }
 
         return (noise + 1) * 0.5;
@@ -311,6 +414,10 @@ class TurbulenceField {
     domainWarp,
     timeOffset,
     useOrganicNoise, // Add new parameter
+    // Add new parameters
+    patternFrequency,
+    patternStyle,
+    timeInfluence,
   }) {
     if (strength !== undefined) this.strength = strength;
     if (scale !== undefined) this.scale = scale;
@@ -324,6 +431,9 @@ class TurbulenceField {
     if (domainWarp !== undefined) this.domainWarp = domainWarp;
     if (timeOffset !== undefined) this.timeOffset = timeOffset;
     if (useOrganicNoise !== undefined) this.useOrganicNoise = useOrganicNoise;
+    if (patternFrequency !== undefined) this.patternFrequency = patternFrequency;
+    if (patternStyle !== undefined) this.patternStyle = patternStyle;
+    if (timeInfluence !== undefined) this.timeInfluence = timeInfluence;
   }
 
   // Debug function to help diagnose rotation issues

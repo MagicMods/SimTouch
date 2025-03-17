@@ -119,7 +119,7 @@ export class TurbulenceUi extends BaseUi {
     this.scaleButton = scaleButton;
 
     this.turbulenceStrengthController = this.gui.add(turbulence, "strength", 0, 10).name("T-Strength");
-    this.turbulenceScaleController = this.gui.add(turbulence, "scale", 0.1, 20).name("T-Scale");
+    this.turbulenceScaleController = this.gui.add(turbulence, "scale", 0, 10, 0.01).name("T-Scale");
     this.turbulenceSpeedController = this.gui.add(turbulence, "speed", 0, 2).name("T-Speed");
 
     // COMBINED: Replace both controls with a single pullFactor slider from -1 to 1
@@ -150,7 +150,6 @@ export class TurbulenceUi extends BaseUi {
     this.turbulencePersistenceController = advancedFolder.add(turbulence, "persistence", 0, 1).name("T-Persist");
     this.turbulenceRotationController = advancedFolder.add(turbulence, "rotation", 0, Math.PI * 2).name("T-Rot");
     this.turbulenceRotationSpeedController = advancedFolder.add(turbulence, "rotationSpeed", 0, 1).name("T-RotSpd");
-    // REMOVED: inwardFactor controller is now combined into pullFactor
     this.turbulenceDecayRateController = advancedFolder.add(turbulence, "decayRate", 0.9, 1).name("T-Decay");
 
     // Add noise style selector
@@ -161,11 +160,46 @@ export class TurbulenceUi extends BaseUi {
         "Geometric": false
       })
       .onChange((value) => {
-        // Optional: Update domain warp visibility based on style
+        // Update visibility of pattern controls based on style
+        if (this.patternControlsFolder) {
+          this.patternControlsFolder.domElement.style.display = value ? "none" : "block";
+        }
         if (this.turbulenceDomainWarpController) {
           this.turbulenceDomainWarpController.domElement.style.display = value ? "block" : "none";
         }
       });
+
+    // Add geometric pattern controls folder
+    const patternControlsFolder = this.gui.addFolder("Pattern Controls");
+    this.patternControlsFolder = patternControlsFolder;
+
+    // Pattern style selector
+    this.turbulencePatternStyleController = patternControlsFolder.add(turbulence, "patternStyle")
+      .name("T-PatternStyle")
+      .options({
+        "Checkerboard": "checkerboard",
+        "Waves": "waves",
+        "Spiral": "spiral",
+        "Grid": "grid"
+      });
+
+    // Pattern frequency control
+    this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulence, "patternFrequency", 0.1, 20)
+      .name("T-PatternFreq");
+
+    // Time influence selector
+    this.turbulenceTimeInfluenceController = patternControlsFolder.add(turbulence, "timeInfluence")
+      .name("T-TimeInfluence")
+      .options({
+        "Phase": "phase",
+        "Amplitude": "amplitude",
+        "Frequency": "frequency"
+      });
+
+    // Set initial visibility of pattern controls
+    if (patternControlsFolder) {
+      patternControlsFolder.domElement.style.display = turbulence.useOrganicNoise ? "none" : "block";
+    }
 
     // Restore XY bias controllers
     const biasFolder = this.gui.addFolder("Direction Bias");
@@ -251,6 +285,11 @@ export class TurbulenceUi extends BaseUi {
     // Add noise style controller
     if (this.turbulenceNoiseStyleController) targets["T-NoiseStyle"] = this.turbulenceNoiseStyleController;
 
+    // Add pattern control targets
+    if (this.turbulencePatternStyleController) targets["T-PatternStyle"] = this.turbulencePatternStyleController;
+    if (this.turbulencePatternFrequencyController) targets["T-PatternFreq"] = this.turbulencePatternFrequencyController;
+    if (this.turbulenceTimeInfluenceController) targets["T-TimeInfluence"] = this.turbulenceTimeInfluenceController;
+
     return targets;
   }
 
@@ -289,6 +328,9 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulenceDomainWarpController);
     safeUpdateDisplay(this.turbulencePullFactorController);
     safeUpdateDisplay(this.turbulenceNoiseStyleController);
+    safeUpdateDisplay(this.turbulencePatternStyleController);
+    safeUpdateDisplay(this.turbulencePatternFrequencyController);
+    safeUpdateDisplay(this.turbulenceTimeInfluenceController);
   }
 
   getData() {
