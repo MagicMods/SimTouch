@@ -6,14 +6,15 @@ class TurbulenceField {
     octaves = 3,
     persistence = 0.5,
     rotation = 0.0,
-    rotationSpeed = 0.0, // Add new rotation speed parameter
-    pullFactor = 0.0, // -1 to +1 range parameter replacing inwardFactor and pullMode
+    rotationSpeed = 0.0,
+    pullFactor = 0.0, // -1 to +1 range parameter
     boundary = null,
-    directionBias = [0, 0], // New: directional bias
-    decayRate = 0.99, // New: decay over time
-    timeOffset = Math.random() * 1000, // Random time start
-    noiseSeed = Math.random() * 10000, // Random seed
-    domainWarp = 0.3, // Domain warping strength
+    directionBias = [0, 0],
+    decayRate = 0.99,
+    timeOffset = Math.random() * 1000,
+    noiseSeed = Math.random() * 10000,
+    domainWarp = 0.3,
+    useOrganicNoise = true, // New parameter to choose between noise styles
   } = {}) {
     if (
       !boundary ||
@@ -30,31 +31,29 @@ class TurbulenceField {
     this.strength = strength;
     this.scale = scale;
     this.speed = speed;
-    this._octaves = octaves; // Use private property for octaves
+    this._octaves = octaves;
     this.persistence = persistence;
     this.rotation = rotation;
-    this.rotationSpeed = rotationSpeed; // Store the rotation speed
-    this.pullFactor = pullFactor; // Store the unified pull factor
-    this.inwardFactor = Math.abs(pullFactor); // For backward compatibility - remove if not needed
+    this.rotationSpeed = rotationSpeed;
+    this.pullFactor = pullFactor;
     this.time = 0;
     this.directionBias = directionBias;
     this.decayRate = decayRate;
+    this.useOrganicNoise = useOrganicNoise;
 
-    this.scaleField = false; // Field-based velocity scaling
+    this.scaleField = false;
     this.affectPosition = true;
-    this.affectScale = true; // Particle radius scaling
-    this.scaleStrength = 0; // Strength for particle radius scaling
+    this.affectScale = true;
+    this.scaleStrength = 0;
 
-    // Add min/max scale parameters
-    this.minScale = 0.5; // 50% of base size
-    this.maxScale = 2.0; // 200% of base size
+    this.minScale = 0.5;
+    this.maxScale = 2.0;
 
     this.timeOffset = timeOffset;
     this.noiseSeed = noiseSeed;
     this.domainWarp = domainWarp;
     this.time = 0;
 
-    // Initialize noise bases
     this.noiseBases = [];
     this.regenerateNoiseBases();
   }
@@ -110,60 +109,81 @@ class TurbulenceField {
     }
   }
 
-  // Completely redesigned noise2D function
+  // Completely redesigned noise2D function that supports both styles
   noise2D(x, y) {
     try {
-      // Get exact boundary center coordinates - these must be correct!
-      // Use 0.5, 0.5 as fallback values if boundary is invalid
       const centerX = (this.boundary && typeof this.boundary.centerX === 'number') ? this.boundary.centerX : 0.5;
       const centerY = (this.boundary && typeof this.boundary.centerY === 'number') ? this.boundary.centerY : 0.5;
 
-      // FIXED APPROACH: Create a very recognizable pattern that clearly shows rotation
-      // We'll use a simple checkerboard pattern first WITHOUT rotation
+      if (this.useOrganicNoise) {
+        // Organic noise style with domain warping
+        const cos = Math.cos(this.rotation);
+        const sin = Math.sin(this.rotation);
 
-      // Scale coordinates based on noise scale
-      const scaledX = x * this.scale;
-      const scaledY = y * this.scale;
+        // Apply domain warping
+        const warpX = this.domainWarp * Math.sin(y * 0.1 + this.time * 0.05);
+        const warpY = this.domainWarp * Math.sin(x * 0.1 + this.time * 0.07);
 
-      // Simple noise function with clear sine patterns aligned with axes
-      // This pattern will clearly show proper rotation
-      const basePattern = Math.sin(scaledX * 6) * Math.sin(scaledY * 6);
+        let rx = (x + warpX) * cos - (y + warpY) * sin;
+        let ry = (x + warpX) * sin + (y + warpY) * cos;
 
-      // Only apply rotation if non-zero - calculate a rotated version of the pattern
-      let rotatedPattern = basePattern;
+        let noise = 0;
+        let amplitude = 1;
+        let maxValue = 0;
 
-      if (Math.abs(this.rotation) > 0.0001) {
-        // 1. Translate to center
-        const tx = x - centerX;
-        const ty = y - centerY;
+        const actualOctaves = Math.min(this._octaves, this.noiseBases.length);
 
-        // 2. Rotate point
-        const cos = Math.cos(-this.rotation); // Negative for proper visual rotation
-        const sin = Math.sin(-this.rotation);
-        const rx = tx * cos - ty * sin;
-        const ry = tx * sin + ty * cos;
+        for (let i = 0; i < actualOctaves; i++) {
+          if (!this.noiseBases[i]) continue;
 
-        // 3. Translate back
-        const rotX = rx + centerX;
-        const rotY = ry + centerY;
+          const base = this.noiseBases[i];
+          const frequencyX = Math.pow(2, i) * base.freqX;
+          const frequencyY = Math.pow(2, i) * base.freqY;
 
-        // 4. Sample pattern at rotated position
-        const rotScaledX = rotX * this.scale;
-        const rotScaledY = rotY * this.scale;
-        rotatedPattern = Math.sin(rotScaledX * 6) * Math.sin(rotScaledY * 6);
+          const val =
+            Math.sin(rx * frequencyX + this.time * this.speed + base.phaseX) *
+            Math.cos(ry * frequencyY + this.time * this.speed * 0.7 + base.phaseY);
+
+          noise += amplitude * val;
+          maxValue += amplitude;
+          amplitude *= this.persistence;
+        }
+
+        return (noise / maxValue + 1) * 0.5;
+      } else {
+        // Geometric noise style with clear patterns
+        const scaledX = x * this.scale;
+        const scaledY = y * this.scale;
+
+        const basePattern = Math.sin(scaledX * 6) * Math.sin(scaledY * 6);
+
+        let rotatedPattern = basePattern;
+
+        if (Math.abs(this.rotation) > 0.0001) {
+          const tx = x - centerX;
+          const ty = y - centerY;
+
+          const cos = Math.cos(-this.rotation);
+          const sin = Math.sin(-this.rotation);
+          const rx = tx * cos - ty * sin;
+          const ry = tx * sin + ty * cos;
+
+          const rotX = rx + centerX;
+          const rotY = ry + centerY;
+
+          const rotScaledX = rotX * this.scale;
+          const rotScaledY = rotY * this.scale;
+          rotatedPattern = Math.sin(rotScaledX * 6) * Math.sin(rotScaledY * 6);
+        }
+
+        let noise = rotatedPattern;
+
+        if (this.speed > 0) {
+          noise = Math.sin(noise + this.time * this.speed);
+        }
+
+        return (noise + 1) * 0.5;
       }
-
-      // Now use the rotated pattern as the base for our noise
-      let noise = rotatedPattern;
-
-      // Apply time animation if speed > 0
-      if (this.speed > 0) {
-        noise = Math.sin(noise + this.time * this.speed);
-      }
-
-      // Normalize to [0,1]
-      return (noise + 1) * 0.5;
-
     } catch (err) {
       console.error("Error in noise2D:", err);
       return 0.5;
@@ -282,19 +302,20 @@ class TurbulenceField {
     strength,
     scale,
     speed,
-    octaves, // Add octaves parameter
-    persistence, // Add persistence parameter
-    rotation, // Add rotation parameter
-    rotationSpeed, // Add this parameter
+    octaves,
+    persistence,
+    rotation,
+    rotationSpeed,
     directionBias,
     decayRate,
     domainWarp,
     timeOffset,
+    useOrganicNoise, // Add new parameter
   }) {
     if (strength !== undefined) this.strength = strength;
     if (scale !== undefined) this.scale = scale;
     if (speed !== undefined) this.speed = speed;
-    if (octaves !== undefined) this.octaves = octaves; // This will trigger regeneration
+    if (octaves !== undefined) this.octaves = octaves;
     if (persistence !== undefined) this.persistence = persistence;
     if (rotation !== undefined) this.rotation = rotation;
     if (rotationSpeed !== undefined) this.rotationSpeed = rotationSpeed;
@@ -302,6 +323,7 @@ class TurbulenceField {
     if (decayRate !== undefined) this.decayRate = decayRate;
     if (domainWarp !== undefined) this.domainWarp = domainWarp;
     if (timeOffset !== undefined) this.timeOffset = timeOffset;
+    if (useOrganicNoise !== undefined) this.useOrganicNoise = useOrganicNoise;
   }
 
   // Debug function to help diagnose rotation issues

@@ -153,11 +153,24 @@ export class TurbulenceUi extends BaseUi {
     // REMOVED: inwardFactor controller is now combined into pullFactor
     this.turbulenceDecayRateController = advancedFolder.add(turbulence, "decayRate", 0.9, 1).name("T-Decay");
 
+    // Add noise style selector
+    this.turbulenceNoiseStyleController = advancedFolder.add(turbulence, "useOrganicNoise")
+      .name("T-NoiseStyle")
+      .options({
+        "Organic": true,
+        "Geometric": false
+      })
+      .onChange((value) => {
+        // Optional: Update domain warp visibility based on style
+        if (this.turbulenceDomainWarpController) {
+          this.turbulenceDomainWarpController.domElement.style.display = value ? "block" : "none";
+        }
+      });
+
     // Restore XY bias controllers
     const biasFolder = this.gui.addFolder("Direction Bias");
     this.turbulenceBiasXController = biasFolder.add(turbulence.directionBias, "0", -1, 1).name("T-X");
     this.turbulenceBiasYController = biasFolder.add(turbulence.directionBias, "1", -1, 1).name("T-Y");
-
 
     this.turbulenceDomainWarpController = advancedFolder.add(turbulence, "domainWarp", 0, 100).name("T-DomainWarp");
 
@@ -224,7 +237,6 @@ export class TurbulenceUi extends BaseUi {
     if (this.turbulencePersistenceController) targets["T-Persist"] = this.turbulencePersistenceController;
     if (this.turbulenceRotationController) targets["T-Rot"] = this.turbulenceRotationController;
     if (this.turbulenceRotationSpeedController) targets["T-RotSpd"] = this.turbulenceRotationSpeedController;
-    if (this.turbulenceInwardFactorController) targets["T-Pull"] = this.turbulenceInwardFactorController;
     if (this.turbulenceDecayRateController) targets["T-Decay"] = this.turbulenceDecayRateController;
 
     if (this.turbulenceBiasXController) targets["T-X"] = this.turbulenceBiasXController;
@@ -235,6 +247,9 @@ export class TurbulenceUi extends BaseUi {
 
     // Add pull mode controller
     if (this.turbulencePullFactorController) targets["T-Pull Mode"] = this.turbulencePullFactorController;
+
+    // Add noise style controller
+    if (this.turbulenceNoiseStyleController) targets["T-NoiseStyle"] = this.turbulenceNoiseStyleController;
 
     return targets;
   }
@@ -262,18 +277,18 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulenceScaleController);
     safeUpdateDisplay(this.turbulenceSpeedController);
     safeUpdateDisplay(this.turbulenceScaleStrengthController);
-    safeUpdateDisplay(this.turbulenceInwardFactorController);
-    safeUpdateDisplay(this.turbulenceDecayRateController);
     safeUpdateDisplay(this.turbulenceMinScaleController);
     safeUpdateDisplay(this.turbulenceMaxScaleController);
     safeUpdateDisplay(this.turbulenceOctavesController);
     safeUpdateDisplay(this.turbulencePersistenceController);
     safeUpdateDisplay(this.turbulenceRotationController);
     safeUpdateDisplay(this.turbulenceRotationSpeedController);
+    safeUpdateDisplay(this.turbulenceDecayRateController);
     safeUpdateDisplay(this.turbulenceBiasXController);
     safeUpdateDisplay(this.turbulenceBiasYController);
     safeUpdateDisplay(this.turbulenceDomainWarpController);
     safeUpdateDisplay(this.turbulencePullFactorController);
+    safeUpdateDisplay(this.turbulenceNoiseStyleController);
   }
 
   getData() {
