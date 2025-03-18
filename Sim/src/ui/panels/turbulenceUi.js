@@ -167,73 +167,9 @@ export class TurbulenceUi extends BaseUi {
     `;
     patternControlsFolder.domElement.insertBefore(previewContainer, patternControlsFolder.domElement.firstChild);
 
-    // Add selected pattern preview
-    const selectedPreviewContainer = document.createElement('div');
-    selectedPreviewContainer.className = 'selected-pattern-preview';
-    selectedPreviewContainer.style.cssText = `
-      width: 260px;
-      height: 260px;
-      border: 2px solid #666;
-      margin-bottom: 10px;
-      position: relative;
-      cursor: pointer;
-      transition: border-color 0.2s;
-      padding: 20px;
-    `;
-    patternControlsFolder.domElement.insertBefore(selectedPreviewContainer, previewContainer);
-
-    const selectedPreviewImg = document.createElement('img');
-    selectedPreviewImg.style.cssText = `
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    `;
-    selectedPreviewContainer.appendChild(selectedPreviewImg);
-
-    // // Add play/pause indicator
-    // const playIndicator = document.createElement('div');
-    // playIndicator.style.cssText = `
-    //   position: absolute;
-    //   top: 10px;
-    //   right: 10px;
-    //   width: 20px;
-    //   height: 20px;
-    //   border-radius: 50%;
-    //   background: rgba(0, 0, 0, 0.5);
-    //   display: none;
-    //   align-items: center;
-    //   justify-content: center;
-    //   color: white;
-    //   /* font-size: 12px; */
-    // `;
-    // playIndicator.innerHTML = '▶';
-    // selectedPreviewContainer.appendChild(playIndicator);
-
     let currentAnimationCleanup = null;
-    let isPreviewAnimating = false;
     let selectedThumbnailValue = null;
     let thumbnailAnimationCleanups = new Map();
-
-    // Function to update selected preview
-    const updateSelectedPreview = (animate = false) => {
-      // Clean up existing animation if any
-      if (currentAnimationCleanup) {
-        currentAnimationCleanup();
-        currentAnimationCleanup = null;
-      }
-
-      if (animate) {
-        // Start animation
-        currentAnimationCleanup = turbulence.generateAnimatedPreview(200, 200, turbulence.patternStyle, (dataUrl) => {
-          selectedPreviewImg.src = dataUrl;
-        });
-        isPreviewAnimating = true;
-      } else {
-        // Just show static preview
-        selectedPreviewImg.src = turbulence.generatePatternPreview(200, 200, turbulence.patternStyle);
-        isPreviewAnimating = false;
-      }
-    };
 
     // Function to refresh all thumbnails
     const refreshThumbnails = (animate = false) => {
@@ -256,20 +192,6 @@ export class TurbulenceUi extends BaseUi {
         }
       });
     };
-
-    // Add click handler to toggle animation
-    selectedPreviewContainer.addEventListener('click', () => {
-      isPreviewAnimating = !isPreviewAnimating;
-      updateSelectedPreview(isPreviewAnimating);
-    });
-
-    // Add hover effect for preview container
-    selectedPreviewContainer.addEventListener('mouseover', () => {
-      selectedPreviewContainer.style.borderColor = '#fff';
-    });
-    selectedPreviewContainer.addEventListener('mouseout', () => {
-      selectedPreviewContainer.style.borderColor = '#666';
-    });
 
     // Pattern style selector
     this.turbulencePatternStyleController = patternControlsFolder.add(turbulence, "patternStyle")
@@ -307,8 +229,7 @@ export class TurbulenceUi extends BaseUi {
         }
 
         selectedThumbnailValue = value;
-        updateSelectedPreview(isPreviewAnimating);
-        refreshThumbnails(false);
+        refreshThumbnails(true);  // Start animation when pattern changes
       });
 
     // Create preview thumbnails
@@ -361,7 +282,7 @@ export class TurbulenceUi extends BaseUi {
       `;
       previewWrapper.appendChild(title);
 
-      // Generate static preview
+      // Generate initial preview
       previewImg.src = turbulence.generatePatternPreview(previewSize, previewSize, value);
       previewWrapper.appendChild(previewImg);
 
@@ -374,9 +295,8 @@ export class TurbulenceUi extends BaseUi {
       });
 
       // Add click handler
-      let isThisThumbnailAnimating = false;
+      let isThisThumbnailAnimating = true;  // Start with animation enabled
       previewWrapper.addEventListener('click', () => {
-        // First click: select pattern and stop any animations
         if (selectedThumbnailValue !== value) {
           // Stop any existing animations
           thumbnailAnimationCleanups.forEach(cleanup => cleanup());
@@ -388,10 +308,10 @@ export class TurbulenceUi extends BaseUi {
           if (this.turbulencePatternStyleController) {
             this.turbulencePatternStyleController.setValue(value);
           }
-          isThisThumbnailAnimating = false;
-          refreshThumbnails(false);
+          isThisThumbnailAnimating = true;  // Keep animation active
+          refreshThumbnails(true);
         } else {
-          // Second click: toggle animation for this thumbnail only
+          // Toggle animation
           isThisThumbnailAnimating = !isThisThumbnailAnimating;
           refreshThumbnails(isThisThumbnailAnimating);
         }
@@ -407,16 +327,14 @@ export class TurbulenceUi extends BaseUi {
     this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulence, "patternFrequency", 0.1, 20)
       .name("T-PatternFreq")
       .onChange(() => {
-        updateSelectedPreview(isPreviewAnimating);
-        refreshThumbnails(isPreviewAnimating);
+        refreshThumbnails(true);  // Keep animation when frequency changes
       });
 
-    // Domain warp control - moved to pattern controls folder and always visible
+    // Domain warp control
     this.turbulenceDomainWarpController = patternControlsFolder.add(turbulence, "domainWarp", 0, 1)
       .name("T-DomainWarp")
       .onChange(() => {
-        updateSelectedPreview(isPreviewAnimating);
-        refreshThumbnails(isPreviewAnimating);
+        refreshThumbnails(true);  // Keep animation when warp changes
       });
 
     // Time influence selector
@@ -454,15 +372,13 @@ export class TurbulenceUi extends BaseUi {
     previewAffectingControllers.forEach(controller => {
       if (controller) {
         controller.onChange(() => {
-          updateSelectedPreview(isPreviewAnimating);
-          refreshThumbnails(isPreviewAnimating);
+          refreshThumbnails(true);  // Keep animation when parameters change
         });
       }
     });
 
     // Clean up animation when folder is closed
     patternControlsFolder.domElement.addEventListener('click', (e) => {
-      // Check if the click is on the folder header (which toggles the folder)
       if (e.target.closest('.title')) {
         if (currentAnimationCleanup) {
           currentAnimationCleanup();
@@ -470,15 +386,16 @@ export class TurbulenceUi extends BaseUi {
         }
         thumbnailAnimationCleanups.forEach(cleanup => cleanup());
         thumbnailAnimationCleanups.clear();
-        isPreviewAnimating = false;
-        updateSelectedPreview(false);
+        selectedThumbnailValue = null;
         refreshThumbnails(false);
       }
     });
 
-    // Initial preview (static)
-    updateSelectedPreview(false);
-    refreshThumbnails(false);
+    // Set initial pattern and start animation
+    if (turbulence.patternStyle) {
+      selectedThumbnailValue = turbulence.patternStyle;
+      refreshThumbnails(true);  // Start with animation
+    }
   }
 
   getControlTargets() {
