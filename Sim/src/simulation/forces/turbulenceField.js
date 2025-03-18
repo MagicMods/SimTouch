@@ -119,7 +119,27 @@ class TurbulenceField {
   }
 
   // Add method to generate preview thumbnails
-  generatePatternPreview(width = 100, height = 100, style = this.patternStyle) {
+  generatePatternPreview(width = 100, height = 100, style = this.patternStyle, isAnimated = false) {
+    // Store original parameters
+    const originalParams = {
+      noiseStyle: this.useOrganicNoise,
+      patternStyle: this.patternStyle,
+      speed: this.speed,
+      scale: this.scale,
+      octaves: this._octaves,
+      persistence: this.persistence,
+      rotation: this.rotation,
+      time: this.time
+    };
+
+    // Set parameters for preview
+    this.useOrganicNoise = false;
+    this.patternStyle = style;
+    if (!isAnimated) {
+      this.speed = 0; // Static preview
+      this.time = 0;  // Reset time for static preview
+    }
+
     const canvas = document.createElement('canvas');
     canvas.width = width;
     canvas.height = height;
@@ -145,7 +165,36 @@ class TurbulenceField {
     }
 
     ctx.putImageData(imageData, 0, 0);
+
+    // Restore original parameters
+    Object.assign(this, originalParams);
+
     return canvas.toDataURL();
+  }
+
+  // Add method to generate animated preview
+  generateAnimatedPreview(width = 100, height = 100, style = this.patternStyle, updateCallback) {
+    let animationFrame;
+    const animate = () => {
+      // Update time for animation
+      this.time += 0.016; // Assuming 60fps
+      // Generate new frame
+      const dataUrl = this.generatePatternPreview(width, height, style, true);
+      // Call the update callback with new frame
+      if (updateCallback) updateCallback(dataUrl);
+      // Request next frame
+      animationFrame = requestAnimationFrame(animate);
+    };
+
+    // Start animation
+    animate();
+
+    // Return cleanup function
+    return () => {
+      if (animationFrame) {
+        cancelAnimationFrame(animationFrame);
+      }
+    };
   }
 
   // Completely redesigned noise2D function that supports both styles
@@ -273,14 +322,51 @@ class TurbulenceField {
         if (this.speed > 0) {
           switch (this.timeInfluence) {
             case "phase":
-              noise = Math.sin(noise + this.time * this.speed);
+              // Phase shift creates a moving pattern
+              noise = Math.sin(noise * Math.PI * 2 + this.time * this.speed);
               break;
             case "amplitude":
-              noise *= (1 + Math.sin(this.time * this.speed) * 0.5);
+              // Amplitude creates pulsing effect
+              const amplitude = 0.5 + 0.5 * Math.sin(this.time * this.speed);
+              noise = noise * amplitude;
               break;
             case "frequency":
-              const timeFreq = this.patternFrequency * (1 + Math.sin(this.time * this.speed) * 0.5);
-              noise = Math.sin(scaledX * timeFreq) * Math.sin(scaledY * timeFreq);
+              // Frequency creates a breathing/expanding effect
+              const freqScale = 1 + 0.5 * Math.sin(this.time * this.speed);
+              const freqX = scaledX * this.patternFrequency * freqScale;
+              const freqY = scaledY * this.patternFrequency * freqScale;
+              switch (this.patternStyle) {
+                case "checkerboard":
+                  noise = Math.sin(freqX) * Math.sin(freqY);
+                  break;
+                case "waves":
+                  noise = Math.sin(freqX + freqY * 0.5);
+                  break;
+                case "grid":
+                  noise = Math.sin(freqX) + Math.sin(freqY);
+                  break;
+                case "circles":
+                  const dist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+                  noise = Math.sin(dist * this.patternFrequency * Math.PI * 2 * freqScale);
+                  break;
+                case "spiral":
+                  const angle = Math.atan2(y - centerY, x - centerX);
+                  const radius = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+                  noise = Math.sin(angle * this.patternFrequency + radius * this.patternFrequency * 0.1 * freqScale);
+                  break;
+                case "maze":
+                  noise = Math.sin(freqX * 2) * Math.cos(freqY * 2);
+                  break;
+                case "ripples":
+                  const rippleDist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+                  noise = Math.sin(rippleDist * this.patternFrequency * Math.PI * 2 * freqScale - this.time * this.speed);
+                  break;
+                case "starfield":
+                  const starX = (x - centerX) * this.patternFrequency * freqScale;
+                  const starY = (y - centerY) * this.patternFrequency * freqScale;
+                  noise = Math.sin(starX * starX + starY * starY);
+                  break;
+              }
               break;
           }
         }

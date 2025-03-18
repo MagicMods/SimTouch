@@ -1,5 +1,6 @@
 export const GridField = {
   PROXIMITY: "Proximity",
+  PROXIMITYB: "ProximityB",
   DENSITY: "Density",
   VELOCITY: "Velocity",
   PRESSURE: "Pressure",
@@ -80,6 +81,9 @@ class GridRenderModes {
     switch (this.currentMode) {
       case this.modes.PROXIMITY:
         this.calculateProximity(particleSystem);
+        break;
+      case this.modes.PROXIMITYB:
+        this.calculateProximityB(particleSystem);
         break;
       case this.modes.DENSITY:
         this.calculateDensity(particleSystem);
@@ -200,6 +204,103 @@ class GridRenderModes {
 
     return this.targetValues;
   }
+
+
+  calculateProximityB(particleSystem) {
+    this.targetValues.fill(0);
+    if (!particleSystem) return this.targetValues;
+
+    const particles = particleSystem.getParticles();
+    if (!particles?.length) return this.targetValues;
+
+    // Constants
+    const tune = 1.5;
+    const radius = 20;
+    const radiusSq = radius * radius;
+
+    // Pre-calculate particle positions and cells, considering radius
+    const particleData = particles.map((p, idx) => {
+      const px = p.x * this.TARGET_WIDTH;
+      const py = (1 - p.y) * this.TARGET_HEIGHT;
+      const particleRadius = p.size / 4; // Convert diameter to radius
+
+      // Find all cells that this particle overlaps with using circle-rectangle overlap
+      const overlappingCells = this.gridMap.filter(cell => {
+        const overlap = this.calculateCircleRectOverlap(
+          px,
+          py,
+          particleRadius,
+          cell.bounds.x,
+          cell.bounds.y,
+          cell.bounds.width,
+          cell.bounds.height
+        );
+        return overlap > 0;
+      });
+
+      return {
+        x: px,
+        y: py,
+        idx,
+        radius: particleRadius,
+        cells: overlappingCells.map(cell => cell.index)
+      };
+    });
+
+    // Group by cells (using correct grid indices)
+    const cellMap = new Map();
+    particleData.forEach((p) => {
+      p.cells.forEach(cellIndex => {
+        if (!cellMap.has(cellIndex)) {
+          cellMap.set(cellIndex, []);
+        }
+        cellMap.get(cellIndex).push(p);
+      });
+    });
+
+    // Process cells
+    this.gridMap.forEach((cell) => {
+      const particlesInCell = cellMap.get(cell.index) || [];
+      let totalProximity = 0;
+
+      if (particlesInCell.length > 0) {
+        // Find neighboring cells using gridMap
+        const neighbors = this.gridMap.filter(
+          (other) =>
+            Math.abs(other.bounds.x - cell.bounds.x) <= radius &&
+            Math.abs(other.bounds.y - cell.bounds.y) <= radius
+        );
+
+        // Calculate proximities
+        particlesInCell.forEach((p1) => {
+          neighbors.forEach((neighbor) => {
+            const neighborParticles = cellMap.get(neighbor.index) || [];
+            neighborParticles.forEach((p2) => {
+              if (p1.idx === p2.idx) return;
+
+              const dx = p2.x - p1.x;
+              const dy = p2.y - p1.y;
+              const distSq = dx * dx + dy * dy;
+              const minDist = p1.radius + p2.radius;
+
+              if (distSq < (minDist + radius) * (minDist + radius)) {
+                // Calculate overlap-based proximity
+                const overlap = Math.max(0, minDist - Math.sqrt(distSq));
+                totalProximity += (overlap / minDist) * tune;
+              }
+            });
+          });
+        });
+
+        this.targetValues[cell.index] =
+          (totalProximity / particlesInCell.length) * tune;
+      }
+    });
+
+    return this.targetValues;
+  }
+
+
 
   calculateDensity(particleSystem) {
     this.targetValues.fill(0);
@@ -416,7 +517,7 @@ class GridRenderModes {
     rectWidth,
     rectHeight
   ) {
-    // Clamp the circle's center to the rectangle’s bounds to find the nearest point
+    // Clamp the circle's center to the rectangle's bounds to find the nearest point
     const closestX = Math.max(rectX, Math.min(circleX, rectX + rectWidth));
     const closestY = Math.max(rectY, Math.min(circleY, rectY + rectHeight));
 

@@ -119,7 +119,7 @@ export class TurbulenceUi extends BaseUi {
     this.scaleButton = scaleButton;
 
     this.turbulenceStrengthController = this.gui.add(turbulence, "strength", 0, 10).name("T-Strength");
-    this.turbulenceScaleController = this.gui.add(turbulence, "scale", 0, 10, 0.01).name("T-Scale");
+    this.turbulenceScaleController = this.gui.add(turbulence, "scale", 0.01, 10, 0.01).name("T-Scale");
     this.turbulenceSpeedController = this.gui.add(turbulence, "speed", 0, 2).name("T-Speed");
 
     // COMBINED: Replace both controls with a single pullFactor slider from -1 to 1
@@ -173,19 +173,175 @@ export class TurbulenceUi extends BaseUi {
     const patternControlsFolder = this.gui.addFolder("Pattern Controls");
     this.patternControlsFolder = patternControlsFolder;
 
+    // Create preview container
+    const previewContainer = document.createElement('div');
+    previewContainer.className = 'pattern-preview-container';
+    previewContainer.style.cssText = `
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+    `;
+    patternControlsFolder.domElement.insertBefore(previewContainer, patternControlsFolder.domElement.firstChild);
+
+    // Add selected pattern preview
+    const selectedPreviewContainer = document.createElement('div');
+    selectedPreviewContainer.className = 'selected-pattern-preview';
+    selectedPreviewContainer.style.cssText = `
+      width: 260px;
+      height: 260px;
+      border: 2px solid #666;
+      margin-bottom: 10px;
+      position: relative;
+    `;
+    patternControlsFolder.domElement.insertBefore(selectedPreviewContainer, previewContainer);
+
+    const selectedPreviewImg = document.createElement('img');
+    selectedPreviewImg.style.cssText = `
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    `;
+    selectedPreviewContainer.appendChild(selectedPreviewImg);
+
+    // Pattern style selector with previews
+    const patternStyles = {
+      "Checkerboard": "checkerboard",
+      "Waves": "waves",
+      "Spiral": "spiral",
+      "Grid": "grid",
+      "Circles": "circles",
+      "Maze": "maze",
+      "Ripples": "ripples",
+      "Starfield": "starfield"
+    };
+
+    let currentAnimationCleanup = null;
+
+    // Function to update selected preview
+    const updateSelectedPreview = () => {
+      if (currentAnimationCleanup) {
+        currentAnimationCleanup();
+      }
+      currentAnimationCleanup = turbulence.generateAnimatedPreview(200, 200, turbulence.patternStyle, (dataUrl) => {
+        selectedPreviewImg.src = dataUrl;
+      });
+    };
+
+    // Create preview thumbnails
+    const previewSize = 80;
+    Object.entries(patternStyles).forEach(([name, value]) => {
+      const previewWrapper = document.createElement('div');
+      previewWrapper.className = 'pattern-preview';
+      previewWrapper.style.cssText = `
+        width: ${previewSize}px;
+        height: ${previewSize}px;
+        border: 1px solid #666;
+        cursor: pointer;
+        transition: border-color 0.2s;
+        position: relative;
+      `;
+
+      const previewImg = document.createElement('img');
+      previewImg.style.cssText = `
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      `;
+
+      // Add title
+      const title = document.createElement('div');
+      title.textContent = name;
+      title.style.cssText = `
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: rgba(0, 0, 0, 0.7);
+        color: white;
+        font-size: 12px;
+        padding: 2px;
+        text-align: center;
+      `;
+      previewWrapper.appendChild(title);
+
+      // Generate static preview
+      previewImg.src = turbulence.generatePatternPreview(previewSize, previewSize, value);
+      previewWrapper.appendChild(previewImg);
+
+      // Add hover effect
+      previewWrapper.addEventListener('mouseover', () => {
+        previewWrapper.style.borderColor = '#fff';
+      });
+      previewWrapper.addEventListener('mouseout', () => {
+        previewWrapper.style.borderColor = '#666';
+      });
+
+      // Add click handler
+      previewWrapper.addEventListener('click', () => {
+        turbulence.patternStyle = value;
+        if (this.turbulencePatternStyleController) {
+          this.turbulencePatternStyleController.setValue(value);
+        }
+        // Update selected preview
+        updateSelectedPreview();
+      });
+
+      previewContainer.appendChild(previewWrapper);
+    });
+
+    // Store preview container reference
+    this.patternPreviewContainer = previewContainer;
+
     // Pattern style selector
     this.turbulencePatternStyleController = patternControlsFolder.add(turbulence, "patternStyle")
       .name("T-PatternStyle")
-      .options({
-        "Checkerboard": "checkerboard",
-        "Waves": "waves",
-        "Spiral": "spiral",
-        "Grid": "grid"
+      .options(patternStyles)
+      .onChange(() => {
+        // Update selected preview
+        updateSelectedPreview();
       });
+
+    // Add listeners for other parameters that affect the preview
+    const previewAffectingControllers = [
+      this.turbulencePatternFrequencyController,
+      this.turbulenceSpeedController,
+      this.turbulenceScaleController,
+      this.turbulenceOctavesController,
+      this.turbulencePersistenceController,
+      this.turbulenceRotationController,
+      this.turbulenceRotationSpeedController,
+      this.turbulenceTimeInfluenceController
+    ];
+
+    previewAffectingControllers.forEach(controller => {
+      if (controller) {
+        controller.onChange(() => {
+          updateSelectedPreview();
+        });
+      }
+    });
+
+    // Start with initial selected preview
+    updateSelectedPreview();
+
+    // Clean up animation when folder is closed
+    patternControlsFolder.domElement.addEventListener('click', (e) => {
+      // Check if the click is on the folder header (which toggles the folder)
+      if (e.target.closest('.folder')) {
+        if (currentAnimationCleanup) {
+          currentAnimationCleanup();
+        }
+      }
+    });
 
     // Pattern frequency control
     this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulence, "patternFrequency", 0.1, 20)
-      .name("T-PatternFreq");
+      .name("T-PatternFreq")
+      .onChange(() => {
+        // Update selected preview
+        updateSelectedPreview();
+      });
 
     // Time influence selector
     this.turbulenceTimeInfluenceController = patternControlsFolder.add(turbulence, "timeInfluence")
@@ -195,11 +351,6 @@ export class TurbulenceUi extends BaseUi {
         "Amplitude": "amplitude",
         "Frequency": "frequency"
       });
-
-    // Set initial visibility of pattern controls
-    if (patternControlsFolder) {
-      patternControlsFolder.domElement.style.display = turbulence.useOrganicNoise ? "none" : "block";
-    }
 
     // Restore XY bias controllers
     const biasFolder = this.gui.addFolder("Direction Bias");

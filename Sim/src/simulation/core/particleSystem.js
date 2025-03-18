@@ -19,7 +19,7 @@ class ParticleSystem {
     this.numParticles = particleCount;
     this.timeStep = timeStep;
     this.gravity = new GravityForces(gravity);
-    this.particleRadius = 0.01;
+    this.particleRadius = 0.015;
     this.renderScale = 2000;
 
     // Add radius array to track individual particle sizes
@@ -75,7 +75,7 @@ class ParticleSystem {
 
     // Then create FLIP system with boundary reference
     this.fluid = new FluidFLIP({
-      gridSize: 64,
+      gridSize: 32,
       picFlipRatio: this.picFlipRatio,
       dt: timeStep,
       boundary: this.boundary,
@@ -98,7 +98,7 @@ class ParticleSystem {
     const particlesPerRing = Math.ceil(this.numParticles / rings);
 
     // Safe spawn radius (80% of container radius to avoid immediate boundary collision)
-    const spawnRadius = this.boundary.radius * 0.8;
+    const spawnRadius = this.boundary.radius * 0.95;
     const centerX = this.boundary.centerX;
     const centerY = this.boundary.centerY;
 
