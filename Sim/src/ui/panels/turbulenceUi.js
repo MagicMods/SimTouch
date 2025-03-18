@@ -213,11 +213,6 @@ export class TurbulenceUi extends BaseUi {
         const isOrganic = value === "";
         turbulence.useOrganicNoise = isOrganic;
 
-        // Update visibility of pattern frequency control
-        if (this.turbulencePatternFrequencyController) {
-          this.turbulencePatternFrequencyController.domElement.style.display = isOrganic ? "none" : "block";
-        }
-
         // Reset octaves for organic mode only
         if (isOrganic && this.turbulenceOctavesController) {
           this.turbulenceOctavesController.setValue(3);
@@ -317,18 +312,18 @@ export class TurbulenceUi extends BaseUi {
     // Store preview container reference
     this.patternPreviewContainer = previewContainer;
 
-    // Pattern frequency control
-    this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulence, "patternFrequency", 0.1, 20)
+    // Domain warp control (renamed)
+    this.turbulenceDomainWarpController = patternControlsFolder.add(turbulence, "domainWarp", 0, 1)
+      .name("T-DomWarp")
+      .onChange(() => {
+        refreshThumbnails(true);  // Keep animation when warp changes
+      });
+
+    // Pattern frequency control (always visible)
+    this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulence, "patternFrequency", 0.1, 20, 0.1)
       .name("T-Freq")
       .onChange(() => {
         refreshThumbnails(true);  // Keep animation when frequency changes
-      });
-
-    // Domain warp control
-    this.turbulenceDomainWarpController = patternControlsFolder.add(turbulence, "domainWarp", 0, 1)
-      .name("T-DomainWarp")
-      .onChange(() => {
-        refreshThumbnails(true);  // Keep animation when warp changes
       });
 
     // Create button group container for time influence controls
@@ -388,34 +383,37 @@ export class TurbulenceUi extends BaseUi {
     this.freqButton = freqButton;
     this.ampButton = ampButton;
 
-    // Add phase, frequency, and amplitude controls
-    this.turbulencePhaseController = patternControlsFolder.add(turbulence, "phaseSpeed", 0, 2, 0.1)
-      .name("T-PhaseSp")
-      .onChange(() => {
-        refreshThumbnails(true);
-      });
-
+    // Add frequency speed control
     this.turbulenceFrequencyController = patternControlsFolder.add(turbulence, "frequencySpeed", 0, 2, 0.1)
       .name("T-FreqSp")
       .onChange(() => {
         refreshThumbnails(true);
       });
 
-    this.turbulenceAmplitudeController = patternControlsFolder.add(turbulence, "amplitudeSpeed", 0, 2, 0.1)
-      .name("T-AmpSp")
-      .onChange(() => {
-        refreshThumbnails(true);
-      });
-
-    // Add static phase and amplitude controls
+    // Add static phase control
     this.turbulenceStaticPhaseController = patternControlsFolder.add(turbulence, "phase", 0, 1, 0.01)
       .name("T-Phase")
       .onChange(() => {
         refreshThumbnails(true);
       });
 
+    // Add phase speed control
+    this.turbulencePhaseController = patternControlsFolder.add(turbulence, "phaseSpeed", 0, 2, 0.1)
+      .name("T-PhaseSp")
+      .onChange(() => {
+        refreshThumbnails(true);
+      });
+
+    // Add static amplitude control
     this.turbulenceStaticAmplitudeController = patternControlsFolder.add(turbulence, "amplitude", 0, 2, 0.1)
       .name("T-Amp")
+      .onChange(() => {
+        refreshThumbnails(true);
+      });
+
+    // Add amplitude speed control
+    this.turbulenceAmplitudeController = patternControlsFolder.add(turbulence, "amplitudeSpeed", 0, 2, 0.1)
+      .name("T-AmpSp")
       .onChange(() => {
         refreshThumbnails(true);
       });
@@ -424,11 +422,6 @@ export class TurbulenceUi extends BaseUi {
     this.turbulenceSpeedController.onChange(() => {
       refreshThumbnails(true);
     });
-
-    // Hide pattern frequency control initially if in organic mode
-    if (turbulence.useOrganicNoise) {
-      this.turbulencePatternFrequencyController.domElement.style.display = "none";
-    }
 
     // Restore XY bias controllers
     const biasFolder = this.gui.addFolder("Direction Bias");
@@ -550,7 +543,7 @@ export class TurbulenceUi extends BaseUi {
     if (this.turbulenceBiasYController) targets["T-Y"] = this.turbulenceBiasYController;
 
     // Add domain warp controller
-    if (this.turbulenceDomainWarpController) targets["T-DomainWarp"] = this.turbulenceDomainWarpController;
+    if (this.turbulenceDomainWarpController) targets["T-DomWarp"] = this.turbulenceDomainWarpController;
 
     // Add pull mode controller
     if (this.turbulencePullFactorController) targets["T-Pull Mode"] = this.turbulencePullFactorController;
