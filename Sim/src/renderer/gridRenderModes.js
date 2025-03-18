@@ -565,23 +565,54 @@ class GridRenderModes {
       return 0; // No overlap
     }
 
-    // Simple approximation for partial overlap
+    // Calculate overlap area using the intersection rectangle
     const overlapWidth = overlapRight - overlapLeft;
     const overlapHeight = overlapBottom - overlapTop;
+    const overlapArea = overlapWidth * overlapHeight;
 
-    // If circle center is inside rectangle, use circle area minus segments outside
+    // Adjust the overlap area based on the circle's position
+    // If the circle's center is inside the rectangle, we need to subtract
+    // the areas of the circle segments that are outside the rectangle
     if (
       circleX >= rectX &&
       circleX <= rectX + rectWidth &&
       circleY >= rectY &&
       circleY <= rectY + rectHeight
     ) {
-      return circleArea; // For simplicity, assume full circle area if center is inside
-      // TODO: Refine with segment subtraction if needed
+      // Calculate the areas of the circle segments that are outside
+      const leftSegment = this.calculateCircleSegmentArea(
+        radius,
+        circleX - rectX
+      );
+      const rightSegment = this.calculateCircleSegmentArea(
+        radius,
+        rectX + rectWidth - circleX
+      );
+      const topSegment = this.calculateCircleSegmentArea(
+        radius,
+        circleY - rectY
+      );
+      const bottomSegment = this.calculateCircleSegmentArea(
+        radius,
+        rectY + rectHeight - circleY
+      );
+
+      // Subtract the outside segments from the circle area
+      return circleArea - (leftSegment + rightSegment + topSegment + bottomSegment);
     }
 
-    // Otherwise, approximate partial overlap (this could be refined further)
-    return overlapWidth * overlapHeight * 0.785; // 0.785 ≈ π/4, rough circle area adjustment
+    // For partial overlaps where center is outside, use a weighted average
+    // of the overlap rectangle and the circle area
+    const centerDistance = Math.sqrt(distanceSquared);
+    const weight = 1 - (centerDistance / radius);
+    return overlapArea * (0.785 + 0.215 * weight); // 0.785 ≈ π/4
+  }
+
+  // Helper function to calculate the area of a circle segment
+  calculateCircleSegmentArea(radius, distance) {
+    if (distance >= radius) return 0;
+    const theta = 2 * Math.acos(distance / radius);
+    return (radius * radius * (theta - Math.sin(theta))) / 2;
   }
 
   calculateOverlap(particleSystem) {
@@ -601,12 +632,9 @@ class GridRenderModes {
 
       // Use the rendered size (diameter) from getParticles()
       const renderedDiameter = particle.size; // Already scaled by renderScale (e.g., 40 for base 0.01)
-      const particleRadius = renderedDiameter / 4; // Convert to radius (e.g., 20 pixels)
+      const particleRadius = renderedDiameter / 8; // Convert to radius (e.g., 20 pixels)
 
-      // Scale radius to match GridRenderModes' coordinate system (TARGET_WIDTH = 240)
-      const gridParticleRadius =
-        particleRadius * (this.TARGET_WIDTH / renderScale); // e.g., 20 * (240 / 4000) = 1.2
-
+      // Find all cells that this particle overlaps with using circle-rectangle overlap
       this.gridMap.forEach((cell) => {
         const { x, y, width, height } = cell.bounds;
         const cellArea = width * height;
@@ -614,7 +642,7 @@ class GridRenderModes {
         const overlapArea = this.calculateCircleRectOverlap(
           px,
           py,
-          gridParticleRadius,
+          particleRadius,
           x,
           y,
           width,
@@ -622,21 +650,20 @@ class GridRenderModes {
         );
 
         if (overlapArea > 0) {
-          const particleArea =
-            Math.PI * gridParticleRadius * gridParticleRadius;
+          const particleArea = Math.PI * particleRadius * particleRadius;
           let coveragePercentage;
 
-          if (particleArea >= cellArea && overlapArea >= cellArea) {
-            coveragePercentage = 100; // Particle fully covers cell
-          } else {
-            coveragePercentage = (overlapArea / cellArea) * 100;
-            if (particleArea < cellArea) {
-              coveragePercentage = Math.min(
-                coveragePercentage,
-                (particleArea / cellArea) * 100
-              );
-            }
-          }
+          // Calculate the actual percentage of cell covered by the particle
+          coveragePercentage = (overlapArea / cellArea) * 100;
+
+          // Apply a smoother scaling to the coverage percentage
+          // This creates a more gradual transition from 0 to 100%
+          coveragePercentage = Math.pow(coveragePercentage / 100, 1.5) * 100;
+
+          // Scale the coverage to match the grid's visualization range
+          // The grid normalizes values to [0,1] and then maps to colors
+          // We want the overlap to be visible but not saturate too quickly
+          coveragePercentage = Math.min(coveragePercentage * 0.1, 100);
 
           this.targetValues[cell.index] += coveragePercentage;
         }
