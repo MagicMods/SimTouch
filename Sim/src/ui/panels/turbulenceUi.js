@@ -177,6 +177,9 @@ export class TurbulenceUi extends BaseUi {
       border: 2px solid #666;
       margin-bottom: 10px;
       position: relative;
+      cursor: pointer;
+      transition: border-color 0.2s;
+      padding: 20px;
     `;
     patternControlsFolder.domElement.insertBefore(selectedPreviewContainer, previewContainer);
 
@@ -187,6 +190,66 @@ export class TurbulenceUi extends BaseUi {
       object-fit: cover;
     `;
     selectedPreviewContainer.appendChild(selectedPreviewImg);
+
+    // // Add play/pause indicator
+    // const playIndicator = document.createElement('div');
+    // playIndicator.style.cssText = `
+    //   position: absolute;
+    //   top: 10px;
+    //   right: 10px;
+    //   width: 20px;
+    //   height: 20px;
+    //   border-radius: 50%;
+    //   background: rgba(0, 0, 0, 0.5);
+    //   display: none;
+    //   align-items: center;
+    //   justify-content: center;
+    //   color: white;
+    //   /* font-size: 12px; */
+    // `;
+    // playIndicator.innerHTML = '▶';
+    // selectedPreviewContainer.appendChild(playIndicator);
+
+    let currentAnimationCleanup = null;
+    let isPreviewAnimating = false;
+
+    // Function to update selected preview
+    const updateSelectedPreview = (animate = false) => {
+      // Clean up existing animation if any
+      if (currentAnimationCleanup) {
+        currentAnimationCleanup();
+        currentAnimationCleanup = null;
+      }
+
+      if (animate) {
+        // Start animation
+        currentAnimationCleanup = turbulence.generateAnimatedPreview(200, 200, turbulence.patternStyle, (dataUrl) => {
+          selectedPreviewImg.src = dataUrl;
+        });
+        // playIndicator.style.display = 'flex';
+        // playIndicator.innerHTML = '⏸';
+        isPreviewAnimating = true;
+      } else {
+        // Just show static preview
+        selectedPreviewImg.src = turbulence.generatePatternPreview(200, 200, turbulence.patternStyle);
+        // playIndicator.style.display = 'flex';
+        // playIndicator.innerHTML = '▶';
+        isPreviewAnimating = false;
+      }
+    };
+
+    // Add click handler to toggle animation
+    selectedPreviewContainer.addEventListener('click', () => {
+      updateSelectedPreview(!isPreviewAnimating);
+    });
+
+    // Add hover effect for preview container
+    selectedPreviewContainer.addEventListener('mouseover', () => {
+      selectedPreviewContainer.style.borderColor = '#fff';
+    });
+    selectedPreviewContainer.addEventListener('mouseout', () => {
+      selectedPreviewContainer.style.borderColor = '#666';
+    });
 
     // Pattern style selector
     this.turbulencePatternStyleController = patternControlsFolder.add(turbulence, "patternStyle")
@@ -230,8 +293,8 @@ export class TurbulenceUi extends BaseUi {
             this.turbulencePatternFrequencyController.setValue(6.0);
           }
         }
-        // Update preview
-        updateSelectedPreview();
+        // Update preview (static by default)
+        updateSelectedPreview(isPreviewAnimating);
       });
 
     // Create preview thumbnails
@@ -246,18 +309,6 @@ export class TurbulenceUi extends BaseUi {
       "Maze": "maze",
       "Ripples": "ripples",
       "Starfield": "starfield"
-    };
-
-    let currentAnimationCleanup = null;
-
-    // Function to update selected preview
-    const updateSelectedPreview = () => {
-      if (currentAnimationCleanup) {
-        currentAnimationCleanup();
-      }
-      currentAnimationCleanup = turbulence.generateAnimatedPreview(200, 200, turbulence.patternStyle, (dataUrl) => {
-        selectedPreviewImg.src = dataUrl;
-      });
     };
 
     // Create preview thumbnails
@@ -315,7 +366,7 @@ export class TurbulenceUi extends BaseUi {
           this.turbulencePatternStyleController.setValue(value);
         }
         // Update selected preview
-        updateSelectedPreview();
+        updateSelectedPreview(isPreviewAnimating);
       });
 
       previewContainer.appendChild(previewWrapper);
@@ -329,7 +380,7 @@ export class TurbulenceUi extends BaseUi {
       .name("T-PatternFreq")
       .onChange(() => {
         // Update selected preview
-        updateSelectedPreview();
+        updateSelectedPreview(isPreviewAnimating);
       });
 
     // Hide pattern frequency control initially if in organic mode
@@ -366,13 +417,10 @@ export class TurbulenceUi extends BaseUi {
     previewAffectingControllers.forEach(controller => {
       if (controller) {
         controller.onChange(() => {
-          updateSelectedPreview();
+          updateSelectedPreview(isPreviewAnimating);
         });
       }
     });
-
-    // Start with initial selected preview
-    updateSelectedPreview();
 
     // Clean up animation when folder is closed
     patternControlsFolder.domElement.addEventListener('click', (e) => {
@@ -380,10 +428,15 @@ export class TurbulenceUi extends BaseUi {
       if (e.target.closest('.folder')) {
         if (currentAnimationCleanup) {
           currentAnimationCleanup();
+          currentAnimationCleanup = null;
+          isPreviewAnimating = false;
+          playIndicator.style.display = 'none';
         }
       }
     });
 
+    // Initial preview (static)
+    updateSelectedPreview(false);
   }
 
   getControlTargets() {
