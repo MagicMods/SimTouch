@@ -361,7 +361,8 @@ class TurbulenceField {
         if (this.speed > 0) {
           // When T-Speed > 0, use enabled controls as rate multipliers
           if (this.phaseEnabled) {
-            noise = Math.sin(noise * Math.PI * 2 + this.time * this.speed * this.phaseSpeed);
+            const phaseOffset = this.time * this.speed * this.phaseSpeed;
+            noise = Math.sin(noise * Math.PI * 2 + phaseOffset);
           }
           if (this.amplitudeEnabled) {
             const amplitude = 0.5 + 0.5 * Math.sin(this.time * this.speed * this.amplitudeSpeed);
@@ -395,7 +396,7 @@ class TurbulenceField {
                 break;
               case "ripples":
                 const rippleDist = Math.sqrt(Math.pow((warpedX / this.scale) - centerX, 2) + Math.pow((warpedY / this.scale) - centerY, 2));
-                noise = Math.sin(rippleDist * this.patternFrequency * Math.PI * 2 * freqScale - this.time * this.speed);
+                noise = Math.sin(rippleDist * this.patternFrequency * Math.PI * 2 * freqScale);
                 break;
               case "starfield":
                 const starX = ((warpedX / this.scale) - centerX) * this.patternFrequency * freqScale;
@@ -407,7 +408,8 @@ class TurbulenceField {
         } else {
           // When T-Speed = 0, use enabled controls as static values
           if (this.phaseEnabled) {
-            noise = Math.sin(noise * Math.PI * 2 + this.phaseSpeed);
+            const phaseOffset = this.phaseSpeed * Math.PI * 2;
+            noise = Math.sin(noise * Math.PI * 2 + phaseOffset);
           }
           if (this.amplitudeEnabled) {
             const amplitude = 0.5 + 0.5 * this.amplitudeSpeed;
