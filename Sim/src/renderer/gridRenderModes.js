@@ -213,7 +213,7 @@ class GridRenderModes {
     if (!particles?.length) return this.targetValues;
 
     // Constants
-    const tune = 1.5;
+    const tune = 1;
     const radius = 20;
     const radiusSq = radius * radius;
 
@@ -497,26 +497,18 @@ class GridRenderModes {
     const particles = particleSystem.getParticles();
     if (!particles?.length) return this.targetValues;
 
-    // Track weighted sums and total weights for averaging
-    const weightedSums = new Float32Array(this.targetValues.length).fill(0);
-    const totalWeights = new Float32Array(this.targetValues.length).fill(0);
-    const tune = 50.0; // Vorticity sensitivity
+    // Track velocity components and weights for each cell
+    const cellVxSums = new Float32Array(this.targetValues.length).fill(0);
+    const cellVySums = new Float32Array(this.targetValues.length).fill(0);
+    const cellWeights = new Float32Array(this.targetValues.length).fill(0);
+    const tune = 1.0; // Adjusted tuning factor for better visualization
 
+    // First pass: accumulate weighted velocities in each cell
     particles.forEach((particle) => {
-      // Convert particle position to pixel space
       const px = particle.x * this.TARGET_WIDTH;
       const py = (1 - particle.y) * this.TARGET_HEIGHT;
+      const particleRadius = particle.size / 8;
 
-      // Use the rendered size (diameter) from getParticles()
-      const renderedDiameter = particle.size; // Already scaled by renderScale (e.g., 40 for base 0.01)
-      const particleRadius = renderedDiameter / 8; // Convert to radius (e.g., 20 pixels)
-
-      // Calculate 2D vorticity (curl in 2D)
-      // In 2D, vorticity is the curl of the velocity field: ω = ∂v/∂x - ∂u/∂y
-      // We'll use the particle's velocity components to approximate this
-      const vorticity = particle.vx * particle.vy;
-
-      // Find all cells that this particle overlaps with using circle-rectangle overlap
       this.gridMap.forEach((cell) => {
         const { x, y, width, height } = cell.bounds;
         const cellArea = width * height;
@@ -532,28 +524,79 @@ class GridRenderModes {
         );
 
         if (overlapArea > 0) {
-          // Calculate the weight based on overlap percentage
+          // Calculate weight based on overlap percentage
           let weight = (overlapArea / cellArea) * 100;
-
-          // Apply the same smooth scaling we use in other calculations
           weight = Math.pow(weight / 100, 1.5) * 100;
-
-          // Scale the weight to match our visualization range
           weight = Math.min(weight * 0.25, 100);
 
-          // Add weighted contribution to the cell
-          weightedSums[cell.index] += vorticity * weight * tune;
-          totalWeights[cell.index] += weight;
+          // Accumulate weighted velocities
+          cellVxSums[cell.index] += particle.vx * weight;
+          cellVySums[cell.index] += particle.vy * weight;
+          cellWeights[cell.index] += weight;
         }
       });
     });
 
-    // Calculate weighted averages
+    // Calculate average velocities for each cell
+    const cellVx = new Float32Array(this.targetValues.length);
+    const cellVy = new Float32Array(this.targetValues.length);
     for (let i = 0; i < this.targetValues.length; i++) {
-      if (totalWeights[i] > 0) {
-        this.targetValues[i] = weightedSums[i] / totalWeights[i];
+      if (cellWeights[i] > 0) {
+        cellVx[i] = cellVxSums[i] / cellWeights[i];
+        cellVy[i] = cellVySums[i] / cellWeights[i];
       }
     }
+
+    // Second pass: calculate vorticity using spatial derivatives
+    this.gridMap.forEach((cell) => {
+      // Skip cells with no data
+      if (cellWeights[cell.index] === 0) return;
+
+      // Find neighboring cells
+      const neighbors = this.gridMap.filter(n => {
+        const dx = n.bounds.x - cell.bounds.x;
+        const dy = n.bounds.y - cell.bounds.y;
+        // Consider only immediate neighbors (including diagonals)
+        return Math.abs(dx) <= cell.bounds.width * 1.5 &&
+          Math.abs(dy) <= cell.bounds.height * 1.5 &&
+          n.index !== cell.index;
+      });
+
+      let dvx_dy = 0;
+      let dvy_dx = 0;
+      let validGradients = 0;
+
+      // Calculate velocity gradients using neighbors
+      neighbors.forEach(n => {
+        if (cellWeights[n.index] > 0) {
+          const dx = n.bounds.x - cell.bounds.x;
+          const dy = n.bounds.y - cell.bounds.y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+
+          if (Math.abs(dy) > 0.001) {
+            dvx_dy += (cellVx[n.index] - cellVx[cell.index]) / dy;
+          }
+          if (Math.abs(dx) > 0.001) {
+            dvy_dx += (cellVy[n.index] - cellVy[cell.index]) / dx;
+          }
+          validGradients++;
+        }
+      });
+
+      // Calculate curl (vorticity) if we have valid gradients
+      if (validGradients > 0) {
+        dvx_dy /= validGradients;
+        dvy_dx /= validGradients;
+
+        // 2D curl = ∂vy/∂x - ∂vx/∂y
+        const vorticity = dvy_dx - dvx_dy;
+
+        // Apply non-linear scaling for better visualization
+        const scaledVorticity = Math.sign(vorticity) * Math.pow(Math.abs(vorticity), 0.75);
+
+        this.targetValues[cell.index] = scaledVorticity * tune;
+      }
+    });
 
     return this.targetValues;
   }
