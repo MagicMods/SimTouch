@@ -151,23 +151,7 @@ export class TurbulenceUi extends BaseUi {
     this.turbulenceRotationController = advancedFolder.add(turbulence, "rotation", 0, Math.PI * 2).name("T-Rot");
     this.turbulenceRotationSpeedController = advancedFolder.add(turbulence, "rotationSpeed", 0, 1).name("T-RotSpd");
     this.turbulenceDecayRateController = advancedFolder.add(turbulence, "decayRate", 0.9, 1).name("T-Decay");
-
-    // Add noise style selector
-    this.turbulenceNoiseStyleController = advancedFolder.add(turbulence, "useOrganicNoise")
-      .name("T-NoiseStyle")
-      .options({
-        "Organic": true,
-        "Geometric": false
-      })
-      .onChange((value) => {
-        // Update visibility of pattern controls based on style
-        if (this.patternControlsFolder) {
-          this.patternControlsFolder.domElement.style.display = value ? "none" : "block";
-        }
-        if (this.turbulenceDomainWarpController) {
-          this.turbulenceDomainWarpController.domElement.style.display = value ? "block" : "none";
-        }
-      });
+    this.turbulenceDomainWarpController = advancedFolder.add(turbulence, "domainWarp", 0, 100).name("T-DomainWarp");
 
     // Add geometric pattern controls folder
     const patternControlsFolder = this.gui.addFolder("Pattern Controls");
@@ -204,8 +188,56 @@ export class TurbulenceUi extends BaseUi {
     `;
     selectedPreviewContainer.appendChild(selectedPreviewImg);
 
-    // Pattern style selector with previews
+    // Pattern style selector
+    this.turbulencePatternStyleController = patternControlsFolder.add(turbulence, "patternStyle")
+      .name("T-PatternStyle")
+      .options({
+        "Organic": "",
+        "Checkerboard": "checkerboard",
+        "Waves": "waves",
+        "Spiral": "spiral",
+        "Grid": "grid",
+        "Circles": "circles",
+        "Maze": "maze",
+        "Ripples": "ripples",
+        "Starfield": "starfield"
+      })
+      .onChange((value) => {
+        // Set organic/geometric mode based on pattern selection
+        const isOrganic = value === "";
+        turbulence.useOrganicNoise = isOrganic;
+
+        // Update visibility of domain warp control
+        if (this.turbulenceDomainWarpController) {
+          this.turbulenceDomainWarpController.domElement.style.display = isOrganic ? "block" : "none";
+        }
+
+        // Update visibility of pattern frequency control
+        if (this.turbulencePatternFrequencyController) {
+          this.turbulencePatternFrequencyController.domElement.style.display = isOrganic ? "none" : "block";
+        }
+
+        // Reset parameters based on mode
+        if (isOrganic) {
+          if (this.turbulenceDomainWarpController) {
+            this.turbulenceDomainWarpController.setValue(0.3);
+          }
+          if (this.turbulenceOctavesController) {
+            this.turbulenceOctavesController.setValue(3);
+          }
+        } else {
+          if (this.turbulencePatternFrequencyController) {
+            this.turbulencePatternFrequencyController.setValue(6.0);
+          }
+        }
+        // Update preview
+        updateSelectedPreview();
+      });
+
+    // Create preview thumbnails
+    const previewSize = 80;
     const patternStyles = {
+      "Organic": "",
       "Checkerboard": "checkerboard",
       "Waves": "waves",
       "Spiral": "spiral",
@@ -229,7 +261,6 @@ export class TurbulenceUi extends BaseUi {
     };
 
     // Create preview thumbnails
-    const previewSize = 80;
     Object.entries(patternStyles).forEach(([name, value]) => {
       const previewWrapper = document.createElement('div');
       previewWrapper.className = 'pattern-preview';
@@ -293,14 +324,32 @@ export class TurbulenceUi extends BaseUi {
     // Store preview container reference
     this.patternPreviewContainer = previewContainer;
 
-    // Pattern style selector
-    this.turbulencePatternStyleController = patternControlsFolder.add(turbulence, "patternStyle")
-      .name("T-PatternStyle")
-      .options(patternStyles)
+    // Pattern frequency control
+    this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulence, "patternFrequency", 0.1, 20)
+      .name("T-PatternFreq")
       .onChange(() => {
         // Update selected preview
         updateSelectedPreview();
       });
+
+    // Hide pattern frequency control initially if in organic mode
+    if (turbulence.useOrganicNoise) {
+      this.turbulencePatternFrequencyController.domElement.style.display = "none";
+    }
+
+    // Time influence selector
+    this.turbulenceTimeInfluenceController = patternControlsFolder.add(turbulence, "timeInfluence")
+      .name("T-TimeInfluence")
+      .options({
+        "Phase": "phase",
+        "Amplitude": "amplitude",
+        "Frequency": "frequency"
+      });
+
+    // Restore XY bias controllers
+    const biasFolder = this.gui.addFolder("Direction Bias");
+    this.turbulenceBiasXController = biasFolder.add(turbulence.directionBias, "0", -1, 1).name("T-X");
+    this.turbulenceBiasYController = biasFolder.add(turbulence.directionBias, "1", -1, 1).name("T-Y");
 
     // Add listeners for other parameters that affect the preview
     const previewAffectingControllers = [
@@ -334,30 +383,6 @@ export class TurbulenceUi extends BaseUi {
         }
       }
     });
-
-    // Pattern frequency control
-    this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulence, "patternFrequency", 0.1, 20)
-      .name("T-PatternFreq")
-      .onChange(() => {
-        // Update selected preview
-        updateSelectedPreview();
-      });
-
-    // Time influence selector
-    this.turbulenceTimeInfluenceController = patternControlsFolder.add(turbulence, "timeInfluence")
-      .name("T-TimeInfluence")
-      .options({
-        "Phase": "phase",
-        "Amplitude": "amplitude",
-        "Frequency": "frequency"
-      });
-
-    // Restore XY bias controllers
-    const biasFolder = this.gui.addFolder("Direction Bias");
-    this.turbulenceBiasXController = biasFolder.add(turbulence.directionBias, "0", -1, 1).name("T-X");
-    this.turbulenceBiasYController = biasFolder.add(turbulence.directionBias, "1", -1, 1).name("T-Y");
-
-    this.turbulenceDomainWarpController = advancedFolder.add(turbulence, "domainWarp", 0, 100).name("T-DomainWarp");
 
   }
 
@@ -433,9 +458,6 @@ export class TurbulenceUi extends BaseUi {
     // Add pull mode controller
     if (this.turbulencePullFactorController) targets["T-Pull Mode"] = this.turbulencePullFactorController;
 
-    // Add noise style controller
-    if (this.turbulenceNoiseStyleController) targets["T-NoiseStyle"] = this.turbulenceNoiseStyleController;
-
     // Add pattern control targets
     if (this.turbulencePatternStyleController) targets["T-PatternStyle"] = this.turbulencePatternStyleController;
     if (this.turbulencePatternFrequencyController) targets["T-PatternFreq"] = this.turbulencePatternFrequencyController;
@@ -478,7 +500,6 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulenceBiasYController);
     safeUpdateDisplay(this.turbulenceDomainWarpController);
     safeUpdateDisplay(this.turbulencePullFactorController);
-    safeUpdateDisplay(this.turbulenceNoiseStyleController);
     safeUpdateDisplay(this.turbulencePatternStyleController);
     safeUpdateDisplay(this.turbulencePatternFrequencyController);
     safeUpdateDisplay(this.turbulenceTimeInfluenceController);

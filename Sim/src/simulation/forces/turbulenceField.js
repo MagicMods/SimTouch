@@ -17,7 +17,7 @@ class TurbulenceField {
     useOrganicNoise = true, // New parameter to choose between noise styles
     // New geometric pattern controls
     patternFrequency = 6.0,
-    patternStyle = "checkerboard", // checkerboard, waves, spiral, grid, circles, maze, ripples, starfield
+    patternStyle = "",
     timeInfluence = "phase", // phase, amplitude, frequency
   } = {}) {
     if (
@@ -101,8 +101,8 @@ class TurbulenceField {
         this.noiseBases.push(baseFrequencies[baseIdx]);
       }
 
-      console.log("Regenerated noise bases with center:",
-        this.boundary.centerX, this.boundary.centerY);
+      // console.log("Regenerated noise bases with center:",
+      // this.boundary.centerX, this.boundary.centerY);
     } catch (err) {
       console.error("Error regenerating noise bases:", err);
       // Create fallback bases
@@ -122,21 +122,21 @@ class TurbulenceField {
   generatePatternPreview(width = 100, height = 100, style = this.patternStyle, isAnimated = false) {
     // Store original parameters
     const originalParams = {
-      noiseStyle: this.useOrganicNoise,
+      useOrganicNoise: this.useOrganicNoise,
       patternStyle: this.patternStyle,
       speed: this.speed,
       scale: this.scale,
       octaves: this._octaves,
       persistence: this.persistence,
       rotation: this.rotation,
-      time: this.time
+      time: this.time,
+      domainWarp: this.domainWarp
     };
 
     // Set parameters for preview
-    this.useOrganicNoise = false;
     this.patternStyle = style;
+    this.useOrganicNoise = style === "";
     if (!isAnimated) {
-      this.speed = 0; // Static preview
       this.time = 0;  // Reset time for static preview
     }
 
@@ -212,8 +212,13 @@ class TurbulenceField {
         const warpX = this.domainWarp * Math.sin(y * 0.1 + this.time * 0.05);
         const warpY = this.domainWarp * Math.sin(x * 0.1 + this.time * 0.07);
 
-        let rx = (x + warpX) * cos - (y + warpY) * sin;
-        let ry = (x + warpX) * sin + (y + warpY) * cos;
+        // Apply scale to coordinates
+        const scaledX = x * this.scale;
+        const scaledY = y * this.scale;
+
+        // Apply rotation and warping to scaled coordinates
+        let rx = (scaledX + warpX) * cos - (scaledY + warpY) * sin;
+        let ry = (scaledX + warpX) * sin + (scaledY + warpY) * cos;
 
         let noise = 0;
         let amplitude = 1;
@@ -228,9 +233,13 @@ class TurbulenceField {
           const frequencyX = Math.pow(2, i) * base.freqX;
           const frequencyY = Math.pow(2, i) * base.freqY;
 
+          // Apply speed to time component
+          const timeX = this.time * this.speed;
+          const timeY = this.time * this.speed * 0.7;
+
           const val =
-            Math.sin(rx * frequencyX + this.time * this.speed + base.phaseX) *
-            Math.cos(ry * frequencyY + this.time * this.speed * 0.7 + base.phaseY);
+            Math.sin(rx * frequencyX + timeX + base.phaseX) *
+            Math.cos(ry * frequencyY + timeY + base.phaseY);
 
           noise += amplitude * val;
           maxValue += amplitude;
