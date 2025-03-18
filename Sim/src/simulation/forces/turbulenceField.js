@@ -430,24 +430,25 @@ class TurbulenceField {
           const normalizedGradX = gradX / gradMag;
           const normalizedGradY = gradY / gradMag;
 
-          // Scale force by pull factor (0 to 1 range) and noise value for stronger effect at peaks
+          // Scale force by pull factor (0 to 1 range)
           const pullStrength = this.pullFactor * this.strength;
           newVx += normalizedGradX * pullStrength * dt;
           newVy += normalizedGradY * pullStrength * dt;
         }
       } else if (this.affectPosition) {
-        // STANDARD MODE: Use the existing implementation for pushing particles
+        // PUSH MODE: Use the existing implementation for pushing particles
         // Calculate noise at particle position
         const n1 = this.noise2D(x, y);
         const n2 = this.noise2D(y + 1.234, x + 5.678);
 
-        // Determine how much "push" to apply (full when pullFactor is 0 or negative)
-        const pushStrength = this.strength * (1 + Math.min(0, this.pullFactor));
+        // Scale push strength from 0 (at pullFactor = 0) to 1 (at pullFactor = -1)
+        const pushStrength = this.strength * Math.abs(Math.min(0, this.pullFactor));
         const forceX = (n1 - 0.5) * pushStrength;
         const forceY = (n2 - 0.5) * pushStrength;
         newVx += forceX * dt;
         newVy += forceY * dt;
       }
+      // When pullFactor is -1, no force is applied (particles only affected by decay)
 
       // Rest of the method remains unchanged...
       // Apply velocity scaling if enabled - works the same in either mode
