@@ -309,16 +309,51 @@ class GridRenderModes {
     const particles = particleSystem.getParticles();
     if (!particles?.length) return this.targetValues;
 
+    // renderScale is now 4000 as per your working setup
+    const renderScale = particleSystem.renderScale; // 4000
+
     particles.forEach((particle) => {
-      // Convert to pixel space
+      // Convert particle position to pixel space
       const px = particle.x * this.TARGET_WIDTH;
       const py = (1 - particle.y) * this.TARGET_HEIGHT;
 
-      // Find cell using gridMap
-      const cell = this.gridMap.find((cell) => cell.contains(px, py));
-      if (cell) {
-        this.targetValues[cell.index]++;
-      }
+      // Use the rendered size (diameter) from getParticles()
+      const renderedDiameter = particle.size; // Already scaled by renderScale (e.g., 40 for base 0.01)
+      const particleRadius = renderedDiameter / 8; // Convert to radius (e.g., 20 pixels)
+
+      // Find all cells that this particle overlaps with using circle-rectangle overlap
+      this.gridMap.forEach((cell) => {
+        const { x, y, width, height } = cell.bounds;
+        const cellArea = width * height;
+
+        const overlapArea = this.calculateCircleRectOverlap(
+          px,
+          py,
+          particleRadius,
+          x,
+          y,
+          width,
+          height
+        );
+
+        if (overlapArea > 0) {
+          const particleArea = Math.PI * particleRadius * particleRadius;
+          let densityValue;
+
+          // Calculate the actual percentage of cell covered by the particle
+          densityValue = (overlapArea / cellArea) * 100;
+
+          // Apply a smoother scaling to the density value
+          // This creates a more gradual transition from 0 to 100%
+          densityValue = Math.pow(densityValue / 100, 1.5) * 100;
+
+          // Scale the density to match the grid's visualization range
+          // We'll use a smaller scale for density to avoid saturation
+          densityValue = Math.min(densityValue * 0.1, 100);
+
+          this.targetValues[cell.index] += densityValue;
+        }
+      });
     });
 
     return this.targetValues;
@@ -327,36 +362,65 @@ class GridRenderModes {
   calculateVelocity(particleSystem) {
     this.targetValues.fill(0);
     if (!particleSystem) return this.targetValues;
-    const tune = 5;
+
     const particles = particleSystem.getParticles();
     if (!particles?.length) return this.targetValues;
 
-    // Track particle counts for averaging
-    const counts = new Float32Array(this.targetValues.length).fill(0);
+    // Track weighted sums and total weights for averaging
+    const weightedSums = new Float32Array(this.targetValues.length).fill(0);
+    const totalWeights = new Float32Array(this.targetValues.length).fill(0);
+    const tune = 5; // Keep the same tuning factor
 
     particles.forEach((particle) => {
-      // Convert to pixel space
+      // Convert particle position to pixel space
       const px = particle.x * this.TARGET_WIDTH;
       const py = (1 - particle.y) * this.TARGET_HEIGHT;
 
-      // Find cell using gridMap
-      const cell = this.gridMap.find((cell) => cell.contains(px, py));
-      if (cell) {
-        // Calculate particle speed
-        const speed = Math.sqrt(
-          particle.vx * particle.vx + particle.vy * particle.vy
+      // Use the rendered size (diameter) from getParticles()
+      const renderedDiameter = particle.size; // Already scaled by renderScale (e.g., 40 for base 0.01)
+      const particleRadius = renderedDiameter / 8; // Convert to radius (e.g., 20 pixels)
+
+      // Calculate particle speed
+      const speed = Math.sqrt(
+        particle.vx * particle.vx + particle.vy * particle.vy
+      );
+
+      // Find all cells that this particle overlaps with using circle-rectangle overlap
+      this.gridMap.forEach((cell) => {
+        const { x, y, width, height } = cell.bounds;
+        const cellArea = width * height;
+
+        const overlapArea = this.calculateCircleRectOverlap(
+          px,
+          py,
+          particleRadius,
+          x,
+          y,
+          width,
+          height
         );
 
-        // Accumulate speeds for averaging
-        this.targetValues[cell.index] += speed * tune;
-        counts[cell.index]++;
-      }
+        if (overlapArea > 0) {
+          // Calculate the weight based on overlap percentage
+          let weight = (overlapArea / cellArea) * 100;
+
+          // Apply the same smooth scaling we use in other calculations
+          weight = Math.pow(weight / 100, 1.5) * 100;
+
+          // Scale the weight to match our visualization range
+          weight = Math.min(weight * 0.1, 100);
+
+          // Add weighted contribution to the cell
+          weightedSums[cell.index] += speed * weight * tune;
+          totalWeights[cell.index] += weight;
+        }
+      });
     });
 
-    // Calculate average speeds
+    // Calculate weighted averages
     for (let i = 0; i < this.targetValues.length; i++) {
-      if (counts[i] > 0) {
-        this.targetValues[i] /= counts[i];
+      if (totalWeights[i] > 0) {
+        this.targetValues[i] = weightedSums[i] / totalWeights[i];
       }
     }
 
