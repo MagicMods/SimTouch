@@ -25,6 +25,8 @@ class TurbulenceField {
     phaseSpeed = 1.0,
     frequencySpeed = 1.0,
     amplitudeSpeed = 1.0,
+    phase = 0.0,  // Static phase offset
+    amplitude = 1.0,  // Static amplitude multiplier
   } = {}) {
     if (
       !boundary ||
@@ -78,6 +80,8 @@ class TurbulenceField {
     this.phaseSpeed = phaseSpeed;
     this.frequencySpeed = frequencySpeed;
     this.amplitudeSpeed = amplitudeSpeed;
+    this.phase = phase;
+    this.amplitude = amplitude;
   }
 
   // Add getter and setter for octaves
@@ -361,12 +365,12 @@ class TurbulenceField {
         if (this.speed > 0) {
           // When T-Speed > 0, use enabled controls as rate multipliers
           if (this.phaseEnabled) {
-            const phaseOffset = this.time * this.speed * this.phaseSpeed;
+            const phaseOffset = this.time * this.speed * this.phaseSpeed + this.phase * Math.PI * 2;
             noise = Math.sin(noise * Math.PI * 2 + phaseOffset);
           }
           if (this.amplitudeEnabled) {
-            const amplitude = 0.5 + 0.5 * Math.sin(this.time * this.speed * this.amplitudeSpeed);
-            noise = noise * amplitude;
+            const dynamicAmplitude = 0.5 + 0.5 * Math.sin(this.time * this.speed * this.amplitudeSpeed);
+            noise = noise * (this.amplitude * dynamicAmplitude);
           }
           if (this.frequencyEnabled) {
             const freqScale = 1 + 0.5 * Math.sin(this.time * this.speed * this.frequencySpeed);
@@ -408,12 +412,11 @@ class TurbulenceField {
         } else {
           // When T-Speed = 0, use enabled controls as static values
           if (this.phaseEnabled) {
-            const phaseOffset = this.phaseSpeed * Math.PI * 2;
+            const phaseOffset = this.phase * Math.PI * 2;
             noise = Math.sin(noise * Math.PI * 2 + phaseOffset);
           }
           if (this.amplitudeEnabled) {
-            const amplitude = 0.5 + 0.5 * this.amplitudeSpeed;
-            noise = noise * amplitude;
+            noise = noise * this.amplitude;
           }
           if (this.frequencyEnabled) {
             const freqScale = 1 + 0.5 * this.frequencySpeed;
@@ -592,6 +595,8 @@ class TurbulenceField {
     phaseSpeed,
     frequencySpeed,
     amplitudeSpeed,
+    phase,
+    amplitude,
   }) {
     if (strength !== undefined) this.strength = strength;
     if (scale !== undefined) this.scale = scale;
@@ -615,6 +620,8 @@ class TurbulenceField {
     if (phaseSpeed !== undefined) this.phaseSpeed = phaseSpeed;
     if (frequencySpeed !== undefined) this.frequencySpeed = frequencySpeed;
     if (amplitudeSpeed !== undefined) this.amplitudeSpeed = amplitudeSpeed;
+    if (phase !== undefined) this.phase = phase;
+    if (amplitude !== undefined) this.amplitude = amplitude;
   }
 
   // Debug function to help diagnose rotation issues

@@ -342,17 +342,17 @@ export class TurbulenceUi extends BaseUi {
 
     // Create time influence buttons
     const phaseButton = document.createElement("button");
-    phaseButton.textContent = "T-PhaseSp";
+    phaseButton.textContent = "T--Phase";
     phaseButton.className = "toggle-button";
     if (turbulence.phaseEnabled) phaseButton.classList.add("active");
 
     const freqButton = document.createElement("button");
-    freqButton.textContent = "T-FreqSp";
+    freqButton.textContent = "T--Freq";
     freqButton.className = "toggle-button";
     if (turbulence.frequencyEnabled) freqButton.classList.add("active");
 
     const ampButton = document.createElement("button");
-    ampButton.textContent = "T-AmpSp";
+    ampButton.textContent = "T--Amp";
     ampButton.className = "toggle-button";
     if (turbulence.amplitudeEnabled) ampButton.classList.add("active");
 
@@ -388,14 +388,33 @@ export class TurbulenceUi extends BaseUi {
     this.freqButton = freqButton;
     this.ampButton = ampButton;
 
+    // Add phase, frequency, and amplitude controls
+    this.turbulencePhaseController = patternControlsFolder.add(turbulence, "phaseSpeed", 0, 2, 0.1)
+      .name("T-PhaseSp")
+      .onChange(() => {
+        refreshThumbnails(true);
+      });
+
+    this.turbulenceFrequencyController = patternControlsFolder.add(turbulence, "frequencySpeed", 0, 2, 0.1)
+      .name("T-FreqSp")
+      .onChange(() => {
+        refreshThumbnails(true);
+      });
+
+    this.turbulenceAmplitudeController = patternControlsFolder.add(turbulence, "amplitudeSpeed", 0, 2, 0.1)
+      .name("T-AmpSp")
+      .onChange(() => {
+        refreshThumbnails(true);
+      });
+
     // Add static phase and amplitude controls
-    this.turbulencePhaseController = patternControlsFolder.add(turbulence, "phaseSpeed", 0, 1, 0.1)
+    this.turbulenceStaticPhaseController = patternControlsFolder.add(turbulence, "phase", 0, 1, 0.01)
       .name("T-Phase")
       .onChange(() => {
         refreshThumbnails(true);
       });
 
-    this.turbulenceAmplitudeController = patternControlsFolder.add(turbulence, "amplitudeSpeed", 0, 1, 0.1)
+    this.turbulenceStaticAmplitudeController = patternControlsFolder.add(turbulence, "amplitude", 0, 2, 0.1)
       .name("T-Amp")
       .onChange(() => {
         refreshThumbnails(true);
@@ -429,7 +448,9 @@ export class TurbulenceUi extends BaseUi {
       this.turbulenceDomainWarpController,
       this.turbulencePhaseController,
       this.turbulenceFrequencyController,
-      this.turbulenceAmplitudeController
+      this.turbulenceAmplitudeController,
+      this.turbulenceStaticPhaseController,
+      this.turbulenceStaticAmplitudeController
     ];
 
     previewAffectingControllers.forEach(controller => {
@@ -538,9 +559,11 @@ export class TurbulenceUi extends BaseUi {
     if (this.turbulencePatternStyleController) targets["T-PatternStyle"] = this.turbulencePatternStyleController;
     if (this.turbulencePatternFrequencyController) targets["T-Freq"] = this.turbulencePatternFrequencyController;
     if (this.turbulenceTimeInfluenceController) targets["T-TimeInfluence"] = this.turbulenceTimeInfluenceController;
-    if (this.turbulencePhaseController) targets["T-Phase"] = this.turbulencePhaseController;
+    if (this.turbulencePhaseController) targets["T-PhaseSp"] = this.turbulencePhaseController;
     if (this.turbulenceFrequencyController) targets["T-FreqSp"] = this.turbulenceFrequencyController;
-    if (this.turbulenceAmplitudeController) targets["T-Amp"] = this.turbulenceAmplitudeController;
+    if (this.turbulenceAmplitudeController) targets["T-AmpSp"] = this.turbulenceAmplitudeController;
+    if (this.turbulenceStaticPhaseController) targets["T-Phase"] = this.turbulenceStaticPhaseController;
+    if (this.turbulenceStaticAmplitudeController) targets["T-Amp"] = this.turbulenceStaticAmplitudeController;
 
     return targets;
   }
@@ -584,6 +607,8 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulencePhaseController);
     safeUpdateDisplay(this.turbulenceFrequencyController);
     safeUpdateDisplay(this.turbulenceAmplitudeController);
+    safeUpdateDisplay(this.turbulenceStaticPhaseController);
+    safeUpdateDisplay(this.turbulenceStaticAmplitudeController);
   }
 
   getData() {
