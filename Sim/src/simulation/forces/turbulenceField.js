@@ -151,11 +151,11 @@ class TurbulenceField {
     for (let y = 0; y < height; y++) {
       for (let x = 0; x < width; x++) {
         const nx = x / width;
-        const ny = y / height;
+        const ny = 1 - (y / height);  // Flip Y coordinate to match simulation space
         const value = this.noise2D(nx, ny);
 
-        // Convert to grayscale
-        const color = Math.floor(value * 255);
+        // Convert to grayscale (keep values inverted for correct visualization)
+        const color = Math.floor((1 - value) * 255);
         const idx = (y * width + x) * 4;
         data[idx] = color;     // R
         data[idx + 1] = color; // G
@@ -252,48 +252,60 @@ class TurbulenceField {
         const scaledX = x * this.scale;
         const scaledY = y * this.scale;
 
+        // Apply domain warping to geometric patterns
+        let warpedX = scaledX;
+        let warpedY = scaledY;
+        if (this.domainWarp > 0) {
+          // Apply warping after scaling for stronger effect
+          const warpFreq = 2.0;  // Increased frequency for more visible warping
+          warpedX = scaledX + this.domainWarp * Math.sin(scaledY * warpFreq + this.time * 0.5);
+          warpedY = scaledY + this.domainWarp * Math.cos(scaledX * warpFreq + this.time * 0.7);
+        }
+
         // Calculate base pattern based on style
         let basePattern;
         switch (this.patternStyle) {
           case "checkerboard":
-            basePattern = Math.sin(scaledX * this.patternFrequency) * Math.sin(scaledY * this.patternFrequency);
+            basePattern = Math.sin(warpedX * this.patternFrequency) * Math.sin(warpedY * this.patternFrequency);
             break;
           case "waves":
-            basePattern = Math.sin(scaledX * this.patternFrequency + scaledY * this.patternFrequency * 0.5);
+            basePattern = Math.sin(warpedX * this.patternFrequency + warpedY * this.patternFrequency * 0.5);
             break;
           case "spiral":
-            const angle = Math.atan2(y - centerY, x - centerX);
-            const radius = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+            // For spiral, convert back to unscaled coordinates for center-based calculation
+            const angle = Math.atan2((warpedY / this.scale) - centerY, (warpedX / this.scale) - centerX);
+            const radius = Math.sqrt(Math.pow((warpedX / this.scale) - centerX, 2) + Math.pow((warpedY / this.scale) - centerY, 2));
             basePattern = Math.sin(angle * this.patternFrequency + radius * this.patternFrequency * 0.1);
             break;
           case "grid":
-            basePattern = Math.sin(scaledX * this.patternFrequency) + Math.sin(scaledY * this.patternFrequency);
+            basePattern = Math.sin(warpedX * this.patternFrequency) + Math.sin(warpedY * this.patternFrequency);
             break;
           case "circles":
-            const dist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+            const dist = Math.sqrt(Math.pow((warpedX / this.scale) - centerX, 2) + Math.pow((warpedY / this.scale) - centerY, 2));
             basePattern = Math.sin(dist * this.patternFrequency * Math.PI * 2);
             break;
           case "maze":
-            basePattern = Math.sin(scaledX * this.patternFrequency * 2) * Math.cos(scaledY * this.patternFrequency * 2);
+            basePattern = Math.sin(warpedX * this.patternFrequency * 2) * Math.cos(warpedY * this.patternFrequency * 2);
             break;
           case "ripples":
-            const rippleDist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+            const rippleDist = Math.sqrt(Math.pow((warpedX / this.scale) - centerX, 2) + Math.pow((warpedY / this.scale) - centerY, 2));
             basePattern = Math.sin(rippleDist * this.patternFrequency * Math.PI * 2 - this.time * this.speed);
             break;
           case "starfield":
-            const starX = (x - centerX) * this.patternFrequency;
-            const starY = (y - centerY) * this.patternFrequency;
+            const starX = ((warpedX / this.scale) - centerX) * this.patternFrequency;
+            const starY = ((warpedY / this.scale) - centerY) * this.patternFrequency;
             basePattern = Math.sin(starX * starX + starY * starY);
             break;
           default:
-            basePattern = Math.sin(scaledX * this.patternFrequency) * Math.sin(scaledY * this.patternFrequency);
+            basePattern = Math.sin(warpedX * this.patternFrequency) * Math.sin(warpedY * this.patternFrequency);
         }
 
         let rotatedPattern = basePattern;
 
         if (Math.abs(this.rotation) > 0.0001) {
-          const tx = x - centerX;
-          const ty = y - centerY;
+          // For rotation, convert back to unscaled coordinates
+          const tx = (warpedX / this.scale) - centerX;
+          const ty = (warpedY / this.scale) - centerY;
 
           const cos = Math.cos(-this.rotation);
           const sin = Math.sin(-this.rotation);
@@ -342,8 +354,8 @@ class TurbulenceField {
             case "frequency":
               // Frequency creates a breathing/expanding effect
               const freqScale = 1 + 0.5 * Math.sin(this.time * this.speed);
-              const freqX = scaledX * this.patternFrequency * freqScale;
-              const freqY = scaledY * this.patternFrequency * freqScale;
+              const freqX = rotatedScaledX * this.patternFrequency * freqScale;
+              const freqY = rotatedScaledY * this.patternFrequency * freqScale;
               switch (this.patternStyle) {
                 case "checkerboard":
                   noise = Math.sin(freqX) * Math.sin(freqY);
@@ -355,24 +367,24 @@ class TurbulenceField {
                   noise = Math.sin(freqX) + Math.sin(freqY);
                   break;
                 case "circles":
-                  const dist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+                  const dist = Math.sqrt(Math.pow(rotatedX - centerX, 2) + Math.pow(rotatedY - centerY, 2));
                   noise = Math.sin(dist * this.patternFrequency * Math.PI * 2 * freqScale);
                   break;
                 case "spiral":
-                  const angle = Math.atan2(y - centerY, x - centerX);
-                  const radius = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+                  const angle = Math.atan2(rotatedY - centerY, rotatedX - centerX);
+                  const radius = Math.sqrt(Math.pow(rotatedX - centerX, 2) + Math.pow(rotatedY - centerY, 2));
                   noise = Math.sin(angle * this.patternFrequency + radius * this.patternFrequency * 0.1 * freqScale);
                   break;
                 case "maze":
                   noise = Math.sin(freqX * 2) * Math.cos(freqY * 2);
                   break;
                 case "ripples":
-                  const rippleDist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+                  const rippleDist = Math.sqrt(Math.pow(rotatedX - centerX, 2) + Math.pow(rotatedY - centerY, 2));
                   noise = Math.sin(rippleDist * this.patternFrequency * Math.PI * 2 * freqScale - this.time * this.speed);
                   break;
                 case "starfield":
-                  const starX = (x - centerX) * this.patternFrequency * freqScale;
-                  const starY = (y - centerY) * this.patternFrequency * freqScale;
+                  const starX = (rotatedX - centerX) * this.patternFrequency * freqScale;
+                  const starY = (rotatedY - centerY) * this.patternFrequency * freqScale;
                   noise = Math.sin(starX * starX + starY * starY);
                   break;
               }
