@@ -434,23 +434,58 @@ class GridRenderModes {
     const particles = particleSystem.getParticles();
     if (!particles?.length) return this.targetValues;
 
-    // Track particle counts for pressure calculation
-    const counts = new Float32Array(this.targetValues.length).fill(0);
-    const tune = 0.1; // Pressure sensitivity
+    // Track total overlap area for each cell
+    const cellOverlaps = new Float32Array(this.targetValues.length).fill(0);
+    const tune = 0.5; // Increased pressure sensitivity
 
     particles.forEach((particle) => {
+      // Convert particle position to pixel space
       const px = particle.x * this.TARGET_WIDTH;
       const py = (1 - particle.y) * this.TARGET_HEIGHT;
 
-      const cell = this.gridMap.find((cell) => cell.contains(px, py));
-      if (cell) {
-        counts[cell.index]++;
-      }
+      // Use the rendered size (diameter) from getParticles()
+      const renderedDiameter = particle.size; // Already scaled by renderScale (e.g., 40 for base 0.01)
+      const particleRadius = renderedDiameter / 8; // Convert to radius (e.g., 20 pixels)
+
+      // Find all cells that this particle overlaps with using circle-rectangle overlap
+      this.gridMap.forEach((cell) => {
+        const { x, y, width, height } = cell.bounds;
+        const cellArea = width * height;
+
+        const overlapArea = this.calculateCircleRectOverlap(
+          px,
+          py,
+          particleRadius,
+          x,
+          y,
+          width,
+          height
+        );
+
+        if (overlapArea > 0) {
+          // Calculate the percentage of cell covered by this particle
+          let coveragePercentage = (overlapArea / cellArea) * 100;
+
+          // Apply a smoother scaling to the coverage percentage
+          coveragePercentage = Math.pow(coveragePercentage / 100, 1.5) * 100;
+
+          // Scale the coverage to match our visualization range
+          coveragePercentage = Math.min(coveragePercentage * 0.25, 100);
+
+          // Add to cell's total overlap
+          cellOverlaps[cell.index] += coveragePercentage;
+        }
+      });
     });
 
-    // Calculate pressure from particle density
-    for (let i = 0; i < counts.length; i++) {
-      this.targetValues[i] = Math.pow(counts[i], 2) * tune;
+    // Calculate pressure based on total overlap
+    // Pressure increases non-linearly with overlap (squared relationship)
+    for (let i = 0; i < this.targetValues.length; i++) {
+      if (cellOverlaps[i] > 0) {
+        // Use squared relationship for pressure, but with smoother scaling
+        // Increased the base multiplier to make pressure more visible
+        this.targetValues[i] = Math.pow(cellOverlaps[i] / 100, 2) * tune * 200;
+      }
     }
 
     return this.targetValues;
@@ -463,28 +498,61 @@ class GridRenderModes {
     const particles = particleSystem.getParticles();
     if (!particles?.length) return this.targetValues;
 
-    // Track angular velocity components
-    const angularVel = new Float32Array(this.targetValues.length).fill(0);
-    const counts = new Float32Array(this.targetValues.length).fill(0);
-    const tune = 2500.0; // Vorticity sensitivity
+    // Track weighted sums and total weights for averaging
+    const weightedSums = new Float32Array(this.targetValues.length).fill(0);
+    const totalWeights = new Float32Array(this.targetValues.length).fill(0);
+    const tune = 50.0; // Vorticity sensitivity
 
     particles.forEach((particle) => {
+      // Convert particle position to pixel space
       const px = particle.x * this.TARGET_WIDTH;
       const py = (1 - particle.y) * this.TARGET_HEIGHT;
 
-      const cell = this.gridMap.find((cell) => cell.contains(px, py));
-      if (cell) {
-        // Calculate curl (2D vorticity)
-        const curl = particle.vx * particle.vy;
-        angularVel[cell.index] += curl;
-        counts[cell.index]++;
-      }
+      // Use the rendered size (diameter) from getParticles()
+      const renderedDiameter = particle.size; // Already scaled by renderScale (e.g., 40 for base 0.01)
+      const particleRadius = renderedDiameter / 8; // Convert to radius (e.g., 20 pixels)
+
+      // Calculate 2D vorticity (curl in 2D)
+      // In 2D, vorticity is the curl of the velocity field: ω = ∂v/∂x - ∂u/∂y
+      // We'll use the particle's velocity components to approximate this
+      const vorticity = particle.vx * particle.vy;
+
+      // Find all cells that this particle overlaps with using circle-rectangle overlap
+      this.gridMap.forEach((cell) => {
+        const { x, y, width, height } = cell.bounds;
+        const cellArea = width * height;
+
+        const overlapArea = this.calculateCircleRectOverlap(
+          px,
+          py,
+          particleRadius,
+          x,
+          y,
+          width,
+          height
+        );
+
+        if (overlapArea > 0) {
+          // Calculate the weight based on overlap percentage
+          let weight = (overlapArea / cellArea) * 100;
+
+          // Apply the same smooth scaling we use in other calculations
+          weight = Math.pow(weight / 100, 1.5) * 100;
+
+          // Scale the weight to match our visualization range
+          weight = Math.min(weight * 0.25, 100);
+
+          // Add weighted contribution to the cell
+          weightedSums[cell.index] += vorticity * weight * tune;
+          totalWeights[cell.index] += weight;
+        }
+      });
     });
 
-    // Calculate average vorticity
+    // Calculate weighted averages
     for (let i = 0; i < this.targetValues.length; i++) {
-      if (counts[i] > 0) {
-        this.targetValues[i] = (angularVel[i] / counts[i]) * tune;
+      if (totalWeights[i] > 0) {
+        this.targetValues[i] = weightedSums[i] / totalWeights[i];
       }
     }
 
