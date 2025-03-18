@@ -217,15 +217,9 @@ export class TurbulenceUi extends BaseUi {
           this.turbulencePatternFrequencyController.domElement.style.display = isOrganic ? "none" : "block";
         }
 
-        // Reset parameters based on mode
-        if (isOrganic) {
-          if (this.turbulenceOctavesController) {
-            this.turbulenceOctavesController.setValue(3);
-          }
-        } else {
-          if (this.turbulencePatternFrequencyController) {
-            this.turbulencePatternFrequencyController.setValue(6.0);
-          }
+        // Reset octaves for organic mode only
+        if (isOrganic && this.turbulenceOctavesController) {
+          this.turbulenceOctavesController.setValue(3);
         }
 
         selectedThumbnailValue = value;
@@ -337,14 +331,86 @@ export class TurbulenceUi extends BaseUi {
         refreshThumbnails(true);  // Keep animation when warp changes
       });
 
-    // Time influence selector
-    this.turbulenceTimeInfluenceController = patternControlsFolder.add(turbulence, "timeInfluence")
-      .name("T-TimeInfluence")
-      .options({
-        "Phase": "phase",
-        "Amplitude": "amplitude",
-        "Frequency": "frequency"
+    // Create button group container for time influence controls
+    const timeInfluenceContainer = document.createElement("div");
+    timeInfluenceContainer.className = "time-influence-toggle-buttons";
+    timeInfluenceContainer.style.cssText = `
+      display: flex;
+      gap: 5px;
+      margin-bottom: 10px;
+    `;
+
+    // Create time influence buttons
+    const phaseButton = document.createElement("button");
+    phaseButton.textContent = "T--Phase";
+    phaseButton.className = "toggle-button";
+    if (turbulence.phaseEnabled) phaseButton.classList.add("active");
+
+    const freqButton = document.createElement("button");
+    freqButton.textContent = "T--Freq";
+    freqButton.className = "toggle-button";
+    if (turbulence.frequencyEnabled) freqButton.classList.add("active");
+
+    const ampButton = document.createElement("button");
+    ampButton.textContent = "T--Amp";
+    ampButton.className = "toggle-button";
+    if (turbulence.amplitudeEnabled) ampButton.classList.add("active");
+
+    // Add click handlers - each button toggles independently
+    phaseButton.addEventListener("click", () => {
+      turbulence.phaseEnabled = !turbulence.phaseEnabled;
+      phaseButton.classList.toggle("active", turbulence.phaseEnabled);
+      refreshThumbnails(true);
+    });
+
+    freqButton.addEventListener("click", () => {
+      turbulence.frequencyEnabled = !turbulence.frequencyEnabled;
+      freqButton.classList.toggle("active", turbulence.frequencyEnabled);
+      refreshThumbnails(true);
+    });
+
+    ampButton.addEventListener("click", () => {
+      turbulence.amplitudeEnabled = !turbulence.amplitudeEnabled;
+      ampButton.classList.toggle("active", turbulence.amplitudeEnabled);
+      refreshThumbnails(true);
+    });
+
+    // Add buttons to container
+    timeInfluenceContainer.appendChild(phaseButton);
+    timeInfluenceContainer.appendChild(freqButton);
+    timeInfluenceContainer.appendChild(ampButton);
+
+    // Add the container to the pattern controls folder
+    patternControlsFolder.domElement.insertBefore(timeInfluenceContainer, patternControlsFolder.domElement.firstChild);
+
+    // Store button references
+    this.phaseButton = phaseButton;
+    this.freqButton = freqButton;
+    this.ampButton = ampButton;
+
+    // Add phase, frequency, and amplitude controls
+    this.turbulencePhaseController = patternControlsFolder.add(turbulence, "phaseSpeed", 0, 2, 0.1)
+      .name("T-Phase")
+      .onChange(() => {
+        refreshThumbnails(true);
       });
+
+    this.turbulenceFrequencyController = patternControlsFolder.add(turbulence, "frequencySpeed", 0, 2, 0.1)
+      .name("T-Freq")
+      .onChange(() => {
+        refreshThumbnails(true);
+      });
+
+    this.turbulenceAmplitudeController = patternControlsFolder.add(turbulence, "amplitudeSpeed", 0, 2, 0.1)
+      .name("T-Amp")
+      .onChange(() => {
+        refreshThumbnails(true);
+      });
+
+    // Add listener for T-Speed changes to update control behavior
+    this.turbulenceSpeedController.onChange(() => {
+      refreshThumbnails(true);
+    });
 
     // Hide pattern frequency control initially if in organic mode
     if (turbulence.useOrganicNoise) {
@@ -366,7 +432,10 @@ export class TurbulenceUi extends BaseUi {
       this.turbulenceRotationController,
       this.turbulenceRotationSpeedController,
       this.turbulenceTimeInfluenceController,
-      this.turbulenceDomainWarpController
+      this.turbulenceDomainWarpController,
+      this.turbulencePhaseController,
+      this.turbulenceFrequencyController,
+      this.turbulenceAmplitudeController
     ];
 
     previewAffectingControllers.forEach(controller => {
@@ -396,6 +465,7 @@ export class TurbulenceUi extends BaseUi {
       selectedThumbnailValue = turbulence.patternStyle;
       refreshThumbnails(true);  // Start with animation
     }
+
   }
 
   getControlTargets() {
@@ -474,12 +544,14 @@ export class TurbulenceUi extends BaseUi {
     if (this.turbulencePatternStyleController) targets["T-PatternStyle"] = this.turbulencePatternStyleController;
     if (this.turbulencePatternFrequencyController) targets["T-PatternFreq"] = this.turbulencePatternFrequencyController;
     if (this.turbulenceTimeInfluenceController) targets["T-TimeInfluence"] = this.turbulenceTimeInfluenceController;
+    if (this.turbulencePhaseController) targets["T-Phase"] = this.turbulencePhaseController;
+    if (this.turbulenceFrequencyController) targets["T-Freq"] = this.turbulenceFrequencyController;
+    if (this.turbulenceAmplitudeController) targets["T-Amp"] = this.turbulenceAmplitudeController;
 
     return targets;
   }
 
   updateControllerDisplays() {
-
     const turbulence = this.main.turbulenceField;
     if (turbulence) {
       if (this.positionButton) { this.positionButton.classList.toggle("active", turbulence.affectPosition); }
@@ -515,6 +587,9 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulencePatternStyleController);
     safeUpdateDisplay(this.turbulencePatternFrequencyController);
     safeUpdateDisplay(this.turbulenceTimeInfluenceController);
+    safeUpdateDisplay(this.turbulencePhaseController);
+    safeUpdateDisplay(this.turbulenceFrequencyController);
+    safeUpdateDisplay(this.turbulenceAmplitudeController);
   }
 
   getData() {

@@ -18,7 +18,13 @@ class TurbulenceField {
     // New geometric pattern controls
     patternFrequency = 6.0,
     patternStyle = "",
-    timeInfluence = "phase", // phase, amplitude, frequency
+    // Time influence controls
+    phaseEnabled = false,
+    frequencyEnabled = false,
+    amplitudeEnabled = false,
+    phaseSpeed = 1.0,
+    frequencySpeed = 1.0,
+    amplitudeSpeed = 1.0,
   } = {}) {
     if (
       !boundary ||
@@ -64,7 +70,14 @@ class TurbulenceField {
     // Add new geometric pattern controls
     this.patternFrequency = patternFrequency;
     this.patternStyle = patternStyle;
-    this.timeInfluence = timeInfluence;
+
+    // Time influence controls
+    this.phaseEnabled = phaseEnabled;
+    this.frequencyEnabled = frequencyEnabled;
+    this.amplitudeEnabled = amplitudeEnabled;
+    this.phaseSpeed = phaseSpeed;
+    this.frequencySpeed = frequencySpeed;
+    this.amplitudeSpeed = amplitudeSpeed;
   }
 
   // Add getter and setter for octaves
@@ -198,7 +211,12 @@ class TurbulenceField {
   }
 
   // Completely redesigned noise2D function that supports both styles
-  noise2D(x, y) {
+  noise2D(x, y, time) {
+    let noise = 0;
+    let frequency = this.patternFrequency;
+    let amplitude = 1.0;
+    let maxValue = 0;
+
     try {
       const centerX = (this.boundary && typeof this.boundary.centerX === 'number') ? this.boundary.centerX : 0.5;
       const centerY = (this.boundary && typeof this.boundary.centerY === 'number') ? this.boundary.centerY : 0.5;
@@ -337,58 +355,100 @@ class TurbulenceField {
           }
         }
 
-        let noise = rotatedPattern;
+        noise = rotatedPattern;
 
-        // Apply time influence based on mode
+        // Apply time influence based on enabled controls and T-Speed
         if (this.speed > 0) {
-          switch (this.timeInfluence) {
-            case "phase":
-              // Phase shift creates a moving pattern
-              noise = Math.sin(noise * Math.PI * 2 + this.time * this.speed);
-              break;
-            case "amplitude":
-              // Amplitude creates pulsing effect
-              const amplitude = 0.5 + 0.5 * Math.sin(this.time * this.speed);
-              noise = noise * amplitude;
-              break;
-            case "frequency":
-              // Frequency creates a breathing/expanding effect
-              const freqScale = 1 + 0.5 * Math.sin(this.time * this.speed);
-              const freqX = rotatedScaledX * this.patternFrequency * freqScale;
-              const freqY = rotatedScaledY * this.patternFrequency * freqScale;
-              switch (this.patternStyle) {
-                case "checkerboard":
-                  noise = Math.sin(freqX) * Math.sin(freqY);
-                  break;
-                case "waves":
-                  noise = Math.sin(freqX + freqY * 0.5);
-                  break;
-                case "grid":
-                  noise = Math.sin(freqX) + Math.sin(freqY);
-                  break;
-                case "circles":
-                  const dist = Math.sqrt(Math.pow(rotatedX - centerX, 2) + Math.pow(rotatedY - centerY, 2));
-                  noise = Math.sin(dist * this.patternFrequency * Math.PI * 2 * freqScale);
-                  break;
-                case "spiral":
-                  const angle = Math.atan2(rotatedY - centerY, rotatedX - centerX);
-                  const radius = Math.sqrt(Math.pow(rotatedX - centerX, 2) + Math.pow(rotatedY - centerY, 2));
-                  noise = Math.sin(angle * this.patternFrequency + radius * this.patternFrequency * 0.1 * freqScale);
-                  break;
-                case "maze":
-                  noise = Math.sin(freqX * 2) * Math.cos(freqY * 2);
-                  break;
-                case "ripples":
-                  const rippleDist = Math.sqrt(Math.pow(rotatedX - centerX, 2) + Math.pow(rotatedY - centerY, 2));
-                  noise = Math.sin(rippleDist * this.patternFrequency * Math.PI * 2 * freqScale - this.time * this.speed);
-                  break;
-                case "starfield":
-                  const starX = (rotatedX - centerX) * this.patternFrequency * freqScale;
-                  const starY = (rotatedY - centerY) * this.patternFrequency * freqScale;
-                  noise = Math.sin(starX * starX + starY * starY);
-                  break;
-              }
-              break;
+          // When T-Speed > 0, use enabled controls as rate multipliers
+          if (this.phaseEnabled) {
+            noise = Math.sin(noise * Math.PI * 2 + this.time * this.speed * this.phaseSpeed);
+          }
+          if (this.amplitudeEnabled) {
+            const amplitude = 0.5 + 0.5 * Math.sin(this.time * this.speed * this.amplitudeSpeed);
+            noise = noise * amplitude;
+          }
+          if (this.frequencyEnabled) {
+            const freqScale = 1 + 0.5 * Math.sin(this.time * this.speed * this.frequencySpeed);
+            const freqX = warpedX * this.patternFrequency * freqScale;
+            const freqY = warpedY * this.patternFrequency * freqScale;
+            switch (this.patternStyle) {
+              case "checkerboard":
+                noise = Math.sin(freqX) * Math.sin(freqY);
+                break;
+              case "waves":
+                noise = Math.sin(freqX + freqY * 0.5);
+                break;
+              case "grid":
+                noise = Math.sin(freqX) + Math.sin(freqY);
+                break;
+              case "circles":
+                const dist = Math.sqrt(Math.pow((warpedX / this.scale) - centerX, 2) + Math.pow((warpedY / this.scale) - centerY, 2));
+                noise = Math.sin(dist * this.patternFrequency * Math.PI * 2 * freqScale);
+                break;
+              case "spiral":
+                const angle = Math.atan2((warpedY / this.scale) - centerY, (warpedX / this.scale) - centerX);
+                const radius = Math.sqrt(Math.pow((warpedX / this.scale) - centerX, 2) + Math.pow((warpedY / this.scale) - centerY, 2));
+                noise = Math.sin(angle * this.patternFrequency + radius * this.patternFrequency * 0.1 * freqScale);
+                break;
+              case "maze":
+                noise = Math.sin(freqX * 2) * Math.cos(freqY * 2);
+                break;
+              case "ripples":
+                const rippleDist = Math.sqrt(Math.pow((warpedX / this.scale) - centerX, 2) + Math.pow((warpedY / this.scale) - centerY, 2));
+                noise = Math.sin(rippleDist * this.patternFrequency * Math.PI * 2 * freqScale - this.time * this.speed);
+                break;
+              case "starfield":
+                const starX = ((warpedX / this.scale) - centerX) * this.patternFrequency * freqScale;
+                const starY = ((warpedY / this.scale) - centerY) * this.patternFrequency * freqScale;
+                noise = Math.sin(starX * starX + starY * starY);
+                break;
+            }
+          }
+        } else {
+          // When T-Speed = 0, use enabled controls as static values
+          if (this.phaseEnabled) {
+            noise = Math.sin(noise * Math.PI * 2 + this.phaseSpeed);
+          }
+          if (this.amplitudeEnabled) {
+            const amplitude = 0.5 + 0.5 * this.amplitudeSpeed;
+            noise = noise * amplitude;
+          }
+          if (this.frequencyEnabled) {
+            const freqScale = 1 + 0.5 * this.frequencySpeed;
+            const freqX = warpedX * this.patternFrequency * freqScale;
+            const freqY = warpedY * this.patternFrequency * freqScale;
+            switch (this.patternStyle) {
+              case "checkerboard":
+                noise = Math.sin(freqX) * Math.sin(freqY);
+                break;
+              case "waves":
+                noise = Math.sin(freqX + freqY * 0.5);
+                break;
+              case "grid":
+                noise = Math.sin(freqX) + Math.sin(freqY);
+                break;
+              case "circles":
+                const dist = Math.sqrt(Math.pow((warpedX / this.scale) - centerX, 2) + Math.pow((warpedY / this.scale) - centerY, 2));
+                noise = Math.sin(dist * this.patternFrequency * Math.PI * 2 * freqScale);
+                break;
+              case "spiral":
+                const angle = Math.atan2((warpedY / this.scale) - centerY, (warpedX / this.scale) - centerX);
+                const radius = Math.sqrt(Math.pow((warpedX / this.scale) - centerX, 2) + Math.pow((warpedY / this.scale) - centerY, 2));
+                noise = Math.sin(angle * this.patternFrequency + radius * this.patternFrequency * 0.1 * freqScale);
+                break;
+              case "maze":
+                noise = Math.sin(freqX * 2) * Math.cos(freqY * 2);
+                break;
+              case "ripples":
+                const rippleDist = Math.sqrt(Math.pow((warpedX / this.scale) - centerX, 2) + Math.pow((warpedY / this.scale) - centerY, 2));
+                noise = Math.sin(rippleDist * this.patternFrequency * Math.PI * 2 * freqScale);
+                break;
+              case "starfield":
+                const starX = ((warpedX / this.scale) - centerX) * this.patternFrequency * freqScale;
+                const starY = ((warpedY / this.scale) - centerY) * this.patternFrequency * freqScale;
+                noise = Math.sin(starX * starX + starY * starY);
+                break;
+            }
           }
         }
 
@@ -521,11 +581,15 @@ class TurbulenceField {
     decayRate,
     domainWarp,
     timeOffset,
-    useOrganicNoise, // Add new parameter
-    // Add new parameters
+    useOrganicNoise,
     patternFrequency,
     patternStyle,
-    timeInfluence,
+    phaseEnabled,
+    frequencyEnabled,
+    amplitudeEnabled,
+    phaseSpeed,
+    frequencySpeed,
+    amplitudeSpeed,
   }) {
     if (strength !== undefined) this.strength = strength;
     if (scale !== undefined) this.scale = scale;
@@ -541,7 +605,14 @@ class TurbulenceField {
     if (useOrganicNoise !== undefined) this.useOrganicNoise = useOrganicNoise;
     if (patternFrequency !== undefined) this.patternFrequency = patternFrequency;
     if (patternStyle !== undefined) this.patternStyle = patternStyle;
-    if (timeInfluence !== undefined) this.timeInfluence = timeInfluence;
+
+    // Time influence controls
+    if (phaseEnabled !== undefined) this.phaseEnabled = phaseEnabled;
+    if (frequencyEnabled !== undefined) this.frequencyEnabled = frequencyEnabled;
+    if (amplitudeEnabled !== undefined) this.amplitudeEnabled = amplitudeEnabled;
+    if (phaseSpeed !== undefined) this.phaseSpeed = phaseSpeed;
+    if (frequencySpeed !== undefined) this.frequencySpeed = frequencySpeed;
+    if (amplitudeSpeed !== undefined) this.amplitudeSpeed = amplitudeSpeed;
   }
 
   // Debug function to help diagnose rotation issues
