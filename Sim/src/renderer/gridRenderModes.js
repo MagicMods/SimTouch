@@ -98,7 +98,6 @@ class GridRenderModes {
         this.calculateVorticity(particleSystem);
         break;
       case this.modes.COLLISION:
-        // console.log("Calculating collision values");
         this.calculateCollision(particleSystem);
         break;
       case this.modes.OVERLAP:
@@ -564,76 +563,117 @@ class GridRenderModes {
     if (!particleSystem?.collisionSystem) return this.targetValues;
 
     const collisionSystem = particleSystem.collisionSystem;
-    const particles = particleSystem.particles;
-    const velocitiesX = particleSystem.velocitiesX;
-    const velocitiesY = particleSystem.velocitiesY;
+    const particles = particleSystem.getParticles();
+    if (!particles?.length) return this.targetValues;
 
     // Constants
-    const tune = 100.0;
-    const collisionGridSize = collisionSystem.gridSize;
-    const cellRadius = (this.TARGET_WIDTH / collisionGridSize) * 0.8; // Reduced radius
+    const tune = 50.0;
+    const renderScale = particleSystem.renderScale;
 
-    for (let y = 0; y < collisionGridSize; y++) {
-      for (let x = 0; x < collisionGridSize; x++) {
-        const cellIndex = y * collisionGridSize + x;
-        const collisionCell = collisionSystem.grid[cellIndex];
+    // Track collision intensities for each cell
+    const cellCollisions = new Float32Array(this.targetValues.length).fill(0);
+    const cellWeights = new Float32Array(this.targetValues.length).fill(0);
 
-        if (collisionCell.length < 2) continue;
+    // Process each particle
+    for (let i = 0; i < collisionSystem.grid.length; i++) {
+      const collisionCell = collisionSystem.grid[i];
+      if (collisionCell.length < 2) continue;
 
-        const normalizedX = (x + 0.5) / collisionGridSize;
-        const normalizedY = (y + 0.5) / collisionGridSize;
-        const renderX = normalizedX * this.TARGET_WIDTH;
-        const renderY = (1 - normalizedY) * this.TARGET_HEIGHT;
+      // Calculate cell center in render space
+      const gridSize = collisionSystem.gridSize;
+      const x = i % gridSize;
+      const y = Math.floor(i / gridSize);
+      const normalizedX = (x + 0.5) / gridSize;
+      const normalizedY = (y + 0.5) / gridSize;
+      const renderX = normalizedX * this.TARGET_WIDTH;
+      const renderY = (1 - normalizedY) * this.TARGET_HEIGHT;
 
-        // Calculate base intensity for this collision cell
-        let baseIntensity = 0;
-        for (let i = 0; i < collisionCell.length; i++) {
-          const p1 = collisionCell[i];
-          for (let j = i + 1; j < collisionCell.length; j++) {
-            const p2 = collisionCell[j];
+      // Process particle pairs in this cell
+      for (let j = 0; j < collisionCell.length; j++) {
+        const p1 = collisionCell[j];
+        for (let k = j + 1; k < collisionCell.length; k++) {
+          const p2 = collisionCell[k];
 
-            const dvx = velocitiesX[p2] - velocitiesX[p1];
-            const dvy = velocitiesY[p2] - velocitiesY[p1];
-            const relativeSpeed = Math.sqrt(dvx * dvx + dvy * dvy);
+          // Get particle data
+          const particle1 = particles[p1];
+          const particle2 = particles[p2];
 
-            const dx = particles[p2 * 2] - particles[p1 * 2];
-            const dy = particles[p2 * 2 + 1] - particles[p1 * 2 + 1];
-            const dist = Math.sqrt(dx * dx + dy * dy);
+          // Calculate relative velocity
+          const dvx = particle2.vx - particle1.vx;
+          const dvy = particle2.vy - particle1.vy;
+          const relativeSpeed = Math.sqrt(dvx * dvx + dvy * dvy);
 
-            if (dist < collisionSystem.particleRadius * 2) {
-              baseIntensity +=
-                (1 - dist / (collisionSystem.particleRadius * 2)) *
-                relativeSpeed;
-            }
+          // Get particle positions in render space
+          const p1x = particle1.x * this.TARGET_WIDTH;
+          const p1y = (1 - particle1.y) * this.TARGET_HEIGHT;
+          const p2x = particle2.x * this.TARGET_WIDTH;
+          const p2y = (1 - particle2.y) * this.TARGET_HEIGHT;
+
+          // Use the rendered size (diameter) from getParticles()
+          const p1Radius = particle1.size / 8;
+          const p2Radius = particle2.size / 8;
+
+          // Calculate collision intensity based on overlap and relative speed
+          const dx = p2x - p1x;
+          const dy = p2y - p1y;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          const minDist = p1Radius + p2Radius;
+
+          if (dist < minDist * 2) {
+            // Calculate overlap-based collision intensity
+            const overlap = Math.max(0, minDist * 2 - dist);
+            const collisionIntensity = (overlap / (minDist * 2)) * relativeSpeed;
+
+            // Find all cells that this collision affects
+            this.gridMap.forEach((cell) => {
+              const { x, y, width, height } = cell.bounds;
+              const cellArea = width * height;
+
+              // Calculate overlap with both particles
+              const p1Overlap = this.calculateCircleRectOverlap(
+                p1x,
+                p1y,
+                p1Radius,
+                x,
+                y,
+                width,
+                height
+              );
+
+              const p2Overlap = this.calculateCircleRectOverlap(
+                p2x,
+                p2y,
+                p2Radius,
+                x,
+                y,
+                width,
+                height
+              );
+
+              if (p1Overlap > 0 || p2Overlap > 0) {
+                // Calculate weight based on total overlap
+                let weight = ((p1Overlap + p2Overlap) / cellArea) * 100;
+
+                // Apply smooth scaling
+                weight = Math.pow(weight / 100, 1.5) * 100;
+
+                // Scale the weight to match our visualization range
+                weight = Math.min(weight * 0.25, 100);
+
+                // Add weighted collision contribution
+                cellCollisions[cell.index] += collisionIntensity * weight * tune;
+                cellWeights[cell.index] += weight;
+              }
+            });
           }
         }
+      }
+    }
 
-        // Normalize base intensity
-        const normalizedIntensity = Math.min(
-          10,
-          (baseIntensity / collisionCell.length) * tune
-        );
-
-        // Find and apply to affected cells with falloff
-        this.gridMap.forEach((cell) => {
-          const dx = cell.bounds.x + cell.bounds.width / 2 - renderX;
-          const dy = cell.bounds.y + cell.bounds.height / 2 - renderY;
-          const distToCenter = Math.sqrt(dx * dx + dy * dy);
-
-          if (distToCenter < cellRadius) {
-            // Calculate falloff factor (1.0 at center, 0.5 at edges)
-            const falloff =
-              distToCenter === 0
-                ? 1.0 // Center cell
-                : 0.5 + 0.5 * (1 - distToCenter / cellRadius); // Surrounding cells
-
-            // Apply intensity with falloff
-            this.targetValues[cell.index] = Math.max(
-              this.targetValues[cell.index],
-              normalizedIntensity * falloff
-            );
-          }
-        });
+    // Calculate final collision values
+    for (let i = 0; i < this.targetValues.length; i++) {
+      if (cellWeights[i] > 0) {
+        this.targetValues[i] = cellCollisions[i] / cellWeights[i];
       }
     }
 
