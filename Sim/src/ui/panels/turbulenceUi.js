@@ -211,6 +211,8 @@ export class TurbulenceUi extends BaseUi {
 
     let currentAnimationCleanup = null;
     let isPreviewAnimating = false;
+    let selectedThumbnailValue = null;
+    let thumbnailAnimationCleanups = new Map();
 
     // Function to update selected preview
     const updateSelectedPreview = (animate = false) => {
@@ -225,21 +227,40 @@ export class TurbulenceUi extends BaseUi {
         currentAnimationCleanup = turbulence.generateAnimatedPreview(200, 200, turbulence.patternStyle, (dataUrl) => {
           selectedPreviewImg.src = dataUrl;
         });
-        // playIndicator.style.display = 'flex';
-        // playIndicator.innerHTML = '⏸';
         isPreviewAnimating = true;
       } else {
         // Just show static preview
         selectedPreviewImg.src = turbulence.generatePatternPreview(200, 200, turbulence.patternStyle);
-        // playIndicator.style.display = 'flex';
-        // playIndicator.innerHTML = '▶';
         isPreviewAnimating = false;
       }
     };
 
+    // Function to refresh all thumbnails
+    const refreshThumbnails = (animate = false) => {
+      // Clean up any existing animations first
+      thumbnailAnimationCleanups.forEach(cleanup => cleanup());
+      thumbnailAnimationCleanups.clear();
+
+      const thumbnails = previewContainer.querySelectorAll('.pattern-preview img');
+      thumbnails.forEach((thumbnail, index) => {
+        const patternValue = Object.values(patternStyles)[index];
+        if (animate && patternValue === selectedThumbnailValue) {
+          // Start animation for selected thumbnail
+          const cleanup = turbulence.generateAnimatedPreview(previewSize, previewSize, patternValue, (dataUrl) => {
+            thumbnail.src = dataUrl;
+          });
+          thumbnailAnimationCleanups.set(patternValue, cleanup);
+        } else {
+          // Static preview for others
+          thumbnail.src = turbulence.generatePatternPreview(previewSize, previewSize, patternValue);
+        }
+      });
+    };
+
     // Add click handler to toggle animation
     selectedPreviewContainer.addEventListener('click', () => {
-      updateSelectedPreview(!isPreviewAnimating);
+      isPreviewAnimating = !isPreviewAnimating;
+      updateSelectedPreview(isPreviewAnimating);
     });
 
     // Add hover effect for preview container
@@ -284,8 +305,10 @@ export class TurbulenceUi extends BaseUi {
             this.turbulencePatternFrequencyController.setValue(6.0);
           }
         }
-        // Update preview (static by default)
+
+        selectedThumbnailValue = value;
         updateSelectedPreview(isPreviewAnimating);
+        refreshThumbnails(false);
       });
 
     // Create preview thumbnails
@@ -351,13 +374,27 @@ export class TurbulenceUi extends BaseUi {
       });
 
       // Add click handler
+      let isThisThumbnailAnimating = false;
       previewWrapper.addEventListener('click', () => {
-        turbulence.patternStyle = value;
-        if (this.turbulencePatternStyleController) {
-          this.turbulencePatternStyleController.setValue(value);
+        // First click: select pattern and stop any animations
+        if (selectedThumbnailValue !== value) {
+          // Stop any existing animations
+          thumbnailAnimationCleanups.forEach(cleanup => cleanup());
+          thumbnailAnimationCleanups.clear();
+
+          // Update pattern
+          turbulence.patternStyle = value;
+          selectedThumbnailValue = value;
+          if (this.turbulencePatternStyleController) {
+            this.turbulencePatternStyleController.setValue(value);
+          }
+          isThisThumbnailAnimating = false;
+          refreshThumbnails(false);
+        } else {
+          // Second click: toggle animation for this thumbnail only
+          isThisThumbnailAnimating = !isThisThumbnailAnimating;
+          refreshThumbnails(isThisThumbnailAnimating);
         }
-        // Update selected preview
-        updateSelectedPreview(isPreviewAnimating);
       });
 
       previewContainer.appendChild(previewWrapper);
@@ -370,8 +407,8 @@ export class TurbulenceUi extends BaseUi {
     this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulence, "patternFrequency", 0.1, 20)
       .name("T-PatternFreq")
       .onChange(() => {
-        // Update selected preview
         updateSelectedPreview(isPreviewAnimating);
+        refreshThumbnails(isPreviewAnimating);
       });
 
     // Domain warp control - moved to pattern controls folder and always visible
@@ -379,6 +416,7 @@ export class TurbulenceUi extends BaseUi {
       .name("T-DomainWarp")
       .onChange(() => {
         updateSelectedPreview(isPreviewAnimating);
+        refreshThumbnails(isPreviewAnimating);
       });
 
     // Time influence selector
@@ -410,13 +448,14 @@ export class TurbulenceUi extends BaseUi {
       this.turbulenceRotationController,
       this.turbulenceRotationSpeedController,
       this.turbulenceTimeInfluenceController,
-      this.turbulenceDomainWarpController  // Add domain warp to preview-affecting controllers
+      this.turbulenceDomainWarpController
     ];
 
     previewAffectingControllers.forEach(controller => {
       if (controller) {
         controller.onChange(() => {
           updateSelectedPreview(isPreviewAnimating);
+          refreshThumbnails(isPreviewAnimating);
         });
       }
     });
@@ -424,18 +463,22 @@ export class TurbulenceUi extends BaseUi {
     // Clean up animation when folder is closed
     patternControlsFolder.domElement.addEventListener('click', (e) => {
       // Check if the click is on the folder header (which toggles the folder)
-      if (e.target.closest('.folder')) {
+      if (e.target.closest('.title')) {
         if (currentAnimationCleanup) {
           currentAnimationCleanup();
           currentAnimationCleanup = null;
-          isPreviewAnimating = false;
-          playIndicator.style.display = 'none';
         }
+        thumbnailAnimationCleanups.forEach(cleanup => cleanup());
+        thumbnailAnimationCleanups.clear();
+        isPreviewAnimating = false;
+        updateSelectedPreview(false);
+        refreshThumbnails(false);
       }
     });
 
     // Initial preview (static)
     updateSelectedPreview(false);
+    refreshThumbnails(false);
   }
 
   getControlTargets() {
