@@ -27,6 +27,8 @@ class TurbulenceField {
     amplitudeSpeed = 1.0,
     phase = 0.0,  // Static phase offset
     amplitude = 1.0,  // Static amplitude multiplier
+    // Symmetry control
+    symmetryAmount = 0.0,  // 0 = no symmetry, 1 = full symmetry
   } = {}) {
     if (
       !boundary ||
@@ -82,6 +84,9 @@ class TurbulenceField {
     this.amplitudeSpeed = amplitudeSpeed;
     this.phase = phase;
     this.amplitude = amplitude;
+
+    // Symmetry control
+    this.symmetryAmount = symmetryAmount;
 
     // Domain warp time control
     this.domainWarpEnabled = false;
@@ -228,6 +233,24 @@ class TurbulenceField {
     try {
       const centerX = (this.boundary && typeof this.boundary.centerX === 'number') ? this.boundary.centerX : 0.5;
       const centerY = (this.boundary && typeof this.boundary.centerY === 'number') ? this.boundary.centerY : 0.5;
+
+      // Apply symmetry based on amount
+      if (this.symmetryAmount > 0) {
+        // Calculate distance from center
+        const dx = x - centerX;
+        const dy = y - centerY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+
+        // Calculate angle from center
+        const angle = Math.atan2(dy, dx);
+
+        // Calculate symmetric angle based on symmetry amount
+        const symmetricAngle = angle * (1 + this.symmetryAmount);
+
+        // Convert back to coordinates
+        x = centerX + dist * Math.cos(symmetricAngle);
+        y = centerY + dist * Math.sin(symmetricAngle);
+      }
 
       if (this.useOrganicNoise) {
         // Organic noise style with domain warping
@@ -587,6 +610,7 @@ class TurbulenceField {
     amplitudeSpeed,
     phase,
     amplitude,
+    symmetryAmount,
   }) {
     if (strength !== undefined) this.strength = strength;
     if (scale !== undefined) this.scale = scale;
@@ -612,6 +636,9 @@ class TurbulenceField {
     if (amplitudeSpeed !== undefined) this.amplitudeSpeed = amplitudeSpeed;
     if (phase !== undefined) this.phase = phase;
     if (amplitude !== undefined) this.amplitude = amplitude;
+
+    // Symmetry control
+    if (symmetryAmount !== undefined) this.symmetryAmount = symmetryAmount;
   }
 
   // Debug function to help diagnose rotation issues

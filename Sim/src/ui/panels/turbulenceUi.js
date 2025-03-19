@@ -359,6 +359,13 @@ export class TurbulenceUi extends BaseUi {
         refreshThumbnails(true);  // Keep animation when frequency changes
       });
 
+    // Add symmetry amount control
+    this.turbulenceSymmetryController = patternControlsFolder.add(turbulence, "symmetryAmount", 0, 1, 0.01)
+      .name("T-Sym")
+      .onChange(() => {
+        refreshThumbnails(true);
+      });
+
     // Create time influence buttons
     const phaseButton = document.createElement("button");
     phaseButton.textContent = "T--Phase";
@@ -440,7 +447,8 @@ export class TurbulenceUi extends BaseUi {
       this.turbulenceFrequencyController,
       this.turbulenceContrastController,
       this.turbulenceStaticPhaseController,
-      this.turbulenceStaticContrastController
+      this.turbulenceStaticContrastController,
+      this.turbulenceSymmetryController
     ];
 
     previewAffectingControllers.forEach(controller => {
@@ -554,6 +562,7 @@ export class TurbulenceUi extends BaseUi {
     if (this.turbulenceContrastController) targets["T-ContSp"] = this.turbulenceContrastController;
     if (this.turbulenceStaticPhaseController) targets["T-Phase"] = this.turbulenceStaticPhaseController;
     if (this.turbulenceStaticContrastController) targets["T-Cont"] = this.turbulenceStaticContrastController;
+    if (this.turbulenceSymmetryController) targets["T-Sym"] = this.turbulenceSymmetryController;
 
     return targets;
   }
@@ -599,6 +608,7 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulenceContrastController);
     safeUpdateDisplay(this.turbulenceStaticPhaseController);
     safeUpdateDisplay(this.turbulenceStaticContrastController);
+    safeUpdateDisplay(this.turbulenceSymmetryController);
   }
 
   getData() {
