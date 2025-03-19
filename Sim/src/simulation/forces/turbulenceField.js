@@ -188,6 +188,38 @@ class TurbulenceField {
 
   // Apply contrast and separation to pattern value
   applyContrast(value, time) {
+    // ===== PULL MODE EFFECTS =====
+    // Apply transformation based on pullFactor (-1 to 1 range)
+    if (this.pullFactor !== 0) {
+      if (this.pullFactor < 0) {
+        // BLACK MODE (negative values)
+        // Linear interpolation toward inverted pattern
+        // At pullFactor = -1: fully inverted
+        // At pullFactor = 0: no effect
+        value = value * (1 + this.pullFactor) + (1 - value) * (-this.pullFactor);
+      } else {
+        // WHITE MODE (positive values)
+        // Enhance white areas by applying a stronger curve
+        // At pullFactor = 1: maximum enhancement
+        // At pullFactor = 0: no effect
+
+        // Apply a more aggressive enhancement for white mode
+        if (value > 0.5) {
+          // For brighter areas, push toward white (1.0)
+          // pullFactor controls how strongly we push
+          value = 0.5 + (value - 0.5) * (1.0 + this.pullFactor * 3.0);
+        } else {
+          // For darker areas, push toward black (0.0)
+          // pullFactor controls how strongly we push
+          value = value * (1.0 - this.pullFactor * 0.5);
+        }
+
+        // Ensure values stay in valid range
+        value = Math.max(0.0, Math.min(1.0, value));
+      }
+    }
+
+    // ===== STANDARD CONTRAST & SEPARATION =====
     // Get base contrast value (optionally animated)
     let contrastValue = this.contrast;
     if (this.contrastSpeed > 0 && this.speed > 0) {
@@ -197,10 +229,7 @@ class TurbulenceField {
         (1 + Math.sin(time * this.speed * this.contrastSpeed));
     }
 
-    // Scale contrast - higher values create more extreme results
-    const contrastPower = 1.0 + contrastValue * 3.0; // 1.0 to 4.0 range
-
-    // For separation, we'll use a modified sigmoid function
+    // Apply separation (threshold) effect if enabled
     if (this.separation > 0) {
       // Center value around 0 (-0.5 to 0.5 range)
       const centered = value - 0.5;
@@ -212,22 +241,22 @@ class TurbulenceField {
       value = 1.0 / (1.0 + Math.exp(-centered * sepFactor));
     }
 
-    // Apply contrast power function
+    // Apply contrast power function 
     if (contrastValue > 0) {
       // Apply different power functions for values above and below 0.5
       // to maintain the center point
       if (value > 0.5) {
         // Scale from 0.5-1.0 to 0.5-1.0 with increased contrast
         const scaled = (value - 0.5) * 2; // 0-1 range
-        value = 0.5 + (Math.pow(scaled, contrastPower) * 0.5);
+        value = 0.5 + (Math.pow(scaled, 1.0 / (1.0 + contrastValue * 2.0)) * 0.5);
       } else {
         // Scale from 0-0.5 to 0-0.5 with increased contrast
         const scaled = value * 2; // 0-1 range
-        value = Math.pow(scaled, contrastPower) * 0.5;
+        value = Math.pow(scaled, 1.0 + contrastValue * 2.0) * 0.5;
       }
     }
 
-    return value;
+    return Math.max(0, Math.min(1, value)); // Clamp to [0,1] range to be safe
   }
 
   // Process coordinates through the entire pipeline
@@ -501,46 +530,51 @@ class TurbulenceField {
         newVy += this.directionBias[1] * this.strength * dt;
       }
 
-      // Calculate noise and determine mode based on pullFactor
-      if (this.pullFactor > 0 && this.affectPosition) {
-        // PULL MODE: Move toward noise peaks (positive pullFactor)
+      // NOTE: The noise pattern itself is now affected by pullFactor:
+      // - When pullFactor = 0: Original pattern with no modifications
+      // - When pullFactor > 0: White areas become more pronounced (enhanced contrast)
+      // - When pullFactor < 0: Pattern gradually inverts (black areas become active)
+      // This is applied in the applyContrast method during noise generation
 
-        // Sample noise at multiple points to calculate gradient
-        const epsilon = 0.01;  // Small sampling distance
-        const n0 = this.noise2D(x, y);
-        const nx = this.noise2D(x + epsilon, y);
-        const ny = this.noise2D(x, y + epsilon);
+      // Calculate noise values for particle position
+      const n1 = this.noise2D(x, y);
+      const n2 = this.noise2D(y + 1.234, x + 5.678);
 
-        // Calculate approximate gradient (direction toward higher values)
-        const gradX = (nx - n0) / epsilon;
-        const gradY = (ny - n0) / epsilon;
+      if (this.affectPosition) {
+        if (this.pullFactor > 0) {
+          // PULL MODE: Move toward noise peaks (positive pullFactor)
+          // Sample additional points to calculate gradient
+          const epsilon = 0.01;  // Small sampling distance
+          const nx = this.noise2D(x + epsilon, y);
+          const ny = this.noise2D(x, y + epsilon);
 
-        // Calculate gradient magnitude and normalize
-        const gradMag = Math.sqrt(gradX * gradX + gradY * gradY);
-        if (gradMag > 0.001) {
-          // Apply force toward higher noise values, scaled by pullFactor
-          const normalizedGradX = gradX / gradMag;
-          const normalizedGradY = gradY / gradMag;
+          // Calculate approximate gradient (direction toward higher values)
+          const gradX = (nx - n1) / epsilon;
+          const gradY = (ny - n1) / epsilon;
 
-          // Scale force by pull factor (0 to 1 range)
-          const pullStrength = this.pullFactor * this.strength;
-          newVx += normalizedGradX * pullStrength * dt;
-          newVy += normalizedGradY * pullStrength * dt;
+          // Calculate gradient magnitude and normalize
+          const gradMag = Math.sqrt(gradX * gradX + gradY * gradY);
+          if (gradMag > 0.001) {
+            // Apply force toward higher noise values, scaled by pullFactor
+            const normalizedGradX = gradX / gradMag;
+            const normalizedGradY = gradY / gradMag;
+
+            // Scale force by pull factor (0 to 1 range)
+            const pullStrength = this.pullFactor * this.strength;
+            newVx += normalizedGradX * pullStrength * dt;
+            newVy += normalizedGradY * pullStrength * dt;
+          }
+        } else if (this.pullFactor < 0) {
+          // PUSH MODE: Particles are pushed by the noise field values
+          // Scale push strength based on pullFactor magnitude
+          const pushStrength = Math.abs(this.pullFactor) * this.strength;
+          const forceX = (n1 - 0.5) * pushStrength;
+          const forceY = (n2 - 0.5) * pushStrength;
+          newVx += forceX * dt;
+          newVy += forceY * dt;
         }
-      } else if (this.affectPosition) {
-        // PUSH MODE: Use the existing implementation for pushing particles
-        // Calculate noise at particle position
-        const n1 = this.noise2D(x, y);
-        const n2 = this.noise2D(y + 1.234, x + 5.678);
-
-        // Scale push strength from 0 (at pullFactor = 0) to 1 (at pullFactor = -1)
-        const pushStrength = this.strength * Math.abs(Math.min(0, this.pullFactor));
-        const forceX = (n1 - 0.5) * pushStrength;
-        const forceY = (n2 - 0.5) * pushStrength;
-        newVx += forceX * dt;
-        newVy += forceY * dt;
+        // At pullFactor = 0, no additional forces are applied
       }
-      // When pullFactor is -1, no force is applied (particles only affected by decay)
 
       // Apply velocity scaling if enabled - works the same in either mode
       if (this.scaleField) {

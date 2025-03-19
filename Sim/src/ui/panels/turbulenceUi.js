@@ -126,9 +126,45 @@ export class TurbulenceUi extends BaseUi {
     this.turbulencePullFactorController = this.gui.add(turbulence, "pullFactor", -1, 1)
       .name("T-Pull Mode")
       .onChange((value) => {
-        // Optional: Add tooltip or indicator that shows the current mode
-        const mode = value > 0 ? "Peak Attraction" : "Flow Following";
-        // Could update a UI element here if needed
+        // Update tooltip or indicator that shows the current mode
+        let mode;
+        if (value > 0) {
+          // In white mode, particles are attracted to peaks and white areas are enhanced
+          const whitePercent = Math.round(value * 100);
+          mode = `White: +${whitePercent}%`;
+        } else if (value < 0) {
+          // In black mode, pattern is inverted and particles are pushed by the field
+          const blackPercent = Math.round(Math.abs(value) * 100);
+          mode = `Black: -${blackPercent}%`;
+        } else {
+          mode = "Neutral (0%)";
+        }
+
+        // Optional: Display mode indicator
+        if (this.modeIndicator) {
+          this.modeIndicator.textContent = mode;
+        } else if (this.turbulencePullFactorController.domElement) {
+          // Create a mode indicator if it doesn't exist
+          const controlElement = this.turbulencePullFactorController.domElement;
+          const container = controlElement.parentElement;
+
+          if (container && !this.modeIndicator) {
+            this.modeIndicator = document.createElement('div');
+            this.modeIndicator.className = 'mode-indicator';
+            this.modeIndicator.style.cssText = `
+              font-size: 11px;
+              color: #aaa;
+              margin-top: -5px;
+              margin-bottom: 5px;
+              padding-left: 30%;
+            `;
+            this.modeIndicator.textContent = mode;
+            container.appendChild(this.modeIndicator);
+          }
+        }
+
+        // Refresh previews when pullFactor changes to show the mode noise effect
+        refreshThumbnails(true);
       });
 
     const scaleRangeFolder = this.gui.addFolder("Scale Range");
@@ -463,6 +499,7 @@ export class TurbulenceUi extends BaseUi {
       this.turbulencePhaseController,
       this.turbulenceStaticPhaseController,
       this.turbulenceSymmetryController,
+      this.turbulencePullFactorController,
       // New controllers
       this.turbulenceOffsetXController,
       this.turbulenceOffsetYController,

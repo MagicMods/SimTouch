@@ -32,8 +32,6 @@ export class Gradient {
     this.points = [];
     this.values = new Array(256).fill(0).map(() => ({ r: 0, g: 0, b: 0 }));
     this.socket = socketManager;
-    this.lastSentGradient = null;
-    this.lastSentTime = 0;
     this.applyPreset(presetName);
   }
 
@@ -58,35 +56,10 @@ export class Gradient {
     return this.points;
   }
 
-  // Send gradient update to hardware over WebSocket with redundancy
+  // Send gradient update to hardware over WebSocket
   sendGradientUpdate(presetName) {
     const presetIndex = this.getPresetIndex(presetName);
-
-    // Don't send duplicate messages within 500ms
-    const now = Date.now();
-    if (this.lastSentGradient === presetName && now - this.lastSentTime < 500) {
-      return false;
-    }
-
-    this.lastSentGradient = presetName;
-    this.lastSentTime = now;
-
-    if (this.socket.isConnected) {
-      const byteArray = new Uint8Array([6, presetIndex]);
-
-      // Send immediately
-      this.socket.send(byteArray);
-
-      // Send again after a short delay for reliability
-      setTimeout(() => {
-        if (this.socket.isConnected) {
-          this.socket.send(byteArray);
-        }
-      }, 50); // 50ms delay between messages
-
-      return true;
-    }
-    return false;
+    return this.socket.sendColor(presetIndex);
   }
 
   // Get the numeric index of a preset (c0=0, c1=1, etc.)

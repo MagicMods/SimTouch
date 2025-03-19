@@ -1,6 +1,25 @@
 class SocketManager {
   static instance;
 
+  // Command types and their validation rules
+  static COMMANDS = {
+    COLOR: {
+      index: 6,
+      validate: (value) => typeof value === 'number' && value >= 0 && value <= 255,
+      debounceKey: 'color'
+    },
+    BRIGHTNESS: {
+      index: 7,
+      validate: (value) => typeof value === 'number' && value >= 0 && value <= 100,
+      debounceKey: 'brightness'
+    },
+    POWER: {
+      index: 8,
+      validate: (value) => typeof value === 'number' && value >= 0 && value <= 100,
+      debounceKey: 'power'
+    }
+  };
+
   static getInstance() {
     if (!SocketManager.instance) {
       SocketManager.instance = new SocketManager();
@@ -23,6 +42,12 @@ class SocketManager {
     this.emuHandlers = [];
     this.expectingBinaryData = false;
     this.expectedBinaryLength = 0;
+
+    // Initialize command state tracking
+    this.lastSentCommands = {};
+    Object.values(SocketManager.COMMANDS).forEach(cmd => {
+      this.lastSentCommands[cmd.debounceKey] = { value: null, time: 0 };
+    });
   }
 
   connect(port = 5501) {
@@ -208,6 +233,66 @@ class SocketManager {
     } catch (error) {
       console.error("Error parsing WebSocket message:", error);
     }
+  }
+
+  // Unified command sending system
+  sendCommand(commandType, value) {
+    const command = SocketManager.COMMANDS[commandType];
+    if (!command) {
+      console.error(`Invalid command type: ${commandType}`);
+      return false;
+    }
+
+    // Validate the value
+    if (!command.validate(value)) {
+      console.error(`Invalid value for command ${commandType}: ${value}`);
+      return false;
+    }
+
+    // Check debouncing
+    const now = Date.now();
+    const lastSent = this.lastSentCommands[command.debounceKey];
+
+    if (lastSent.value === value && now - lastSent.time < 500) {
+      return false;
+    }
+
+    // Update last sent state
+    this.lastSentCommands[command.debounceKey] = { value, time: now };
+
+    if (this.isConnected) {
+      const byteArray = new Uint8Array([command.index, value]);
+
+      // Send immediately
+      this.send(byteArray);
+
+      // Send again after a short delay for reliability
+      setTimeout(() => {
+        if (this.isConnected) {
+          this.send(byteArray);
+        }
+      }, 50);
+
+      if (this.debugSend) {
+        console.log(`Sending command ${commandType}:`, value);
+      }
+
+      return true;
+    }
+    return false;
+  }
+
+  // Convenience methods for specific commands
+  sendColor(value) {
+    return this.sendCommand('COLOR', value);
+  }
+
+  sendBrightness(value) {
+    return this.sendCommand('BRIGHTNESS', value);
+  }
+
+  sendPower(value) {
+    return this.sendCommand('POWER', value);
   }
 }
 
