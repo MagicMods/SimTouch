@@ -209,6 +209,7 @@ export class TurbulenceUi extends BaseUi {
         selectedThumbnailValue = value;
         refreshThumbnails(true);  // Start animation when pattern changes
       });
+    this.turbulencePatternStyleController.domElement.classList.add("full-width");
 
     // Create preview thumbnails
     const patternStyles = {
@@ -226,6 +227,7 @@ export class TurbulenceUi extends BaseUi {
     Object.entries(patternStyles).forEach(([name, value]) => {
       const previewWrapper = document.createElement('div');
       previewWrapper.className = 'pattern-preview';
+      previewWrapper.setAttribute('data-pattern', value);  // Add data-pattern attribute
       previewWrapper.style.cssText = `
         width: ${previewSize}px;
         height: ${previewSize}px;
@@ -235,11 +237,6 @@ export class TurbulenceUi extends BaseUi {
         position: relative;
       `;
 
-      // Add selected state styling
-      if (value === turbulence.patternStyle) {
-        previewWrapper.querySelector('div').style.display = 'none';  // Hide title for selected
-      }
-
       const previewImg = document.createElement('img');
       previewImg.style.cssText = `
         width: 100%;
@@ -247,7 +244,7 @@ export class TurbulenceUi extends BaseUi {
         object-fit: cover;
       `;
 
-      // Add title
+      // Add title first
       const title = document.createElement('div');
       title.textContent = name;
       title.style.cssText = `
@@ -314,12 +311,17 @@ export class TurbulenceUi extends BaseUi {
     // Store preview container reference
     this.patternPreviewContainer = previewContainer;
 
-    // Domain warp control (renamed)
-    this.turbulenceDomainWarpController = patternControlsFolder.add(turbulence, "domainWarp", 0, 1)
-      .name("T-DomWarp")
-      .onChange(() => {
-        refreshThumbnails(true);  // Keep animation when warp changes
-      });
+    // Set initial selected pattern and start animation
+    selectedThumbnailValue = turbulence.patternStyle;
+
+    // Hide title for selected pattern
+    const selectedThumbnail = previewContainer.querySelector(`.pattern-preview[data-pattern="${turbulence.patternStyle}"]`);
+    if (selectedThumbnail) {
+      selectedThumbnail.querySelector('div').style.display = 'none';
+    }
+
+    // Start animation for selected pattern
+    refreshThumbnails(true);
 
     // Create button group container for time influence controls
     const timeInfluenceContainer = document.createElement("div");
@@ -330,35 +332,18 @@ export class TurbulenceUi extends BaseUi {
       margin-bottom: 10px;
     `;
 
-    // Add domain warp time control button
-    const domainWarpButton = document.createElement("button");
-    domainWarpButton.textContent = "T--DomWarp";
-    domainWarpButton.className = "toggle-button";
-    if (turbulence.domainWarpEnabled) domainWarpButton.classList.add("active");
-    domainWarpButton.addEventListener("click", () => {
-      turbulence.domainWarpEnabled = !turbulence.domainWarpEnabled;
-      domainWarpButton.classList.toggle("active", turbulence.domainWarpEnabled);
-      refreshThumbnails(true);
-    });
+    // Domain warp control
+    this.turbulenceDomainWarpController = patternControlsFolder.add(turbulence, "domainWarp", 0, 1)
+      .name("T-DomWarp")
+      .onChange(() => {
+        refreshThumbnails(true);  // Keep animation when warp changes
+      });
 
     // Add domain warp speed control
     this.turbulenceDomainWarpSpeedController = patternControlsFolder.add(turbulence, "domainWarpSpeed", 0, 2, 0.1)
       .name("T-DomWarpSp")
       .onChange(() => {
         refreshThumbnails(true);
-      });
-
-    // Add the domain warp button to the time influence container
-    timeInfluenceContainer.appendChild(domainWarpButton);
-
-    // Store button reference
-    this.domainWarpButton = domainWarpButton;
-
-    // Pattern frequency control (always visible)
-    this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulence, "patternFrequency", 0.1, 20, 0.1)
-      .name("T-Freq")
-      .onChange(() => {
-        refreshThumbnails(true);  // Keep animation when frequency changes
       });
 
     // Add symmetry amount control
@@ -368,46 +353,11 @@ export class TurbulenceUi extends BaseUi {
         refreshThumbnails(true);
       });
 
-    // Create time influence buttons
-    const phaseButton = document.createElement("button");
-    phaseButton.textContent = "T--Phase";
-    phaseButton.className = "toggle-button";
-    if (turbulence.phaseEnabled) phaseButton.classList.add("active");
-
-    const freqButton = document.createElement("button");
-    freqButton.textContent = "T--Freq";
-    freqButton.className = "toggle-button";
-    if (turbulence.frequencyEnabled) freqButton.classList.add("active");
-
-    // Add click handlers - each button toggles independently
-    phaseButton.addEventListener("click", () => {
-      turbulence.phaseEnabled = !turbulence.phaseEnabled;
-      phaseButton.classList.toggle("active", turbulence.phaseEnabled);
-      refreshThumbnails(true);
-    });
-
-    freqButton.addEventListener("click", () => {
-      turbulence.frequencyEnabled = !turbulence.frequencyEnabled;
-      freqButton.classList.toggle("active", turbulence.frequencyEnabled);
-      refreshThumbnails(true);
-    });
-
-    // Add buttons to container
-    timeInfluenceContainer.appendChild(phaseButton);
-    timeInfluenceContainer.appendChild(freqButton);
-
-    // Add the container to the pattern controls folder
-    patternControlsFolder.domElement.insertBefore(timeInfluenceContainer, patternControlsFolder.domElement.firstChild);
-
-    // Store button references
-    this.phaseButton = phaseButton;
-    this.freqButton = freqButton;
-
-    // Add frequency speed control
-    this.turbulenceFrequencyController = patternControlsFolder.add(turbulence, "frequencySpeed", 0, 2, 0.1)
-      .name("T-FreqSp")
+    // Pattern frequency control (always visible)
+    this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulence, "patternFrequency", 0.01, 4, 0.01)
+      .name("T-Freq")
       .onChange(() => {
-        refreshThumbnails(true);
+        refreshThumbnails(true);  // Keep animation when frequency changes
       });
 
     // Add static phase control
@@ -418,7 +368,7 @@ export class TurbulenceUi extends BaseUi {
       });
 
     // Add phase speed control
-    this.turbulencePhaseController = patternControlsFolder.add(turbulence, "phaseSpeed", 0, 2, 0.1)
+    this.turbulencePhaseController = patternControlsFolder.add(turbulence, "phaseSpeed", -1, 1, 0.1)
       .name("T-PhaseSp")
       .onChange(() => {
         refreshThumbnails(true);
@@ -444,7 +394,6 @@ export class TurbulenceUi extends BaseUi {
       this.turbulenceTimeInfluenceController,
       this.turbulenceDomainWarpController,
       this.turbulencePhaseController,
-      this.turbulenceFrequencyController,
       this.turbulenceContrastController,
       this.turbulenceStaticPhaseController,
       this.turbulenceStaticContrastController,
@@ -472,13 +421,6 @@ export class TurbulenceUi extends BaseUi {
         refreshThumbnails(false);
       }
     });
-
-    // Set initial pattern and start animation
-    if (turbulence.patternStyle) {
-      selectedThumbnailValue = turbulence.patternStyle;
-      refreshThumbnails(true);  // Start with animation
-    }
-
   }
 
   getControlTargets() {
@@ -556,7 +498,6 @@ export class TurbulenceUi extends BaseUi {
     if (this.turbulencePatternFrequencyController) targets["T-Freq"] = this.turbulencePatternFrequencyController;
     if (this.turbulenceTimeInfluenceController) targets["T-TimeInfluence"] = this.turbulenceTimeInfluenceController;
     if (this.turbulencePhaseController) targets["T-PhaseSp"] = this.turbulencePhaseController;
-    if (this.turbulenceFrequencyController) targets["T-FreqSp"] = this.turbulenceFrequencyController;
     if (this.turbulenceContrastController) targets["T-ContSp"] = this.turbulenceContrastController;
     if (this.turbulenceStaticPhaseController) targets["T-Phase"] = this.turbulenceStaticPhaseController;
     if (this.turbulenceStaticContrastController) targets["T-Cont"] = this.turbulenceStaticContrastController;
@@ -600,7 +541,6 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulencePatternFrequencyController);
     safeUpdateDisplay(this.turbulenceTimeInfluenceController);
     safeUpdateDisplay(this.turbulencePhaseController);
-    safeUpdateDisplay(this.turbulenceFrequencyController);
     safeUpdateDisplay(this.turbulenceContrastController);
     safeUpdateDisplay(this.turbulenceStaticPhaseController);
     safeUpdateDisplay(this.turbulenceStaticContrastController);

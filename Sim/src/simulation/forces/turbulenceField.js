@@ -1,30 +1,28 @@
 class TurbulenceField {
   constructor({
-    strength = 3,
-    scale = 4.0,
+    strength = 4,
+    scale = 3.0,
     speed = 1.0,
     rotation = 0.0,
     rotationSpeed = 0.0,
-    pullFactor = 0.0, // -1 to +1 range parameter
+    pullFactor = 1.0, // -1 to +1 range parameter
     boundary = null,
     directionBias = [0, 0],
     decayRate = 0.99,
     timeOffset = Math.random() * 1000,
     noiseSeed = Math.random() * 10000,
-    domainWarp = 0.3,
+    domainWarp = 0,
+    domainWarpSpeed = 0,
     // New geometric pattern controls
-    patternFrequency = 6.0,
-    patternStyle = "",
+    patternFrequency = 2.0,
+    patternStyle = "Checkerboard",
     // Time influence controls
     phaseEnabled = false,
-    frequencyEnabled = false,
     amplitudeEnabled = false,
-    phaseSpeed = 1.0,
-    frequencySpeed = 1.0,
-    amplitudeSpeed = 1.0,
-    phase = 0.0,  // Static phase offset
-    amplitude = 1.0,  // Static amplitude multiplier
-    // Symmetry control
+    phaseSpeed = 0.0,
+    amplitudeSpeed = 0.0,
+    phase = 0.0,
+    amplitude = 1.0,
     symmetryAmount = 0.0,  // 0 = no symmetry, 1 = full symmetry
   } = {}) {
     if (
@@ -68,10 +66,8 @@ class TurbulenceField {
 
     // Time influence controls
     this.phaseEnabled = phaseEnabled;
-    this.frequencyEnabled = frequencyEnabled;
     this.amplitudeEnabled = amplitudeEnabled;
     this.phaseSpeed = phaseSpeed;
-    this.frequencySpeed = frequencySpeed;
     this.amplitudeSpeed = amplitudeSpeed;
     this.phase = phase;
     this.amplitude = amplitude;
@@ -81,7 +77,7 @@ class TurbulenceField {
 
     // Domain warp time control
     this.domainWarpEnabled = false;
-    this.domainWarpSpeed = 1.0;
+    this.domainWarpSpeed = domainWarpSpeed;
   }
 
   // Completely redesigned noise2D function that supports geometric patterns
@@ -123,7 +119,7 @@ class TurbulenceField {
       if (this.domainWarp > 0) {
         // Apply warping after scaling for stronger effect
         const warpFreq = 2.0;  // Increased frequency for more visible warping
-        if (this.speed > 0 && this.domainWarpEnabled) {
+        if (this.speed > 0 && this.domainWarpSpeed > 0) {
           // Time-driven warping
           warpedX = scaledX + this.domainWarp * Math.sin(scaledY * warpFreq + this.time * this.speed * this.domainWarpSpeed);
           warpedY = scaledY + this.domainWarp * Math.cos(scaledX * warpFreq + this.time * this.speed * this.domainWarpSpeed);
@@ -213,12 +209,12 @@ class TurbulenceField {
 
       // Apply time influence based on enabled controls and T-Speed
       if (this.speed > 0) {
-        // When T-Speed > 0, use enabled controls as rate multipliers
-        if (this.phaseEnabled) {
-          const phaseOffset = this.time * this.speed * this.phaseSpeed + this.phase * Math.PI * 2;
+        // When T-Speed > 0, use speed controls for animation
+        if (Math.abs(this.phaseSpeed) > 0) {
+          const phaseOffset = this.time * this.speed * Math.abs(this.phaseSpeed) * Math.sign(this.phaseSpeed) + this.phase * Math.PI * 2;
           noise = Math.sin(noise * Math.PI * 2 + phaseOffset);
         } else {
-          // Apply static phase even when time-driven phase is disabled
+          // Apply static phase when speed is 0
           const phaseOffset = this.phase * Math.PI * 2;
           noise = Math.sin(noise * Math.PI * 2 + phaseOffset);
         }
@@ -229,44 +225,6 @@ class TurbulenceField {
         } else {
           // Apply static amplitude even when time-driven amplitude is disabled
           noise *= this.amplitude;
-        }
-
-        if (this.frequencyEnabled) {
-          const freqScale = 1 + 0.5 * Math.sin(this.time * this.speed * this.frequencySpeed);
-          const freqX = warpedX * this.patternFrequency * freqScale;
-          const freqY = warpedY * this.patternFrequency * freqScale;
-          switch (this.patternStyle) {
-            case "checkerboard":
-              noise = Math.sin(freqX) * Math.sin(freqY);
-              break;
-            case "waves":
-              noise = Math.sin(freqX + freqY * 0.5);
-              break;
-            case "grid":
-              noise = Math.sin(freqX) + Math.sin(freqY);
-              break;
-            case "circles":
-              const dist = Math.sqrt(Math.pow((warpedX / this.scale) - centerX, 2) + Math.pow((warpedY / this.scale) - centerY, 2));
-              noise = Math.sin(dist * this.patternFrequency * Math.PI * 2 * freqScale);
-              break;
-            case "spiral":
-              const angle = Math.atan2((warpedY / this.scale) - centerY, (warpedX / this.scale) - centerX);
-              const radius = Math.sqrt(Math.pow((warpedX / this.scale) - centerX, 2) + Math.pow((warpedY / this.scale) - centerY, 2));
-              noise = Math.sin(angle * this.patternFrequency + radius * this.patternFrequency * 0.1 * freqScale);
-              break;
-            case "maze":
-              noise = Math.sin(freqX * 2) * Math.cos(freqY * 2);
-              break;
-            case "ripples":
-              const rippleDist = Math.sqrt(Math.pow((warpedX / this.scale) - centerX, 2) + Math.pow((warpedY / this.scale) - centerY, 2));
-              noise = Math.sin(rippleDist * this.patternFrequency * Math.PI * 2 * freqScale);
-              break;
-            case "starfield":
-              const starX = ((warpedX / this.scale) - centerX) * this.patternFrequency * freqScale;
-              const starY = ((warpedY / this.scale) - centerY) * this.patternFrequency * freqScale;
-              noise = Math.sin(starX * starX + starY * starY);
-              break;
-          }
         }
       } else {
         // When T-Speed = 0, apply static values
@@ -501,10 +459,8 @@ class TurbulenceField {
     patternFrequency,
     patternStyle,
     phaseEnabled,
-    frequencyEnabled,
     amplitudeEnabled,
     phaseSpeed,
-    frequencySpeed,
     amplitudeSpeed,
     phase,
     amplitude,
@@ -525,10 +481,8 @@ class TurbulenceField {
 
     // Time influence controls
     if (phaseEnabled !== undefined) this.phaseEnabled = phaseEnabled;
-    if (frequencyEnabled !== undefined) this.frequencyEnabled = frequencyEnabled;
     if (amplitudeEnabled !== undefined) this.amplitudeEnabled = amplitudeEnabled;
     if (phaseSpeed !== undefined) this.phaseSpeed = phaseSpeed;
-    if (frequencySpeed !== undefined) this.frequencySpeed = frequencySpeed;
     if (amplitudeSpeed !== undefined) this.amplitudeSpeed = amplitudeSpeed;
     if (phase !== undefined) this.phase = phase;
     if (amplitude !== undefined) this.amplitude = amplitude;

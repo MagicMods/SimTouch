@@ -501,7 +501,7 @@ class GridRenderModes {
     const cellVxSums = new Float32Array(this.targetValues.length).fill(0);
     const cellVySums = new Float32Array(this.targetValues.length).fill(0);
     const cellWeights = new Float32Array(this.targetValues.length).fill(0);
-    const tune = 1.0; // Adjusted tuning factor for better visualization
+    const tune = 5.0; // Adjusted tuning factor for better visualization
 
     // First pass: accumulate weighted velocities in each cell
     particles.forEach((particle) => {
