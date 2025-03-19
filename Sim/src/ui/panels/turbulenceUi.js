@@ -151,8 +151,12 @@ export class TurbulenceUi extends BaseUi {
     this.turbulenceDecayRateController = advancedFolder.add(turbulence, "decayRate", 0.9, 1).name("T-Decay");
 
     // Add geometric pattern controls folder
-    const patternControlsFolder = this.gui.addFolder("Pattern Controls");
-    this.patternControlsFolder = patternControlsFolder;
+    const noiseFolder = this.gui.addFolder("Noise");
+    this.noiseFolder = noiseFolder;
+
+    // Create Previews folder
+    const previewsFolder = noiseFolder.addFolder("Previews");
+    this.previewsFolder = previewsFolder;
 
     // Create preview container
     const previewContainer = document.createElement('div');
@@ -163,12 +167,39 @@ export class TurbulenceUi extends BaseUi {
       gap: 10px;
       margin-bottom: 10px;
     `;
-    patternControlsFolder.domElement.insertBefore(previewContainer, patternControlsFolder.domElement.firstChild);
+    // Add the preview container to the folder's content area
+    const previewsContent = previewsFolder.domElement.querySelector('.children');
+    if (previewsContent) {
+      previewsContent.appendChild(previewContainer);
+    }
+
+    // Create Pattern Control folder
+    const patternControlsFolder = noiseFolder.addFolder("Pattern Control");
+    this.patternControlsFolder = patternControlsFolder;
+
+    // Pattern style selector
+    this.turbulencePatternStyleController = patternControlsFolder.add(turbulence, "patternStyle")
+      .name("T-PatternStyle")
+      .options({
+        "Checkerboard": "checkerboard",
+        "Waves": "waves",
+        "Spiral": "spiral",
+        "Grid": "grid",
+        "Circles": "circles",
+        "Maze": "maze",
+        "Ripples": "ripples",
+        "Starfield": "starfield"
+      })
+      .onChange((value) => {
+        selectedThumbnailValue = value;
+        refreshThumbnails(true);  // Start animation when pattern changes
+      });
+    this.turbulencePatternStyleController.domElement.classList.add("full-width");
 
     let currentAnimationCleanup = null;
     let selectedThumbnailValue = null;
     let thumbnailAnimationCleanups = new Map();
-    const previewSize = 80;  // Define previewSize here
+    const previewSize = 76;  // Define previewSize here
 
     // Function to refresh all thumbnails
     const refreshThumbnails = (animate = false) => {
@@ -191,25 +222,6 @@ export class TurbulenceUi extends BaseUi {
         }
       });
     };
-
-    // Pattern style selector
-    this.turbulencePatternStyleController = patternControlsFolder.add(turbulence, "patternStyle")
-      .name("T-PatternStyle")
-      .options({
-        "Checkerboard": "checkerboard",
-        "Waves": "waves",
-        "Spiral": "spiral",
-        "Grid": "grid",
-        "Circles": "circles",
-        "Maze": "maze",
-        "Ripples": "ripples",
-        "Starfield": "starfield"
-      })
-      .onChange((value) => {
-        selectedThumbnailValue = value;
-        refreshThumbnails(true);  // Start animation when pattern changes
-      });
-    this.turbulencePatternStyleController.domElement.classList.add("full-width");
 
     // Create preview thumbnails
     const patternStyles = {
@@ -409,7 +421,7 @@ export class TurbulenceUi extends BaseUi {
     });
 
     // Clean up animation when folder is closed
-    patternControlsFolder.domElement.addEventListener('click', (e) => {
+    previewsFolder.domElement.addEventListener('click', (e) => {
       if (e.target.closest('.title')) {
         if (currentAnimationCleanup) {
           currentAnimationCleanup();
