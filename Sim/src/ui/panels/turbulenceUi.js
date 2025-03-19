@@ -235,6 +235,11 @@ export class TurbulenceUi extends BaseUi {
         position: relative;
       `;
 
+      // Add selected state styling
+      if (value === turbulence.patternStyle) {
+        previewWrapper.querySelector('div').style.display = 'none';  // Hide title for selected
+      }
+
       const previewImg = document.createElement('img');
       previewImg.style.cssText = `
         width: 100%;
@@ -264,10 +269,14 @@ export class TurbulenceUi extends BaseUi {
 
       // Add hover effect
       previewWrapper.addEventListener('mouseover', () => {
-        previewWrapper.style.borderColor = '#fff';
+        if (value !== selectedThumbnailValue) {
+          previewWrapper.style.borderColor = '#fff';
+        }
       });
       previewWrapper.addEventListener('mouseout', () => {
-        previewWrapper.style.borderColor = '#666';
+        if (value !== selectedThumbnailValue) {
+          previewWrapper.style.borderColor = '#666';
+        }
       });
 
       // Add click handler
@@ -286,6 +295,12 @@ export class TurbulenceUi extends BaseUi {
           }
           isThisThumbnailAnimating = true;  // Keep animation active
           refreshThumbnails(true);
+
+          // Update title visibility - show for all, hide for selected
+          previewContainer.querySelectorAll('.pattern-preview').forEach(thumb => {
+            thumb.querySelector('div').style.display = 'block';  // Show title for unselected
+          });
+          previewWrapper.querySelector('div').style.display = 'none';  // Hide title for selected
         } else {
           // Toggle animation
           isThisThumbnailAnimating = !isThisThumbnailAnimating;
