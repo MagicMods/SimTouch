@@ -164,6 +164,51 @@ class TurbulenceField {
           const starY = ((warpedY / this.scale) - centerY) * this.patternFrequency;
           basePattern = Math.sin(starX * starX + starY * starY);
           break;
+        case "voronoi":
+          // Create a cellular pattern using multiple centers
+          const numCenters = 8;
+          let minDist = Infinity;
+          for (let i = 0; i < numCenters; i++) {
+            const angle = (i / numCenters) * Math.PI * 2;
+            const centerX = 0.5 + Math.cos(angle) * 0.3;
+            const centerY = 0.5 + Math.sin(angle) * 0.3;
+            const dx = (warpedX / this.scale) - centerX;
+            const dy = (warpedY / this.scale) - centerY;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            minDist = Math.min(minDist, dist);
+          }
+          basePattern = Math.sin(minDist * this.patternFrequency * Math.PI * 2);
+          break;
+        case "fractal":
+          // Create a recursive pattern
+          let fractalValue = 0;
+          let amplitude = 1;
+          let frequency = this.patternFrequency;
+          for (let i = 0; i < 4; i++) {
+            // Scale coordinates properly for each octave
+            const scaledX = (warpedX / this.scale) * frequency;
+            const scaledY = (warpedY / this.scale) * frequency;
+            fractalValue += amplitude * Math.sin(scaledX) * Math.sin(scaledY);
+            amplitude *= 0.5;
+            frequency *= 2;
+          }
+          basePattern = fractalValue;
+          break;
+        case "vortex":
+          // Create a swirling vortex pattern
+          const vortexX = ((warpedX / this.scale) - centerX);
+          const vortexY = ((warpedY / this.scale) - centerY);
+          const vortexAngle = Math.atan2(vortexY, vortexX);
+          const vortexDist = Math.sqrt(vortexX * vortexX + vortexY * vortexY);
+          basePattern = Math.sin(vortexAngle * this.patternFrequency + vortexDist * 2);
+          break;
+        case "bubbles":
+          // Create organic bubble-like patterns
+          const bubbleX = ((warpedX / this.scale) - centerX) * this.patternFrequency;
+          const bubbleY = ((warpedY / this.scale) - centerY) * this.patternFrequency;
+          const bubbleDist = Math.sqrt(bubbleX * bubbleX + bubbleY * bubbleY);
+          basePattern = Math.sin(bubbleDist * 2) * Math.cos(bubbleX * 3) * Math.sin(bubbleY * 3);
+          break;
         default:
           basePattern = Math.sin(warpedX * this.patternFrequency) * Math.sin(warpedY * this.patternFrequency);
       }

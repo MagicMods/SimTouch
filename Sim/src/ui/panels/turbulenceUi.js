@@ -145,11 +145,6 @@ export class TurbulenceUi extends BaseUi {
     this.turbulenceMinScaleController = scaleRangeFolder.add(turbulence, "minScale", 0.1, 1.0).name("T-MinScale");
     this.turbulenceMaxScaleController = scaleRangeFolder.add(turbulence, "maxScale", 1.0, 4.0).name("T-MaxScale");
 
-    const advancedFolder = this.gui.addFolder("Advanced");
-    this.turbulenceRotationController = advancedFolder.add(turbulence, "rotation", 0, Math.PI * 2).name("T-Rot");
-    this.turbulenceRotationSpeedController = advancedFolder.add(turbulence, "rotationSpeed", 0, 1).name("T-RotSpd");
-    this.turbulenceDecayRateController = advancedFolder.add(turbulence, "decayRate", 0.9, 1).name("T-Decay");
-
     // Add geometric pattern controls folder
     const noiseFolder = this.gui.addFolder("Noise");
     this.noiseFolder = noiseFolder;
@@ -188,13 +183,22 @@ export class TurbulenceUi extends BaseUi {
         "Circles": "circles",
         "Maze": "maze",
         "Ripples": "ripples",
-        "Starfield": "starfield"
+        "Starfield": "starfield",
+        "Voronoi": "voronoi",
+        "Fractal": "fractal",
+        "Vortex": "vortex",
+        "Bubbles": "bubbles"
       })
       .onChange((value) => {
         selectedThumbnailValue = value;
         refreshThumbnails(true);  // Start animation when pattern changes
       });
     this.turbulencePatternStyleController.domElement.classList.add("full-width");
+
+    // Add rotation controls to pattern control folder
+    this.turbulenceRotationController = patternControlsFolder.add(turbulence, "rotation", 0, Math.PI * 2).name("T-Rot");
+    this.turbulenceRotationSpeedController = patternControlsFolder.add(turbulence, "rotationSpeed", 0, 1).name("T-RotSpd");
+    this.turbulenceDecayRateController = patternControlsFolder.add(turbulence, "decayRate", 0.9, 1).name("T-Decay");
 
     let currentAnimationCleanup = null;
     let selectedThumbnailValue = null;
@@ -232,7 +236,11 @@ export class TurbulenceUi extends BaseUi {
       "Circles": "circles",
       "Maze": "maze",
       "Ripples": "ripples",
-      "Starfield": "starfield"
+      "Starfield": "starfield",
+      "Voronoi": "voronoi",
+      "Fractal": "fractal",
+      "Vortex": "vortex",
+      "Bubbles": "bubbles"
     };
 
     // Create preview thumbnails

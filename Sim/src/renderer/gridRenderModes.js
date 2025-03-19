@@ -7,6 +7,7 @@ export const GridField = {
   VORTICITY: "Vorticity",
   COLLISION: "Collision",
   OVERLAP: "Overlap",
+  NOISE: "Noise",
 };
 
 class GridRenderModes {
@@ -102,6 +103,9 @@ class GridRenderModes {
         break;
       case this.modes.OVERLAP:
         this.calculateOverlap(particleSystem);
+        break;
+      case this.modes.NOISE:
+        this.calculateNoise(particleSystem);
         break;
       default:
         console.warn("Unsupported render mode:", this.currentMode);
@@ -883,6 +887,35 @@ class GridRenderModes {
           this.targetValues[cell.index] += coveragePercentage;
         }
       });
+    });
+
+    return this.targetValues;
+  }
+
+  calculateNoise(particleSystem) {
+    this.targetValues.fill(0);
+
+    if (!particleSystem?.turbulence) {
+      return this.targetValues;
+    }
+
+    const turbulence = particleSystem.turbulence;
+    const tune = 1.0; // Reduced from 100.0 since noise2D already returns 0-1
+
+    // Calculate noise value for each cell center
+    this.gridMap.forEach((cell) => {
+      const centerX = cell.bounds.x + cell.bounds.width / 2;
+      const centerY = cell.bounds.y + cell.bounds.height / 2;
+
+      // Convert to normalized coordinates (0-1)
+      const nx = centerX / this.TARGET_WIDTH;
+      const ny = centerY / this.TARGET_HEIGHT;
+
+      // Get noise value at cell center
+      const noiseValue = turbulence.noise2D(nx, ny);
+
+      // Store the noise value directly (noise2D already returns 0-1)
+      this.targetValues[cell.index] = noiseValue;
     });
 
     return this.targetValues;

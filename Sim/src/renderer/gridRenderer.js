@@ -93,6 +93,13 @@ class GridRenderer extends BaseRenderer {
     // Get density values
     this.density = this.renderModes.getValues(particleSystem);
 
+    // // Debug current mode and values
+    // console.log("Current render mode:", this.renderModes.currentMode);
+    // console.log("Density value range:", {
+    //   min: Math.min(...this.density),
+    //   max: Math.max(...this.density)
+    // });
+
     if (this.socket.isConnected) {
       const byteArray = new Uint8Array(this.density.length + 1);
 
@@ -113,11 +120,29 @@ class GridRenderer extends BaseRenderer {
     // Map values to colors
     rectangles.forEach((rect, index) => {
       const value = this.density[index];
-      const normalizedValue = Math.max(0, Math.min(1, value / this.maxDensity));
+
+      // Use different normalization for noise mode
+      let normalizedValue;
+      if (this.renderModes.currentMode === this.renderModes.modes.NOISE) {
+        // For noise, we expect values between 0 and 1 from noise2D
+        normalizedValue = Math.max(0, Math.min(1, value));
+      } else {
+        normalizedValue = Math.max(0, Math.min(1, value / this.maxDensity));
+      }
 
       const gradientIdx = Math.floor(normalizedValue * 255);
       const colorValues = this.gradient.getValues();
       const color = colorValues[gradientIdx];
+
+      // // Debug first few cells
+      // if (index < 5) {
+      //   console.log(`Cell ${index} color:`, {
+      //     value,
+      //     normalizedValue,
+      //     gradientIdx,
+      //     color
+      //   });
+      // }
 
       rect.color = color
         ? [color.r, color.g, color.b, 1.0]
