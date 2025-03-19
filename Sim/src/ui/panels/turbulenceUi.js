@@ -441,9 +441,9 @@ export class TurbulenceUi extends BaseUi {
       this.turbulenceDomainWarpController,
       this.turbulencePhaseController,
       this.turbulenceFrequencyController,
-      this.turbulenceAmplitudeController,
+      this.turbulenceContrastController,
       this.turbulenceStaticPhaseController,
-      this.turbulenceStaticAmplitudeController
+      this.turbulenceStaticContrastController
     ];
 
     previewAffectingControllers.forEach(controller => {
@@ -554,9 +554,9 @@ export class TurbulenceUi extends BaseUi {
     if (this.turbulenceTimeInfluenceController) targets["T-TimeInfluence"] = this.turbulenceTimeInfluenceController;
     if (this.turbulencePhaseController) targets["T-PhaseSp"] = this.turbulencePhaseController;
     if (this.turbulenceFrequencyController) targets["T-FreqSp"] = this.turbulenceFrequencyController;
-    if (this.turbulenceAmplitudeController) targets["T-AmpSp"] = this.turbulenceAmplitudeController;
+    if (this.turbulenceContrastController) targets["T-ContSp"] = this.turbulenceContrastController;
     if (this.turbulenceStaticPhaseController) targets["T-Phase"] = this.turbulenceStaticPhaseController;
-    if (this.turbulenceStaticAmplitudeController) targets["T-Amp"] = this.turbulenceStaticAmplitudeController;
+    if (this.turbulenceStaticContrastController) targets["T-Cont"] = this.turbulenceStaticContrastController;
 
     return targets;
   }
@@ -599,9 +599,9 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulenceTimeInfluenceController);
     safeUpdateDisplay(this.turbulencePhaseController);
     safeUpdateDisplay(this.turbulenceFrequencyController);
-    safeUpdateDisplay(this.turbulenceAmplitudeController);
+    safeUpdateDisplay(this.turbulenceContrastController);
     safeUpdateDisplay(this.turbulenceStaticPhaseController);
-    safeUpdateDisplay(this.turbulenceStaticAmplitudeController);
+    safeUpdateDisplay(this.turbulenceStaticContrastController);
   }
 
   getData() {

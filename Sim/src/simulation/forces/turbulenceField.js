@@ -375,10 +375,10 @@ class TurbulenceField {
 
           if (this.amplitudeEnabled) {
             const dynamicAmplitude = 0.5 + 0.5 * Math.sin(this.time * this.speed * this.amplitudeSpeed);
-            noise = noise * (this.amplitude * dynamicAmplitude);
+            noise *= this.amplitude * dynamicAmplitude;
           } else {
             // Apply static amplitude even when time-driven amplitude is disabled
-            noise = noise * this.amplitude;
+            noise *= this.amplitude;
           }
 
           if (this.frequencyEnabled) {
@@ -422,7 +422,8 @@ class TurbulenceField {
           // When T-Speed = 0, apply static values
           const phaseOffset = this.phase * Math.PI * 2;
           noise = Math.sin(noise * Math.PI * 2 + phaseOffset);
-          noise = noise * this.amplitude;
+          // Apply static amplitude
+          noise *= this.amplitude;
         }
 
         return (noise + 1) * 0.5;
