@@ -146,8 +146,6 @@ export class TurbulenceUi extends BaseUi {
     this.turbulenceMaxScaleController = scaleRangeFolder.add(turbulence, "maxScale", 1.0, 4.0).name("T-MaxScale");
 
     const advancedFolder = this.gui.addFolder("Advanced");
-    this.turbulenceOctavesController = advancedFolder.add(turbulence, "octaves", 1, 8, 1).name("T-Octaves");
-    this.turbulencePersistenceController = advancedFolder.add(turbulence, "persistence", 0, 1).name("T-Persist");
     this.turbulenceRotationController = advancedFolder.add(turbulence, "rotation", 0, Math.PI * 2).name("T-Rot");
     this.turbulenceRotationSpeedController = advancedFolder.add(turbulence, "rotationSpeed", 0, 1).name("T-RotSpd");
     this.turbulenceDecayRateController = advancedFolder.add(turbulence, "decayRate", 0.9, 1).name("T-Decay");
@@ -198,7 +196,6 @@ export class TurbulenceUi extends BaseUi {
     this.turbulencePatternStyleController = patternControlsFolder.add(turbulence, "patternStyle")
       .name("T-PatternStyle")
       .options({
-        "Organic": "",
         "Checkerboard": "checkerboard",
         "Waves": "waves",
         "Spiral": "spiral",
@@ -209,22 +206,12 @@ export class TurbulenceUi extends BaseUi {
         "Starfield": "starfield"
       })
       .onChange((value) => {
-        // Set organic/geometric mode based on pattern selection
-        const isOrganic = value === "";
-        turbulence.useOrganicNoise = isOrganic;
-
-        // Reset octaves for organic mode only
-        if (isOrganic && this.turbulenceOctavesController) {
-          this.turbulenceOctavesController.setValue(3);
-        }
-
         selectedThumbnailValue = value;
         refreshThumbnails(true);  // Start animation when pattern changes
       });
 
     // Create preview thumbnails
     const patternStyles = {
-      "Organic": "",
       "Checkerboard": "checkerboard",
       "Waves": "waves",
       "Spiral": "spiral",
@@ -437,8 +424,6 @@ export class TurbulenceUi extends BaseUi {
       this.turbulencePatternFrequencyController,
       this.turbulenceSpeedController,
       this.turbulenceScaleController,
-      this.turbulenceOctavesController,
-      this.turbulencePersistenceController,
       this.turbulenceRotationController,
       this.turbulenceRotationSpeedController,
       this.turbulenceTimeInfluenceController,
@@ -538,8 +523,6 @@ export class TurbulenceUi extends BaseUi {
     if (this.turbulenceMinScaleController) targets["T-MinScale"] = this.turbulenceMinScaleController;
     if (this.turbulenceMaxScaleController) targets["T-MaxScale"] = this.turbulenceMaxScaleController;
 
-    if (this.turbulenceOctavesController) targets["T-Octaves"] = this.turbulenceOctavesController;
-    if (this.turbulencePersistenceController) targets["T-Persist"] = this.turbulencePersistenceController;
     if (this.turbulenceRotationController) targets["T-Rot"] = this.turbulenceRotationController;
     if (this.turbulenceRotationSpeedController) targets["T-RotSpd"] = this.turbulenceRotationSpeedController;
     if (this.turbulenceDecayRateController) targets["T-Decay"] = this.turbulenceDecayRateController;
@@ -591,8 +574,6 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulenceScaleStrengthController);
     safeUpdateDisplay(this.turbulenceMinScaleController);
     safeUpdateDisplay(this.turbulenceMaxScaleController);
-    safeUpdateDisplay(this.turbulenceOctavesController);
-    safeUpdateDisplay(this.turbulencePersistenceController);
     safeUpdateDisplay(this.turbulenceRotationController);
     safeUpdateDisplay(this.turbulenceRotationSpeedController);
     safeUpdateDisplay(this.turbulenceDecayRateController);
