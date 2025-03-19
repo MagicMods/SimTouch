@@ -25,7 +25,7 @@ class GridRenderer extends BaseRenderer {
 
     // Density parameters
     this.minDensity = 0.0;
-    this.maxDensity = 4.0;
+    this.maxDensity = 2.10;
 
     // Initialize systems
     this.gradient = new Gradient();

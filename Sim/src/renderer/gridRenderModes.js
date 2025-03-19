@@ -902,7 +902,7 @@ class GridRenderModes {
     }
 
     const turbulence = particleSystem.turbulence;
-    const tune = 1.0;
+    const tune = 2.2;
 
     // Calculate noise value for each cell center
     this.gridMap.forEach((cell) => {
@@ -917,7 +917,7 @@ class GridRenderModes {
       const noiseValue = turbulence.noise2D(nx, ny);
 
       // Store raw noise value (0-1) without scaling
-      this.targetValues[cell.index] = noiseValue;
+      this.targetValues[cell.index] = noiseValue * tune;
     });
 
     return this.targetValues;

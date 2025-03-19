@@ -200,6 +200,26 @@ export class TurbulenceUi extends BaseUi {
     this.turbulenceRotationSpeedController = patternControlsFolder.add(turbulence, "rotationSpeed", 0, 1).name("T-RotSpd");
     this.turbulenceDecayRateController = patternControlsFolder.add(turbulence, "decayRate", 0.9, 1).name("T-Decay");
 
+    // Add Pattern Offset folder
+    const patternOffsetFolder = patternControlsFolder.addFolder("Pattern Offset");
+    this.patternOffsetFolder = patternOffsetFolder;
+
+    // Add offset X and Y controls
+    this.turbulenceOffsetXController = patternOffsetFolder.add(turbulence, "patternOffsetX", -1, 1, 0.01).name("T-OffsetX");
+    this.turbulenceOffsetYController = patternOffsetFolder.add(turbulence, "patternOffsetY", -1, 1, 0.01).name("T-OffsetY");
+
+    // Add Bias Speed folder
+    const biasSpeedFolder = patternOffsetFolder.addFolder("Bias Speed");
+    this.biasSpeedFolder = biasSpeedFolder;
+
+    // Add bias speed controls
+    this.turbulenceBiasXController = biasSpeedFolder.add(turbulence, "biasSpeedX", -1, 1, 0.01).name("T-BiasX");
+    this.turbulenceBiasYController = biasSpeedFolder.add(turbulence, "biasSpeedY", -1, 1, 0.01).name("T-BiasY");
+    this.turbulenceBiasSpeedController = biasSpeedFolder.add(turbulence, "biasSpeed", 0, 2, 0.01).name("T-BiasSp");
+
+    // Make sure folders are open by default
+    patternOffsetFolder.open();
+
     let currentAnimationCleanup = null;
     let selectedThumbnailValue = null;
     let thumbnailAnimationCleanups = new Map();
@@ -394,6 +414,33 @@ export class TurbulenceUi extends BaseUi {
         refreshThumbnails(true);
       });
 
+    // Add Pattern Contrast and Separation folder
+    const contrastFolder = patternControlsFolder.addFolder("Contrast & Separation");
+    this.contrastFolder = contrastFolder;
+
+    // Add contrast controls
+    this.turbulenceContrastController = contrastFolder.add(turbulence, "contrast", 0, 1, 0.01)
+      .name("T-Contrast")
+      .onChange(() => {
+        refreshThumbnails(true);
+      });
+
+    this.turbulenceContrastSpeedController = contrastFolder.add(turbulence, "contrastSpeed", 0, 1, 0.01)
+      .name("T-ContSp")
+      .onChange(() => {
+        refreshThumbnails(true);
+      });
+
+    // Add separation control 
+    this.turbulenceSeparationController = contrastFolder.add(turbulence, "separation", 0, 1, 0.01)
+      .name("T-Separation")
+      .onChange(() => {
+        refreshThumbnails(true);
+      });
+
+    // Make contrast folder open by default
+    contrastFolder.open();
+
     // Add listener for T-Speed changes to update control behavior
     this.turbulenceSpeedController.onChange(() => {
       refreshThumbnails(true);
@@ -401,8 +448,8 @@ export class TurbulenceUi extends BaseUi {
 
     // Restore XY bias controllers
     const biasFolder = this.gui.addFolder("Direction Bias");
-    this.turbulenceBiasXController = biasFolder.add(turbulence.directionBias, "0", -1, 1).name("T-X");
-    this.turbulenceBiasYController = biasFolder.add(turbulence.directionBias, "1", -1, 1).name("T-Y");
+    this.turbulenceDirectionBiasXController = biasFolder.add(turbulence.directionBias, "0", -1, 1).name("T-DirX");
+    this.turbulenceDirectionBiasYController = biasFolder.add(turbulence.directionBias, "1", -1, 1).name("T-DirY");
 
     // Add listeners for other parameters that affect the preview
     const previewAffectingControllers = [
@@ -411,13 +458,23 @@ export class TurbulenceUi extends BaseUi {
       this.turbulenceScaleController,
       this.turbulenceRotationController,
       this.turbulenceRotationSpeedController,
-      this.turbulenceTimeInfluenceController,
       this.turbulenceDomainWarpController,
+      this.turbulenceDomainWarpSpeedController,
       this.turbulencePhaseController,
-      this.turbulenceContrastController,
       this.turbulenceStaticPhaseController,
-      this.turbulenceStaticContrastController,
-      this.turbulenceSymmetryController
+      this.turbulenceSymmetryController,
+      // New controllers
+      this.turbulenceOffsetXController,
+      this.turbulenceOffsetYController,
+      this.turbulenceBiasXController,
+      this.turbulenceBiasYController,
+      this.turbulenceBiasSpeedController,
+      this.turbulenceContrastController,
+      this.turbulenceContrastSpeedController,
+      this.turbulenceSeparationController,
+      // Direction bias for particles
+      this.turbulenceDirectionBiasXController,
+      this.turbulenceDirectionBiasYController
     ];
 
     previewAffectingControllers.forEach(controller => {
@@ -504,11 +561,13 @@ export class TurbulenceUi extends BaseUi {
     if (this.turbulenceRotationSpeedController) targets["T-RotSpd"] = this.turbulenceRotationSpeedController;
     if (this.turbulenceDecayRateController) targets["T-Decay"] = this.turbulenceDecayRateController;
 
-    if (this.turbulenceBiasXController) targets["T-X"] = this.turbulenceBiasXController;
-    if (this.turbulenceBiasYController) targets["T-Y"] = this.turbulenceBiasYController;
+    // Direction bias controllers (for particle movement)
+    if (this.turbulenceDirectionBiasXController) targets["T-DirX"] = this.turbulenceDirectionBiasXController;
+    if (this.turbulenceDirectionBiasYController) targets["T-DirY"] = this.turbulenceDirectionBiasYController;
 
     // Add domain warp controller
     if (this.turbulenceDomainWarpController) targets["T-DomWarp"] = this.turbulenceDomainWarpController;
+    if (this.turbulenceDomainWarpSpeedController) targets["T-DomWarpSp"] = this.turbulenceDomainWarpSpeedController;
 
     // Add pull mode controller
     if (this.turbulencePullFactorController) targets["T-Pull Mode"] = this.turbulencePullFactorController;
@@ -516,12 +575,23 @@ export class TurbulenceUi extends BaseUi {
     // Add pattern control targets
     if (this.turbulencePatternStyleController) targets["T-PatternStyle"] = this.turbulencePatternStyleController;
     if (this.turbulencePatternFrequencyController) targets["T-Freq"] = this.turbulencePatternFrequencyController;
-    if (this.turbulenceTimeInfluenceController) targets["T-TimeInfluence"] = this.turbulenceTimeInfluenceController;
     if (this.turbulencePhaseController) targets["T-PhaseSp"] = this.turbulencePhaseController;
-    if (this.turbulenceContrastController) targets["T-ContSp"] = this.turbulenceContrastController;
     if (this.turbulenceStaticPhaseController) targets["T-Phase"] = this.turbulenceStaticPhaseController;
-    if (this.turbulenceStaticContrastController) targets["T-Cont"] = this.turbulenceStaticContrastController;
     if (this.turbulenceSymmetryController) targets["T-Sym"] = this.turbulenceSymmetryController;
+
+    // Add new pattern offset controllers
+    if (this.turbulenceOffsetXController) targets["T-OffsetX"] = this.turbulenceOffsetXController;
+    if (this.turbulenceOffsetYController) targets["T-OffsetY"] = this.turbulenceOffsetYController;
+
+    // Add new bias speed controllers
+    if (this.turbulenceBiasXController) targets["T-BiasX"] = this.turbulenceBiasXController;
+    if (this.turbulenceBiasYController) targets["T-BiasY"] = this.turbulenceBiasYController;
+    if (this.turbulenceBiasSpeedController) targets["T-BiasSp"] = this.turbulenceBiasSpeedController;
+
+    // Add new contrast and separation controllers
+    if (this.turbulenceContrastController) targets["T-Contrast"] = this.turbulenceContrastController;
+    if (this.turbulenceContrastSpeedController) targets["T-ContSp"] = this.turbulenceContrastSpeedController;
+    if (this.turbulenceSeparationController) targets["T-Separation"] = this.turbulenceSeparationController;
 
     return targets;
   }
@@ -553,18 +623,26 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulenceRotationController);
     safeUpdateDisplay(this.turbulenceRotationSpeedController);
     safeUpdateDisplay(this.turbulenceDecayRateController);
-    safeUpdateDisplay(this.turbulenceBiasXController);
-    safeUpdateDisplay(this.turbulenceBiasYController);
+    safeUpdateDisplay(this.turbulenceDirectionBiasXController);
+    safeUpdateDisplay(this.turbulenceDirectionBiasYController);
     safeUpdateDisplay(this.turbulenceDomainWarpController);
+    safeUpdateDisplay(this.turbulenceDomainWarpSpeedController);
     safeUpdateDisplay(this.turbulencePullFactorController);
     safeUpdateDisplay(this.turbulencePatternStyleController);
     safeUpdateDisplay(this.turbulencePatternFrequencyController);
-    safeUpdateDisplay(this.turbulenceTimeInfluenceController);
     safeUpdateDisplay(this.turbulencePhaseController);
-    safeUpdateDisplay(this.turbulenceContrastController);
     safeUpdateDisplay(this.turbulenceStaticPhaseController);
-    safeUpdateDisplay(this.turbulenceStaticContrastController);
     safeUpdateDisplay(this.turbulenceSymmetryController);
+
+    // Update new controller displays
+    safeUpdateDisplay(this.turbulenceOffsetXController);
+    safeUpdateDisplay(this.turbulenceOffsetYController);
+    safeUpdateDisplay(this.turbulenceBiasXController);
+    safeUpdateDisplay(this.turbulenceBiasYController);
+    safeUpdateDisplay(this.turbulenceBiasSpeedController);
+    safeUpdateDisplay(this.turbulenceContrastController);
+    safeUpdateDisplay(this.turbulenceContrastSpeedController);
+    safeUpdateDisplay(this.turbulenceSeparationController);
   }
 
   getData() {
@@ -589,8 +667,8 @@ export class TurbulenceUi extends BaseUi {
       // Reset all numerical values
       if (targets["T-Strength"]) targets["T-Strength"].setValue(0);
       if (targets["T-ScaleS"]) targets["T-ScaleS"].setValue(0);
-      if (targets["T-X"]) targets["T-X"].setValue(0);
-      if (targets["T-Y"]) targets["T-Y"].setValue(0);
+      if (targets["T-DirX"]) targets["T-DirX"].setValue(0);
+      if (targets["T-DirY"]) targets["T-DirY"].setValue(0);
 
       // Reset toggle buttons
       if (targets["T-AfPosition"]) targets["T-AfPosition"].setValue(false);

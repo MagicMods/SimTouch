@@ -24,6 +24,17 @@ class TurbulenceField {
     phase = 0.0,
     amplitude = 1.0,
     symmetryAmount = 0.0,  // 0 = no symmetry, 1 = full symmetry
+    // New pattern offset controls
+    patternOffsetX = 0.0,
+    patternOffsetY = 0.0,
+    // New bias speed controls
+    biasSpeedX = 0.0,
+    biasSpeedY = 0.0,
+    biasSpeed = 0.0,
+    // New contrast and separation controls
+    contrast = 0.5,        // 0 = no contrast, 1 = max contrast
+    contrastSpeed = 0.0,   // Speed of contrast oscillation
+    separation = 0.5,      // 0 = smooth, 1 = sharp transitions
   } = {}) {
     if (
       !boundary ||
@@ -78,185 +89,270 @@ class TurbulenceField {
     // Domain warp time control
     this.domainWarpEnabled = false;
     this.domainWarpSpeed = domainWarpSpeed;
+
+    // New pattern offset controls
+    this.patternOffsetX = patternOffsetX;
+    this.patternOffsetY = patternOffsetY;
+
+    // New bias speed controls (speed of pattern movement in X/Y)
+    this.biasSpeedX = biasSpeedX;
+    this.biasSpeedY = biasSpeedY;
+    this.biasSpeed = biasSpeed;
+
+    // New contrast and separation controls
+    this.contrast = contrast;
+    this.contrastSpeed = contrastSpeed;
+    this.separation = separation;
+  }
+
+  // Coordinate processing pipeline helper functions
+
+  // Apply pattern offset and time-based bias
+  applyOffset(x, y, time) {
+    // Calculate time-based offsets from bias speeds
+    const timeOffsetX = time * this.speed * this.biasSpeedX * this.biasSpeed;
+    const timeOffsetY = time * this.speed * this.biasSpeedY * this.biasSpeed;
+
+    // Apply both static offset and time-based bias
+    return [
+      x + this.patternOffsetX + timeOffsetX,
+      y + this.patternOffsetY + timeOffsetY
+    ];
+  }
+
+  // Apply symmetry based on amount
+  applySymmetry(x, y, centerX, centerY) {
+    if (this.symmetryAmount <= 0) return [x, y];
+
+    // Calculate distance from center
+    const dx = x - centerX;
+    const dy = y - centerY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    // Calculate angle from center
+    const angle = Math.atan2(dy, dx);
+
+    // Calculate symmetric angle based on symmetry amount
+    const symmetricAngle = angle * (1 + this.symmetryAmount);
+
+    // Convert back to coordinates
+    return [
+      centerX + dist * Math.cos(symmetricAngle),
+      centerY + dist * Math.sin(symmetricAngle)
+    ];
+  }
+
+  // Apply scale to coordinates
+  applyScale(x, y, scale) {
+    return [x * scale, y * scale];
+  }
+
+  // Apply domain warping to coordinates
+  applyDomainWarp(x, y, time) {
+    if (this.domainWarp <= 0) return [x, y];
+
+    const warpFreq = 2.0;
+
+    if (this.speed > 0 && this.domainWarpSpeed > 0) {
+      // Time-driven warping
+      return [
+        x + this.domainWarp * Math.sin(y * warpFreq + time * this.speed * this.domainWarpSpeed),
+        y + this.domainWarp * Math.cos(x * warpFreq + time * this.speed * this.domainWarpSpeed)
+      ];
+    } else {
+      // Static warping
+      return [
+        x + this.domainWarp * Math.sin(y * warpFreq),
+        y + this.domainWarp * Math.cos(x * warpFreq)
+      ];
+    }
+  }
+
+  // Apply rotation to coordinates
+  applyRotation(x, y, centerX, centerY, rotation) {
+    if (Math.abs(rotation) <= 0.0001) return [x, y];
+
+    // Translate to origin
+    const tx = x - centerX;
+    const ty = y - centerY;
+
+    // Rotate
+    const cos = Math.cos(-rotation);
+    const sin = Math.sin(-rotation);
+    const rx = tx * cos - ty * sin;
+    const ry = tx * sin + ty * cos;
+
+    // Translate back
+    return [rx + centerX, ry + centerY];
+  }
+
+  // Apply contrast and separation to pattern value
+  applyContrast(value, time) {
+    // Get base contrast value (optionally animated)
+    let contrastValue = this.contrast;
+    if (this.contrastSpeed > 0 && this.speed > 0) {
+      // Oscillate contrast between original value and 1.0
+      contrastValue = this.contrast +
+        (1.0 - this.contrast) * 0.5 *
+        (1 + Math.sin(time * this.speed * this.contrastSpeed));
+    }
+
+    // Scale contrast - higher values create more extreme results
+    const contrastPower = 1.0 + contrastValue * 3.0; // 1.0 to 4.0 range
+
+    // For separation, we'll use a modified sigmoid function
+    if (this.separation > 0) {
+      // Center value around 0 (-0.5 to 0.5 range)
+      const centered = value - 0.5;
+
+      // Calculate separation factor (0 = smooth, 1 = very sharp)
+      const sepFactor = 1.0 + this.separation * 12.0; // 1.0 to 13.0
+
+      // Apply sigmoid-like function for separation
+      value = 1.0 / (1.0 + Math.exp(-centered * sepFactor));
+    }
+
+    // Apply contrast power function
+    if (contrastValue > 0) {
+      // Apply different power functions for values above and below 0.5
+      // to maintain the center point
+      if (value > 0.5) {
+        // Scale from 0.5-1.0 to 0.5-1.0 with increased contrast
+        const scaled = (value - 0.5) * 2; // 0-1 range
+        value = 0.5 + (Math.pow(scaled, contrastPower) * 0.5);
+      } else {
+        // Scale from 0-0.5 to 0-0.5 with increased contrast
+        const scaled = value * 2; // 0-1 range
+        value = Math.pow(scaled, contrastPower) * 0.5;
+      }
+    }
+
+    return value;
+  }
+
+  // Process coordinates through the entire pipeline
+  processCoordinates(x, y, time) {
+    const centerX = (this.boundary && typeof this.boundary.centerX === 'number') ? this.boundary.centerX : 0.5;
+    const centerY = (this.boundary && typeof this.boundary.centerY === 'number') ? this.boundary.centerY : 0.5;
+
+    // Process in correct order: offset → symmetry → scale → warp → rotate
+    let [px, py] = this.applyOffset(x, y, time);
+    [px, py] = this.applySymmetry(px, py, centerX, centerY);
+    [px, py] = this.applyScale(px, py, this.scale);
+    [px, py] = this.applyDomainWarp(px, py, time);
+    [px, py] = this.applyRotation(px, py, centerX, centerY, this.rotation);
+
+    return [px, py, centerX, centerY];
+  }
+
+  // Calculate pattern value for any pattern type using normalized coordinates
+  calculatePattern(patternStyle, x, y, centerX, centerY) {
+    let patternValue;
+
+    // Use pattern frequency consistently in all patterns
+    const freq = this.patternFrequency;
+
+    switch (patternStyle) {
+      case "checkerboard":
+        patternValue = Math.sin(x * freq) * Math.sin(y * freq);
+        break;
+      case "waves":
+        patternValue = Math.sin(x * freq + y * freq * 0.5);
+        break;
+      case "spiral":
+        const angle = Math.atan2(y - centerY, x - centerX);
+        const radius = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+        patternValue = Math.sin(angle * freq + radius * freq * 0.1);
+        break;
+      case "grid":
+        patternValue = Math.sin(x * freq) + Math.sin(y * freq);
+        break;
+      case "circles":
+        const dist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+        patternValue = Math.sin(dist * freq * Math.PI * 2);
+        break;
+      case "maze":
+        patternValue = Math.sin(x * freq * 2) * Math.cos(y * freq * 2);
+        break;
+      case "ripples":
+        const rippleDist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+        patternValue = Math.sin(rippleDist * freq * Math.PI * 2 - this.time * this.speed);
+        break;
+      case "starfield":
+        const starX = (x - centerX) * freq;
+        const starY = (y - centerY) * freq;
+        patternValue = Math.sin(starX * starX + starY * starY);
+        break;
+      case "voronoi":
+        // Create a cellular pattern using multiple centers
+        const numCenters = 8;
+        let minDist = Infinity;
+        for (let i = 0; i < numCenters; i++) {
+          const angle = (i / numCenters) * Math.PI * 2;
+          const centerX = 0.5 + Math.cos(angle) * 0.3;
+          const centerY = 0.5 + Math.sin(angle) * 0.3;
+          const dx = x - centerX;
+          const dy = y - centerY;
+          const dist = Math.sqrt(dx * dx + dy * dy);
+          minDist = Math.min(minDist, dist);
+        }
+        patternValue = Math.sin(minDist * freq * Math.PI * 2);
+        break;
+      case "fractal":
+        // Create a recursive pattern
+        let fractalValue = 0;
+        let amplitude = 1;
+        let frequency = freq;
+        for (let i = 0; i < 4; i++) {
+          // Scale coordinates properly for each octave
+          const scaledX = x * frequency;
+          const scaledY = y * frequency;
+          fractalValue += amplitude * Math.sin(scaledX) * Math.sin(scaledY);
+          amplitude *= 0.5;
+          frequency *= 2;
+        }
+        patternValue = fractalValue;
+        break;
+      case "vortex":
+        // Create a swirling vortex pattern
+        const vortexX = (x - centerX);
+        const vortexY = (y - centerY);
+        const vortexAngle = Math.atan2(vortexY, vortexX);
+        const vortexDist = Math.sqrt(vortexX * vortexX + vortexY * vortexY);
+        patternValue = Math.sin(vortexAngle * freq + vortexDist * 2);
+        break;
+      case "bubbles":
+        // Create organic bubble-like patterns
+        const bubbleX = (x - centerX) * freq;
+        const bubbleY = (y - centerY) * freq;
+        const bubbleDist = Math.sqrt(bubbleX * bubbleX + bubbleY * bubbleY);
+        patternValue = Math.sin(bubbleDist * 2) * Math.cos(bubbleX * 3) * Math.sin(bubbleY * 3);
+        break;
+      default:
+        patternValue = Math.sin(x * freq) * Math.sin(y * freq);
+    }
+
+    return patternValue;
   }
 
   // Completely redesigned noise2D function that supports geometric patterns
-  noise2D(x, y, time) {
-    let noise = 0;
-    let frequency = this.patternFrequency;
-    let amplitude = 1.0;
-    let maxValue = 0;
-
+  noise2D(x, y, time = this.time) {
     try {
+      // Get center coordinates
       const centerX = (this.boundary && typeof this.boundary.centerX === 'number') ? this.boundary.centerX : 0.5;
       const centerY = (this.boundary && typeof this.boundary.centerY === 'number') ? this.boundary.centerY : 0.5;
 
-      // Apply symmetry based on amount
-      if (this.symmetryAmount > 0) {
-        // Calculate distance from center
-        const dx = x - centerX;
-        const dy = y - centerY;
-        const dist = Math.sqrt(dx * dx + dy * dy);
+      // 1. Process coordinates through the standardized pipeline
+      const [processedX, processedY, procCenterX, procCenterY] = this.processCoordinates(x, y, time);
 
-        // Calculate angle from center
-        const angle = Math.atan2(dy, dx);
+      // 2. Calculate base pattern using the processed coordinates
+      let noise = this.calculatePattern(this.patternStyle.toLowerCase(), processedX, processedY, procCenterX, procCenterY);
 
-        // Calculate symmetric angle based on symmetry amount
-        const symmetricAngle = angle * (1 + this.symmetryAmount);
-
-        // Convert back to coordinates
-        x = centerX + dist * Math.cos(symmetricAngle);
-        y = centerY + dist * Math.sin(symmetricAngle);
-      }
-
-      // Geometric noise style with clear patterns
-      const scaledX = x * this.scale;
-      const scaledY = y * this.scale;
-
-      // Apply domain warping to geometric patterns with time control
-      let warpedX = scaledX;
-      let warpedY = scaledY;
-      if (this.domainWarp > 0) {
-        // Apply warping after scaling for stronger effect
-        const warpFreq = 2.0;  // Increased frequency for more visible warping
-        if (this.speed > 0 && this.domainWarpSpeed > 0) {
-          // Time-driven warping
-          warpedX = scaledX + this.domainWarp * Math.sin(scaledY * warpFreq + this.time * this.speed * this.domainWarpSpeed);
-          warpedY = scaledY + this.domainWarp * Math.cos(scaledX * warpFreq + this.time * this.speed * this.domainWarpSpeed);
-        } else {
-          // Static warping
-          warpedX = scaledX + this.domainWarp * Math.sin(scaledY * warpFreq);
-          warpedY = scaledY + this.domainWarp * Math.cos(scaledX * warpFreq);
-        }
-      }
-
-      // Calculate base pattern based on style
-      let basePattern;
-      switch (this.patternStyle) {
-        case "checkerboard":
-          basePattern = Math.sin(warpedX * this.patternFrequency) * Math.sin(warpedY * this.patternFrequency);
-          break;
-        case "waves":
-          basePattern = Math.sin(warpedX * this.patternFrequency + warpedY * this.patternFrequency * 0.5);
-          break;
-        case "spiral":
-          // For spiral, convert back to unscaled coordinates for center-based calculation
-          const angle = Math.atan2((warpedY / this.scale) - centerY, (warpedX / this.scale) - centerX);
-          const radius = Math.sqrt(Math.pow((warpedX / this.scale) - centerX, 2) + Math.pow((warpedY / this.scale) - centerY, 2));
-          basePattern = Math.sin(angle * this.patternFrequency + radius * this.patternFrequency * 0.1);
-          break;
-        case "grid":
-          basePattern = Math.sin(warpedX * this.patternFrequency) + Math.sin(warpedY * this.patternFrequency);
-          break;
-        case "circles":
-          const dist = Math.sqrt(Math.pow((warpedX / this.scale) - centerX, 2) + Math.pow((warpedY / this.scale) - centerY, 2));
-          basePattern = Math.sin(dist * this.patternFrequency * Math.PI * 2);
-          break;
-        case "maze":
-          basePattern = Math.sin(warpedX * this.patternFrequency * 2) * Math.cos(warpedY * this.patternFrequency * 2);
-          break;
-        case "ripples":
-          const rippleDist = Math.sqrt(Math.pow((warpedX / this.scale) - centerX, 2) + Math.pow((warpedY / this.scale) - centerY, 2));
-          basePattern = Math.sin(rippleDist * this.patternFrequency * Math.PI * 2 - this.time * this.speed);
-          break;
-        case "starfield":
-          const starX = ((warpedX / this.scale) - centerX) * this.patternFrequency;
-          const starY = ((warpedY / this.scale) - centerY) * this.patternFrequency;
-          basePattern = Math.sin(starX * starX + starY * starY);
-          break;
-        case "voronoi":
-          // Create a cellular pattern using multiple centers
-          const numCenters = 8;
-          let minDist = Infinity;
-          for (let i = 0; i < numCenters; i++) {
-            const angle = (i / numCenters) * Math.PI * 2;
-            const centerX = 0.5 + Math.cos(angle) * 0.3;
-            const centerY = 0.5 + Math.sin(angle) * 0.3;
-            const dx = (warpedX / this.scale) - centerX;
-            const dy = (warpedY / this.scale) - centerY;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            minDist = Math.min(minDist, dist);
-          }
-          basePattern = Math.sin(minDist * this.patternFrequency * Math.PI * 2);
-          break;
-        case "fractal":
-          // Create a recursive pattern
-          let fractalValue = 0;
-          let amplitude = 1;
-          let frequency = this.patternFrequency;
-          for (let i = 0; i < 4; i++) {
-            // Scale coordinates properly for each octave
-            const scaledX = (warpedX / this.scale) * frequency;
-            const scaledY = (warpedY / this.scale) * frequency;
-            fractalValue += amplitude * Math.sin(scaledX) * Math.sin(scaledY);
-            amplitude *= 0.5;
-            frequency *= 2;
-          }
-          basePattern = fractalValue;
-          break;
-        case "vortex":
-          // Create a swirling vortex pattern
-          const vortexX = ((warpedX / this.scale) - centerX);
-          const vortexY = ((warpedY / this.scale) - centerY);
-          const vortexAngle = Math.atan2(vortexY, vortexX);
-          const vortexDist = Math.sqrt(vortexX * vortexX + vortexY * vortexY);
-          basePattern = Math.sin(vortexAngle * this.patternFrequency + vortexDist * 2);
-          break;
-        case "bubbles":
-          // Create organic bubble-like patterns
-          const bubbleX = ((warpedX / this.scale) - centerX) * this.patternFrequency;
-          const bubbleY = ((warpedY / this.scale) - centerY) * this.patternFrequency;
-          const bubbleDist = Math.sqrt(bubbleX * bubbleX + bubbleY * bubbleY);
-          basePattern = Math.sin(bubbleDist * 2) * Math.cos(bubbleX * 3) * Math.sin(bubbleY * 3);
-          break;
-        default:
-          basePattern = Math.sin(warpedX * this.patternFrequency) * Math.sin(warpedY * this.patternFrequency);
-      }
-
-      let rotatedPattern = basePattern;
-
-      if (Math.abs(this.rotation) > 0.0001) {
-        // For rotation, convert back to unscaled coordinates
-        const tx = (warpedX / this.scale) - centerX;
-        const ty = (warpedY / this.scale) - centerY;
-
-        const cos = Math.cos(-this.rotation);
-        const sin = Math.sin(-this.rotation);
-        const rx = tx * cos - ty * sin;
-        const ry = tx * sin + ty * cos;
-
-        const rotX = rx + centerX;
-        const rotY = ry + centerY;
-
-        const rotScaledX = rotX * this.scale;
-        const rotScaledY = rotY * this.scale;
-
-        // Recalculate pattern with rotated coordinates
-        switch (this.patternStyle) {
-          case "checkerboard":
-            rotatedPattern = Math.sin(rotScaledX * this.patternFrequency) * Math.sin(rotScaledY * this.patternFrequency);
-            break;
-          case "waves":
-            rotatedPattern = Math.sin(rotScaledX * this.patternFrequency + rotScaledY * this.patternFrequency * 0.5);
-            break;
-          case "spiral":
-            const rotAngle = Math.atan2(rotY - centerY, rotX - centerX);
-            const rotRadius = Math.sqrt(Math.pow(rotX - centerX, 2) + Math.pow(rotY - centerY, 2));
-            rotatedPattern = Math.sin(rotAngle * this.patternFrequency + rotRadius * this.patternFrequency * 0.1);
-            break;
-          case "grid":
-            rotatedPattern = Math.sin(rotScaledX * this.patternFrequency) + Math.sin(rotScaledY * this.patternFrequency);
-            break;
-        }
-      }
-
-      noise = rotatedPattern;
-
-      // Apply time influence based on enabled controls and T-Speed
+      // 3. Apply phase offset (time-influenced or static)
       if (this.speed > 0) {
         // When T-Speed > 0, use speed controls for animation
         if (Math.abs(this.phaseSpeed) > 0) {
-          const phaseOffset = this.time * this.speed * Math.abs(this.phaseSpeed) * Math.sign(this.phaseSpeed) + this.phase * Math.PI * 2;
+          const phaseOffset = time * this.speed * Math.abs(this.phaseSpeed) * Math.sign(this.phaseSpeed) + this.phase * Math.PI * 2;
           noise = Math.sin(noise * Math.PI * 2 + phaseOffset);
         } else {
           // Apply static phase when speed is 0
@@ -265,7 +361,7 @@ class TurbulenceField {
         }
 
         if (this.amplitudeEnabled) {
-          const dynamicAmplitude = 0.5 + 0.5 * Math.sin(this.time * this.speed * this.amplitudeSpeed);
+          const dynamicAmplitude = 0.5 + 0.5 * Math.sin(time * this.speed * this.amplitudeSpeed);
           noise *= this.amplitude * dynamicAmplitude;
         } else {
           // Apply static amplitude even when time-driven amplitude is disabled
@@ -279,7 +375,10 @@ class TurbulenceField {
         noise *= this.amplitude;
       }
 
-      return (noise + 1) * 0.5;
+      // 4. Apply contrast and separation as post-processing
+      noise = this.applyContrast((noise + 1) * 0.5, time);
+
+      return noise;
     } catch (err) {
       console.error("Error in noise2D:", err);
       return 0.5;
@@ -443,10 +542,11 @@ class TurbulenceField {
       }
       // When pullFactor is -1, no force is applied (particles only affected by decay)
 
-      // Rest of the method remains unchanged...
       // Apply velocity scaling if enabled - works the same in either mode
       if (this.scaleField) {
-        const n1 = this.noise2D(x * this.scale, y * this.scale);
+        // Use the new noise2D implementation (which uses proper coordinate processing)
+        // instead of directly scaling x and y
+        const n1 = this.noise2D(x, y);
         const scaleFactorField = 1.0 + (n1 - 0.5) * this.strength * 0.1;
         newVx *= scaleFactorField;
         newVy *= scaleFactorField;
@@ -454,7 +554,7 @@ class TurbulenceField {
 
       // Apply particle radius scaling if enabled - works the same in either mode
       if (this.affectScale && system?.particleRadii) {
-        const n1 = this.noise2D(x * this.scale, y * this.scale);
+        const n1 = this.noise2D(x, y); // Now uses normalized coordinate processing
         const noiseValue = n1 * this.scaleStrength;
         // Map noise [0,1] to [minScale,maxScale]
         const scalePartFactor =
@@ -488,6 +588,10 @@ class TurbulenceField {
         // This is a placeholder and should be replaced with actual phase shift logic
       }
     }
+
+    // These time-based updates are now handled directly in the coordinate processing
+    // through the applyOffset method, which calculates time-based offsets based on
+    // biasSpeedX, biasSpeedY, and biasSpeed values.
   }
 
   setParameters({
@@ -510,6 +614,15 @@ class TurbulenceField {
     phase,
     amplitude,
     symmetryAmount,
+    // New parameters
+    patternOffsetX,
+    patternOffsetY,
+    biasSpeedX,
+    biasSpeedY,
+    biasSpeed,
+    contrast,
+    contrastSpeed,
+    separation,
   }) {
     if (strength !== undefined) this.strength = strength;
     if (scale !== undefined) this.scale = scale;
@@ -534,6 +647,20 @@ class TurbulenceField {
 
     // Symmetry control
     if (symmetryAmount !== undefined) this.symmetryAmount = symmetryAmount;
+
+    // New pattern offset controls
+    if (patternOffsetX !== undefined) this.patternOffsetX = patternOffsetX;
+    if (patternOffsetY !== undefined) this.patternOffsetY = patternOffsetY;
+
+    // New bias speed controls
+    if (biasSpeedX !== undefined) this.biasSpeedX = biasSpeedX;
+    if (biasSpeedY !== undefined) this.biasSpeedY = biasSpeedY;
+    if (biasSpeed !== undefined) this.biasSpeed = biasSpeed;
+
+    // New contrast and separation controls
+    if (contrast !== undefined) this.contrast = contrast;
+    if (contrastSpeed !== undefined) this.contrastSpeed = contrastSpeed;
+    if (separation !== undefined) this.separation = separation;
   }
 
   // Debug function to help diagnose rotation issues
