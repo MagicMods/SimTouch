@@ -82,6 +82,10 @@ class TurbulenceField {
     this.amplitudeSpeed = amplitudeSpeed;
     this.phase = phase;
     this.amplitude = amplitude;
+
+    // Domain warp time control
+    this.domainWarpEnabled = false;
+    this.domainWarpSpeed = 1.0;
   }
 
   // Add getter and setter for octaves
@@ -230,9 +234,19 @@ class TurbulenceField {
         const cos = Math.cos(this.rotation);
         const sin = Math.sin(this.rotation);
 
-        // Apply domain warping
-        const warpX = this.domainWarp * Math.sin(y * 0.1 + this.time * 0.05);
-        const warpY = this.domainWarp * Math.sin(x * 0.1 + this.time * 0.07);
+        // Apply domain warping with time control
+        let warpX = 0, warpY = 0;
+        if (this.domainWarp > 0) {
+          if (this.speed > 0 && this.domainWarpEnabled) {
+            // Time-driven warping
+            warpX = this.domainWarp * Math.sin(y * 0.1 + this.time * this.speed * this.domainWarpSpeed);
+            warpY = this.domainWarp * Math.sin(x * 0.1 + this.time * this.speed * this.domainWarpSpeed);
+          } else {
+            // Static warping
+            warpX = this.domainWarp * Math.sin(y * 0.1);
+            warpY = this.domainWarp * Math.sin(x * 0.1);
+          }
+        }
 
         // Apply scale to coordinates
         const scaledX = x * this.scale;
@@ -274,14 +288,21 @@ class TurbulenceField {
         const scaledX = x * this.scale;
         const scaledY = y * this.scale;
 
-        // Apply domain warping to geometric patterns
+        // Apply domain warping to geometric patterns with time control
         let warpedX = scaledX;
         let warpedY = scaledY;
         if (this.domainWarp > 0) {
           // Apply warping after scaling for stronger effect
           const warpFreq = 2.0;  // Increased frequency for more visible warping
-          warpedX = scaledX + this.domainWarp * Math.sin(scaledY * warpFreq + this.time * 0.5);
-          warpedY = scaledY + this.domainWarp * Math.cos(scaledX * warpFreq + this.time * 0.7);
+          if (this.speed > 0 && this.domainWarpEnabled) {
+            // Time-driven warping
+            warpedX = scaledX + this.domainWarp * Math.sin(scaledY * warpFreq + this.time * this.speed * this.domainWarpSpeed);
+            warpedY = scaledY + this.domainWarp * Math.cos(scaledX * warpFreq + this.time * this.speed * this.domainWarpSpeed);
+          } else {
+            // Static warping
+            warpedX = scaledX + this.domainWarp * Math.sin(scaledY * warpFreq);
+            warpedY = scaledY + this.domainWarp * Math.cos(scaledX * warpFreq);
+          }
         }
 
         // Calculate base pattern based on style

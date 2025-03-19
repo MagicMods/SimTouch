@@ -319,13 +319,6 @@ export class TurbulenceUi extends BaseUi {
         refreshThumbnails(true);  // Keep animation when warp changes
       });
 
-    // Pattern frequency control (always visible)
-    this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulence, "patternFrequency", 0.1, 20, 0.1)
-      .name("T-Freq")
-      .onChange(() => {
-        refreshThumbnails(true);  // Keep animation when frequency changes
-      });
-
     // Create button group container for time influence controls
     const timeInfluenceContainer = document.createElement("div");
     timeInfluenceContainer.className = "time-influence-toggle-buttons";
@@ -334,6 +327,37 @@ export class TurbulenceUi extends BaseUi {
       gap: 5px;
       margin-bottom: 10px;
     `;
+
+    // Add domain warp time control button
+    const domainWarpButton = document.createElement("button");
+    domainWarpButton.textContent = "T--DomWarp";
+    domainWarpButton.className = "toggle-button";
+    if (turbulence.domainWarpEnabled) domainWarpButton.classList.add("active");
+    domainWarpButton.addEventListener("click", () => {
+      turbulence.domainWarpEnabled = !turbulence.domainWarpEnabled;
+      domainWarpButton.classList.toggle("active", turbulence.domainWarpEnabled);
+      refreshThumbnails(true);
+    });
+
+    // Add domain warp speed control
+    this.turbulenceDomainWarpSpeedController = patternControlsFolder.add(turbulence, "domainWarpSpeed", 0, 2, 0.1)
+      .name("T-DomWarpSp")
+      .onChange(() => {
+        refreshThumbnails(true);
+      });
+
+    // Add the domain warp button to the time influence container
+    timeInfluenceContainer.appendChild(domainWarpButton);
+
+    // Store button reference
+    this.domainWarpButton = domainWarpButton;
+
+    // Pattern frequency control (always visible)
+    this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulence, "patternFrequency", 0.1, 20, 0.1)
+      .name("T-Freq")
+      .onChange(() => {
+        refreshThumbnails(true);  // Keep animation when frequency changes
+      });
 
     // Create time influence buttons
     const phaseButton = document.createElement("button");
@@ -345,11 +369,6 @@ export class TurbulenceUi extends BaseUi {
     freqButton.textContent = "T--Freq";
     freqButton.className = "toggle-button";
     if (turbulence.frequencyEnabled) freqButton.classList.add("active");
-
-    const ampButton = document.createElement("button");
-    ampButton.textContent = "T--Amp";
-    ampButton.className = "toggle-button";
-    if (turbulence.amplitudeEnabled) ampButton.classList.add("active");
 
     // Add click handlers - each button toggles independently
     phaseButton.addEventListener("click", () => {
@@ -364,16 +383,9 @@ export class TurbulenceUi extends BaseUi {
       refreshThumbnails(true);
     });
 
-    ampButton.addEventListener("click", () => {
-      turbulence.amplitudeEnabled = !turbulence.amplitudeEnabled;
-      ampButton.classList.toggle("active", turbulence.amplitudeEnabled);
-      refreshThumbnails(true);
-    });
-
     // Add buttons to container
     timeInfluenceContainer.appendChild(phaseButton);
     timeInfluenceContainer.appendChild(freqButton);
-    timeInfluenceContainer.appendChild(ampButton);
 
     // Add the container to the pattern controls folder
     patternControlsFolder.domElement.insertBefore(timeInfluenceContainer, patternControlsFolder.domElement.firstChild);
@@ -381,7 +393,6 @@ export class TurbulenceUi extends BaseUi {
     // Store button references
     this.phaseButton = phaseButton;
     this.freqButton = freqButton;
-    this.ampButton = ampButton;
 
     // Add frequency speed control
     this.turbulenceFrequencyController = patternControlsFolder.add(turbulence, "frequencySpeed", 0, 2, 0.1)
@@ -400,20 +411,6 @@ export class TurbulenceUi extends BaseUi {
     // Add phase speed control
     this.turbulencePhaseController = patternControlsFolder.add(turbulence, "phaseSpeed", 0, 2, 0.1)
       .name("T-PhaseSp")
-      .onChange(() => {
-        refreshThumbnails(true);
-      });
-
-    // Add static amplitude control
-    this.turbulenceStaticAmplitudeController = patternControlsFolder.add(turbulence, "amplitude", 0, 2, 0.1)
-      .name("T-Amp")
-      .onChange(() => {
-        refreshThumbnails(true);
-      });
-
-    // Add amplitude speed control
-    this.turbulenceAmplitudeController = patternControlsFolder.add(turbulence, "amplitudeSpeed", 0, 2, 0.1)
-      .name("T-AmpSp")
       .onChange(() => {
         refreshThumbnails(true);
       });
