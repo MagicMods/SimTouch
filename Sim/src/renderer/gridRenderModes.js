@@ -11,12 +11,14 @@ export const GridField = {
 };
 
 class GridRenderModes {
-  constructor({ gridParams, gridGeometry, gridMap, canvas, coordTransforms }) {
+  constructor({ gridParams, gridGeometry, gridMap, canvas, coordTransforms, maxDensityRef }) {
     this.gridParams = gridParams;
     this.gridGeometry = gridGeometry;
     this.gridMap = gridMap;
     this.canvas = canvas;
     this.coordTransforms = coordTransforms;
+    // Store the maxDensity reference function
+    this.getMaxDensity = maxDensityRef || (() => 4.0); // Default to 4.0 if not provided
 
     // Fixed target resolution (must match GridRenderer)
     this.TARGET_WIDTH = 240;
@@ -900,7 +902,7 @@ class GridRenderModes {
     }
 
     const turbulence = particleSystem.turbulence;
-    const tune = 1.0; // Reduced from 100.0 since noise2D already returns 0-1
+    const tune = 1.0;
 
     // Calculate noise value for each cell center
     this.gridMap.forEach((cell) => {
@@ -914,7 +916,7 @@ class GridRenderModes {
       // Get noise value at cell center
       const noiseValue = turbulence.noise2D(nx, ny);
 
-      // Store the noise value directly (noise2D already returns 0-1)
+      // Store raw noise value (0-1) without scaling
       this.targetValues[cell.index] = noiseValue;
     });
 

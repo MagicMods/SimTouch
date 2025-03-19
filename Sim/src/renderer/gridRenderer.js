@@ -34,7 +34,7 @@ class GridRenderer extends BaseRenderer {
     this.gridGeometry = this.generateRectangles();
     this.gridMap = this.createGridMap(this.gridGeometry);
 
-    // Initialize modes with grid data
+    // Initialize modes with grid data and maxDensity reference
     this.renderModes = new GridRenderModes({
       gridParams: this.gridParams,
       gridGeometry: this.gridGeometry,
@@ -44,6 +44,8 @@ class GridRenderer extends BaseRenderer {
         pixelToClip: this.pixelToClipSpace.bind(this),
         clipToPixel: this.clipToPixelSpace.bind(this),
       },
+      // Add this line to pass a reference to maxDensity
+      maxDensityRef: () => this.maxDensity
     });
 
     this.socket = socketManager;
@@ -121,14 +123,8 @@ class GridRenderer extends BaseRenderer {
     rectangles.forEach((rect, index) => {
       const value = this.density[index];
 
-      // Use different normalization for noise mode
-      let normalizedValue;
-      if (this.renderModes.currentMode === this.renderModes.modes.NOISE) {
-        // For noise, we expect values between 0 and 1 from noise2D
-        normalizedValue = Math.max(0, Math.min(1, value));
-      } else {
-        normalizedValue = Math.max(0, Math.min(1, value / this.maxDensity));
-      }
+      // Use consistent normalization for all modes
+      const normalizedValue = Math.max(0, Math.min(1, value / this.maxDensity));
 
       const gradientIdx = Math.floor(normalizedValue * 255);
       const colorValues = this.gradient.getValues();
