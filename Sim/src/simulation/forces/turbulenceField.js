@@ -38,6 +38,13 @@ class TurbulenceField {
     biasSmoothing = 0.8,   // 0 = no smoothing, 1 = max smoothing
     // New blur parameter
     blurAmount = .8,      // 0 = no blur, 1 = max blur
+    // New string pattern parameters
+    stringDensity = 4.0,      // Controls number of strings
+    stringThickness = 0.5,    // Controls thickness of strings
+    stringWaveSpeed = 1.0,    // Controls wave animation speed
+    stringWaveAmplitude = 0.2, // Controls wave amplitude
+    stringWaveFrequency = 2.0, // Controls wave frequency
+    stringWeaveOffset = 0.5,   // Controls vertical offset between layers
   } = {}) {
     if (
       !boundary ||
@@ -111,6 +118,14 @@ class TurbulenceField {
 
     // Add new blur parameter
     this.blurAmount = blurAmount;
+
+    // Add new string pattern parameters
+    this.stringDensity = stringDensity;
+    this.stringThickness = stringThickness;
+    this.stringWaveSpeed = stringWaveSpeed;
+    this.stringWaveAmplitude = stringWaveAmplitude;
+    this.stringWaveFrequency = stringWaveFrequency;
+    this.stringWeaveOffset = stringWeaveOffset;
 
     // Add internal bias state tracking for smoothing
     this._currentBiasOffsetX = 0;
@@ -322,6 +337,41 @@ class TurbulenceField {
     const freq = this.patternFrequency;
 
     switch (patternStyle) {
+      case "strings":
+        // Create interwoven string pattern
+        const numStrings = Math.floor(this.stringDensity);
+        let stringValue = 0;
+
+        // Create multiple layers of strings
+        for (let i = 0; i < numStrings; i++) {
+          // Calculate base position for this string
+          const stringPos = (i / numStrings) * 2 - 1; // -1 to 1 range
+
+          // Add time-based wave motion
+          const waveOffset = Math.sin(this.time * this.stringWaveSpeed) * this.stringWaveAmplitude;
+
+          // Calculate distance from current point to string
+          const distFromString = Math.abs(y - (stringPos + waveOffset));
+
+          // Add weaving effect by offsetting alternate strings
+          const weaveOffset = (i % 2) * this.stringWeaveOffset;
+          const weaveDist = Math.abs(x - weaveOffset);
+
+          // Combine distance calculations with thickness
+          const stringStrength = Math.exp(-distFromString * this.stringThickness) *
+            Math.exp(-weaveDist * this.stringThickness);
+
+          // Add wave motion to the string
+          const waveMotion = Math.sin(x * this.stringWaveFrequency + this.time * this.stringWaveSpeed);
+
+          // Combine all effects
+          stringValue += stringStrength * (0.5 + 0.5 * waveMotion);
+        }
+
+        // Normalize the result
+        patternValue = stringValue / numStrings;
+        break;
+
       case "checkerboard":
         patternValue = Math.sin(x * freq) * Math.sin(y * freq);
         break;
@@ -813,6 +863,13 @@ class TurbulenceField {
     biasSmoothing,
     // New blur parameter
     blurAmount,
+    // New string pattern parameters
+    stringDensity,
+    stringThickness,
+    stringWaveSpeed,
+    stringWaveAmplitude,
+    stringWaveFrequency,
+    stringWeaveOffset,
   }) {
     if (strength !== undefined) this.strength = strength;
     if (scale !== undefined) this.scale = scale;
@@ -856,6 +913,14 @@ class TurbulenceField {
 
     // New blur parameter
     if (blurAmount !== undefined) this.blurAmount = blurAmount;
+
+    // New string pattern parameters
+    if (stringDensity !== undefined) this.stringDensity = stringDensity;
+    if (stringThickness !== undefined) this.stringThickness = stringThickness;
+    if (stringWaveSpeed !== undefined) this.stringWaveSpeed = stringWaveSpeed;
+    if (stringWaveAmplitude !== undefined) this.stringWaveAmplitude = stringWaveAmplitude;
+    if (stringWaveFrequency !== undefined) this.stringWaveFrequency = stringWaveFrequency;
+    if (stringWeaveOffset !== undefined) this.stringWeaveOffset = stringWeaveOffset;
   }
 
   // Debug function to help diagnose rotation issues

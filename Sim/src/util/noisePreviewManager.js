@@ -415,6 +415,17 @@ export class NoisePreviewManager {
             blurAmount: field.blurAmount,
             speed: field.speed,
             scale: field.scale,
+            strength: field.strength,
+            decayRate: field.decayRate,
+            contrast: field.contrast,
+            separation: field.separation,
+            // Add string pattern parameters
+            stringDensity: field.stringDensity,
+            stringThickness: field.stringThickness,
+            stringWaveSpeed: field.stringWaveSpeed,
+            stringWaveAmplitude: field.stringWaveAmplitude,
+            stringWaveFrequency: field.stringWaveFrequency,
+            stringWeaveOffset: field.stringWeaveOffset
         };
     }
 
@@ -467,12 +478,12 @@ export class NoisePreviewManager {
         if (elapsedSinceParamsCheck > this._paramsCheckInterval) {
             this._lastParamsCheckTime = now;
 
-            // If parameters changed, refresh all previews
+            // If parameters changed, only update the selected preview
             if (this._haveParamsChanged()) {
-                this.refreshAllPreviews();
-                // Early return since we already refreshed everything
-                this.animationFrameId = requestAnimationFrame(() => this.update());
-                return;
+                // Only refresh the selected preview in real-time
+                if (this.selectedPattern) {
+                    this.refreshSelectedPreview();
+                }
             }
         }
 
@@ -700,10 +711,12 @@ export class NoisePreviewManager {
         // Clear the needs refresh flag
         this._needsRefreshOnOpen = false;
 
-        // Always refresh selected preview
-        this.refreshSelectedPreview();
+        // Always refresh selected preview first
+        if (this.selectedPattern) {
+            this.refreshSelectedPreview(true);
+        }
 
-        // Create static previews for all unselected
+        // Create static previews for all unselected patterns
         this.patternEntries.forEach(([name, patternValue]) => {
             if (patternValue !== this.selectedPattern) {
                 const element = this.previewElements.get(patternValue);
@@ -720,6 +733,11 @@ export class NoisePreviewManager {
                 }
             }
         });
+
+        // Force animation loop to start if needed
+        if (!this.animationFrameId && this.isVisible) {
+            this.startRefreshLoop();
+        }
     }
 
     /**

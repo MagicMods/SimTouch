@@ -220,7 +220,8 @@ export class TurbulenceUi extends BaseUi {
       "Cells": "cells",
       "Fractal": "fractal",
       "Vortex": "vortex",
-      "Bubbles": "bubbles"
+      "Bubbles": "bubbles",
+      "Strings": "strings"
     };
 
     // Pattern style selector
@@ -239,7 +240,8 @@ export class TurbulenceUi extends BaseUi {
         "Cells": "cells",
         "Fractal": "fractal",
         "Vortex": "vortex",
-        "Bubbles": "bubbles"
+        "Bubbles": "bubbles",
+        "Strings": "strings"
       })
       .onChange((value) => {
         if (this.previewManager) {
@@ -559,6 +561,36 @@ export class TurbulenceUi extends BaseUi {
 
       this.guiStateObserver = guiStateObserver;
     }
+
+    // Add string pattern controls folder
+    const stringControlsFolder = patternControlsFolder.addFolder("String Controls");
+    this.stringControlsFolder = stringControlsFolder;
+
+    // Add string-specific controls
+    this.turbulenceStringDensityController = stringControlsFolder.add(turbulence, "stringDensity", 1, 8, 0.1)
+      .name("T-StrDensity");
+    this.turbulenceStringThicknessController = stringControlsFolder.add(turbulence, "stringThickness", 0.1, 2, 0.1)
+      .name("T-StrThick");
+    this.turbulenceStringWaveSpeedController = stringControlsFolder.add(turbulence, "stringWaveSpeed", 0, 2, 0.1)
+      .name("T-StrWaveSp");
+    this.turbulenceStringWaveAmplitudeController = stringControlsFolder.add(turbulence, "stringWaveAmplitude", 0, 0.5, 0.05)
+      .name("T-StrWaveAmp");
+    this.turbulenceStringWaveFrequencyController = stringControlsFolder.add(turbulence, "stringWaveFrequency", 0.1, 4, 0.1)
+      .name("T-StrWaveFreq");
+    this.turbulenceStringWeaveOffsetController = stringControlsFolder.add(turbulence, "stringWeaveOffset", 0, 1, 0.1)
+      .name("T-StrWeave");
+
+    // Make string controls folder initially closed
+    stringControlsFolder.close();
+
+    // Add pattern style change handler to show/hide string controls
+    this.turbulencePatternStyleController.onChange((value) => {
+      if (value === "strings") {
+        stringControlsFolder.open();
+      } else {
+        stringControlsFolder.close();
+      }
+    });
   }
 
   getControlTargets() {
@@ -654,6 +686,14 @@ export class TurbulenceUi extends BaseUi {
     // Add blur controller to control targets
     if (this.turbulenceBlurController) targets["T-Blur"] = this.turbulenceBlurController;
 
+    // Add string controllers to control targets
+    if (this.turbulenceStringDensityController) targets["T-StrDensity"] = this.turbulenceStringDensityController;
+    if (this.turbulenceStringThicknessController) targets["T-StrThick"] = this.turbulenceStringThicknessController;
+    if (this.turbulenceStringWaveSpeedController) targets["T-StrWaveSp"] = this.turbulenceStringWaveSpeedController;
+    if (this.turbulenceStringWaveAmplitudeController) targets["T-StrWaveAmp"] = this.turbulenceStringWaveAmplitudeController;
+    if (this.turbulenceStringWaveFrequencyController) targets["T-StrWaveFreq"] = this.turbulenceStringWaveFrequencyController;
+    if (this.turbulenceStringWeaveOffsetController) targets["T-StrWeave"] = this.turbulenceStringWeaveOffsetController;
+
     return targets;
   }
 
@@ -702,6 +742,14 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulenceBiasYController);
     safeUpdateDisplay(this.turbulenceBiasSmoothing);
     safeUpdateDisplay(this.turbulenceBlurController);
+
+    // Update string controller displays
+    safeUpdateDisplay(this.turbulenceStringDensityController);
+    safeUpdateDisplay(this.turbulenceStringThicknessController);
+    safeUpdateDisplay(this.turbulenceStringWaveSpeedController);
+    safeUpdateDisplay(this.turbulenceStringWaveAmplitudeController);
+    safeUpdateDisplay(this.turbulenceStringWaveFrequencyController);
+    safeUpdateDisplay(this.turbulenceStringWeaveOffsetController);
   }
 
   getData() {
