@@ -911,7 +911,7 @@ class GridRenderModes {
 
       // Convert to normalized coordinates (0-1)
       const nx = centerX / this.TARGET_WIDTH;
-      const ny = centerY / this.TARGET_HEIGHT;
+      const ny = 1 - centerY / this.TARGET_HEIGHT;
 
       // Get noise value at cell center
       const noiseValue = turbulence.noise2D(nx, ny);

@@ -17,15 +17,26 @@ export class NoisePreviewManager {
         // State
         this.selectedPattern = null;
         this.isFolderOpen = false;
+        this.isParentFolderOpen = true; // New state to track parent folder visibility
+        this.isVisible = false; // Will be updated after folder state is determined
         this.previewElements = new Map(); // Maps pattern values to DOM elements
         this.cleanupFunctions = new Map(); // Maps pattern values to cleanup functions
         this.lastRefreshTime = 0;
+        this.lastUnselectedRefreshTime = 0;
         this.unselectedIndex = 0;
         this.animationFrameId = null;
         this.refreshingSelected = true; // Toggle between selected and unselected
+        this._needsRefreshOnOpen = false; // Flag for refresh needed when reopening
 
-        // Settings
-        this.selectedFps = 30; // Target FPS for the refresh cycle
+        // Performance settings
+        this.selectedFps = 15; // Lower default FPS for better performance
+        this.unselectedRefreshInterval = 300; // Ms between unselected refreshes
+        this.maxUnselectedPerCycle = 1; // Max unselected thumbnails to refresh per cycle
+
+        // Parameter tracking for automatic refresh
+        this._lastTurbulenceParams = this._captureCurrentParams();
+        this._paramsCheckInterval = 500; // Check for parameter changes every 500ms
+        this._lastParamsCheckTime = 0;
     }
 
     /**
@@ -49,81 +60,233 @@ export class NoisePreviewManager {
         this.generateAllStaticPreviews();
 
         // Set initial folder state
-        if (folderIsOpen) {
-            this.setFolderOpen(true);
+        this.setFolderOpen(folderIsOpen);
+
+        // Check parent folder visibility
+        this.checkParentFolderVisibility();
+
+        // Explicitly ensure the refresh loop is started if visible
+        this.ensureRefreshLoopStarted();
+    }
+
+    /**
+     * Ensure the refresh loop is started if the previews are visible
+     * This helps with initial load when the folder may already be open
+     */
+    ensureRefreshLoopStarted() {
+        // Make sure visibility state is up to date
+        this.updateVisibilityState();
+
+        // If visible and animation loop isn't running, start it
+        if (this.isVisible && !this.animationFrameId) {
+            this.startRefreshLoop();
+
+            // If we have a selected pattern, refresh it immediately
+            if (this.selectedPattern) {
+                this.refreshSelectedPreview();
+            }
         }
+    }
+
+    /**
+     * Check if any parent folders are closed, which would hide previews
+     */
+    checkParentFolderVisibility() {
+        if (!this.containerElement) return;
+
+        // Start from container and check all parent folders
+        let element = this.containerElement;
+        let isVisible = true;
+
+        // Walk up the DOM until we hit the main GUI container
+        while (element && !element.classList.contains('dg')) {
+            // If we hit a closed folder, mark as not visible
+            if (element.classList.contains('closed')) {
+                isVisible = false;
+                break;
+            }
+
+            const parent = element.parentElement;
+            // Find parent folder if it exists
+            if (parent) {
+                const folderElement = parent.closest('.folder');
+                if (folderElement === element) {
+                    // We've reached the top of the folder hierarchy
+                    break;
+                }
+                element = folderElement || parent;
+            } else {
+                break;
+            }
+        }
+
+        // Update parent visibility state
+        const prevParentState = this.isParentFolderOpen;
+        this.isParentFolderOpen = isVisible;
+
+        // Update combined visibility
+        this.updateVisibilityState();
+
+        // If visibility changed, handle refresh loop
+        if (prevParentState !== this.isParentFolderOpen) {
+            this.handleVisibilityChange();
+        }
+    }
+
+    /**
+     * Update the combined visibility state
+     */
+    updateVisibilityState() {
+        const wasVisible = this.isVisible;
+        this.isVisible = this.isFolderOpen && this.isParentFolderOpen;
+
+        // If visibility changed, handle refresh loop
+        if (wasVisible !== this.isVisible) {
+            this.handleVisibilityChange();
+        }
+    }
+
+    /**
+     * Handle visibility changes by starting or stopping the refresh loop
+     */
+    handleVisibilityChange() {
+        if (this.isVisible) {
+            // If becoming visible, check if refresh needed
+            if (this._needsRefreshOnOpen) {
+                this.generateAllStaticPreviews();
+                this._needsRefreshOnOpen = false;
+            }
+            this.startRefreshLoop();
+        } else {
+            // If becoming hidden, stop refresh
+            this.stopRefreshLoop();
+        }
+    }
+
+    /**
+     * Helper method to generate a static preview image for a pattern
+     * @param {String} patternValue - The pattern value to generate preview for
+     * @param {Number} width - Width of the preview
+     * @param {Number} height - Height of the preview
+     * @returns {String} - Data URL of the preview image
+     */
+    generateStaticPreviewImage(patternValue, width, height) {
+        // Temporarily set pattern style
+        const originalStyle = this.turbulenceField.patternStyle;
+        this.turbulenceField.patternStyle = patternValue;
+
+        // For performance, use a smaller canvas for static previews
+        const scaleFactor = 0.7; // 70% of original size for static previews
+        const renderWidth = Math.max(24, Math.floor(width * scaleFactor));
+        const renderHeight = Math.max(24, Math.floor(height * scaleFactor));
+
+        // Create a static preview without manipulating time
+        const canvas = document.createElement('canvas');
+        canvas.width = renderWidth;
+        canvas.height = renderHeight;
+        const ctx = canvas.getContext('2d');
+        const imageData = ctx.createImageData(renderWidth, renderHeight);
+        const data = imageData.data;
+
+        for (let y = 0; y < renderHeight; y++) {
+            for (let x = 0; x < renderWidth; x++) {
+                const nx = x / renderWidth;
+                const ny = 1 - (y / renderHeight);
+                const noiseValue = this.turbulenceField.noise2D(nx, ny);
+
+                const index = (y * renderWidth + x) * 4;
+                data[index] = noiseValue * 255;     // R
+                data[index + 1] = noiseValue * 255; // G
+                data[index + 2] = noiseValue * 255; // B
+                data[index + 3] = 255;         // A
+            }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+
+        // If we need to upscale back to original size
+        if (renderWidth !== width || renderHeight !== height) {
+            const finalCanvas = document.createElement('canvas');
+            finalCanvas.width = width;
+            finalCanvas.height = height;
+            const finalCtx = finalCanvas.getContext('2d');
+            // Use nearest-neighbor scaling for performance
+            finalCtx.imageSmoothingEnabled = false;
+            finalCtx.drawImage(canvas, 0, 0, width, height);
+            canvas.width = 1; // Help garbage collection
+            canvas.height = 1;
+
+            const dataUrl = finalCanvas.toDataURL('image/jpeg', 0.85); // Use JPEG for smaller size
+
+            // Restore original pattern style
+            this.turbulenceField.patternStyle = originalStyle;
+
+            return dataUrl;
+        }
+
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.85); // Use JPEG for smaller size
+
+        // Restore original pattern style
+        this.turbulenceField.patternStyle = originalStyle;
+
+        return dataUrl;
     }
 
     /**
      * Generate static previews for all patterns
      */
     generateAllStaticPreviews() {
-        // Remember original style
-        const originalStyle = this.turbulenceField.patternStyle;
-
         this.patternEntries.forEach(([name, patternValue]) => {
             const element = this.previewElements.get(patternValue);
             if (element) {
                 const img = element.querySelector('img');
                 if (img) {
-                    // Temporarily set pattern style
-                    this.turbulenceField.patternStyle = patternValue;
-
-                    // Create a static preview without manipulating time
-                    const canvas = document.createElement('canvas');
-                    canvas.width = this.previewSize;
-                    canvas.height = this.previewSize;
-                    const ctx = canvas.getContext('2d');
-                    const imageData = ctx.createImageData(this.previewSize, this.previewSize);
-                    const data = imageData.data;
-
-                    for (let y = 0; y < this.previewSize; y++) {
-                        for (let x = 0; x < this.previewSize; x++) {
-                            const nx = x / this.previewSize;
-                            const ny = y / this.previewSize;
-                            const noiseValue = this.turbulenceField.noise2D(nx, ny);
-
-                            const index = (y * this.previewSize + x) * 4;
-                            data[index] = noiseValue * 255;     // R
-                            data[index + 1] = noiseValue * 255; // G
-                            data[index + 2] = noiseValue * 255; // B
-                            data[index + 3] = 255;         // A
-                        }
-                    }
-
-                    ctx.putImageData(imageData, 0, 0);
-                    img.src = canvas.toDataURL();
+                    img.src = this.generateStaticPreviewImage(
+                        patternValue,
+                        this.previewSize,
+                        this.previewSize
+                    );
                 }
             }
         });
-
-        // Restore original pattern style
-        this.turbulenceField.patternStyle = originalStyle;
     }
 
     /**
      * Set the selected pattern and update previews accordingly
      * @param {String} pattern - The pattern value to select
+     * @param {Boolean} forceAnimation - Force animation to start even if not visible
      */
-    setSelectedPattern(pattern) {
+    setSelectedPattern(pattern, forceAnimation = false) {
         // Clean up previous selected pattern preview only (not affecting the field's animation)
         if (this.selectedPattern) {
             const cleanup = this.cleanupFunctions.get(this.selectedPattern);
             if (cleanup) {
-                cleanup();
+                try {
+                    cleanup();
+                } catch (e) {
+                    console.warn('Error cleaning up animation:', e);
+                }
                 this.cleanupFunctions.delete(this.selectedPattern);
             }
         }
 
         this.selectedPattern = pattern;
 
-        // Start animation for new selected pattern if folder is open
-        if (this.isFolderOpen) {
-            this.refreshSelectedPreview();
-        }
-
         // Update UI for selected element
         this.updateSelectedUI();
+
+        // Make sure visibility state is up to date
+        this.updateVisibilityState();
+
+        // Always refresh the selected pattern immediately, 
+        // forcing animation if requested
+        this.refreshSelectedPreview(forceAnimation);
+
+        // If not already refreshing and we're visible (or forcing),
+        // start the refresh loop
+        if ((this.isVisible || forceAnimation) && !this.animationFrameId) {
+            this.startRefreshLoop();
+        }
     }
 
     /**
@@ -147,13 +310,27 @@ export class NoisePreviewManager {
      * @param {Boolean} isOpen - Whether the folder is open
      */
     setFolderOpen(isOpen) {
+        // Skip if no change
+        if (this.isFolderOpen === isOpen) return;
+
         this.isFolderOpen = isOpen;
 
-        if (isOpen) {
-            this.startRefreshLoop();
-        } else {
-            this.stopRefreshLoop();
-        }
+        // Update combined visibility state
+        this.updateVisibilityState();
+    }
+
+    /**
+     * Set whether a parent folder containing the previews is open
+     * @param {Boolean} isOpen - Whether the parent folder is open
+     */
+    setParentFolderOpen(isOpen) {
+        // Skip if no change
+        if (this.isParentFolderOpen === isOpen) return;
+
+        this.isParentFolderOpen = isOpen;
+
+        // Update combined visibility state
+        this.updateVisibilityState();
     }
 
     /**
@@ -163,7 +340,14 @@ export class NoisePreviewManager {
         if (this.animationFrameId) return; // Already running
 
         this.lastRefreshTime = performance.now();
+        this.lastUnselectedRefreshTime = performance.now();
         this.refreshingSelected = true;
+
+        // Immediately refresh the selected preview before starting the update loop
+        if (this.selectedPattern) {
+            this.refreshSelectedPreview();
+        }
+
         this.update();
     }
 
@@ -186,35 +370,121 @@ export class NoisePreviewManager {
     }
 
     /**
+     * Capture current parameter values for change detection
+     * @private
+     */
+    _captureCurrentParams() {
+        const field = this.turbulenceField;
+        if (!field) return {};
+
+        // Capture values of parameters that affect the preview appearance
+        return {
+            patternStyle: field.patternStyle,
+            patternFrequency: field.patternFrequency,
+            domainWarp: field.domainWarp,
+            domainWarpSpeed: field.domainWarpSpeed,
+            symmetryAmount: field.symmetryAmount,
+            phase: field.phase,
+            phaseSpeed: field.phaseSpeed,
+            rotation: field.rotation,
+            rotationSpeed: field.rotationSpeed,
+            pullFactor: field.pullFactor,
+            patternOffsetX: field.patternOffsetX,
+            patternOffsetY: field.patternOffsetY,
+            biasSpeedX: field.biasSpeedX,
+            biasSpeedY: field.biasSpeedY,
+            biasSmoothing: field.biasSmoothing,
+            blurAmount: field.blurAmount,
+            speed: field.speed,
+            scale: field.scale,
+        };
+    }
+
+    /**
+     * Check if turbulence parameters have changed
+     * @private
+     * @returns {Boolean} - True if parameters changed
+     */
+    _haveParamsChanged() {
+        const currentParams = this._captureCurrentParams();
+        const lastParams = this._lastTurbulenceParams;
+
+        // Compare current with previous parameters
+        for (const [key, value] of Object.entries(currentParams)) {
+            // Tolerance for floating point comparison
+            const tolerance = 0.0001;
+
+            if (typeof value === 'number' && typeof lastParams[key] === 'number') {
+                // Use tolerance for number comparison
+                if (Math.abs(value - lastParams[key]) > tolerance) {
+                    this._lastTurbulenceParams = currentParams;
+                    return true;
+                }
+            } else if (value !== lastParams[key]) {
+                // Direct comparison for non-numbers
+                this._lastTurbulenceParams = currentParams;
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * Main update loop for refreshing previews
      */
     update() {
-        if (!this.isFolderOpen) return;
-
-        const now = performance.now();
-        const elapsed = now - this.lastRefreshTime;
-
-        // Control overall refresh rate
-        if (elapsed > (1000 / this.selectedFps)) {
-            // Alternate between selected and unselected
-            if (this.refreshingSelected) {
-                this.refreshSelectedPreview();
-            } else {
-                this.refreshNextUnselectedPreview();
-            }
-
-            // Toggle for next frame
-            this.refreshingSelected = !this.refreshingSelected;
-            this.lastRefreshTime = now;
+        // Early exit if not visible (either this folder or parent folders are closed)
+        if (!this.isVisible) {
+            this.animationFrameId = null;
+            return;
         }
 
-        this.animationFrameId = requestAnimationFrame(() => this.update());
+        const now = performance.now();
+        const elapsedSinceLastFrame = now - this.lastRefreshTime;
+        const elapsedSinceUnselected = now - this.lastUnselectedRefreshTime;
+        const elapsedSinceParamsCheck = now - this._lastParamsCheckTime;
+
+        // Periodically check if turbulence parameters have changed
+        if (elapsedSinceParamsCheck > this._paramsCheckInterval) {
+            this._lastParamsCheckTime = now;
+
+            // If parameters changed, refresh all previews
+            if (this._haveParamsChanged()) {
+                this.refreshAllPreviews();
+                // Early return since we already refreshed everything
+                this.animationFrameId = requestAnimationFrame(() => this.update());
+                return;
+            }
+        }
+
+        // Check if it's time for a frame update based on target FPS
+        if (elapsedSinceLastFrame > (1000 / this.selectedFps)) {
+            // Always prioritize selected pattern refresh
+            this.refreshSelectedPreview();
+            this.lastRefreshTime = now;
+
+            // Only refresh unselected thumbnails periodically
+            if (elapsedSinceUnselected > this.unselectedRefreshInterval) {
+                // Refresh one unselected thumbnail
+                this.refreshNextUnselectedPreview();
+                this.lastUnselectedRefreshTime = now;
+            }
+        }
+
+        // Continue the animation loop only if still visible
+        if (this.isVisible) {
+            this.animationFrameId = requestAnimationFrame(() => this.update());
+        } else {
+            this.animationFrameId = null;
+        }
     }
 
     /**
      * Refresh the selected preview
+     * @param {Boolean} forceStart - Force animation to start even if already running
      */
-    refreshSelectedPreview() {
+    refreshSelectedPreview(forceStart = false) {
         if (!this.selectedPattern) return;
 
         const element = this.previewElements.get(this.selectedPattern);
@@ -226,20 +496,56 @@ export class NoisePreviewManager {
         // Clean up existing animation if any
         const existingCleanup = this.cleanupFunctions.get(this.selectedPattern);
         if (existingCleanup) {
-            existingCleanup();
+            try {
+                existingCleanup();
+            } catch (e) {
+                console.warn('Error cleaning up previous animation:', e);
+            }
+            this.cleanupFunctions.delete(this.selectedPattern);
         }
 
-        // Create new animated preview - the field's animation continues regardless
-        const cleanup = this.generatePreviewAnimation(
-            this.previewSize,
-            this.previewSize,
-            this.selectedPattern,
-            (dataUrl) => {
-                img.src = dataUrl;
-            }
-        );
+        try {
+            // Create new animated preview - the field's animation continues regardless
+            const cleanup = this.generatePreviewAnimation(
+                this.previewSize,
+                this.previewSize,
+                this.selectedPattern,
+                (dataUrl) => {
+                    if (img && !img.src) {
+                        // If the image source is empty, set a static preview first
+                        img.src = this.generateStaticPreviewImage(
+                            this.selectedPattern,
+                            this.previewSize,
+                            this.previewSize
+                        );
+                    }
 
-        this.cleanupFunctions.set(this.selectedPattern, cleanup);
+                    // Then set the animated frame
+                    if (img) {
+                        img.src = dataUrl;
+                    }
+                }
+            );
+
+            this.cleanupFunctions.set(this.selectedPattern, cleanup);
+
+            // If the animation frame isn't running but we're visible or forcing,
+            // start the refresh loop to ensure continual updates
+            if ((this.isVisible || forceStart) && !this.animationFrameId) {
+                this.startRefreshLoop();
+            }
+        } catch (err) {
+            console.error('Error generating preview animation:', err);
+
+            // Fallback to static preview
+            if (img) {
+                img.src = this.generateStaticPreviewImage(
+                    this.selectedPattern,
+                    this.previewSize,
+                    this.previewSize
+                );
+            }
+        }
     }
 
     /**
@@ -253,26 +559,54 @@ export class NoisePreviewManager {
         // Temporarily switch pattern style for preview
         this.turbulenceField.patternStyle = patternStyle;
 
+        // For performance, use a slightly smaller render size for animation
+        const scaleFactor = 0.8; // 80% of original size for animation (higher than static for quality)
+        const renderWidth = Math.max(32, Math.floor(width * scaleFactor));
+        const renderHeight = Math.max(32, Math.floor(height * scaleFactor));
+
         // Setup for animation
         const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
+        canvas.width = renderWidth;
+        canvas.height = renderHeight;
         const ctx = canvas.getContext('2d');
-        const imageData = ctx.createImageData(width, height);
+        const imageData = ctx.createImageData(renderWidth, renderHeight);
         const data = imageData.data;
 
-        let animationFrame;
+        // For scaling if needed
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = width;
+        finalCanvas.height = height;
+        const finalCtx = finalCanvas.getContext('2d');
+        finalCtx.imageSmoothingEnabled = false;
 
-        const animate = () => {
+        let animationFrame;
+        let lastFrameTime = 0;
+        const frameInterval = 1000 / this.selectedFps; // Ensure we respect the FPS setting
+
+        const animate = (timestamp) => {
+            // Skip animation if not visible
+            if (!this.isVisible) {
+                animationFrame = requestAnimationFrame(animate);
+                return;
+            }
+
+            // Check if enough time has passed for a new frame
+            if (timestamp - lastFrameTime < frameInterval) {
+                animationFrame = requestAnimationFrame(animate);
+                return;
+            }
+
+            // Update last frame time
+            lastFrameTime = timestamp;
+
             // Generate preview using current time (don't manipulate the field's time)
-            for (let y = 0; y < height; y++) {
-                for (let x = 0; x < width; x++) {
-                    const nx = x / width;
-                    const ny = y / height;
-                    // Use current time - don't modify field's time
+            for (let y = 0; y < renderHeight; y++) {
+                for (let x = 0; x < renderWidth; x++) {
+                    const nx = x / renderWidth;
+                    const ny = 1 - (y / renderHeight);
                     const noiseValue = this.turbulenceField.noise2D(nx, ny);
 
-                    const index = (y * width + x) * 4;
+                    const index = (y * renderWidth + x) * 4;
                     data[index] = noiseValue * 255;     // R
                     data[index + 1] = noiseValue * 255; // G
                     data[index + 2] = noiseValue * 255; // B
@@ -281,23 +615,38 @@ export class NoisePreviewManager {
             }
 
             ctx.putImageData(imageData, 0, 0);
-            callback(canvas.toDataURL());
+
+            // Scale to final size if needed
+            if (renderWidth !== width || renderHeight !== height) {
+                finalCtx.clearRect(0, 0, width, height);
+                finalCtx.drawImage(canvas, 0, 0, width, height);
+                callback(finalCanvas.toDataURL('image/jpeg', 0.9));
+            } else {
+                callback(canvas.toDataURL('image/jpeg', 0.9));
+            }
+
             animationFrame = requestAnimationFrame(animate);
         };
 
         // Start animation
-        animate();
+        animationFrame = requestAnimationFrame(animate);
 
         // Return cleanup function that only restores pattern style, not time
         return () => {
             cancelAnimationFrame(animationFrame);
             // Only restore pattern style
             this.turbulenceField.patternStyle = originalStyle;
+
+            // Help garbage collection
+            canvas.width = 1;
+            canvas.height = 1;
+            finalCanvas.width = 1;
+            finalCanvas.height = 1;
         };
     }
 
     /**
-     * Refresh the next unselected preview in sequence
+     * Refresh a random unselected preview
      */
     refreshNextUnselectedPreview() {
         // Get all patterns except selected
@@ -307,55 +656,38 @@ export class NoisePreviewManager {
 
         if (unselectedPatterns.length === 0) return;
 
-        // Increment index and wrap around
-        this.unselectedIndex = (this.unselectedIndex + 1) % unselectedPatterns.length;
+        // Select a random unselected pattern
+        const randomIndex = Math.floor(Math.random() * unselectedPatterns.length);
+        const patternToRefresh = unselectedPatterns[randomIndex];
 
-        // Get the next pattern to refresh
-        const patternToRefresh = unselectedPatterns[this.unselectedIndex];
         const element = this.previewElements.get(patternToRefresh);
         if (!element) return;
 
         const img = element.querySelector('img');
         if (!img) return;
 
-        // Generate static preview (using current field state, not resetting time)
-        const originalStyle = this.turbulenceField.patternStyle;
-        this.turbulenceField.patternStyle = patternToRefresh;
-
-        // Create a static preview without manipulating time
-        const canvas = document.createElement('canvas');
-        canvas.width = this.previewSize;
-        canvas.height = this.previewSize;
-        const ctx = canvas.getContext('2d');
-        const imageData = ctx.createImageData(this.previewSize, this.previewSize);
-        const data = imageData.data;
-
-        for (let y = 0; y < this.previewSize; y++) {
-            for (let x = 0; x < this.previewSize; x++) {
-                const nx = x / this.previewSize;
-                const ny = y / this.previewSize;
-                const noiseValue = this.turbulenceField.noise2D(nx, ny);
-
-                const index = (y * this.previewSize + x) * 4;
-                data[index] = noiseValue * 255;     // R
-                data[index + 1] = noiseValue * 255; // G
-                data[index + 2] = noiseValue * 255; // B
-                data[index + 3] = 255;         // A
-            }
-        }
-
-        ctx.putImageData(imageData, 0, 0);
-        img.src = canvas.toDataURL();
-
-        // Restore original pattern style
-        this.turbulenceField.patternStyle = originalStyle;
+        // Generate and set preview image
+        img.src = this.generateStaticPreviewImage(
+            patternToRefresh,
+            this.previewSize,
+            this.previewSize
+        );
     }
 
     /**
      * Refresh all previews (e.g., when turbulence parameters change)
+     * @param {Boolean} force - Force refresh even if folder is closed
      */
-    refreshAllPreviews() {
-        if (!this.isFolderOpen) return;
+    refreshAllPreviews(force = false) {
+        // Skip if not visible and we're not forcing a refresh
+        if (!this.isVisible && !force) {
+            // When not visible, just mark that we need a refresh when reopened
+            this._needsRefreshOnOpen = true;
+            return;
+        }
+
+        // Clear the needs refresh flag
+        this._needsRefreshOnOpen = false;
 
         // Always refresh selected preview
         this.refreshSelectedPreview();
@@ -367,37 +699,12 @@ export class NoisePreviewManager {
                 if (element) {
                     const img = element.querySelector('img');
                     if (img) {
-                        // Generate preview without affecting field's time
-                        const originalStyle = this.turbulenceField.patternStyle;
-                        this.turbulenceField.patternStyle = patternValue;
-
-                        // Create a static preview without manipulating time
-                        const canvas = document.createElement('canvas');
-                        canvas.width = this.previewSize;
-                        canvas.height = this.previewSize;
-                        const ctx = canvas.getContext('2d');
-                        const imageData = ctx.createImageData(this.previewSize, this.previewSize);
-                        const data = imageData.data;
-
-                        for (let y = 0; y < this.previewSize; y++) {
-                            for (let x = 0; x < this.previewSize; x++) {
-                                const nx = x / this.previewSize;
-                                const ny = y / this.previewSize;
-                                const noiseValue = this.turbulenceField.noise2D(nx, ny);
-
-                                const index = (y * this.previewSize + x) * 4;
-                                data[index] = noiseValue * 255;     // R
-                                data[index + 1] = noiseValue * 255; // G
-                                data[index + 2] = noiseValue * 255; // B
-                                data[index + 3] = 255;         // A
-                            }
-                        }
-
-                        ctx.putImageData(imageData, 0, 0);
-                        img.src = canvas.toDataURL();
-
-                        // Restore original pattern style
-                        this.turbulenceField.patternStyle = originalStyle;
+                        // Generate and set preview image
+                        img.src = this.generateStaticPreviewImage(
+                            patternValue,
+                            this.previewSize,
+                            this.previewSize
+                        );
                     }
                 }
             }
@@ -432,5 +739,51 @@ export class NoisePreviewManager {
         this.cleanupFunctions.clear();
         this.containerElement = null;
         this.turbulenceField = null;
+    }
+
+    /**
+     * Set the performance profile for preview generation
+     * @param {String} profile - 'low', 'medium', or 'high'
+     */
+    setPerformanceProfile(profile) {
+        switch (profile) {
+            case 'low':
+                // Low performance settings for weaker devices
+                this.selectedFps = 10;
+                this.unselectedRefreshInterval = 500;
+                this.maxUnselectedPerCycle = 1;
+                break;
+
+            case 'medium':
+                // Medium performance settings (default)
+                this.selectedFps = 15;
+                this.unselectedRefreshInterval = 300;
+                this.maxUnselectedPerCycle = 1;
+                break;
+
+            case 'high':
+                // High performance settings for powerful devices
+                this.selectedFps = 24;
+                this.unselectedRefreshInterval = 200;
+                this.maxUnselectedPerCycle = 2;
+                break;
+
+            case 'ultra':
+                // Ultra performance for development/testing
+                this.selectedFps = 30;
+                this.unselectedRefreshInterval = 100;
+                this.maxUnselectedPerCycle = 3;
+                break;
+
+            default:
+                // Use medium as fallback
+                this.setPerformanceProfile('medium');
+        }
+
+        // Restart refresh loop if running
+        if (this.isVisible && this.animationFrameId) {
+            this.stopRefreshLoop();
+            this.startRefreshLoop();
+        }
     }
 }

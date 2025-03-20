@@ -163,11 +163,6 @@ export class TurbulenceUi extends BaseUi {
             container.appendChild(this.modeIndicator);
           }
         }
-
-        // Refresh previews when pullFactor changes to show the mode noise effect
-        if (this.previewManager) {
-          this.previewManager.refreshAllPreviews();
-        }
       });
 
     const scaleRangeFolder = this.gui.addFolder("Scale Range");
@@ -276,12 +271,7 @@ export class TurbulenceUi extends BaseUi {
 
     // Add new bias smoothing control
     this.turbulenceBiasSmoothing = biasSpeedFolder.add(turbulence, "biasSmoothing", 0, 0.99, 0.01)
-      .name("T-BiasSmooth")
-      .onChange(() => {
-        if (this.previewManager) {
-          this.previewManager.refreshAllPreviews();
-        }
-      });
+      .name("T-BiasSmooth");
 
     // Make sure folders are open by default
     patternOffsetFolder.open();
@@ -372,9 +362,60 @@ export class TurbulenceUi extends BaseUi {
     // Check if previews folder is open
     const isPreviewsFolderOpen = previewsFolder.domElement.classList.contains('closed') === false;
 
-    // Initialize with container and folder state
+    // Initialize with container and folder state - forcing animation to start
     this.previewManager.initialize(previewContainer, isPreviewsFolderOpen);
-    this.previewManager.setSelectedPattern(turbulence.patternStyle);
+
+    // Set the selected pattern immediately and force animation
+    this.previewManager.setSelectedPattern(turbulence.patternStyle, true);
+
+    // Force animation to start for the initial selected pattern
+    // Make sure to stagger these calls to avoid race conditions
+    setTimeout(() => {
+      if (this.previewManager) {
+        // Force refresh the selected pattern
+        this.previewManager.refreshSelectedPreview();
+
+        // Make sure visibility is correctly detected
+        this.previewManager.checkParentFolderVisibility();
+        this.previewManager.ensureRefreshLoopStarted();
+      }
+    }, 100);
+
+    // Do another check slightly later in case anything was still initializing
+    setTimeout(() => {
+      if (this.previewManager && this.previewManager.selectedPattern) {
+        // Force it to refresh one more time
+        this.previewManager.refreshSelectedPreview();
+
+        // Force the animation loop to start if needed
+        if (!this.previewManager.animationFrameId && this.previewManager.isVisible) {
+          this.previewManager.startRefreshLoop();
+        }
+      }
+    }, 300);
+
+    // Set performance profile based on estimated device capability
+    // This is a simple heuristic and could be improved
+    const estimateDevicePerformance = () => {
+      // Check if we're on a mobile device (generally lower performance)
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+      // Use hardware concurrency as a rough estimate of CPU power
+      const cpuCores = navigator.hardwareConcurrency || 4;
+
+      if (isMobile && cpuCores <= 4) {
+        return 'low';
+      } else if (isMobile || cpuCores <= 6) {
+        return 'medium';
+      } else if (cpuCores >= 12) {
+        return 'ultra';
+      } else {
+        return 'high';
+      }
+    };
+
+    // Apply the performance profile
+    this.previewManager.setPerformanceProfile(estimateDevicePerformance());
 
     // Create button group container for time influence controls
     const timeInfluenceContainer = document.createElement("div");
@@ -387,121 +428,137 @@ export class TurbulenceUi extends BaseUi {
 
     // Domain warp control
     this.turbulenceDomainWarpController = patternControlsFolder.add(turbulence, "domainWarp", 0, 1)
-      .name("T-DomWarp")
-      .onChange(() => {
-        if (this.previewManager) {
-          this.previewManager.refreshAllPreviews();
-        }
-      });
+      .name("T-DomWarp");
 
     // Add domain warp speed control
     this.turbulenceDomainWarpSpeedController = patternControlsFolder.add(turbulence, "domainWarpSpeed", 0, 2, 0.1)
-      .name("T-DomWarpSp")
-      .onChange(() => {
-        if (this.previewManager) {
-          this.previewManager.refreshAllPreviews();
-        }
-      });
+      .name("T-DomWarpSp");
 
     // Add symmetry amount control
     this.turbulenceSymmetryController = patternControlsFolder.add(turbulence, "symmetryAmount", 0, 1, 0.01)
-      .name("T-Sym")
-      .onChange(() => {
-        if (this.previewManager) {
-          this.previewManager.refreshAllPreviews();
-        }
-      });
+      .name("T-Sym");
 
     // Pattern frequency control (always visible)
     this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulence, "patternFrequency", 0.01, 4, 0.01)
-      .name("T-Freq")
-      .onChange(() => {
-        if (this.previewManager) {
-          this.previewManager.refreshAllPreviews();
-        }
-      });
+      .name("T-Freq");
 
     // Add static phase control
     this.turbulenceStaticPhaseController = patternControlsFolder.add(turbulence, "phase", 0, 1, 0.01)
-      .name("T-Phase")
-      .onChange(() => {
-        if (this.previewManager) {
-          this.previewManager.refreshAllPreviews();
-        }
-      });
+      .name("T-Phase");
 
     // Add phase speed control
     this.turbulencePhaseController = patternControlsFolder.add(turbulence, "phaseSpeed", -1, 1, 0.1)
-      .name("T-PhaseSp")
-      .onChange(() => {
-        if (this.previewManager) {
-          this.previewManager.refreshAllPreviews();
-        }
-      });
+      .name("T-PhaseSp");
 
     // Add blur control
     this.turbulenceBlurController = patternControlsFolder.add(turbulence, "blurAmount", 0, 2, 0.01)
-      .name("T-Blur")
-      .onChange(() => {
-        if (this.previewManager) {
-          this.previewManager.refreshAllPreviews();
-        }
-      });
-
-    // Add listener for T-Speed changes to update control behavior
-    this.turbulenceSpeedController.onChange(() => {
-      if (this.previewManager) {
-        this.previewManager.refreshAllPreviews();
-      }
-    });
+      .name("T-Blur");
 
     // Restore XY bias controllers
     const biasFolder = this.gui.addFolder("Direction Bias");
     this.turbulenceDirectionBiasXController = biasFolder.add(turbulence.directionBias, "0", -1, 1).name("T-DirX");
     this.turbulenceDirectionBiasYController = biasFolder.add(turbulence.directionBias, "1", -1, 1).name("T-DirY");
 
-    // Add listeners for other parameters that affect the preview
-    const previewAffectingControllers = [
-      this.turbulencePatternFrequencyController,
-      this.turbulenceSpeedController,
-      this.turbulenceScaleController,
-      this.turbulenceRotationController,
-      this.turbulenceRotationSpeedController,
-      this.turbulenceDomainWarpController,
-      this.turbulenceDomainWarpSpeedController,
-      this.turbulencePhaseController,
-      this.turbulenceStaticPhaseController,
-      this.turbulenceSymmetryController,
-      this.turbulencePullFactorController,
-      this.turbulenceOffsetXController,
-      this.turbulenceOffsetYController,
-      this.turbulenceBiasXController,
-      this.turbulenceBiasYController,
-      this.turbulenceBiasSmoothing,
-      this.turbulenceBlurController,
-      this.turbulenceDirectionBiasXController,
-      this.turbulenceDirectionBiasYController
-    ];
-
-    previewAffectingControllers.forEach(controller => {
-      if (controller) {
-        controller.onChange(() => {
-          if (this.previewManager) {
-            this.previewManager.refreshAllPreviews();
-          }
-        });
-      }
-    });
-
     // Handle folder open/close events
     previewsFolder.domElement.addEventListener('click', (e) => {
       if (e.target.closest('.title')) {
-        const isOpen = previewsFolder.domElement.classList.contains('closed') === false;
-        if (this.previewManager) {
-          this.previewManager.setFolderOpen(isOpen);
+        // Use setTimeout to let the DOM update before checking state
+        setTimeout(() => {
+          const isOpen = !previewsFolder.domElement.classList.contains('closed');
+          if (this.previewManager) {
+            this.previewManager.setFolderOpen(isOpen);
+          }
+        }, 0);
+      }
+    });
+
+    // Also observe folder state in case it's changed by other means
+    // (like programmatically or by closing parent folders)
+    const folderObserver = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.attributeName === 'class') {
+          const isOpen = !previewsFolder.domElement.classList.contains('closed');
+          if (this.previewManager) {
+            this.previewManager.setFolderOpen(isOpen);
+          }
+          break;
         }
       }
     });
+
+    folderObserver.observe(previewsFolder.domElement, { attributes: true });
+
+    // Store observer for cleanup
+    this.previewFolderObserver = folderObserver;
+
+    // Monitor parent folder (Noise folder) visibility
+    if (noiseFolder) {
+      noiseFolder.domElement.addEventListener('click', (e) => {
+        if (e.target.closest('.title')) {
+          // Use setTimeout to let the DOM update before checking state
+          setTimeout(() => {
+            if (this.previewManager) {
+              // Run the full check to detect all parent folders
+              this.previewManager.checkParentFolderVisibility();
+            }
+          }, 0);
+        }
+      });
+
+      // Observe the parent folder class changes
+      const noiseFolderObserver = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          if (mutation.attributeName === 'class') {
+            if (this.previewManager) {
+              // Run the full check to detect all parent folders
+              this.previewManager.checkParentFolderVisibility();
+            }
+            break;
+          }
+        }
+      });
+
+      noiseFolderObserver.observe(noiseFolder.domElement, { attributes: true });
+      this.noiseFolderObserver = noiseFolderObserver;
+    }
+
+    // Monitor pattern controls folder visibility
+    if (patternControlsFolder) {
+      patternControlsFolder.domElement.addEventListener('click', (e) => {
+        if (e.target.closest('.title')) {
+          setTimeout(() => {
+            if (this.previewManager) {
+              this.previewManager.checkParentFolderVisibility();
+            }
+          }, 0);
+        }
+      });
+    }
+
+    // Observe any GUI state changes (expanding/collapsing any folders)
+    if (this.gui && this.gui.domElement) {
+      const guiStateObserver = new MutationObserver((mutations) => {
+        // Check if any relevant folders have changed
+        const shouldCheck = mutations.some(mutation => {
+          return mutation.target &&
+            mutation.target.classList &&
+            mutation.target.classList.contains('folder') &&
+            mutation.attributeName === 'class';
+        });
+
+        if (shouldCheck && this.previewManager) {
+          this.previewManager.checkParentFolderVisibility();
+        }
+      });
+
+      guiStateObserver.observe(this.gui.domElement, {
+        attributes: true,
+        attributeFilter: ['class'],
+        subtree: true
+      });
+
+      this.guiStateObserver = guiStateObserver;
+    }
   }
 
   getControlTargets() {
@@ -727,6 +784,23 @@ export class TurbulenceUi extends BaseUi {
 
   // Add this method to the TurbulenceUi class
   dispose() {
+    // Clean up the MutationObserver
+    if (this.previewFolderObserver) {
+      this.previewFolderObserver.disconnect();
+      this.previewFolderObserver = null;
+    }
+
+    // Clean up the additional observers
+    if (this.noiseFolderObserver) {
+      this.noiseFolderObserver.disconnect();
+      this.noiseFolderObserver = null;
+    }
+
+    if (this.guiStateObserver) {
+      this.guiStateObserver.disconnect();
+      this.guiStateObserver = null;
+    }
+
     // Clean up the NoisePreviewManager
     if (this.previewManager) {
       this.previewManager.dispose();
