@@ -249,6 +249,7 @@ export class TurbulenceUi extends BaseUi {
         }
       });
     this.turbulencePatternStyleController.domElement.classList.add("full-width");
+    this.turbulencePatternStyleController.setValue("checkerboard");
 
     // Add rotation controls to pattern control folder
     this.turbulenceRotationController = patternControlsFolder.add(turbulence, "rotation", 0, Math.PI * 2).name("T-Rot");
