@@ -354,64 +354,63 @@ class TurbulenceField {
         const dotValue = Math.sqrt(dotX * dotX + dotY * dotY);
         patternValue = Math.cos(dotValue * Math.PI * 1);
         break;
-      case "cells": // New cellular pattern with varying sizes
-        // Create a cellular pattern with varying cell sizes
-        // Generate cell centers based on a grid with some variation
-        const cellSize = 0.8 / freq;
+      case "cells": // Simplified cellular pattern
+        // Use a larger cell size for fewer cells
+        const cellSize = 2.4 / freq; // Scaled up from 1.6
         const gridX = Math.floor(x / cellSize);
         const gridY = Math.floor(y / cellSize);
 
-        // Find minimum distance to cell centers in 3x3 neighborhood
+        // Only check the 4 nearest cells instead of 9
         let minCellDist = Infinity;
-        for (let offY = -1; offY <= 1; offY++) {
-          for (let offX = -1; offX <= 1; offX++) {
-            // Get current cell grid position
+        for (let offY = 0; offY <= 1; offY++) {
+          for (let offX = 0; offX <= 1; offX++) {
             const cellGridX = gridX + offX;
             const cellGridY = gridY + offY;
 
-            // Create a stable random offset for this cell
-            // Use a simple hash function to generate consistent cell centers
+            // Simpler hash function with less variation
             const cellHash = Math.sin(cellGridX * 12.9898 + cellGridY * 78.233) * 43758.5453;
-            const cellHashX = cellHash % 40.0;
-            const cellHashY = (cellHash * 2.1) % 1.0;
 
-            // Calculate cell center position with some randomness
-            const cellCenterX = (cellGridX + 0.4 + cellHashX * 0.2) * cellSize;
-            const cellCenterY = (cellGridY + 0.4 + cellHashY * 0.2) * cellSize;
+            // Cell centers are more predictable (less random variation)
+            const cellCenterX = (cellGridX + 0.5) * cellSize;
+            const cellCenterY = (cellGridY + 0.5) * cellSize;
 
-            // Calculate distance to this cell center
             const cellDx = x - cellCenterX;
             const cellDy = y - cellCenterY;
             const cellDist = Math.sqrt(cellDx * cellDx + cellDy * cellDy);
 
-            // Track minimum distance
             minCellDist = Math.min(minCellDist, cellDist);
           }
         }
 
-        // Create pattern from distance field
-        patternValue = Math.sin(minCellDist * Math.PI * 4);
+        // Use a gentler frequency for smoother transitions
+        patternValue = Math.sin(minCellDist * Math.PI * 1.5); // Reduced from 2.0
         break;
       case "voronoi":
         // Create a cellular pattern using multiple centers
-        const numCenters = 4;
+        const numCenters = 4; // Reduced from 6 for simpler pattern
         let minDist = Infinity;
+        let secondMinDist = Infinity;
 
         for (let i = 0; i < numCenters; i++) {
           const angle = (i / numCenters) * Math.PI * 2;
-          // Use boundary center coordinates instead of hardcoded 0.5
-          const seedX = centerX + Math.cos(angle) * 1.0;
-          const seedY = centerY + Math.sin(angle) * 1.0;
+          // Scale up the circle radius for larger cells
+          const seedX = centerX + Math.cos(angle) * 1.5; // Increased from 1.0
+          const seedY = centerY + Math.sin(angle) * 1.5; // Increased from 1.0
           const dx = x - seedX;
           const dy = y - seedY;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          // Track minimum distance
-          minDist = Math.min(minDist, dist);
+          // Keep track of two smallest distances for edge detection
+          if (dist < minDist) {
+            secondMinDist = minDist;
+            minDist = dist;
+          } else if (dist < secondMinDist) {
+            secondMinDist = dist;
+          }
         }
 
-        // Use the original formula for the pattern value
-        patternValue = Math.sin(minDist * freq * Math.PI * 2);
+        // Use a gentler frequency for smoother transitions
+        patternValue = Math.sin(minDist * freq * Math.PI * 1.5); // Reduced from 2.0
         break;
       case "fractal":
         // Create a recursive pattern
