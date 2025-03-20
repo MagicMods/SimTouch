@@ -1,5 +1,6 @@
 import { BaseUi } from "../baseUi.js";
 import { PresetManager } from "../../presets/presetManager.js";
+import { NoisePreviewManager } from "../../util/noisePreviewManager.js";
 
 export class TurbulenceUi extends BaseUi {
   constructor(main, container) {
@@ -164,7 +165,9 @@ export class TurbulenceUi extends BaseUi {
         }
 
         // Refresh previews when pullFactor changes to show the mode noise effect
-        refreshThumbnails(true);
+        if (this.previewManager) {
+          this.previewManager.refreshAllPreviews();
+        }
       });
 
     const scaleRangeFolder = this.gui.addFolder("Scale Range");
@@ -208,6 +211,23 @@ export class TurbulenceUi extends BaseUi {
     const patternControlsFolder = noiseFolder.addFolder("Pattern Control");
     this.patternControlsFolder = patternControlsFolder;
 
+    // Pattern styles for preview thumbnails
+    const patternStyles = {
+      "Checkerboard": "checkerboard",
+      "Waves": "waves",
+      "Spiral": "spiral",
+      "Grid": "grid",
+      "Circles": "circles",
+      "Diamonds": "diamonds",
+      "Ripples": "ripples",
+      "Dots": "dots",
+      "Voronoi": "voronoi",
+      "Cells": "cells",
+      "Fractal": "fractal",
+      "Vortex": "vortex",
+      "Bubbles": "bubbles"
+    };
+
     // Pattern style selector
     this.turbulencePatternStyleController = patternControlsFolder.add(turbulence, "patternStyle")
       .name("T-PatternStyle")
@@ -227,8 +247,9 @@ export class TurbulenceUi extends BaseUi {
         "Bubbles": "bubbles"
       })
       .onChange((value) => {
-        selectedThumbnailValue = value;
-        refreshThumbnails(true);  // Start animation when pattern changes
+        if (this.previewManager) {
+          this.previewManager.setSelectedPattern(value);
+        }
       });
     this.turbulencePatternStyleController.domElement.classList.add("full-width");
 
@@ -257,55 +278,15 @@ export class TurbulenceUi extends BaseUi {
     this.turbulenceBiasSmoothing = biasSpeedFolder.add(turbulence, "biasSmoothing", 0, 0.99, 0.01)
       .name("T-BiasSmooth")
       .onChange(() => {
-        refreshThumbnails(true);
+        if (this.previewManager) {
+          this.previewManager.refreshAllPreviews();
+        }
       });
 
     // Make sure folders are open by default
     patternOffsetFolder.open();
 
-    let currentAnimationCleanup = null;
-    let selectedThumbnailValue = null;
-    let thumbnailAnimationCleanups = new Map();
-    const previewSize = 76;  // Define previewSize here
-
-    // Function to refresh all thumbnails
-    const refreshThumbnails = (animate = false) => {
-      // Clean up any existing animations first
-      thumbnailAnimationCleanups.forEach(cleanup => cleanup());
-      thumbnailAnimationCleanups.clear();
-
-      const thumbnails = previewContainer.querySelectorAll('.pattern-preview img');
-      thumbnails.forEach((thumbnail, index) => {
-        const patternValue = Object.values(patternStyles)[index];
-        if (animate && patternValue === selectedThumbnailValue) {
-          // Start animation for selected thumbnail
-          const cleanup = turbulence.generateAnimatedPreview(previewSize, previewSize, patternValue, (dataUrl) => {
-            thumbnail.src = dataUrl;
-          });
-          thumbnailAnimationCleanups.set(patternValue, cleanup);
-        } else {
-          // Static preview for others
-          thumbnail.src = turbulence.generatePatternPreview(previewSize, previewSize, patternValue);
-        }
-      });
-    };
-
-    // Create preview thumbnails
-    const patternStyles = {
-      "Checkerboard": "checkerboard",
-      "Waves": "waves",
-      "Spiral": "spiral",
-      "Grid": "grid",
-      "Circles": "circles",
-      "Diamonds": "diamonds",
-      "Ripples": "ripples",
-      "Dots": "dots",
-      "Voronoi": "voronoi",
-      "Cells": "cells",
-      "Fractal": "fractal",
-      "Vortex": "vortex",
-      "Bubbles": "bubbles"
-    };
+    const previewSize = 76;
 
     // Create preview thumbnails
     Object.entries(patternStyles).forEach(([name, value]) => {
@@ -344,48 +325,34 @@ export class TurbulenceUi extends BaseUi {
       `;
       previewWrapper.appendChild(title);
 
-      // Generate initial preview
-      previewImg.src = turbulence.generatePatternPreview(previewSize, previewSize, value);
+      // Generate initial static preview (now handled by PreviewManager)
       previewWrapper.appendChild(previewImg);
 
       // Add hover effect
       previewWrapper.addEventListener('mouseover', () => {
-        if (value !== selectedThumbnailValue) {
+        if (value !== turbulence.patternStyle) {
           previewWrapper.style.borderColor = '#fff';
         }
       });
       previewWrapper.addEventListener('mouseout', () => {
-        if (value !== selectedThumbnailValue) {
+        if (value !== turbulence.patternStyle) {
           previewWrapper.style.borderColor = '#666';
         }
       });
 
       // Add click handler
-      let isThisThumbnailAnimating = true;  // Start with animation enabled
       previewWrapper.addEventListener('click', () => {
-        if (selectedThumbnailValue !== value) {
-          // Stop any existing animations
-          thumbnailAnimationCleanups.forEach(cleanup => cleanup());
-          thumbnailAnimationCleanups.clear();
-
+        if (turbulence.patternStyle !== value) {
           // Update pattern
           turbulence.patternStyle = value;
-          selectedThumbnailValue = value;
+          // Update controller
           if (this.turbulencePatternStyleController) {
             this.turbulencePatternStyleController.setValue(value);
           }
-          isThisThumbnailAnimating = true;  // Keep animation active
-          refreshThumbnails(true);
-
-          // Update title visibility - show for all, hide for selected
-          previewContainer.querySelectorAll('.pattern-preview').forEach(thumb => {
-            thumb.querySelector('div').style.display = 'block';  // Show title for unselected
-          });
-          previewWrapper.querySelector('div').style.display = 'none';  // Hide title for selected
-        } else {
-          // Toggle animation
-          isThisThumbnailAnimating = !isThisThumbnailAnimating;
-          refreshThumbnails(isThisThumbnailAnimating);
+          // Explicitly update the preview manager with the new selected pattern
+          if (this.previewManager) {
+            this.previewManager.setSelectedPattern(value);
+          }
         }
       });
 
@@ -395,17 +362,19 @@ export class TurbulenceUi extends BaseUi {
     // Store preview container reference
     this.patternPreviewContainer = previewContainer;
 
-    // Set initial selected pattern and start animation
-    selectedThumbnailValue = turbulence.patternStyle;
+    // Initialize the NoisePreviewManager
+    this.previewManager = new NoisePreviewManager(
+      turbulence,
+      previewSize,
+      patternStyles
+    );
 
-    // Hide title for selected pattern
-    const selectedThumbnail = previewContainer.querySelector(`.pattern-preview[data-pattern="${turbulence.patternStyle}"]`);
-    if (selectedThumbnail) {
-      selectedThumbnail.querySelector('div').style.display = 'none';
-    }
+    // Check if previews folder is open
+    const isPreviewsFolderOpen = previewsFolder.domElement.classList.contains('closed') === false;
 
-    // Start animation for selected pattern
-    refreshThumbnails(true);
+    // Initialize with container and folder state
+    this.previewManager.initialize(previewContainer, isPreviewsFolderOpen);
+    this.previewManager.setSelectedPattern(turbulence.patternStyle);
 
     // Create button group container for time influence controls
     const timeInfluenceContainer = document.createElement("div");
@@ -420,54 +389,70 @@ export class TurbulenceUi extends BaseUi {
     this.turbulenceDomainWarpController = patternControlsFolder.add(turbulence, "domainWarp", 0, 1)
       .name("T-DomWarp")
       .onChange(() => {
-        refreshThumbnails(true);  // Keep animation when warp changes
+        if (this.previewManager) {
+          this.previewManager.refreshAllPreviews();
+        }
       });
 
     // Add domain warp speed control
     this.turbulenceDomainWarpSpeedController = patternControlsFolder.add(turbulence, "domainWarpSpeed", 0, 2, 0.1)
       .name("T-DomWarpSp")
       .onChange(() => {
-        refreshThumbnails(true);
+        if (this.previewManager) {
+          this.previewManager.refreshAllPreviews();
+        }
       });
 
     // Add symmetry amount control
     this.turbulenceSymmetryController = patternControlsFolder.add(turbulence, "symmetryAmount", 0, 1, 0.01)
       .name("T-Sym")
       .onChange(() => {
-        refreshThumbnails(true);
+        if (this.previewManager) {
+          this.previewManager.refreshAllPreviews();
+        }
       });
 
     // Pattern frequency control (always visible)
     this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulence, "patternFrequency", 0.01, 4, 0.01)
       .name("T-Freq")
       .onChange(() => {
-        refreshThumbnails(true);  // Keep animation when frequency changes
+        if (this.previewManager) {
+          this.previewManager.refreshAllPreviews();
+        }
       });
 
     // Add static phase control
     this.turbulenceStaticPhaseController = patternControlsFolder.add(turbulence, "phase", 0, 1, 0.01)
       .name("T-Phase")
       .onChange(() => {
-        refreshThumbnails(true);
+        if (this.previewManager) {
+          this.previewManager.refreshAllPreviews();
+        }
       });
 
     // Add phase speed control
     this.turbulencePhaseController = patternControlsFolder.add(turbulence, "phaseSpeed", -1, 1, 0.1)
       .name("T-PhaseSp")
       .onChange(() => {
-        refreshThumbnails(true);
+        if (this.previewManager) {
+          this.previewManager.refreshAllPreviews();
+        }
       });
 
     // Add blur control
     this.turbulenceBlurController = patternControlsFolder.add(turbulence, "blurAmount", 0, 2, 0.01)
       .name("T-Blur")
       .onChange(() => {
-        refreshThumbnails(true);
+        if (this.previewManager) {
+          this.previewManager.refreshAllPreviews();
+        }
       });
 
     // Add listener for T-Speed changes to update control behavior
     this.turbulenceSpeedController.onChange(() => {
-      refreshThumbnails(true);
+      if (this.previewManager) {
+        this.previewManager.refreshAllPreviews();
+      }
     });
 
     // Restore XY bias controllers
@@ -488,14 +473,12 @@ export class TurbulenceUi extends BaseUi {
       this.turbulenceStaticPhaseController,
       this.turbulenceSymmetryController,
       this.turbulencePullFactorController,
-      // New controllers
       this.turbulenceOffsetXController,
       this.turbulenceOffsetYController,
       this.turbulenceBiasXController,
       this.turbulenceBiasYController,
       this.turbulenceBiasSmoothing,
       this.turbulenceBlurController,
-      // Direction bias for particles
       this.turbulenceDirectionBiasXController,
       this.turbulenceDirectionBiasYController
     ];
@@ -503,22 +486,20 @@ export class TurbulenceUi extends BaseUi {
     previewAffectingControllers.forEach(controller => {
       if (controller) {
         controller.onChange(() => {
-          refreshThumbnails(true);  // Keep animation when parameters change
+          if (this.previewManager) {
+            this.previewManager.refreshAllPreviews();
+          }
         });
       }
     });
 
-    // Clean up animation when folder is closed
+    // Handle folder open/close events
     previewsFolder.domElement.addEventListener('click', (e) => {
       if (e.target.closest('.title')) {
-        if (currentAnimationCleanup) {
-          currentAnimationCleanup();
-          currentAnimationCleanup = null;
+        const isOpen = previewsFolder.domElement.classList.contains('closed') === false;
+        if (this.previewManager) {
+          this.previewManager.setFolderOpen(isOpen);
         }
-        thumbnailAnimationCleanups.forEach(cleanup => cleanup());
-        thumbnailAnimationCleanups.clear();
-        selectedThumbnailValue = null;
-        refreshThumbnails(false);
       }
     });
   }
@@ -741,6 +722,20 @@ export class TurbulenceUi extends BaseUi {
 
     if (this.turbulenceBiasYController) {
       this.turbulenceBiasYController.setValue(turbulence.biasSpeedY);
+    }
+  }
+
+  // Add this method to the TurbulenceUi class
+  dispose() {
+    // Clean up the NoisePreviewManager
+    if (this.previewManager) {
+      this.previewManager.dispose();
+      this.previewManager = null;
+    }
+
+    // Call the parent class dispose method if it exists
+    if (super.dispose) {
+      super.dispose();
     }
   }
 }
