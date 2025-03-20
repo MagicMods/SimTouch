@@ -1,6 +1,7 @@
 export class EmuRenderer {
-  constructor(container, emuForces) {
+  constructor(container, emuForces, main = null) {
     this.emuForces = emuForces;
+    this.main = main; // Store reference to main if provided
     this.visible = false;
 
     // Track if we're currently dragging
@@ -29,6 +30,11 @@ export class EmuRenderer {
     // Animation frame
     this.animationFrameId = null;
     this.startAnimation();
+
+    // Log if we have direct access to turbulenceField
+    if (this.main?.turbulenceField) {
+      console.log("EmuRenderer has direct access to turbulenceField via main");
+    }
   }
 
   setupMouseInteraction() {
@@ -131,6 +137,9 @@ export class EmuRenderer {
 
     // Update gravity UI
     this.updateGravityUI();
+
+    // Update turbulence bias UI
+    this.updateTurbulenceBiasUI();
   }
 
   updateGravityUI() {
@@ -158,6 +167,92 @@ export class EmuRenderer {
           // Trigger change event to update internal state
           const event = new Event('change', { bubbles: true });
           input.dispatchEvent(event);
+        }
+      }
+    });
+  }
+
+  updateTurbulenceBiasUI() {
+    // Try to find the turbulenceField through various paths
+
+    // First try the direct main reference if available
+    let turbulenceField = this.main?.turbulenceField;
+    let main = this.main;
+
+    // If not found, try the direct reference from emuForces
+    if (!turbulenceField) {
+      turbulenceField = this.emuForces.turbulenceField;
+    }
+
+    // If still not found, check other paths
+    if (!turbulenceField) {
+      turbulenceField = this.emuForces.simulation?.turbulenceField;
+
+      if (!turbulenceField && this.emuForces.gravity?.particleSystem?.main) {
+        main = this.emuForces.gravity.particleSystem.main;
+        turbulenceField = main.turbulenceField;
+      }
+
+      // Try simulation.main if it exists
+      if (!turbulenceField && this.emuForces.simulation?.main) {
+        main = this.emuForces.simulation.main;
+        turbulenceField = main.turbulenceField;
+      }
+    }
+
+    if (!turbulenceField) {
+      console.log("Turbulence field not found in emuRenderer");
+      return; // Turbulence field not found
+    }
+
+    console.log("Found turbulenceField in emuRenderer:", !!turbulenceField);
+
+    // Normalize EMU accel values to -1 to 1 range for bias controls
+    // Use original mapping since we fixed the coordinate system in turbulenceField.js
+    const biasX = Math.max(-1, Math.min(1, this.emuForces.emuData.accelY / 10));
+    const biasY = Math.max(-1, Math.min(1, this.emuForces.emuData.accelX / 10));
+
+    // Update turbulenceField directly
+    if (typeof turbulenceField.setBiasSpeed === 'function') {
+      turbulenceField.setBiasSpeed(biasX, biasY);
+      console.log(`Set biasSpeed: X=${biasX.toFixed(2)}, Y=${biasY.toFixed(2)}`);
+    }
+
+    // If turbulenceUi is available with the updateBiasControllers method, use it
+    if (main?.turbulenceUi && typeof main.turbulenceUi.updateBiasControllers === 'function') {
+      main.turbulenceUi.updateBiasControllers();
+      console.log("Updated turbulence bias UI via updateBiasControllers");
+      return; // We're done, no need to manually update DOM elements
+    }
+
+    // Otherwise fall back to direct DOM manipulation
+    console.log("Falling back to manual DOM updates for turbulence bias UI");
+    // Find all controllers in the document
+    const biasControllers = document.querySelectorAll('.dg .c input[type="text"]');
+
+    // Loop through them to find T-BiasX and T-BiasY controllers
+    biasControllers.forEach(input => {
+      const label = input.parentElement?.parentElement?.querySelector('.property-name');
+      if (label) {
+        const name = label.textContent?.trim();
+
+        if (name === 'T-BiasX') {
+          // Update the X input value
+          input.value = biasX.toFixed(2);
+
+          // Trigger change event to update internal state
+          const event = new Event('change', { bubbles: true });
+          input.dispatchEvent(event);
+          console.log(`Updated T-BiasX UI to ${biasX.toFixed(2)}`);
+        }
+        else if (name === 'T-BiasY') {
+          // Update the Y input value
+          input.value = biasY.toFixed(2);
+
+          // Trigger change event to update internal state
+          const event = new Event('change', { bubbles: true });
+          input.dispatchEvent(event);
+          console.log(`Updated T-BiasY UI to ${biasY.toFixed(2)}`);
         }
       }
     });

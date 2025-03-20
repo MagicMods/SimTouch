@@ -77,6 +77,21 @@ export class ExternalInputConnector {
       this.emuEnabled = true;
       this.emuForces.enable();
 
+      // Try to ensure EMU forces can access the main object
+      if (this.mouseForces && this.mouseForces.particleSystem && this.mouseForces.particleSystem.main) {
+        const main = this.mouseForces.particleSystem.main;
+        // Store reference to main on the simulation object 
+        if (this.emuForces.simulation) {
+          this.emuForces.simulation.main = main;
+        }
+
+        // Directly store reference to turbulence field if available
+        if (main.turbulenceField) {
+          this.emuForces.turbulenceField = main.turbulenceField;
+          console.log("Passed turbulenceField reference to EMU forces");
+        }
+      }
+
       if (this.enabled) {
         socketManager.addEmuHandler(this.handleEmuData);
       }

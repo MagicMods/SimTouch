@@ -19,7 +19,7 @@ class TurbulenceField {
     // Time influence controls
     phaseEnabled = false,
     amplitudeEnabled = false,
-    phaseSpeed = 0.0,
+    phaseSpeed = -1,
     amplitudeSpeed = 0.0,
     phase = 0.0,
     amplitude = 1.0,
@@ -30,11 +30,12 @@ class TurbulenceField {
     // New bias speed controls
     biasSpeedX = 0.0,
     biasSpeedY = 0.0,
-    biasSpeed = 0.0,
+    biasStrength = 1.0,  // New bias strength parameter
     // New contrast and separation controls
     contrast = 0.5,        // 0 = no contrast, 1 = max contrast
-    contrastSpeed = 0.0,   // Speed of contrast oscillation
-    separation = 0.5,      // 0 = smooth, 1 = sharp transitions
+    separation = 0,      // 0 = smooth, 1 = sharp transitions
+    // New bias smoothing parameter
+    biasSmoothing = 0.8,   // 0 = no smoothing, 1 = max smoothing
   } = {}) {
     if (
       !boundary ||
@@ -97,26 +98,43 @@ class TurbulenceField {
     // New bias speed controls (speed of pattern movement in X/Y)
     this.biasSpeedX = biasSpeedX;
     this.biasSpeedY = biasSpeedY;
-    this.biasSpeed = biasSpeed;
+    this.biasStrength = biasStrength;  // Store bias strength
 
     // New contrast and separation controls
     this.contrast = contrast;
-    this.contrastSpeed = contrastSpeed;
     this.separation = separation;
+
+    // Add bias smoothing
+    this.biasSmoothing = biasSmoothing;
+
+    // Add internal bias state tracking for smoothing
+    this._currentBiasOffsetX = 0;
+    this._currentBiasOffsetY = 0;
   }
 
   // Coordinate processing pipeline helper functions
 
-  // Apply pattern offset and time-based bias
+  // Apply pattern offset and time-based bias with smoothing
   applyOffset(x, y, time) {
-    // Calculate time-based offsets from bias speeds
-    const timeOffsetX = time * this.speed * this.biasSpeedX * this.biasSpeed;
-    const timeOffsetY = time * this.speed * this.biasSpeedY * this.biasSpeed;
+    // Calculate target time-based offsets from bias speeds with strength multiplier
+    const targetOffsetX = time * -this.biasSpeedX * this.biasStrength;
+    const targetOffsetY = time * this.biasSpeedY * this.biasStrength;
 
-    // Apply both static offset and time-based bias
+    // Apply smoothing using exponential moving average
+    if (this.biasSmoothing > 0) {
+      const smoothFactor = Math.max(0, Math.min(1, 1 - this.biasSmoothing));
+      this._currentBiasOffsetX = this._currentBiasOffsetX * (1 - smoothFactor) + targetOffsetX * smoothFactor;
+      this._currentBiasOffsetY = this._currentBiasOffsetY * (1 - smoothFactor) + targetOffsetY * smoothFactor;
+    } else {
+      // No smoothing
+      this._currentBiasOffsetX = targetOffsetX;
+      this._currentBiasOffsetY = targetOffsetY;
+    }
+
+    // Apply both static offset and smoothed time-based bias
     return [
-      x + this.patternOffsetX + timeOffsetX,
-      y + this.patternOffsetY + timeOffsetY
+      x - this.patternOffsetX + this._currentBiasOffsetX,
+      y + this.patternOffsetY + this._currentBiasOffsetY
     ];
   }
 
@@ -143,29 +161,38 @@ class TurbulenceField {
   }
 
   // Apply scale to coordinates
-  applyScale(x, y, scale) {
-    return [x * scale, y * scale];
+  applyScale(x, y, scale, centerX, centerY) {
+    // Translate to center, scale, then translate back
+    const tx = x - centerX;
+    const ty = y - centerY;
+    const sx = tx * scale;
+    const sy = ty * scale;
+    return [sx + centerX, sy + centerY];
   }
 
   // Apply domain warping to coordinates
-  applyDomainWarp(x, y, time) {
+  applyDomainWarp(x, y, time, centerX, centerY) {
     if (this.domainWarp <= 0) return [x, y];
 
+    // Apply warp relative to center
+    const tx = x - centerX;
+    const ty = y - centerY;
     const warpFreq = 2.0;
 
+    // Apply warping
+    let wx, wy;
     if (this.speed > 0 && this.domainWarpSpeed > 0) {
       // Time-driven warping
-      return [
-        x + this.domainWarp * Math.sin(y * warpFreq + time * this.speed * this.domainWarpSpeed),
-        y + this.domainWarp * Math.cos(x * warpFreq + time * this.speed * this.domainWarpSpeed)
-      ];
+      wx = tx + this.domainWarp * Math.sin(ty * warpFreq + time * this.speed * this.domainWarpSpeed);
+      wy = ty + this.domainWarp * Math.cos(tx * warpFreq + time * this.speed * this.domainWarpSpeed);
     } else {
       // Static warping
-      return [
-        x + this.domainWarp * Math.sin(y * warpFreq),
-        y + this.domainWarp * Math.cos(x * warpFreq)
-      ];
+      wx = tx + this.domainWarp * Math.sin(ty * warpFreq);
+      wy = ty + this.domainWarp * Math.cos(tx * warpFreq);
     }
+
+    // Return to original coordinate space
+    return [wx + centerX, wy + centerY];
   }
 
   // Apply rotation to coordinates
@@ -220,14 +247,8 @@ class TurbulenceField {
     }
 
     // ===== STANDARD CONTRAST & SEPARATION =====
-    // Get base contrast value (optionally animated)
+    // Get base contrast value (removed time animation)
     let contrastValue = this.contrast;
-    if (this.contrastSpeed > 0 && this.speed > 0) {
-      // Oscillate contrast between original value and 1.0
-      contrastValue = this.contrast +
-        (1.0 - this.contrast) * 0.5 *
-        (1 + Math.sin(time * this.speed * this.contrastSpeed));
-    }
 
     // Apply separation (threshold) effect if enabled
     if (this.separation > 0) {
@@ -267,8 +288,8 @@ class TurbulenceField {
     // Process in correct order: offset → symmetry → scale → warp → rotate
     let [px, py] = this.applyOffset(x, y, time);
     [px, py] = this.applySymmetry(px, py, centerX, centerY);
-    [px, py] = this.applyScale(px, py, this.scale);
-    [px, py] = this.applyDomainWarp(px, py, time);
+    [px, py] = this.applyScale(px, py, this.scale, centerX, centerY);
+    [px, py] = this.applyDomainWarp(px, py, time, centerX, centerY);
     [px, py] = this.applyRotation(px, py, centerX, centerY, this.rotation);
 
     return [px, py, centerX, centerY];
@@ -298,38 +319,91 @@ class TurbulenceField {
         break;
       case "circles":
         const dist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
-        patternValue = Math.sin(dist * freq * Math.PI * 2);
+        patternValue = Math.sin(dist * freq * Math.PI * .3);
         break;
-      case "maze":
-        patternValue = Math.sin(x * freq * 2) * Math.cos(y * freq * 2);
+      case "diamonds": // New pattern replacing maze
+        patternValue = Math.sin(x * freq + y * freq) * Math.cos(x * freq - y * freq);
         break;
       case "ripples":
         const rippleDist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
-        patternValue = Math.sin(rippleDist * freq * Math.PI * 2 - this.time * this.speed);
+        patternValue = Math.sin(rippleDist * freq * Math.PI * .4 - this.time * this.speed);
         break;
-      case "starfield":
-        const starX = (x - centerX) * freq;
-        const starY = (y - centerY) * freq;
-        patternValue = Math.sin(starX * starX + starY * starY);
+      case "dots": // New pattern replacing starfield
+        // Create a grid of soft dots
+        const dotX = Math.sin(x * freq * 0.17 * Math.PI);
+        const dotY = Math.sin(y * freq * 0.17 * Math.PI);
+        const dotValue = Math.sqrt(dotX * dotX + dotY * dotY);
+        patternValue = Math.cos(dotValue * Math.PI * 1);
+        break;
+      case "cells": // New cellular pattern with varying sizes
+        // Create a cellular pattern with varying cell sizes
+        // Generate cell centers based on a grid with some variation
+        const cellSize = 0.8 / freq;
+        const gridX = Math.floor(x / cellSize);
+        const gridY = Math.floor(y / cellSize);
+
+        // Find minimum distance to cell centers in 3x3 neighborhood
+        let minCellDist = Infinity;
+        for (let offY = -1; offY <= 1; offY++) {
+          for (let offX = -1; offX <= 1; offX++) {
+            // Get current cell grid position
+            const cellGridX = gridX + offX;
+            const cellGridY = gridY + offY;
+
+            // Create a stable random offset for this cell
+            // Use a simple hash function to generate consistent cell centers
+            const cellHash = Math.sin(cellGridX * 12.9898 + cellGridY * 78.233) * 43758.5453;
+            const cellHashX = cellHash % 40.0;
+            const cellHashY = (cellHash * 2.1) % 1.0;
+
+            // Calculate cell center position with some randomness
+            const cellCenterX = (cellGridX + 0.4 + cellHashX * 0.2) * cellSize;
+            const cellCenterY = (cellGridY + 0.4 + cellHashY * 0.2) * cellSize;
+
+            // Calculate distance to this cell center
+            const cellDx = x - cellCenterX;
+            const cellDy = y - cellCenterY;
+            const cellDist = Math.sqrt(cellDx * cellDx + cellDy * cellDy);
+
+            // Track minimum distance
+            minCellDist = Math.min(minCellDist, cellDist);
+          }
+        }
+
+        // Create pattern from distance field
+        patternValue = Math.sin(minCellDist * Math.PI * 4);
         break;
       case "voronoi":
         // Create a cellular pattern using multiple centers
-        const numCenters = 8;
+        const numCenters = 6;
         let minDist = Infinity;
+        let secondMinDist = Infinity;
+
         for (let i = 0; i < numCenters; i++) {
           const angle = (i / numCenters) * Math.PI * 2;
-          const centerX = 0.5 + Math.cos(angle) * 0.3;
-          const centerY = 0.5 + Math.sin(angle) * 0.3;
-          const dx = x - centerX;
-          const dy = y - centerY;
+          // Use boundary center coordinates instead of hardcoded 0.5
+          const seedX = centerX + Math.cos(angle) * 0.3;
+          const seedY = centerY + Math.sin(angle) * 0.3;
+          const dx = x - seedX;
+          const dy = y - seedY;
           const dist = Math.sqrt(dx * dx + dy * dy);
-          minDist = Math.min(minDist, dist);
+
+          // Keep track of two closest distances for improved edge detection
+          if (dist < minDist) {
+            secondMinDist = minDist;
+            minDist = dist;
+          } else if (dist < secondMinDist) {
+            secondMinDist = dist;
+          }
         }
-        patternValue = Math.sin(minDist * freq * Math.PI * 2);
+
+        // Use the difference between closest and second closest for cleaner edges
+        const edgeDist = (secondMinDist - minDist) * 3;
+        patternValue = Math.sin(edgeDist * Math.PI * 3);
         break;
       case "fractal":
         // Create a recursive pattern
-        let fractalValue = 0;
+        let fractalValue = 1;
         let amplitude = 1;
         let frequency = freq;
         for (let i = 0; i < 4; i++) {
@@ -625,7 +699,7 @@ class TurbulenceField {
 
     // These time-based updates are now handled directly in the coordinate processing
     // through the applyOffset method, which calculates time-based offsets based on
-    // biasSpeedX, biasSpeedY, and biasSpeed values.
+    // biasSpeedX, biasSpeedY, and biasStrength values.
   }
 
   setParameters({
@@ -648,15 +722,16 @@ class TurbulenceField {
     phase,
     amplitude,
     symmetryAmount,
-    // New parameters
+    // Pattern offset parameters
     patternOffsetX,
     patternOffsetY,
     biasSpeedX,
     biasSpeedY,
-    biasSpeed,
+    biasStrength,
     contrast,
-    contrastSpeed,
     separation,
+    // New bias smoothing parameter
+    biasSmoothing,
   }) {
     if (strength !== undefined) this.strength = strength;
     if (scale !== undefined) this.scale = scale;
@@ -682,19 +757,21 @@ class TurbulenceField {
     // Symmetry control
     if (symmetryAmount !== undefined) this.symmetryAmount = symmetryAmount;
 
-    // New pattern offset controls
+    // Pattern offset controls
     if (patternOffsetX !== undefined) this.patternOffsetX = patternOffsetX;
     if (patternOffsetY !== undefined) this.patternOffsetY = patternOffsetY;
 
-    // New bias speed controls
+    // Bias speed controls
     if (biasSpeedX !== undefined) this.biasSpeedX = biasSpeedX;
     if (biasSpeedY !== undefined) this.biasSpeedY = biasSpeedY;
-    if (biasSpeed !== undefined) this.biasSpeed = biasSpeed;
+    if (biasStrength !== undefined) this.biasStrength = biasStrength;
 
-    // New contrast and separation controls
+    // Contrast and separation controls
     if (contrast !== undefined) this.contrast = contrast;
-    if (contrastSpeed !== undefined) this.contrastSpeed = contrastSpeed;
     if (separation !== undefined) this.separation = separation;
+
+    // New bias smoothing parameter
+    if (biasSmoothing !== undefined) this.biasSmoothing = biasSmoothing;
   }
 
   // Debug function to help diagnose rotation issues
@@ -731,6 +808,22 @@ class TurbulenceField {
     });
 
     console.log("=== End Debug ===");
+  }
+
+  // Add new method to set bias speed with strength
+  setBiasSpeed(x, y) {
+    // Ensure values are within -1 to 1 range
+    const clampedX = Math.max(-1, Math.min(1, x));
+    const clampedY = Math.max(-1, Math.min(1, y));
+
+    // Store raw bias values (without strength multiplier)
+    this.biasSpeedX = clampedX;
+    this.biasSpeedY = clampedY;
+
+    // Bias strength is applied in applyOffset method:
+    // timeOffsetX = time * this.biasSpeedX * this.biasStrength;
+    // timeOffsetY = time * this.biasSpeedY * this.biasStrength;
+    // Note: Bias speeds work independently of pattern speed
   }
 }
 

@@ -54,10 +54,6 @@ class Main {
       gravity: this.particleSystem.gravity,
     });
 
-    // Create the visualizer
-    this.emuRenderer = new EmuRenderer(document.body, this.emuForces);
-    this.emuRenderer.show();
-
     // Pass both mouseForces and emuForces to ExternalInputConnector
     this.externalInput = new ExternalInputConnector(
       this.mouseForces,
@@ -67,6 +63,10 @@ class Main {
       .enable()
       .setSensitivity(0.002);
 
+    // Create the visualizer AFTER externalInput is initialized
+    this.emuRenderer = new EmuRenderer(document.body, this.externalInput.emuForces, this);
+    this.emuRenderer.show();
+
     this.paused = false;
 
     // Set up socket connection
@@ -74,6 +74,21 @@ class Main {
     socketManager.connect();
 
     // this.setupMouseDebug();
+
+    // Make sure the emuRenderer can access the turbulenceField
+    if (this.emuRenderer && this.turbulenceField && this.externalInput?.emuForces) {
+      console.log("Directly connecting turbulenceField to emuRenderer and emuForces");
+      // Add direct reference to turbulenceField in emuForces
+      this.externalInput.emuForces.turbulenceField = this.turbulenceField;
+
+      // Add direct reference to main in simulation
+      if (this.externalInput.emuForces.simulation) {
+        this.externalInput.emuForces.simulation.main = this;
+      }
+
+      // Also store main reference in emuRenderer
+      this.emuRenderer.main = this;
+    }
   }
 
   async init() {

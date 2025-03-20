@@ -217,10 +217,11 @@ export class TurbulenceUi extends BaseUi {
         "Spiral": "spiral",
         "Grid": "grid",
         "Circles": "circles",
-        "Maze": "maze",
+        "Diamonds": "diamonds",
         "Ripples": "ripples",
-        "Starfield": "starfield",
+        "Dots": "dots",
         "Voronoi": "voronoi",
+        "Cells": "cells",
         "Fractal": "fractal",
         "Vortex": "vortex",
         "Bubbles": "bubbles"
@@ -251,7 +252,13 @@ export class TurbulenceUi extends BaseUi {
     // Add bias speed controls
     this.turbulenceBiasXController = biasSpeedFolder.add(turbulence, "biasSpeedX", -1, 1, 0.01).name("T-BiasX");
     this.turbulenceBiasYController = biasSpeedFolder.add(turbulence, "biasSpeedY", -1, 1, 0.01).name("T-BiasY");
-    this.turbulenceBiasSpeedController = biasSpeedFolder.add(turbulence, "biasSpeed", 0, 2, 0.01).name("T-BiasSp");
+
+    // Add new bias smoothing control
+    this.turbulenceBiasSmoothing = biasSpeedFolder.add(turbulence, "biasSmoothing", 0, 0.99, 0.01)
+      .name("T-BiasSmooth")
+      .onChange(() => {
+        refreshThumbnails(true);
+      });
 
     // Make sure folders are open by default
     patternOffsetFolder.open();
@@ -290,10 +297,11 @@ export class TurbulenceUi extends BaseUi {
       "Spiral": "spiral",
       "Grid": "grid",
       "Circles": "circles",
-      "Maze": "maze",
+      "Diamonds": "diamonds",
       "Ripples": "ripples",
-      "Starfield": "starfield",
+      "Dots": "dots",
       "Voronoi": "voronoi",
+      "Cells": "cells",
       "Fractal": "fractal",
       "Vortex": "vortex",
       "Bubbles": "bubbles"
@@ -461,12 +469,6 @@ export class TurbulenceUi extends BaseUi {
         refreshThumbnails(true);
       });
 
-    this.turbulenceContrastSpeedController = contrastFolder.add(turbulence, "contrastSpeed", 0, 1, 0.01)
-      .name("T-ContSp")
-      .onChange(() => {
-        refreshThumbnails(true);
-      });
-
     // Add separation control 
     this.turbulenceSeparationController = contrastFolder.add(turbulence, "separation", 0, 1, 0.01)
       .name("T-Separation")
@@ -505,9 +507,8 @@ export class TurbulenceUi extends BaseUi {
       this.turbulenceOffsetYController,
       this.turbulenceBiasXController,
       this.turbulenceBiasYController,
-      this.turbulenceBiasSpeedController,
+      this.turbulenceBiasSmoothing,
       this.turbulenceContrastController,
-      this.turbulenceContrastSpeedController,
       this.turbulenceSeparationController,
       // Direction bias for particles
       this.turbulenceDirectionBiasXController,
@@ -623,12 +624,13 @@ export class TurbulenceUi extends BaseUi {
     // Add new bias speed controllers
     if (this.turbulenceBiasXController) targets["T-BiasX"] = this.turbulenceBiasXController;
     if (this.turbulenceBiasYController) targets["T-BiasY"] = this.turbulenceBiasYController;
-    if (this.turbulenceBiasSpeedController) targets["T-BiasSp"] = this.turbulenceBiasSpeedController;
 
     // Add new contrast and separation controllers
     if (this.turbulenceContrastController) targets["T-Contrast"] = this.turbulenceContrastController;
-    if (this.turbulenceContrastSpeedController) targets["T-ContSp"] = this.turbulenceContrastSpeedController;
     if (this.turbulenceSeparationController) targets["T-Separation"] = this.turbulenceSeparationController;
+
+    // Add new bias smoothing controller to control targets
+    if (this.turbulenceBiasSmoothing) targets["T-BiasSmooth"] = this.turbulenceBiasSmoothing;
 
     return targets;
   }
@@ -676,9 +678,8 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulenceOffsetYController);
     safeUpdateDisplay(this.turbulenceBiasXController);
     safeUpdateDisplay(this.turbulenceBiasYController);
-    safeUpdateDisplay(this.turbulenceBiasSpeedController);
+    safeUpdateDisplay(this.turbulenceBiasSmoothing);
     safeUpdateDisplay(this.turbulenceContrastController);
-    safeUpdateDisplay(this.turbulenceContrastSpeedController);
     safeUpdateDisplay(this.turbulenceSeparationController);
   }
 
@@ -742,6 +743,21 @@ export class TurbulenceUi extends BaseUi {
     } catch (error) {
       console.error("Error applying turbulence preset:", error);
       return false;
+    }
+  }
+
+  // Add method to allow external code to update specific controllers
+  updateBiasControllers() {
+    const turbulence = this.main.turbulenceField;
+    if (!turbulence) return;
+
+    // Update UI for bias X and Y controllers if they exist
+    if (this.turbulenceBiasXController) {
+      this.turbulenceBiasXController.setValue(turbulence.biasSpeedX);
+    }
+
+    if (this.turbulenceBiasYController) {
+      this.turbulenceBiasYController.setValue(turbulence.biasSpeedY);
     }
   }
 }

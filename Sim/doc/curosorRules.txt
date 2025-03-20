@@ -71,8 +71,8 @@ Failing to follow this protocol will cause catastrophic outcomes for my codebase
 MODE TRANSITION SIGNALS
 Only transition modes when I explicitly signal with:
 
-“ENTER RESEARCH MODE”
-“ENTER INNOVATE MODE”
-“ENTER PLAN MODE”
-“ENTER EXECUTE MODE”
-“ENTER REVIEW MODE”
+“[RESEARCH]”
+“[INNOVATE]”
+“[PLAN]”
+“[EXECUTE]”
+“[REVIEW]”

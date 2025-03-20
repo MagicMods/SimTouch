@@ -170,6 +170,35 @@ export class InputsUi extends BaseUi {
         emuForces.setAccelGravityMultiplier(value);
       });
 
+    // Add turbulence bias strength control
+    if (this.main.turbulenceField) {
+      this.turbulenceBiasStrengthController = this.emuInputFolder
+        .add(
+          { strength: this.main.turbulenceField.biasStrength },
+          "strength",
+          0.1,
+          5.0,
+          0.1
+        )
+        .name("T-Bias Strength")
+        .onChange((value) => {
+          // Store the new strength value in the turbulence field
+          this.main.turbulenceField.biasStrength = value;
+
+          // Bias speeds now work independently of pattern speed
+          // The strength is applied in the applyOffset method when rendering:
+          // timeOffsetX = time * this.biasSpeedX * this.biasStrength
+
+          // If EMU input is active, reapply current values to update immediately
+          if (this.main.externalInput?.emuForces?.enabled) {
+            this.main.externalInput.emuForces.apply(0.016);
+          }
+
+          // Update the turbulence bias UI controllers to reflect the change
+          this.updateTurbulenceBiasUI();
+        });
+    }
+
     // Calibration button
     const calibrateButton = {
       calibrate: () => {
@@ -232,6 +261,38 @@ export class InputsUi extends BaseUi {
       .onChange((value) => {
         socketManager.sendPower(value);
       });
+  }
+
+  updateTurbulenceBiasUI() {
+    // First try using the direct controller update method if available
+    if (this.main.turbulenceUi && typeof this.main.turbulenceUi.updateBiasControllers === 'function') {
+      this.main.turbulenceUi.updateBiasControllers();
+      console.log("Updated turbulence bias UI via updateBiasControllers");
+      return;
+    }
+
+    console.log("Falling back to manual DOM updates for turbulence bias UI");
+    // Find the T-BiasX and T-BiasY controllers in the turbulence UI
+    const targets = document.querySelectorAll('.dg .c input[type="text"]');
+
+    targets.forEach(input => {
+      const label = input.parentElement?.parentElement?.querySelector('.property-name');
+      if (!label) return;
+
+      const name = label.textContent?.trim();
+
+      // Only update these if they exist
+      if (name === 'T-BiasX' && this.main.turbulenceField) {
+        input.value = this.main.turbulenceField.biasSpeedX.toFixed(2);
+        const event = new Event('change', { bubbles: true });
+        input.dispatchEvent(event);
+      }
+      else if (name === 'T-BiasY' && this.main.turbulenceField) {
+        input.value = this.main.turbulenceField.biasSpeedY.toFixed(2);
+        const event = new Event('change', { bubbles: true });
+        input.dispatchEvent(event);
+      }
+    });
   }
 
   //#endregion
