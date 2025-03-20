@@ -22,21 +22,22 @@ export class NoisePreviewManager {
         this.previewElements = new Map(); // Maps pattern values to DOM elements
         this.cleanupFunctions = new Map(); // Maps pattern values to cleanup functions
         this.lastRefreshTime = 0;
-        this.lastUnselectedRefreshTime = 0;
-        this.unselectedIndex = 0;
         this.animationFrameId = null;
         this.refreshingSelected = true; // Toggle between selected and unselected
         this._needsRefreshOnOpen = false; // Flag for refresh needed when reopening
 
         // Performance settings
         this.selectedFps = 15; // Lower default FPS for better performance
-        this.unselectedRefreshInterval = 300; // Ms between unselected refreshes
-        this.maxUnselectedPerCycle = 1; // Max unselected thumbnails to refresh per cycle
+        this.hoverRefreshInterval = 100; // Refresh rate for hovered previews
+        this.lastHoverRefreshTime = 0;
 
         // Parameter tracking for automatic refresh
         this._lastTurbulenceParams = this._captureCurrentParams();
         this._paramsCheckInterval = 500; // Check for parameter changes every 500ms
         this._lastParamsCheckTime = 0;
+
+        // Track hover state
+        this.hoveredPattern = null;
     }
 
     /**
@@ -47,12 +48,26 @@ export class NoisePreviewManager {
     initialize(containerElement, folderIsOpen = false) {
         this.containerElement = containerElement;
 
-        // Store references to preview elements
+        // Store references to preview elements and add hover listeners
         const previewElements = containerElement.querySelectorAll('.pattern-preview');
         previewElements.forEach((element) => {
             const pattern = element.getAttribute('data-pattern');
             if (pattern) {
                 this.previewElements.set(pattern, element);
+
+                // Add hover listeners for unselected previews
+                element.addEventListener('mouseenter', () => {
+                    if (pattern !== this.selectedPattern) {
+                        this.hoveredPattern = pattern;
+                        this.lastHoverRefreshTime = 0; // Force immediate refresh
+                    }
+                });
+
+                element.addEventListener('mouseleave', () => {
+                    if (this.hoveredPattern === pattern) {
+                        this.hoveredPattern = null;
+                    }
+                });
             }
         });
 
@@ -188,11 +203,14 @@ export class NoisePreviewManager {
         const imageData = ctx.createImageData(renderWidth, renderHeight);
         const data = imageData.data;
 
+        // Only apply blur for the selected pattern
+        const applyBlur = patternValue === this.selectedPattern;
+
         for (let y = 0; y < renderHeight; y++) {
             for (let x = 0; x < renderWidth; x++) {
                 const nx = x / renderWidth;
                 const ny = 1 - (y / renderHeight);
-                const noiseValue = this.turbulenceField.noise2D(nx, ny);
+                const noiseValue = this.turbulenceField.noise2D(nx, ny, this.turbulenceField.time, applyBlur);
 
                 const index = (y * renderWidth + x) * 4;
                 data[index] = noiseValue * 255;     // R
@@ -340,7 +358,7 @@ export class NoisePreviewManager {
         if (this.animationFrameId) return; // Already running
 
         this.lastRefreshTime = performance.now();
-        this.lastUnselectedRefreshTime = performance.now();
+        this.lastHoverRefreshTime = performance.now();
         this.refreshingSelected = true;
 
         // Immediately refresh the selected preview before starting the update loop
@@ -434,7 +452,7 @@ export class NoisePreviewManager {
      * Main update loop for refreshing previews
      */
     update() {
-        // Early exit if not visible (either this folder or parent folders are closed)
+        // Early exit if not visible
         if (!this.isVisible) {
             this.animationFrameId = null;
             return;
@@ -442,8 +460,8 @@ export class NoisePreviewManager {
 
         const now = performance.now();
         const elapsedSinceLastFrame = now - this.lastRefreshTime;
-        const elapsedSinceUnselected = now - this.lastUnselectedRefreshTime;
         const elapsedSinceParamsCheck = now - this._lastParamsCheckTime;
+        const elapsedSinceHoverRefresh = now - this.lastHoverRefreshTime;
 
         // Periodically check if turbulence parameters have changed
         if (elapsedSinceParamsCheck > this._paramsCheckInterval) {
@@ -463,13 +481,12 @@ export class NoisePreviewManager {
             // Always prioritize selected pattern refresh
             this.refreshSelectedPreview();
             this.lastRefreshTime = now;
+        }
 
-            // Only refresh unselected thumbnails periodically
-            if (elapsedSinceUnselected > this.unselectedRefreshInterval) {
-                // Refresh one unselected thumbnail
-                this.refreshNextUnselectedPreview();
-                this.lastUnselectedRefreshTime = now;
-            }
+        // Check if we need to refresh hovered preview
+        if (this.hoveredPattern && elapsedSinceHoverRefresh > this.hoverRefreshInterval) {
+            this.refreshHoveredPreview();
+            this.lastHoverRefreshTime = now;
         }
 
         // Continue the animation loop only if still visible
@@ -583,6 +600,9 @@ export class NoisePreviewManager {
         let lastFrameTime = 0;
         const frameInterval = 1000 / this.selectedFps; // Ensure we respect the FPS setting
 
+        // Only apply blur for the selected pattern
+        const applyBlur = patternStyle === this.selectedPattern;
+
         const animate = (timestamp) => {
             // Skip animation if not visible
             if (!this.isVisible) {
@@ -604,7 +624,7 @@ export class NoisePreviewManager {
                 for (let x = 0; x < renderWidth; x++) {
                     const nx = x / renderWidth;
                     const ny = 1 - (y / renderHeight);
-                    const noiseValue = this.turbulenceField.noise2D(nx, ny);
+                    const noiseValue = this.turbulenceField.noise2D(nx, ny, this.turbulenceField.time, applyBlur);
 
                     const index = (y * renderWidth + x) * 4;
                     data[index] = noiseValue * 255;     // R
@@ -646,21 +666,12 @@ export class NoisePreviewManager {
     }
 
     /**
-     * Refresh a random unselected preview
+     * Refresh the currently hovered preview
      */
-    refreshNextUnselectedPreview() {
-        // Get all patterns except selected
-        const unselectedPatterns = this.patternEntries
-            .map(([, value]) => value)
-            .filter(pattern => pattern !== this.selectedPattern);
+    refreshHoveredPreview() {
+        if (!this.hoveredPattern) return;
 
-        if (unselectedPatterns.length === 0) return;
-
-        // Select a random unselected pattern
-        const randomIndex = Math.floor(Math.random() * unselectedPatterns.length);
-        const patternToRefresh = unselectedPatterns[randomIndex];
-
-        const element = this.previewElements.get(patternToRefresh);
+        const element = this.previewElements.get(this.hoveredPattern);
         if (!element) return;
 
         const img = element.querySelector('img');
@@ -668,7 +679,7 @@ export class NoisePreviewManager {
 
         // Generate and set preview image
         img.src = this.generateStaticPreviewImage(
-            patternToRefresh,
+            this.hoveredPattern,
             this.previewSize,
             this.previewSize
         );
@@ -750,29 +761,25 @@ export class NoisePreviewManager {
             case 'low':
                 // Low performance settings for weaker devices
                 this.selectedFps = 10;
-                this.unselectedRefreshInterval = 500;
-                this.maxUnselectedPerCycle = 1;
+                this.hoverRefreshInterval = 200;
                 break;
 
             case 'medium':
                 // Medium performance settings (default)
                 this.selectedFps = 15;
-                this.unselectedRefreshInterval = 300;
-                this.maxUnselectedPerCycle = 1;
+                this.hoverRefreshInterval = 100;
                 break;
 
             case 'high':
                 // High performance settings for powerful devices
                 this.selectedFps = 24;
-                this.unselectedRefreshInterval = 200;
-                this.maxUnselectedPerCycle = 2;
+                this.hoverRefreshInterval = 50;
                 break;
 
             case 'ultra':
                 // Ultra performance for development/testing
                 this.selectedFps = 30;
-                this.unselectedRefreshInterval = 100;
-                this.maxUnselectedPerCycle = 3;
+                this.hoverRefreshInterval = 33;
                 break;
 
             default:

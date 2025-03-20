@@ -37,7 +37,7 @@ class TurbulenceField {
     // New bias smoothing parameter
     biasSmoothing = 0.8,   // 0 = no smoothing, 1 = max smoothing
     // New blur parameter
-    blurAmount = 0.2,      // 0 = no blur, 1 = max blur
+    blurAmount = .8,      // 0 = no blur, 1 = max blur
   } = {}) {
     if (
       !boundary ||
@@ -450,7 +450,7 @@ class TurbulenceField {
   }
 
   // Completely redesigned noise2D function that supports geometric patterns
-  noise2D(x, y, time = this.time) {
+  noise2D(x, y, time = this.time, applyBlur = false) {
     try {
       // Get center coordinates
       const centerX = (this.boundary && typeof this.boundary.centerX === 'number') ? this.boundary.centerX : 0.5;
@@ -492,8 +492,8 @@ class TurbulenceField {
       // 4. Apply contrast and separation as post-processing
       noise = this.applyContrast((noise + 1) * 0.5, time);
 
-      // 5. Apply blur if enabled
-      if (this.blurAmount > 0) {
+      // 5. Apply blur if enabled and requested
+      if (applyBlur && this.blurAmount > 0) {
         // Only do the expensive blur calculation if the blur amount is > 0
         noise = this.applyBlur(x, y, noise, time);
       }
@@ -689,16 +689,17 @@ class TurbulenceField {
       // This is applied in the applyContrast method during noise generation
 
       // Calculate noise values for particle position
-      const n1 = this.noise2D(x, y);
-      const n2 = this.noise2D(y + 1.234, x + 5.678);
+      // Always apply blur for simulation
+      const n1 = this.noise2D(x, y, this.time, true);
+      const n2 = this.noise2D(y + 1.234, x + 5.678, this.time, true);
 
       if (this.affectPosition) {
         if (this.pullFactor > 0) {
           // PULL MODE: Move toward noise peaks (positive pullFactor)
           // Sample additional points to calculate gradient
           const epsilon = 0.01;  // Small sampling distance
-          const nx = this.noise2D(x + epsilon, y);
-          const ny = this.noise2D(x, y + epsilon);
+          const nx = this.noise2D(x + epsilon, y, this.time, true);
+          const ny = this.noise2D(x, y + epsilon, this.time, true);
 
           // Calculate approximate gradient (direction toward higher values)
           const gradX = (nx - n1) / epsilon;
@@ -732,7 +733,7 @@ class TurbulenceField {
       if (this.scaleField) {
         // Use the new noise2D implementation (which uses proper coordinate processing)
         // instead of directly scaling x and y
-        const n1 = this.noise2D(x, y);
+        const n1 = this.noise2D(x, y, this.time, true);
         const scaleFactorField = 1.0 + (n1 - 0.5) * this.strength * 0.1;
         newVx *= scaleFactorField;
         newVy *= scaleFactorField;
@@ -740,7 +741,7 @@ class TurbulenceField {
 
       // Apply particle radius scaling if enabled - works the same in either mode
       if (this.affectScale && system?.particleRadii) {
-        const n1 = this.noise2D(x, y); // Now uses normalized coordinate processing
+        const n1 = this.noise2D(x, y, this.time, true); // Now uses normalized coordinate processing
         const noiseValue = n1 * this.scaleStrength;
         // Map noise [0,1] to [minScale,maxScale]
         const scalePartFactor =
