@@ -458,26 +458,12 @@ export class TurbulenceUi extends BaseUi {
         refreshThumbnails(true);
       });
 
-    // Add Pattern Contrast and Separation folder
-    const contrastFolder = patternControlsFolder.addFolder("Contrast & Separation");
-    this.contrastFolder = contrastFolder;
-
-    // Add contrast controls
-    this.turbulenceContrastController = contrastFolder.add(turbulence, "contrast", 0, 1, 0.01)
-      .name("T-Contrast")
+    // Add blur control
+    this.turbulenceBlurController = patternControlsFolder.add(turbulence, "blurAmount", 0, 2, 0.01)
+      .name("T-Blur")
       .onChange(() => {
         refreshThumbnails(true);
       });
-
-    // Add separation control 
-    this.turbulenceSeparationController = contrastFolder.add(turbulence, "separation", 0, 1, 0.01)
-      .name("T-Separation")
-      .onChange(() => {
-        refreshThumbnails(true);
-      });
-
-    // Make contrast folder open by default
-    contrastFolder.open();
 
     // Add listener for T-Speed changes to update control behavior
     this.turbulenceSpeedController.onChange(() => {
@@ -508,8 +494,7 @@ export class TurbulenceUi extends BaseUi {
       this.turbulenceBiasXController,
       this.turbulenceBiasYController,
       this.turbulenceBiasSmoothing,
-      this.turbulenceContrastController,
-      this.turbulenceSeparationController,
+      this.turbulenceBlurController,
       // Direction bias for particles
       this.turbulenceDirectionBiasXController,
       this.turbulenceDirectionBiasYController
@@ -625,12 +610,11 @@ export class TurbulenceUi extends BaseUi {
     if (this.turbulenceBiasXController) targets["T-BiasX"] = this.turbulenceBiasXController;
     if (this.turbulenceBiasYController) targets["T-BiasY"] = this.turbulenceBiasYController;
 
-    // Add new contrast and separation controllers
-    if (this.turbulenceContrastController) targets["T-Contrast"] = this.turbulenceContrastController;
-    if (this.turbulenceSeparationController) targets["T-Separation"] = this.turbulenceSeparationController;
-
     // Add new bias smoothing controller to control targets
     if (this.turbulenceBiasSmoothing) targets["T-BiasSmooth"] = this.turbulenceBiasSmoothing;
+
+    // Add blur controller to control targets
+    if (this.turbulenceBlurController) targets["T-Blur"] = this.turbulenceBlurController;
 
     return targets;
   }
@@ -679,8 +663,7 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulenceBiasXController);
     safeUpdateDisplay(this.turbulenceBiasYController);
     safeUpdateDisplay(this.turbulenceBiasSmoothing);
-    safeUpdateDisplay(this.turbulenceContrastController);
-    safeUpdateDisplay(this.turbulenceSeparationController);
+    safeUpdateDisplay(this.turbulenceBlurController);
   }
 
   getData() {

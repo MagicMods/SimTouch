@@ -36,6 +36,8 @@ class TurbulenceField {
     separation = 0,      // 0 = smooth, 1 = sharp transitions
     // New bias smoothing parameter
     biasSmoothing = 0.8,   // 0 = no smoothing, 1 = max smoothing
+    // New blur parameter
+    blurAmount = 0.2,      // 0 = no blur, 1 = max blur
   } = {}) {
     if (
       !boundary ||
@@ -106,6 +108,9 @@ class TurbulenceField {
 
     // Add bias smoothing
     this.biasSmoothing = biasSmoothing;
+
+    // Add new blur parameter
+    this.blurAmount = blurAmount;
 
     // Add internal bias state tracking for smoothing
     this._currentBiasOffsetX = 0;
@@ -264,16 +269,30 @@ class TurbulenceField {
 
     // Apply contrast power function 
     if (contrastValue > 0) {
-      // Apply different power functions for values above and below 0.5
-      // to maintain the center point
-      if (value > 0.5) {
-        // Scale from 0.5-1.0 to 0.5-1.0 with increased contrast
-        const scaled = (value - 0.5) * 2; // 0-1 range
-        value = 0.5 + (Math.pow(scaled, 1.0 / (1.0 + contrastValue * 2.0)) * 0.5);
-      } else {
-        // Scale from 0-0.5 to 0-0.5 with increased contrast
-        const scaled = value * 2; // 0-1 range
-        value = Math.pow(scaled, 1.0 + contrastValue * 2.0) * 0.5;
+      // Apply improved contrast function with more gradual transitions
+      // and less pure white while keeping range the same
+
+      // Center the value around 0
+      const centered = value - 0.5;
+
+      // Apply a cubic easing function that maintains 0.5 as middle point
+      // but creates a more gradual transition toward extremes
+      // This curve approaches extremes more slowly than a power function
+      const easeFactor = 1.0 + contrastValue * 2.0;
+      const eased = Math.sign(centered) * Math.pow(Math.abs(centered), 1.0 / easeFactor);
+
+      // Scale back to [0,1] range
+      value = eased + 0.5;
+
+      // Further reduce pure whites without affecting pure blacks
+      // by applying a subtle curve to values > 0.75
+      if (value > 0.75) {
+        // Calculate how far into the top quartile we are (0-1 range)
+        const whiteReduction = (value - 0.75) / 0.25;
+        // Apply subtle compression to highest values, more aggressive with higher contrast
+        const compressionFactor = 0.2 * contrastValue;
+        // Rescale the top range to reduce pure whites
+        value = 0.75 + (0.25 - compressionFactor) * whiteReduction + compressionFactor * Math.sqrt(whiteReduction);
       }
     }
 
@@ -375,31 +394,24 @@ class TurbulenceField {
         break;
       case "voronoi":
         // Create a cellular pattern using multiple centers
-        const numCenters = 6;
+        const numCenters = 4;
         let minDist = Infinity;
-        let secondMinDist = Infinity;
 
         for (let i = 0; i < numCenters; i++) {
           const angle = (i / numCenters) * Math.PI * 2;
           // Use boundary center coordinates instead of hardcoded 0.5
-          const seedX = centerX + Math.cos(angle) * 0.3;
-          const seedY = centerY + Math.sin(angle) * 0.3;
+          const seedX = centerX + Math.cos(angle) * 1.0;
+          const seedY = centerY + Math.sin(angle) * 1.0;
           const dx = x - seedX;
           const dy = y - seedY;
           const dist = Math.sqrt(dx * dx + dy * dy);
 
-          // Keep track of two closest distances for improved edge detection
-          if (dist < minDist) {
-            secondMinDist = minDist;
-            minDist = dist;
-          } else if (dist < secondMinDist) {
-            secondMinDist = dist;
-          }
+          // Track minimum distance
+          minDist = Math.min(minDist, dist);
         }
 
-        // Use the difference between closest and second closest for cleaner edges
-        const edgeDist = (secondMinDist - minDist) * 3;
-        patternValue = Math.sin(edgeDist * Math.PI * 3);
+        // Use the original formula for the pattern value
+        patternValue = Math.sin(minDist * freq * Math.PI * 2);
         break;
       case "fractal":
         // Create a recursive pattern
@@ -481,11 +493,78 @@ class TurbulenceField {
       // 4. Apply contrast and separation as post-processing
       noise = this.applyContrast((noise + 1) * 0.5, time);
 
+      // 5. Apply blur if enabled
+      if (this.blurAmount > 0) {
+        // Only do the expensive blur calculation if the blur amount is > 0
+        noise = this.applyBlur(x, y, noise, time);
+      }
+
       return noise;
     } catch (err) {
       console.error("Error in noise2D:", err);
       return 0.5;
     }
+  }
+
+  // Apply blur by sampling multiple nearby points
+  applyBlur(x, y, centerValue, time) {
+    if (this.blurAmount <= 0) return centerValue;
+
+    // Scale blur amount to a more useful range (0 to 0.05)
+    const sampleRadius = 0.05 * this.blurAmount;
+    const numSamples = 8; // Number of samples to take around the center
+
+    let sum = centerValue; // Start with the center value
+    let count = 1; // We've already counted the center
+
+    // Take samples in a circle around the center point
+    for (let i = 0; i < numSamples; i++) {
+      const angle = (i / numSamples) * Math.PI * 2;
+      const sampleX = x + Math.cos(angle) * sampleRadius;
+      const sampleY = y + Math.sin(angle) * sampleRadius;
+
+      // Process the sample through the full pipeline except blur (to avoid recursion)
+      const centerX = (this.boundary && typeof this.boundary.centerX === 'number') ? this.boundary.centerX : 0.5;
+      const centerY = (this.boundary && typeof this.boundary.centerY === 'number') ? this.boundary.centerY : 0.5;
+
+      // Process coordinates
+      const [processedX, processedY, procCenterX, procCenterY] = this.processCoordinates(sampleX, sampleY, time);
+
+      // Calculate pattern
+      let sampleNoise = this.calculatePattern(this.patternStyle.toLowerCase(), processedX, processedY, procCenterX, procCenterY);
+
+      // Apply phase and amplitude
+      if (this.speed > 0) {
+        if (Math.abs(this.phaseSpeed) > 0) {
+          const phaseOffset = time * this.speed * Math.abs(this.phaseSpeed) * Math.sign(this.phaseSpeed) + this.phase * Math.PI * 2;
+          sampleNoise = Math.sin(sampleNoise * Math.PI * 2 + phaseOffset);
+        } else {
+          const phaseOffset = this.phase * Math.PI * 2;
+          sampleNoise = Math.sin(sampleNoise * Math.PI * 2 + phaseOffset);
+        }
+
+        if (this.amplitudeEnabled) {
+          const dynamicAmplitude = 0.5 + 0.5 * Math.sin(time * this.speed * this.amplitudeSpeed);
+          sampleNoise *= this.amplitude * dynamicAmplitude;
+        } else {
+          sampleNoise *= this.amplitude;
+        }
+      } else {
+        const phaseOffset = this.phase * Math.PI * 2;
+        sampleNoise = Math.sin(sampleNoise * Math.PI * 2 + phaseOffset);
+        sampleNoise *= this.amplitude;
+      }
+
+      // Apply contrast to the sample
+      sampleNoise = this.applyContrast((sampleNoise + 1) * 0.5, time);
+
+      // Add to our sum
+      sum += sampleNoise;
+      count++;
+    }
+
+    // Return the average
+    return sum / count;
   }
 
   // Add preview generation methods
@@ -732,6 +811,8 @@ class TurbulenceField {
     separation,
     // New bias smoothing parameter
     biasSmoothing,
+    // New blur parameter
+    blurAmount,
   }) {
     if (strength !== undefined) this.strength = strength;
     if (scale !== undefined) this.scale = scale;
@@ -772,6 +853,9 @@ class TurbulenceField {
 
     // New bias smoothing parameter
     if (biasSmoothing !== undefined) this.biasSmoothing = biasSmoothing;
+
+    // New blur parameter
+    if (blurAmount !== undefined) this.blurAmount = blurAmount;
   }
 
   // Debug function to help diagnose rotation issues
