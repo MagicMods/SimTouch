@@ -1024,7 +1024,8 @@ class TurbulenceField {
 
     // Scale down the acceleration for smoother response
     // Using a much smaller multiplier (0.2) for gentler acceleration
-    this._biasAccelX = clampedX * this.biasStrength * 0.2;
+    // Invert X axis to fix direction
+    this._biasAccelX = -clampedX * this.biasStrength * 0.2;
     this._biasAccelY = clampedY * this.biasStrength * 0.2;
 
     // Always keep the old bias speed properties at zero
