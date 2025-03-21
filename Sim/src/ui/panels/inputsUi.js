@@ -1,5 +1,4 @@
 import { BaseUi } from "../baseUi.js";
-import { socketManager } from "../../network/socketManager.js";
 
 export class InputsUi extends BaseUi {
   constructor(main, container) {
@@ -13,19 +12,16 @@ export class InputsUi extends BaseUi {
     this.mouseInputFolder = this.gui.addFolder("Mouse Input");
     this.emuInputFolder = this.gui.addFolder("EMU Input");
     this.externalInputFolder = this.gui.addFolder("Touch Input");
-    this.networkControlsFolder = this.gui.addFolder("Network Controls");
 
     // Initialize input controls
     this.initMouseControls();
     this.initEmuInputControls();
     this.initExternalInputControls();
-    this.initNetworkControls();
 
     // Set default open states
     this.mouseInputFolder.open(true);
     this.emuInputFolder.open(false);
     this.externalInputFolder.open(false);
-    this.networkControlsFolder.open(true);
   }
 
   //#region Inputs
@@ -340,24 +336,6 @@ export class InputsUi extends BaseUi {
         accelController.updateDisplay();
       }
     }, 100);
-  }
-
-  initNetworkControls() {
-    // Brightness control
-    this.networkControlsFolder
-      .add({ brightness: 100 }, "brightness", 0, 100, 1)
-      .name("N-Brightness")
-      .onChange((value) => {
-        socketManager.sendBrightness(value);
-      });
-
-    // Power control
-    this.networkControlsFolder
-      .add({ power: 50 }, "power", 0, 100, 1)
-      .name("N-PowerMx")
-      .onChange((value) => {
-        socketManager.sendPower(value);
-      });
   }
 
   updateTurbulenceBiasUI() {

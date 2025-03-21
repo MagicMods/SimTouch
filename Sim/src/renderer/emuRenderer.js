@@ -22,7 +22,7 @@ export class EmuRenderer {
     this.canvas.width = 150; // We only need one visualization now
     this.canvas.height = 150;
     this.canvas.style.position = "absolute";
-    this.canvas.style.bottom = "10px";
+    this.canvas.style.bottom = "40px";
     this.canvas.style.left = "50%";
     this.canvas.style.transform = "translateX(-50%)";
     this.canvas.style.background = "rgba(0, 0, 0, 0.5)";
@@ -509,7 +509,7 @@ export class EmuRenderer {
       ctx.fillStyle = "rgba(255, 255, 0, 0.7)";
       ctx.fillText(
         "G: " + vLength.toFixed(2),
-        centerX - 45,
+        centerX + 30,
         centerY + radius + 15
       );
     }
@@ -535,8 +535,8 @@ export class EmuRenderer {
     // Add X and Y labels in the rotated context
     ctx.fillStyle = "rgba(255, 255, 255, 0.7)";
     ctx.font = "10px Arial";
-    ctx.fillText("Y", centerX + radius + 5, centerY);
-    ctx.fillText("X", centerX, centerY - radius - 5);
+    ctx.fillText("Y", centerX - 4, centerY + radius + 16);
+    ctx.fillText("X", centerX - radius - 16, centerY + 2);
   }
 
   // Apply spring force to move joystick back to center

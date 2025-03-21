@@ -10,6 +10,53 @@ export class NetworkUi extends BaseUi {
     this.gui.title("Network");
 
     this.initNetworkControls();
+
+    // Monitor folder open/close state to enable/disable network
+    const folderElement = this.gui.domElement;
+
+    // Set up a MutationObserver to watch for class changes on the folder
+    const folderObserver = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          // Check if folder is closed by looking for the 'closed' class
+          const isClosed = folderElement.classList.contains('closed');
+
+          // Update network connection based on folder state
+          if (isClosed) {
+            socketManager.enable = false;
+            if (socketManager.isConnected) {
+              socketManager.disconnect();
+            }
+          } else {
+            socketManager.enable = true;
+            if (!socketManager.isConnected) {
+              socketManager.connect();
+            }
+          }
+        }
+      });
+    });
+
+    // Start observing the folder element
+    folderObserver.observe(folderElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    // Also handle the initial folder state when UI is first created
+    // We need to use a small delay to ensure the DOM is ready
+    setTimeout(() => {
+      // Get the initial state (closed or open)
+      const isClosed = folderElement.classList.contains('closed');
+
+      // Set network connection based on initial folder state
+      socketManager.enable = !isClosed;
+      if (!isClosed && !socketManager.isConnected) {
+        socketManager.connect();
+      } else if (isClosed && socketManager.isConnected) {
+        socketManager.disconnect();
+      }
+    }, 100);
   }
 
   initNetworkControls() {
@@ -18,7 +65,6 @@ export class NetworkUi extends BaseUi {
 
     // Create local control object
     const controls = {
-      enabled: socket.enable,
       debugSend: socket.debugSend,
       debugReceive: socket.debugReceive,
     };
@@ -30,22 +76,25 @@ export class NetworkUi extends BaseUi {
       messageCount: 0,
     };
 
-    // Add enable toggle (keep at top level)
-    this.gui
-      .add(controls, "enabled")
-      .name("Enable Network")
-      .onChange((value) => {
-        socket.enable = value;
-        if (value && !socket.isConnected) {
-          socket.connect();
-        } else if (!value && socket.isConnected) {
-          socket.disconnect();
-        }
-      });
-
     // Status display (keep at top level)
     const statusController = this.gui.add(status, "connection").name("Status");
     // .disable();
+
+    // Brightness control
+    this.gui
+      .add({ brightness: 100 }, "brightness", 0, 100, 1)
+      .name("N-Brightness")
+      .onChange((value) => {
+        socketManager.sendBrightness(value);
+      });
+
+    // Power control
+    this.gui
+      .add({ power: 50 }, "power", 0, 100, 1)
+      .name("N-PowerMx")
+      .onChange((value) => {
+        socketManager.sendPower(value);
+      });
 
     // Create config folder for the rest
     const configFolder = this.gui.addFolder("Config");
@@ -114,6 +163,8 @@ export class NetworkUi extends BaseUi {
 
     // Open the config folder by default
     configFolder.open(false);
+
+    // Default network folder to closed
     this.gui.open(true);
   }
 }
