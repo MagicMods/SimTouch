@@ -257,7 +257,7 @@ export class EmuRenderer {
 
     // Normalize joystick values to -1 to 1 range for bias controls
     const biasX = Math.max(-1, Math.min(1, this.joystickX / 10)); // X controls X
-    const biasY = Math.max(-1, Math.min(1, this.joystickY / 10)); // Y controls Y
+    const biasY = Math.max(-1, Math.min(1, -this.joystickY / 10)); // Invert Y for correct direction
 
     // Apply joystick input directly to turbulence bias if EMU is not enabled
     // This makes the joystick controller work independently

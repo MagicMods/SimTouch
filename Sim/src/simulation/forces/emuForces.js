@@ -141,7 +141,7 @@ export class EmuForces {
       // Divide by 10 since our accelerometer values are typically in the -10 to 10 range
       // Apply the same axis swapping as gravity (Y → X, X → Y)
       const biasX = Math.max(-1, Math.min(1, this.emuData.accelY / 10));
-      const biasY = Math.max(-1, Math.min(1, this.emuData.accelX / 10));
+      const biasY = Math.max(-1, Math.min(1, -this.emuData.accelX / 10));  // Invert Y for correct direction
 
       // Apply to turbulence field - the biasStrength will be applied internally via applyOffset
       turbulenceField.setBiasSpeed(biasX, biasY);

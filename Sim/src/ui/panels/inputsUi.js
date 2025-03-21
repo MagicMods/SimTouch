@@ -181,6 +181,35 @@ export class InputsUi extends BaseUi {
         }
       });
 
+    // Add gravity strength control to joystick folder
+    if (this.main.externalInput?.emuForces) {
+      const emuForces = this.main.externalInput.emuForces;
+      this.joystickGravityStrengthController = this.joystickFolder
+        .add(
+          { multiplier: emuForces.accelGravityMultiplier || 1.0 },
+          "multiplier",
+          0.1,
+          5.0,
+          0.1
+        )
+        .name("Gravity Strength")
+        .onChange((value) => {
+          // Update the EMU forces
+          emuForces.setAccelGravityMultiplier(value);
+
+          // Also update the EMU folder controller if it exists
+          const controllers = document.querySelectorAll('.dg .c input[type="text"]');
+          controllers.forEach(input => {
+            const label = input.parentElement?.parentElement?.querySelector('.property-name');
+            if (label && label.textContent?.trim() === 'Gravity Strength') {
+              input.value = value.toFixed(1);
+              const event = new Event('change', { bubbles: true });
+              input.dispatchEvent(event);
+            }
+          });
+        });
+    }
+
     // Add visualizer toggle to Joystick folder instead of EMU folder
     this.joystickFolder
       .add({ showVisualizer: true }, "showVisualizer")
@@ -221,7 +250,7 @@ export class InputsUi extends BaseUi {
       });
 
     // Accel gravity multiplier - adjust the range for better control
-    this.emuInputFolder
+    this.gravityStrengthController = this.emuInputFolder
       .add(
         { multiplier: emuForces.accelGravityMultiplier },
         "multiplier",
@@ -232,6 +261,11 @@ export class InputsUi extends BaseUi {
       .name("Gravity Strength")
       .onChange((value) => {
         emuForces.setAccelGravityMultiplier(value);
+
+        // Also update the joystick gravity controller if it exists
+        if (this.joystickGravityStrengthController) {
+          this.joystickGravityStrengthController.setValue(value);
+        }
       });
 
     // Add turbulence bias strength control
