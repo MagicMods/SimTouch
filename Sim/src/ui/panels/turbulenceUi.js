@@ -267,117 +267,26 @@ export class TurbulenceUi extends BaseUi {
     this.turbulenceRotationSpeedController = patternControlsFolder.add(turbulence, "rotationSpeed", 0, 1).name("T-RotSpd");
     this.turbulenceDecayRateController = patternControlsFolder.add(turbulence, "decayRate", 0.9, 1).name("T-Decay");
 
-    // Add Pattern Offset folder
-    const patternOffsetFolder = patternControlsFolder.addFolder("Pattern Offset");
+    // Restore XY bias controllers
+    const biasFolder = this.gui.addFolder("Direction Bias");
+    this.turbulenceDirectionBiasXController = biasFolder.add(turbulence.directionBias, "0", -1, 1).name("T-DirX");
+    this.turbulenceDirectionBiasYController = biasFolder.add(turbulence.directionBias, "1", -1, 1).name("T-DirY");
+
+    // Move bias speed controls to Direction Bias folder
+    this.turbulenceBiasXController = biasFolder.add(turbulence, "biasSpeedX", -1, 1, 0.01).name("T-BiasX");
+    this.turbulenceBiasYController = biasFolder.add(turbulence, "biasSpeedY", -1, 1, 0.01).name("T-BiasY");
+
+    // Move Pattern Offset folder under Direction Bias and close it
+    const patternOffsetFolder = biasFolder.addFolder("Pattern Offset");
     this.patternOffsetFolder = patternOffsetFolder;
 
     // Add offset X and Y controls - now just for display purposes
     this.turbulenceOffsetXController = patternOffsetFolder.add(turbulence, "patternOffsetX", -1, 1, 0.01).name("T-OffsetX");
     this.turbulenceOffsetYController = patternOffsetFolder.add(turbulence, "patternOffsetY", -1, 1, 0.01).name("T-OffsetY");
 
-    // Add a button to save current offset values as pattern-specific defaults
-    const saveOffsetButton = document.createElement('button');
-    saveOffsetButton.textContent = 'Save Pattern Offset';
-    saveOffsetButton.className = 'save-offset-button';
-    saveOffsetButton.style.cssText = `
-      margin: 5px 0;
-      padding: 3px 8px;
-      font-size: 11px;
-      display: block;
-      width: 100%;
-      background: #4a4a4a;
-      border: 1px solid #666;
-      color: #ccc;
-      cursor: pointer;
-    `;
-    saveOffsetButton.addEventListener('mouseover', () => {
-      saveOffsetButton.style.background = '#5a5a5a';
-    });
-    saveOffsetButton.addEventListener('mouseout', () => {
-      saveOffsetButton.style.background = '#4a4a4a';
-    });
-    saveOffsetButton.addEventListener('click', () => {
-      if (turbulence && turbulence.patternStyle) {
-        const patternKey = turbulence.patternStyle.toLowerCase();
-        // Save current offsets to the pattern offsets table
-        turbulence.patternOffsets[patternKey] = [
-          turbulence.patternOffsetX,
-          turbulence.patternOffsetY
-        ];
 
-        // Show brief confirmation
-        saveOffsetButton.textContent = 'Saved!';
-        setTimeout(() => {
-          saveOffsetButton.textContent = 'Save Pattern Offset';
-        }, 1000);
-      }
-    });
-
-    // Add a button to reset all pattern offsets to defaults
-    const resetOffsetsButton = document.createElement('button');
-    resetOffsetsButton.textContent = 'Reset All Offsets';
-    resetOffsetsButton.className = 'reset-offsets-button';
-    resetOffsetsButton.style.cssText = `
-      margin: 5px 0;
-      padding: 3px 8px;
-      font-size: 11px;
-      display: block;
-      width: 100%;
-      background: #4a4a4a;
-      border: 1px solid #666;
-      color: #ccc;
-      cursor: pointer;
-    `;
-    resetOffsetsButton.addEventListener('mouseover', () => {
-      resetOffsetsButton.style.background = '#5a5a5a';
-    });
-    resetOffsetsButton.addEventListener('mouseout', () => {
-      resetOffsetsButton.style.background = '#4a4a4a';
-    });
-    resetOffsetsButton.addEventListener('click', () => {
-      if (turbulence && turbulence.resetPatternOffsets) {
-        // Reset all offsets to defaults
-        turbulence.resetPatternOffsets();
-
-        // Update controllers to reflect new values
-        if (this.turbulenceOffsetXController) {
-          this.turbulenceOffsetXController.updateDisplay();
-        }
-        if (this.turbulenceOffsetYController) {
-          this.turbulenceOffsetYController.updateDisplay();
-        }
-
-        // Show brief confirmation
-        resetOffsetsButton.textContent = 'Reset Complete!';
-        setTimeout(() => {
-          resetOffsetsButton.textContent = 'Reset All Offsets';
-        }, 1000);
-      }
-    });
-
-    // Add the buttons to the pattern offset folder
-    if (patternOffsetFolder && patternOffsetFolder.domElement) {
-      const folderContent = patternOffsetFolder.domElement.querySelector('.children');
-      if (folderContent) {
-        folderContent.appendChild(saveOffsetButton);
-        folderContent.appendChild(resetOffsetsButton);
-      }
-    }
-
-    // Add Bias Speed folder
-    const biasSpeedFolder = patternOffsetFolder.addFolder("Bias Speed");
-    this.biasSpeedFolder = biasSpeedFolder;
-
-    // Add bias speed controls
-    this.turbulenceBiasXController = biasSpeedFolder.add(turbulence, "biasSpeedX", -1, 1, 0.01).name("T-BiasX");
-    this.turbulenceBiasYController = biasSpeedFolder.add(turbulence, "biasSpeedY", -1, 1, 0.01).name("T-BiasY");
-
-    // Add new bias smoothing control
-    this.turbulenceBiasSmoothing = biasSpeedFolder.add(turbulence, "biasSmoothing", 0, 0.99, 0.01)
-      .name("T-BiasSmooth");
-
-    // Make sure folders are open by default
-    patternOffsetFolder.open();
+    // Close the Pattern Offset folder by default
+    patternOffsetFolder.close();
 
     const previewSize = 76;
 
@@ -565,11 +474,6 @@ export class TurbulenceUi extends BaseUi {
     // Add blur control
     this.turbulenceBlurController = patternControlsFolder.add(turbulence, "blurAmount", 0, 2, 0.01)
       .name("T-Blur");
-
-    // Restore XY bias controllers
-    const biasFolder = this.gui.addFolder("Direction Bias");
-    this.turbulenceDirectionBiasXController = biasFolder.add(turbulence.directionBias, "0", -1, 1).name("T-DirX");
-    this.turbulenceDirectionBiasYController = biasFolder.add(turbulence.directionBias, "1", -1, 1).name("T-DirY");
 
     // Handle folder open/close events
     previewsFolder.domElement.addEventListener('click', (e) => {
@@ -760,9 +664,6 @@ export class TurbulenceUi extends BaseUi {
     if (this.turbulenceBiasXController) targets["T-BiasX"] = this.turbulenceBiasXController;
     if (this.turbulenceBiasYController) targets["T-BiasY"] = this.turbulenceBiasYController;
 
-    // Add new bias smoothing controller to control targets
-    if (this.turbulenceBiasSmoothing) targets["T-BiasSmooth"] = this.turbulenceBiasSmoothing;
-
     // Add blur controller to control targets
     if (this.turbulenceBlurController) targets["T-Blur"] = this.turbulenceBlurController;
 
@@ -812,7 +713,6 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulenceOffsetYController);
     safeUpdateDisplay(this.turbulenceBiasXController);
     safeUpdateDisplay(this.turbulenceBiasYController);
-    safeUpdateDisplay(this.turbulenceBiasSmoothing);
     safeUpdateDisplay(this.turbulenceBlurController);
   }
 

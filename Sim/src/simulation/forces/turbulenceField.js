@@ -480,7 +480,7 @@ class TurbulenceField {
         const bubbleX = (x - centerX) * freq;
         const bubbleY = (y - centerY) * freq;
         const bubbleDist = Math.sqrt(bubbleX * bubbleX + bubbleY * bubbleY);
-        patternValue = Math.sin(bubbleDist * 2) * Math.cos(bubbleX * 3) * Math.sin(bubbleY * 3);
+        patternValue = Math.sin(bubbleDist * 1) * Math.cos(bubbleX * 1) * Math.sin(bubbleY * 1);
         break;
       default:
         patternValue = Math.sin(x * freq) * Math.sin(y * freq);
