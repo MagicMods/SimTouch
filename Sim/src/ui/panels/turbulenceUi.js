@@ -245,6 +245,19 @@ export class TurbulenceUi extends BaseUi {
         if (this.previewManager) {
           this.previewManager.setSelectedPattern(value);
         }
+
+        // Apply pattern-specific offset when pattern changes
+        if (turbulence.applyPatternSpecificOffset) {
+          turbulence.applyPatternSpecificOffset();
+
+          // Update offset controllers to show the new values
+          if (this.turbulenceOffsetXController) {
+            this.turbulenceOffsetXController.updateDisplay();
+          }
+          if (this.turbulenceOffsetYController) {
+            this.turbulenceOffsetYController.updateDisplay();
+          }
+        }
       });
     this.turbulencePatternStyleController.domElement.classList.add("full-width");
     this.turbulencePatternStyleController.setValue("checkerboard");
@@ -258,9 +271,98 @@ export class TurbulenceUi extends BaseUi {
     const patternOffsetFolder = patternControlsFolder.addFolder("Pattern Offset");
     this.patternOffsetFolder = patternOffsetFolder;
 
-    // Add offset X and Y controls
+    // Add offset X and Y controls - now just for display purposes
     this.turbulenceOffsetXController = patternOffsetFolder.add(turbulence, "patternOffsetX", -1, 1, 0.01).name("T-OffsetX");
     this.turbulenceOffsetYController = patternOffsetFolder.add(turbulence, "patternOffsetY", -1, 1, 0.01).name("T-OffsetY");
+
+    // Add a button to save current offset values as pattern-specific defaults
+    const saveOffsetButton = document.createElement('button');
+    saveOffsetButton.textContent = 'Save Pattern Offset';
+    saveOffsetButton.className = 'save-offset-button';
+    saveOffsetButton.style.cssText = `
+      margin: 5px 0;
+      padding: 3px 8px;
+      font-size: 11px;
+      display: block;
+      width: 100%;
+      background: #4a4a4a;
+      border: 1px solid #666;
+      color: #ccc;
+      cursor: pointer;
+    `;
+    saveOffsetButton.addEventListener('mouseover', () => {
+      saveOffsetButton.style.background = '#5a5a5a';
+    });
+    saveOffsetButton.addEventListener('mouseout', () => {
+      saveOffsetButton.style.background = '#4a4a4a';
+    });
+    saveOffsetButton.addEventListener('click', () => {
+      if (turbulence && turbulence.patternStyle) {
+        const patternKey = turbulence.patternStyle.toLowerCase();
+        // Save current offsets to the pattern offsets table
+        turbulence.patternOffsets[patternKey] = [
+          turbulence.patternOffsetX,
+          turbulence.patternOffsetY
+        ];
+
+        // Show brief confirmation
+        saveOffsetButton.textContent = 'Saved!';
+        setTimeout(() => {
+          saveOffsetButton.textContent = 'Save Pattern Offset';
+        }, 1000);
+      }
+    });
+
+    // Add a button to reset all pattern offsets to defaults
+    const resetOffsetsButton = document.createElement('button');
+    resetOffsetsButton.textContent = 'Reset All Offsets';
+    resetOffsetsButton.className = 'reset-offsets-button';
+    resetOffsetsButton.style.cssText = `
+      margin: 5px 0;
+      padding: 3px 8px;
+      font-size: 11px;
+      display: block;
+      width: 100%;
+      background: #4a4a4a;
+      border: 1px solid #666;
+      color: #ccc;
+      cursor: pointer;
+    `;
+    resetOffsetsButton.addEventListener('mouseover', () => {
+      resetOffsetsButton.style.background = '#5a5a5a';
+    });
+    resetOffsetsButton.addEventListener('mouseout', () => {
+      resetOffsetsButton.style.background = '#4a4a4a';
+    });
+    resetOffsetsButton.addEventListener('click', () => {
+      if (turbulence && turbulence.resetPatternOffsets) {
+        // Reset all offsets to defaults
+        turbulence.resetPatternOffsets();
+
+        // Update controllers to reflect new values
+        if (this.turbulenceOffsetXController) {
+          this.turbulenceOffsetXController.updateDisplay();
+        }
+        if (this.turbulenceOffsetYController) {
+          this.turbulenceOffsetYController.updateDisplay();
+        }
+
+        // Show brief confirmation
+        resetOffsetsButton.textContent = 'Reset Complete!';
+        setTimeout(() => {
+          resetOffsetsButton.textContent = 'Reset All Offsets';
+        }, 1000);
+      }
+    });
+
+    // Add the buttons to the pattern offset folder
+    if (patternOffsetFolder && patternOffsetFolder.domElement) {
+      const folderContent = patternOffsetFolder.domElement.querySelector('.children');
+      if (folderContent) {
+        folderContent.appendChild(saveOffsetButton);
+        folderContent.appendChild(resetOffsetsButton);
+      }
+    }
 
     // Add Bias Speed folder
     const biasSpeedFolder = patternOffsetFolder.addFolder("Bias Speed");
@@ -336,9 +438,18 @@ export class TurbulenceUi extends BaseUi {
         if (turbulence.patternStyle !== value) {
           // Update pattern
           turbulence.patternStyle = value;
+          // Apply pattern-specific offset immediately
+          turbulence.applyPatternSpecificOffset();
           // Update controller
           if (this.turbulencePatternStyleController) {
             this.turbulencePatternStyleController.setValue(value);
+          }
+          // Update offset controllers
+          if (this.turbulenceOffsetXController) {
+            this.turbulenceOffsetXController.updateDisplay();
+          }
+          if (this.turbulenceOffsetYController) {
+            this.turbulenceOffsetYController.updateDisplay();
           }
           // Explicitly update the preview manager with the new selected pattern
           if (this.previewManager) {

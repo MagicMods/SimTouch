@@ -93,9 +93,31 @@ class TurbulenceField {
     this.domainWarpEnabled = false;
     this.domainWarpSpeed = domainWarpSpeed;
 
+    // Pattern-specific default offsets
+    this.patternOffsets = {
+      // Format: [offsetX, offsetY] for scale=3, freq=2
+      // These values are now applied AFTER rotation, scale, etc.
+      "checkerboard": [0.5, -0.5],
+      "waves": [0, 0],
+      "spiral": [0, 0],
+      "grid": [0.5, -0.5],
+      "circles": [0, 0],
+      "diamonds": [0.1, -.12],
+      "ripples": [0, 0],
+      "dots": [0.5, -0.5],
+      "voronoi": [0, 0],
+      "cells": [0.5, -0.5],
+      "fractal": [0.5, -0.5],
+      "vortex": [0, 0],
+      "bubbles": [0, 0]
+    };
+
     // New pattern offset controls
     this.patternOffsetX = patternOffsetX;
     this.patternOffsetY = patternOffsetY;
+
+    // Apply pattern-specific offset immediately when initializing with a pattern
+    this.applyPatternSpecificOffset();
 
     // New bias speed controls (speed of pattern movement in X/Y)
     this.biasSpeedX = biasSpeedX;
@@ -115,6 +137,19 @@ class TurbulenceField {
     // Add internal bias state tracking for smoothing
     this._currentBiasOffsetX = 0;
     this._currentBiasOffsetY = 0;
+  }
+
+  // Apply pattern-specific offset based on current pattern style
+  applyPatternSpecificOffset() {
+    // Get the current pattern style in lowercase for lookup
+    const patternKey = this.patternStyle.toLowerCase();
+
+    // Get pattern-specific offset or default to [0,0]
+    const [offsetX, offsetY] = this.patternOffsets[patternKey] || [0, 0];
+
+    // Always apply the pattern-specific offset
+    this.patternOffsetX = offsetX;
+    this.patternOffsetY = offsetY;
   }
 
   // Coordinate processing pipeline helper functions
@@ -304,12 +339,14 @@ class TurbulenceField {
     const centerX = (this.boundary && typeof this.boundary.centerX === 'number') ? this.boundary.centerX : 0.5;
     const centerY = (this.boundary && typeof this.boundary.centerY === 'number') ? this.boundary.centerY : 0.5;
 
-    // Process in correct order: offset → symmetry → scale → warp → rotate
-    let [px, py] = this.applyOffset(x, y, time);
-    [px, py] = this.applySymmetry(px, py, centerX, centerY);
+    // Process in correct order: rotate → scale → warp → symmetry → offset
+    // Rotation and scale should be applied before offset for proper centering
+    let [px, py] = [x, y];
+    [px, py] = this.applyRotation(px, py, centerX, centerY, this.rotation);
     [px, py] = this.applyScale(px, py, this.scale, centerX, centerY);
     [px, py] = this.applyDomainWarp(px, py, time, centerX, centerY);
-    [px, py] = this.applyRotation(px, py, centerX, centerY, this.rotation);
+    [px, py] = this.applySymmetry(px, py, centerX, centerY);
+    [px, py] = this.applyOffset(px, py, time);
 
     return [px, py, centerX, centerY];
   }
@@ -321,6 +358,8 @@ class TurbulenceField {
     // Use pattern frequency consistently in all patterns
     const freq = this.patternFrequency;
 
+    // For patterns that depend on distance from center, we should adjust calculations
+    // since the offset is now applied after rotation, scale, etc.
     switch (patternStyle) {
       case "checkerboard":
         patternValue = Math.sin(x * freq) * Math.sin(y * freq);
@@ -329,6 +368,7 @@ class TurbulenceField {
         patternValue = Math.sin(x * freq + y * freq * 0.5);
         break;
       case "spiral":
+        // Calculate angle and radius from center coordinates
         const angle = Math.atan2(y - centerY, x - centerX);
         const radius = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
         patternValue = Math.sin(angle * freq + radius * freq * 0.1);
@@ -341,7 +381,7 @@ class TurbulenceField {
         patternValue = Math.sin(dist * freq * Math.PI * .3);
         break;
       case "diamonds": // New pattern replacing maze
-        patternValue = Math.sin(x * freq + y * freq) * Math.cos(x * freq - y * freq);
+        patternValue = Math.sin(x * freq + y * freq) * Math.cos(x * freq - y * freq) * .8;
         break;
       case "ripples":
         const rippleDist = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
@@ -410,20 +450,20 @@ class TurbulenceField {
         }
 
         // Use a gentler frequency for smoother transitions
-        patternValue = Math.sin(minDist * freq * Math.PI * 1.5); // Reduced from 2.0
+        patternValue = Math.sin(minDist * freq * Math.PI * .5); // Reduced from 2.0
         break;
       case "fractal":
         // Create a recursive pattern
         let fractalValue = 1;
         let amplitude = 1;
         let frequency = freq;
-        for (let i = 0; i < 4; i++) {
+        for (let i = 0; i < 3; i++) {
           // Scale coordinates properly for each octave
           const scaledX = x * frequency;
           const scaledY = y * frequency;
           fractalValue += amplitude * Math.sin(scaledX) * Math.sin(scaledY);
           amplitude *= 0.5;
-          frequency *= 2;
+          frequency *= 1;
         }
         patternValue = fractalValue;
         break;
@@ -526,11 +566,17 @@ class TurbulenceField {
       const centerX = (this.boundary && typeof this.boundary.centerX === 'number') ? this.boundary.centerX : 0.5;
       const centerY = (this.boundary && typeof this.boundary.centerY === 'number') ? this.boundary.centerY : 0.5;
 
-      // Process coordinates
-      const [processedX, processedY, procCenterX, procCenterY] = this.processCoordinates(sampleX, sampleY, time);
+      // Process coordinates with the same order as processCoordinates
+      let px = sampleX;
+      let py = sampleY;
+      [px, py] = this.applyRotation(px, py, centerX, centerY, this.rotation);
+      [px, py] = this.applyScale(px, py, this.scale, centerX, centerY);
+      [px, py] = this.applyDomainWarp(px, py, time, centerX, centerY);
+      [px, py] = this.applySymmetry(px, py, centerX, centerY);
+      [px, py] = this.applyOffset(px, py, time);
 
       // Calculate pattern
-      let sampleNoise = this.calculatePattern(this.patternStyle.toLowerCase(), processedX, processedY, procCenterX, procCenterY);
+      let sampleNoise = this.calculatePattern(this.patternStyle.toLowerCase(), px, py, centerX, centerY);
 
       // Apply phase and amplitude
       if (this.speed > 0) {
@@ -825,7 +871,13 @@ class TurbulenceField {
     if (domainWarp !== undefined) this.domainWarp = domainWarp;
     if (timeOffset !== undefined) this.timeOffset = timeOffset;
     if (patternFrequency !== undefined) this.patternFrequency = patternFrequency;
-    if (patternStyle !== undefined) this.patternStyle = patternStyle;
+
+    // Handle pattern style change - always apply pattern-specific offsets
+    let patternChanged = false;
+    if (patternStyle !== undefined && patternStyle !== this.patternStyle) {
+      this.patternStyle = patternStyle;
+      patternChanged = true;
+    }
 
     // Time influence controls
     if (phaseEnabled !== undefined) this.phaseEnabled = phaseEnabled;
@@ -841,6 +893,11 @@ class TurbulenceField {
     // Pattern offset controls
     if (patternOffsetX !== undefined) this.patternOffsetX = patternOffsetX;
     if (patternOffsetY !== undefined) this.patternOffsetY = patternOffsetY;
+
+    // If pattern changed, apply pattern-specific offset
+    if (patternChanged) {
+      this.applyPatternSpecificOffset();
+    }
 
     // Bias speed controls
     if (biasSpeedX !== undefined) this.biasSpeedX = biasSpeedX;
@@ -909,6 +966,29 @@ class TurbulenceField {
     // timeOffsetY = time * this.biasSpeedY * this.biasStrength;
     // Note: Bias speeds work independently of pattern speed
   }
+
+  // // Reset all pattern offsets to defaults
+  // resetPatternOffsets() {
+  //   // Default offsets configured for scale=3, freq=2
+  //   this.patternOffsets = {
+  //     "checkerboard": [0.17, -0.17],
+  //     "waves": [0, 0],
+  //     "spiral": [0, 0],
+  //     "grid": [0.25, 0.25],
+  //     "circles": [0, 0],
+  //     "diamonds": [0.15, -0.15],
+  //     "ripples": [0, 0],
+  //     "dots": [0, 0],
+  //     "voronoi": [0, 0],
+  //     "cells": [0, 0],
+  //     "fractal": [0, 0],
+  //     "vortex": [0, 0],
+  //     "bubbles": [0, 0]
+  //   };
+
+  //   // Always apply pattern offset for current pattern
+  //   this.applyPatternSpecificOffset();
+  // }
 }
 
 export { TurbulenceField };
