@@ -143,7 +143,8 @@ export class EmuForces {
       const biasX = Math.max(-1, Math.min(1, this.emuData.accelY / 10));
       const biasY = Math.max(-1, Math.min(1, -this.emuData.accelX / 10));  // Invert Y for correct direction
 
-      // Apply to turbulence field - the biasStrength will be applied internally via applyOffset
+      // Use the physics-based setBiasSpeed method which takes values in -1 to 1 range
+      // and applies them as acceleration rather than direct position offsets
       turbulenceField.setBiasSpeed(biasX, biasY);
 
       // Try to find and update the turbulence UI if available
@@ -155,8 +156,6 @@ export class EmuForces {
       if (main?.turbulenceUi && typeof main.turbulenceUi.updateBiasControllers === 'function') {
         main.turbulenceUi.updateBiasControllers();
       }
-
-      // console.log(`Applied EMU data to turbulence bias: X=${biasX.toFixed(2)}, Y=${biasY.toFixed(2)}`);
     } else {
       // Log once to help diagnose the issue
       // if (this.enabled && !this._loggedMissingTurbulence) {

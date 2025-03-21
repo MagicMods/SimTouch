@@ -50,6 +50,21 @@ export class TurbulenceUi extends BaseUi {
     const turbulence = this.main.turbulenceField;
     if (!turbulence) return;
 
+    // Setup display properties for uninverted acceleration values
+    // These are used only for UI display purposes
+    if (!turbulence._displayBiasAccelX) {
+      Object.defineProperties(turbulence, {
+        "_displayBiasAccelX": {
+          get: function () { return -this._biasAccelX; },
+          set: function (value) { this._biasAccelX = -value; }
+        },
+        "_displayBiasAccelY": {
+          get: function () { return this._biasAccelY; },
+          set: function (value) { this._biasAccelY = value; }
+        }
+      });
+    }
+
     // Initialize pullFactor if it doesn't exist (backward compatibility)
     if (turbulence.pullFactor === undefined) {
       // Convert from old format if possible
@@ -273,8 +288,57 @@ export class TurbulenceUi extends BaseUi {
     this.turbulenceDirectionBiasYController = biasFolder.add(turbulence.directionBias, "1", -1, 1).name("T-DirY");
 
     // Move bias speed controls to Direction Bias folder
-    this.turbulenceBiasXController = biasFolder.add(turbulence, "biasSpeedX", -1, 1, 0.01).name("T-BiasX");
-    this.turbulenceBiasYController = biasFolder.add(turbulence, "biasSpeedY", -1, 1, 0.01).name("T-BiasY");
+    this.turbulenceBiasXController = biasFolder.add(turbulence, "_displayBiasAccelX", -0.2, 0.2, 0.01)
+      .name("T-BiasX")
+      .onChange(value => {
+        // The setter will handle the inversion
+        turbulence._displayBiasAccelX = value;
+        // Keep dummy property at 0 for backwards compatibility
+        turbulence.biasSpeedX = 0;
+      });
+    this.turbulenceBiasYController = biasFolder.add(turbulence, "_displayBiasAccelY", -0.2, 0.2, 0.01)
+      .name("T-BiasY")
+      .onChange(value => {
+        // The setter will update the actual acceleration value
+        turbulence._displayBiasAccelY = value;
+        // Keep dummy property at 0 for backwards compatibility
+        turbulence.biasSpeedY = 0;
+      });
+
+    // Add a control for physics friction
+    this.turbulenceBiasFrictionController = biasFolder.add(turbulence, "biasFriction", 0.001, 0.2, 0.001)
+      .name("T-Bias Friction");
+
+    // Add a button to reset the bias
+    const resetBiasButton = document.createElement("button");
+    resetBiasButton.textContent = "Reset Bias";
+    resetBiasButton.className = "reset-bias-button";
+    resetBiasButton.style.cssText = `
+      margin-top: 8px;
+      padding: 4px 8px;
+      background: #444;
+      border: none;
+      border-radius: 3px;
+      color: #fff;
+      cursor: pointer;
+      width: 100%;
+    `;
+    resetBiasButton.addEventListener("click", () => {
+      if (turbulence && typeof turbulence.resetBias === "function") {
+        turbulence.resetBias();
+        // Update controllers to show the reset values
+        this.updateBiasControllers();
+      }
+    });
+
+    // Add the reset button to the bias folder
+    const biasFolderContent = biasFolder.domElement.querySelector(".children");
+    if (biasFolderContent) {
+      const buttonContainer = document.createElement("div");
+      buttonContainer.style.cssText = "padding: 0 5px 5px 5px;";
+      buttonContainer.appendChild(resetBiasButton);
+      biasFolderContent.appendChild(buttonContainer);
+    }
 
     // Move Pattern Offset folder under Direction Bias and close it
     const patternOffsetFolder = biasFolder.addFolder("Pattern Offset");
@@ -663,6 +727,7 @@ export class TurbulenceUi extends BaseUi {
     // Add new bias speed controllers
     if (this.turbulenceBiasXController) targets["T-BiasX"] = this.turbulenceBiasXController;
     if (this.turbulenceBiasYController) targets["T-BiasY"] = this.turbulenceBiasYController;
+    if (this.turbulenceBiasFrictionController) targets["T-Bias Friction"] = this.turbulenceBiasFrictionController;
 
     // Add blur controller to control targets
     if (this.turbulenceBlurController) targets["T-Blur"] = this.turbulenceBlurController;
@@ -713,6 +778,7 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulenceOffsetYController);
     safeUpdateDisplay(this.turbulenceBiasXController);
     safeUpdateDisplay(this.turbulenceBiasYController);
+    safeUpdateDisplay(this.turbulenceBiasFrictionController);
     safeUpdateDisplay(this.turbulenceBlurController);
   }
 
@@ -779,18 +845,23 @@ export class TurbulenceUi extends BaseUi {
     }
   }
 
-  // Add method to allow external code to update specific controllers
+  // Update method to allow external code to update specific controllers
   updateBiasControllers() {
     const turbulence = this.main.turbulenceField;
     if (!turbulence) return;
 
-    // Update UI for bias X and Y controllers if they exist
+    // Update UI for bias X and Y acceleration controllers if they exist
     if (this.turbulenceBiasXController) {
-      this.turbulenceBiasXController.setValue(turbulence.biasSpeedX);
+      this.turbulenceBiasXController.setValue(turbulence._displayBiasAccelX);
     }
 
     if (this.turbulenceBiasYController) {
-      this.turbulenceBiasYController.setValue(turbulence.biasSpeedY);
+      this.turbulenceBiasYController.setValue(turbulence._displayBiasAccelY);
+    }
+
+    // Update friction controller if it exists
+    if (this.turbulenceBiasFrictionController) {
+      this.turbulenceBiasFrictionController.setValue(turbulence.biasFriction);
     }
   }
 

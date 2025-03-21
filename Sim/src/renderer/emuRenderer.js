@@ -47,6 +47,9 @@ export class EmuRenderer {
   }
 
   setupMouseInteraction() {
+    // For detecting double-tap
+    this.lastTapTime = 0;
+
     // Mouse events
     this.canvas.addEventListener('mousedown', this.handleMouseDown.bind(this));
     document.addEventListener('mousemove', this.handleMouseMove.bind(this));
@@ -55,10 +58,25 @@ export class EmuRenderer {
     // Touch events for mobile support - add {passive: false} option
     this.canvas.addEventListener('touchstart', (e) => {
       e.preventDefault();
-      this.handleMouseDown({
-        clientX: e.touches[0].clientX,
-        clientY: e.touches[0].clientY
-      });
+
+      // Check for double-tap
+      const currentTime = new Date().getTime();
+      const tapLength = currentTime - this.lastTapTime;
+
+      if (tapLength < 300 && tapLength > 0) {
+        // Double tap detected
+        this.resetJoystick();
+        this.lastTapTime = 0; // Reset to prevent triple-tap
+      } else {
+        // Single tap
+        this.lastTapTime = currentTime;
+
+        // Process as normal tap
+        this.handleMouseDown({
+          clientX: e.touches[0].clientX,
+          clientY: e.touches[0].clientY
+        });
+      }
     }, { passive: false }); // Explicitly mark as non-passive
 
     document.addEventListener('touchmove', (e) => {
@@ -251,7 +269,6 @@ export class EmuRenderer {
     }
 
     if (!turbulenceField) {
-      // console.log("Turbulence field not found in emuRenderer");
       return; // Turbulence field not found
     }
 
@@ -264,7 +281,7 @@ export class EmuRenderer {
     if (this.joystickActive && typeof turbulenceField.setBiasSpeed === 'function') {
       // Only apply if biasStrength > 0
       if (turbulenceField.biasStrength > 0) {
-        // Use the physics model's acceleration setter
+        // Use the physics model's acceleration setter - this will handle the implementation details
         turbulenceField.setBiasSpeed(biasX, biasY);
       }
     }
@@ -272,13 +289,10 @@ export class EmuRenderer {
     // If turbulenceUi is available with the updateBiasControllers method, use it
     if (main?.turbulenceUi && typeof main.turbulenceUi.updateBiasControllers === 'function') {
       main.turbulenceUi.updateBiasControllers();
-      // console.log("Updated turbulence bias UI via updateBiasControllers");
       return; // We're done, no need to manually update DOM elements
     }
 
     // Otherwise fall back to direct DOM manipulation
-    // console.log("Falling back to manual DOM updates for turbulence bias UI");
-    // Find all controllers in the document
     const biasControllers = document.querySelectorAll('.dg .c input[type="text"]');
 
     // Loop through them to find T-BiasX and T-BiasY controllers
@@ -288,22 +302,30 @@ export class EmuRenderer {
         const name = label.textContent?.trim();
 
         if (name === 'T-BiasX') {
-          // Update the X input value
-          input.value = biasX.toFixed(2);
+          // Check if display property exists
+          if (typeof turbulenceField._displayBiasAccelX !== 'undefined') {
+            input.value = turbulenceField._displayBiasAccelX.toFixed(2);
+          } else {
+            // Fallback for older versions without display properties
+            input.value = (-turbulenceField._biasAccelX / turbulenceField.biasStrength * 5).toFixed(2);
+          }
 
           // Trigger change event to update internal state
           const event = new Event('change', { bubbles: true });
           input.dispatchEvent(event);
-          // console.log(`Updated T-BiasX UI to ${biasX.toFixed(2)}`);
         }
         else if (name === 'T-BiasY') {
-          // Update the Y input value
-          input.value = biasY.toFixed(2);
+          // Check if display property exists
+          if (typeof turbulenceField._displayBiasAccelY !== 'undefined') {
+            input.value = turbulenceField._displayBiasAccelY.toFixed(2);
+          } else {
+            // Fallback for older versions without display properties
+            input.value = (turbulenceField._biasAccelY / turbulenceField.biasStrength * 5).toFixed(2);
+          }
 
           // Trigger change event to update internal state
           const event = new Event('change', { bubbles: true });
           input.dispatchEvent(event);
-          // console.log(`Updated T-BiasY UI to ${biasY.toFixed(2)}`);
         }
       }
     });
@@ -366,12 +388,12 @@ export class EmuRenderer {
     }
 
     if (turbulenceField && !this.emuForces?.enabled) {
-      // Set bias speed to zero
-      turbulenceField.setBiasSpeed(0, 0);
-
-      // Also reset the physics (velocity and position)
+      // Call the resetBias method which fully resets the physics model
       if (typeof turbulenceField.resetBias === 'function') {
         turbulenceField.resetBias();
+      } else {
+        // Fallback if resetBias isn't available
+        turbulenceField.setBiasSpeed(0, 0);
       }
     }
 
