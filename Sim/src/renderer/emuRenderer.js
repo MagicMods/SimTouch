@@ -197,13 +197,13 @@ export class EmuRenderer {
     // This makes the joystick controller work independently
     if (!this.emuForces?.enabled && this.joystickActive) {
       // Check if gravity strength is > 0 before applying
-      if (typeof gravity.accelGravityMultiplier === 'number') {
+      if (typeof this.emuForces?.accelGravityMultiplier === 'number') {
         // If there's a strength multiplier property
-        if (gravity.accelGravityMultiplier > 0) {
+        if (this.emuForces.accelGravityMultiplier >= 0) {
           gravity.setRawDirection(
-            this.joystickX * gravity.accelGravityMultiplier, // X controls X
-            this.joystickY * gravity.accelGravityMultiplier, // Y controls Y
-            -1 * gravity.accelGravityMultiplier // Default Z value
+            this.joystickX * this.emuForces.accelGravityMultiplier, // X controls X
+            this.joystickY * this.emuForces.accelGravityMultiplier, // Y controls Y
+            -1 * this.emuForces.accelGravityMultiplier // Default Z value
           );
         }
       } else {

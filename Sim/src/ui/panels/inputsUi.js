@@ -188,7 +188,7 @@ export class InputsUi extends BaseUi {
         .add(
           { multiplier: emuForces.accelGravityMultiplier || 1.0 },
           "multiplier",
-          0.1,
+          0,
           5.0,
           0.1
         )
@@ -196,17 +196,6 @@ export class InputsUi extends BaseUi {
         .onChange((value) => {
           // Update the EMU forces
           emuForces.setAccelGravityMultiplier(value);
-
-          // Also update the EMU folder controller if it exists
-          const controllers = document.querySelectorAll('.dg .c input[type="text"]');
-          controllers.forEach(input => {
-            const label = input.parentElement?.parentElement?.querySelector('.property-name');
-            if (label && label.textContent?.trim() === 'Gravity Strength') {
-              input.value = value.toFixed(1);
-              const event = new Event('change', { bubbles: true });
-              input.dispatchEvent(event);
-            }
-          });
         });
     }
 
@@ -228,6 +217,31 @@ export class InputsUi extends BaseUi {
         .onChange((value) => {
           // Update turbulence field friction
           turbulenceField.biasFriction = value;
+        });
+
+      // Add turbulence bias strength control to joystick folder
+      this.joystickBiasStrengthController = this.joystickFolder
+        .add(
+          { strength: turbulenceField.biasStrength },
+          "strength",
+          0,
+          5.0,
+          0.1
+        )
+        .name("T-Bias Strength")
+        .onChange((value) => {
+          // Store the new strength value in the turbulence field
+          turbulenceField.biasStrength = value;
+
+          // If EMU input is active, reapply current values to update immediately
+          if (this.main.externalInput?.emuForces?.enabled) {
+            this.main.externalInput.emuForces.apply(0.016);
+          }
+
+          // Update the turbulence bias UI controllers to reflect the change
+          if (this.main.turbulenceUi && typeof this.main.turbulenceUi.updateBiasControllers === 'function') {
+            this.main.turbulenceUi.updateBiasControllers();
+          }
         });
     }
 
@@ -269,76 +283,6 @@ export class InputsUi extends BaseUi {
       .onChange((value) => {
         externalInput.setAccelSensitivity(value);
       });
-
-    // Accel gravity multiplier - adjust the range for better control
-    this.gravityStrengthController = this.emuInputFolder
-      .add(
-        { multiplier: emuForces.accelGravityMultiplier },
-        "multiplier",
-        0.1,
-        5.0,
-        0.1
-      )
-      .name("Gravity Strength")
-      .onChange((value) => {
-        emuForces.setAccelGravityMultiplier(value);
-
-        // Also update the joystick gravity controller if it exists
-        if (this.joystickGravityStrengthController) {
-          this.joystickGravityStrengthController.setValue(value);
-        }
-      });
-
-    // Add turbulence bias strength control
-    if (this.main.turbulenceField) {
-      this.turbulenceBiasStrengthController = this.emuInputFolder
-        .add(
-          { strength: this.main.turbulenceField.biasStrength },
-          "strength",
-          0.1,
-          5.0,
-          0.1
-        )
-        .name("T-Bias Strength")
-        .onChange((value) => {
-          // Store the new strength value in the turbulence field
-          this.main.turbulenceField.biasStrength = value;
-
-          // Bias speeds now work independently of pattern speed
-          // The strength is applied in the applyOffset method when rendering:
-          // timeOffsetX = time * this.biasSpeedX * this.biasStrength
-
-          // If EMU input is active, reapply current values to update immediately
-          if (this.main.externalInput?.emuForces?.enabled) {
-            this.main.externalInput.emuForces.apply(0.016);
-          }
-
-          // Update the turbulence bias UI controllers to reflect the change
-          if (this.main.turbulenceUi && typeof this.main.turbulenceUi.updateBiasControllers === 'function') {
-            this.main.turbulenceUi.updateBiasControllers();
-          }
-        });
-
-      // Also add the same control to joystick folder for convenience
-      this.joystickBiasStrengthController = this.joystickFolder
-        .add(
-          { strength: this.main.turbulenceField.biasStrength },
-          "strength",
-          0,
-          5.0,
-          0.1
-        )
-        .name("T-Bias Strength")
-        .onChange((value) => {
-          // Store the new strength value in the turbulence field
-          this.main.turbulenceField.biasStrength = value;
-
-          // Also update the EMU folder controller if it exists
-          if (this.turbulenceBiasStrengthController) {
-            this.turbulenceBiasStrengthController.setValue(value);
-          }
-        });
-    }
 
     // Calibration button
     const calibrateButton = {
