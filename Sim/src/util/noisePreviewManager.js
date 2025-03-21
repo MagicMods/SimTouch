@@ -418,14 +418,7 @@ export class NoisePreviewManager {
             strength: field.strength,
             decayRate: field.decayRate,
             contrast: field.contrast,
-            separation: field.separation,
-            // Add string pattern parameters
-            stringDensity: field.stringDensity,
-            stringThickness: field.stringThickness,
-            stringWaveSpeed: field.stringWaveSpeed,
-            stringWaveAmplitude: field.stringWaveAmplitude,
-            stringWaveFrequency: field.stringWaveFrequency,
-            stringWeaveOffset: field.stringWeaveOffset
+            separation: field.separation
         };
     }
 
