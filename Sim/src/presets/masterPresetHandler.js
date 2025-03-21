@@ -125,7 +125,6 @@ export class MasterPresetHandler extends PresetBaseHandler {
         "gravityUi",
         "collisionUi",
         "boundaryUi",
-        "restStateUi",
         "turbulenceUi",
         "voronoiUi",
         "organicUi",

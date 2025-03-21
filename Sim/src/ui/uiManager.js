@@ -14,7 +14,6 @@ import { ParticleUi } from "./panels/particleUi.js";
 import { GravityUi } from "./panels/gravityUi.js";
 import { CollisionUi } from "./panels/collisionUi.js";
 import { BoundaryUi } from "./panels/boundaryUi.js";
-import { RestStateUi } from "./panels/restStateUi.js";
 import { RandomizerUi } from "./panels/randomizerUi.js";
 
 import Stats from "../util/statsModule.js";
@@ -39,7 +38,6 @@ export class UiManager {
     this.gravityUi = new GravityUi(main, this.leftContainer);
     this.collisionUi = new CollisionUi(main, this.leftContainer);
     this.boundaryUi = new BoundaryUi(main, this.leftContainer);
-    this.restStateUi = new RestStateUi(main, this.leftContainer);
     this.inputsUi = new InputsUi(main, this.leftContainer);
     this.debugUi = new DebugUi(main, this.leftContainer);
 
@@ -100,7 +98,6 @@ export class UiManager {
         gravityUi: this.gravityUi,
         collisionUi: this.collisionUi,
         boundaryUi: this.boundaryUi,
-        restStateUi: this.restStateUi,
         turbulenceUi: this.turbulenceUi,
         voronoiUi: this.voronoiUi,
         organicUi: this.organicUi,
@@ -124,7 +121,6 @@ export class UiManager {
       gravityUi: this.gravityUi,
       collisionUi: this.collisionUi,
       boundaryUi: this.boundaryUi,
-      restStateUi: this.restStateUi,
       pulseModUi: this.pulseModUi,
       inputModUi: this.inputModUi,
       turbulenceUi: this.turbulenceUi,
@@ -163,7 +159,6 @@ export class UiManager {
     this.gravityUi.dispose();
     this.collisionUi.dispose();
     this.boundaryUi.dispose();
-    this.restStateUi.dispose();
     this.inputsUi.dispose();
     this.debugUi.dispose();
     this.turbulenceUi.dispose();
