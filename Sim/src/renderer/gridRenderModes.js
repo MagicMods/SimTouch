@@ -913,8 +913,8 @@ class GridRenderModes {
       const nx = centerX / this.TARGET_WIDTH;
       const ny = 1 - centerY / this.TARGET_HEIGHT;
 
-      // Get noise value at cell center
-      const noiseValue = turbulence.noise2D(nx, ny);
+      // Get noise value at cell center with blur applied
+      const noiseValue = turbulence.noise2D(nx, ny, turbulence.time, true);
 
       // Store raw noise value (0-1) without scaling
       this.targetValues[cell.index] = noiseValue * tune;
