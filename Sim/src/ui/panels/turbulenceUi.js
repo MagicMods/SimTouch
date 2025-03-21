@@ -10,6 +10,9 @@ export class TurbulenceUi extends BaseUi {
     this.gui.title("Turbulence");
     this.initTurbulenceControls();
     this.gui.open();
+
+    // Set up periodic UI refresh for bias controllers (every 100ms)
+    this.refreshInterval = setInterval(() => this.updateFromTurbulenceField(), 100);
   }
 
   initWithPresetManager(presetManager) {
@@ -283,7 +286,9 @@ export class TurbulenceUi extends BaseUi {
     this.turbulenceDecayRateController = patternControlsFolder.add(turbulence, "decayRate", 0.9, 1).name("T-Decay");
 
     // Restore XY bias controllers
-    const biasFolder = this.gui.addFolder("Direction Bias");
+    const biasFolder = this.gui.addFolder("Bias Controls");
+    biasFolder.open(); // Keep it open by default
+
     this.turbulenceDirectionBiasXController = biasFolder.add(turbulence.directionBias, "0", -1, 1).name("T-DirX");
     this.turbulenceDirectionBiasYController = biasFolder.add(turbulence.directionBias, "1", -1, 1).name("T-DirY");
 
@@ -309,26 +314,28 @@ export class TurbulenceUi extends BaseUi {
     this.turbulenceBiasFrictionController = biasFolder.add(turbulence, "biasFriction", 0.001, 0.2, 0.001)
       .name("T-Bias Friction");
 
-    // Add a button to reset the bias
+    // Create a reset bias button
     const resetBiasButton = document.createElement("button");
     resetBiasButton.textContent = "Reset Bias";
     resetBiasButton.className = "reset-bias-button";
     resetBiasButton.style.cssText = `
-      margin-top: 8px;
+      display: block;
+      margin: 5px auto;
       padding: 4px 8px;
-      background: #444;
-      border: none;
-      border-radius: 3px;
-      color: #fff;
+      background-color: #333;
+      color: #ddd;
+      border: 1px solid #555;
+      border-radius: 4px;
       cursor: pointer;
-      width: 100%;
     `;
     resetBiasButton.addEventListener("click", () => {
-      if (turbulence && typeof turbulence.resetBias === "function") {
-        turbulence.resetBias();
-        // Update controllers to show the reset values
-        this.updateBiasControllers();
-      }
+      this.resetBias();
+    });
+    resetBiasButton.addEventListener("mouseover", () => {
+      resetBiasButton.style.backgroundColor = "#444";
+    });
+    resetBiasButton.addEventListener("mouseout", () => {
+      resetBiasButton.style.backgroundColor = "#333";
     });
 
     // Add the reset button to the bias folder
@@ -865,8 +872,58 @@ export class TurbulenceUi extends BaseUi {
     }
   }
 
+  // Update UI values from the turbulence field (like GravityUi's updateFromGravity)
+  updateFromTurbulenceField() {
+    const turbulence = this.main?.turbulenceField;
+    if (!turbulence) return;
+
+    // Update the bias controllers regardless of joystick state
+    // This ensures sliders refresh even with small changes
+    if (this.turbulenceBiasXController) {
+      this.turbulenceBiasXController.setValue(turbulence._displayBiasAccelX);
+    }
+    if (this.turbulenceBiasYController) {
+      this.turbulenceBiasYController.setValue(turbulence._displayBiasAccelY);
+    }
+
+    // Update direction bias controls
+    if (this.turbulenceDirectionBiasXController) {
+      this.turbulenceDirectionBiasXController.setValue(turbulence.directionBias[0]);
+    }
+    if (this.turbulenceDirectionBiasYController) {
+      this.turbulenceDirectionBiasYController.setValue(turbulence.directionBias[1]);
+    }
+
+    // Update bias friction controller if it exists
+    if (this.turbulenceBiasFrictionController) {
+      this.turbulenceBiasFrictionController.setValue(turbulence.biasFriction);
+    }
+  }
+
+  // Add a method to reset all bias values
+  resetBias() {
+    const turbulence = this.main?.turbulenceField;
+    if (!turbulence) return;
+
+    // Reset the bias position, velocity and acceleration
+    turbulence.resetBias();
+
+    // Reset direction bias
+    turbulence.directionBias[0] = 0;
+    turbulence.directionBias[1] = 0;
+
+    // Update the UI
+    this.updateFromTurbulenceField();
+  }
+
   // Add this method to the TurbulenceUi class
   dispose() {
+    // Clear the refresh interval
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
+    }
+
     // Clean up the MutationObserver
     if (this.previewFolderObserver) {
       this.previewFolderObserver.disconnect();

@@ -1028,6 +1028,11 @@ class TurbulenceField {
     this._biasAccelX = -clampedX * this.biasStrength * 0.2;
     this._biasAccelY = clampedY * this.biasStrength * 0.2;
 
+    // Also update direction bias to match joystick direction
+    // Scale it down a bit to make it less intense
+    this.directionBias[0] = clampedX * 0.5;
+    this.directionBias[1] = clampedY * 0.5;
+
     // Always keep the old bias speed properties at zero
     // to ensure they don't interfere with the physics model
     this.biasSpeedX = 0;
