@@ -148,9 +148,9 @@ export class EmuRenderer {
 
     // Only update EMU data if EMU forces are available
     if (this.emuForces) {
-      // Update EMU data (with axes swapped as per existing visualization)
-      this.emuForces.emuData.accelX = clampedY;
-      this.emuForces.emuData.accelY = clampedX;
+      // Update EMU data without swapping axes
+      this.emuForces.emuData.accelX = clampedX; // Use X for X
+      this.emuForces.emuData.accelY = clampedY; // Use Y for Y
 
       // Apply to gravity immediately (if EMU is enabled)
       if (this.emuForces.enabled) {
@@ -183,14 +183,14 @@ export class EmuRenderer {
         // If there's a strength multiplier property
         if (gravity.accelGravityMultiplier > 0) {
           gravity.setRawDirection(
-            this.joystickY * gravity.accelGravityMultiplier,
-            this.joystickX * gravity.accelGravityMultiplier,
-            -10 * gravity.accelGravityMultiplier // Default Z value
+            this.joystickX * gravity.accelGravityMultiplier, // X controls X
+            this.joystickY * gravity.accelGravityMultiplier, // Y controls Y
+            -1 * gravity.accelGravityMultiplier // Default Z value
           );
         }
       } else {
         // Default behavior if no multiplier found - just use the values directly
-        gravity.setRawDirection(this.joystickY, this.joystickX, -10);
+        gravity.setRawDirection(this.joystickX, this.joystickY, -1);
       }
     }
 
@@ -256,8 +256,8 @@ export class EmuRenderer {
     }
 
     // Normalize joystick values to -1 to 1 range for bias controls
-    const biasX = Math.max(-1, Math.min(1, this.joystickY / 10));
-    const biasY = Math.max(-1, Math.min(1, this.joystickX / 10));
+    const biasX = Math.max(-1, Math.min(1, this.joystickX / 10)); // X controls X
+    const biasY = Math.max(-1, Math.min(1, this.joystickY / 10)); // Y controls Y
 
     // Apply joystick input directly to turbulence bias if EMU is not enabled
     // This makes the joystick controller work independently
@@ -390,9 +390,9 @@ export class EmuRenderer {
       accelY = data.accelY;
       accelZ = data.accelZ;
     } else if (this.joystickActive) {
-      // Use joystick values
-      accelX = this.joystickY; // Swapped as per visualization convention
-      accelY = this.joystickX;
+      // Use joystick values without swapping
+      accelX = this.joystickX; // X controls X
+      accelY = this.joystickY; // Y controls Y
       accelZ = -1; // Smaller default Z value for better visualization
     } else {
       // Default values if neither active
@@ -435,17 +435,16 @@ export class EmuRenderer {
     const scale = 10; // Scale factor to make small accelerations visible
     const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
-    // For 90° counter-clockwise rotation with correct up/down:
-    // Fix position calculation - remove the division by scale
-    const indicatorX = centerX + clamp(data.accelY / 10 * radius, -radius, radius);
-    const indicatorY = centerY - clamp(data.accelX / 10 * radius, -radius, radius);
+    // Fix position calculation without axis swap
+    const indicatorX = centerX + clamp(data.accelX / 10 * radius, -radius, radius);
+    const indicatorY = centerY - clamp(data.accelY / 10 * radius, -radius, radius);
 
     // Draw gravity vector (opposite to acceleration)
     const arrowLength = radius * 0.75;
 
     // Calculate normalized gravity vector (opposite of acceleration)
-    let vx = -data.accelY;
-    let vy = data.accelX;
+    let vx = -data.accelX; // X affects X
+    let vy = data.accelY;  // Y affects Y
     const vz = -data.accelZ;
 
     // Calculate vector length
