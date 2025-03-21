@@ -7,6 +7,15 @@ export class EmuRenderer {
     // Track if we're currently dragging
     this.isDragging = false;
 
+    // Add joystick state - will work even when EMU hardware is disabled
+    this.joystickActive = false;
+    this.joystickX = 0;
+    this.joystickY = 0;
+
+    // Add spring back to center feature
+    this.springStrength = 0.05; // Default spring strength (0 = no spring, 1 = immediate return)
+    this.springEnabled = true;  // Spring enabled by default
+
     // Create overlay canvas
     this.canvas = document.createElement("canvas");
     this.canvas.className = "emu-visualization";
@@ -66,7 +75,8 @@ export class EmuRenderer {
   }
 
   handleMouseDown(e) {
-    if (!this.visible || !this.emuForces?.enabled) return;
+    // Remove the dependency on emuForces.enabled
+    if (!this.visible) return;
 
     // Get canvas-relative coordinates
     const rect = this.canvas.getBoundingClientRect();
@@ -84,8 +94,9 @@ export class EmuRenderer {
 
     if (distFromCenter <= radius) {
       this.isDragging = true;
+      this.joystickActive = true;
 
-      // Set manual override flag to stop EMU data updates
+      // Set manual override flag to stop EMU data updates (only if EMU is enabled)
       if (this.emuForces && typeof this.emuForces.setManualOverride === 'function') {
         this.emuForces.setManualOverride(true);
       }
@@ -108,7 +119,10 @@ export class EmuRenderer {
     if (this.isDragging) {
       this.isDragging = false;
 
-      // Clear manual override flag when done dragging
+      // Don't reset joystick position when released
+      // this.joystickActive = false;
+
+      // Clear manual override flag when done dragging (only if EMU is enabled)
       if (this.emuForces && typeof this.emuForces.setManualOverride === 'function') {
         this.emuForces.setManualOverride(false);
       }
@@ -128,21 +142,58 @@ export class EmuRenderer {
     const clampedX = Math.max(-10, Math.min(10, normX));
     const clampedY = Math.max(-10, Math.min(10, normY));
 
-    // Update EMU data (with axes swapped as per existing visualization)
-    this.emuForces.emuData.accelX = clampedY;
-    this.emuForces.emuData.accelY = clampedX;
+    // Store joystick position values
+    this.joystickX = clampedX;
+    this.joystickY = clampedY;
 
-    // Apply to gravity immediately
-    this.emuForces.apply(0.016); // Apply with default timestep
+    // Only update EMU data if EMU forces are available
+    if (this.emuForces) {
+      // Update EMU data (with axes swapped as per existing visualization)
+      this.emuForces.emuData.accelX = clampedY;
+      this.emuForces.emuData.accelY = clampedX;
 
-    // Update gravity UI
+      // Apply to gravity immediately (if EMU is enabled)
+      if (this.emuForces.enabled) {
+        this.emuForces.apply(0.016); // Apply with default timestep
+      }
+    }
+
+    // Always update the UI regardless of EMU being enabled
     this.updateGravityUI();
-
-    // Update turbulence bias UI
     this.updateTurbulenceBiasUI();
   }
 
   updateGravityUI() {
+    // Try to find gravity through main or emuForces
+    let gravity = null;
+
+    if (this.main?.particleSystem?.gravity) {
+      gravity = this.main.particleSystem.gravity;
+    } else if (this.emuForces?.gravity) {
+      gravity = this.emuForces.gravity;
+    }
+
+    if (!gravity) return;
+
+    // Apply joystick input directly to gravity if EMU is not enabled
+    // This makes the joystick controller work independently
+    if (!this.emuForces?.enabled && this.joystickActive) {
+      // Check if gravity strength is > 0 before applying
+      if (typeof gravity.accelGravityMultiplier === 'number') {
+        // If there's a strength multiplier property
+        if (gravity.accelGravityMultiplier > 0) {
+          gravity.setRawDirection(
+            this.joystickY * gravity.accelGravityMultiplier,
+            this.joystickX * gravity.accelGravityMultiplier,
+            -10 * gravity.accelGravityMultiplier // Default Z value
+          );
+        }
+      } else {
+        // Default behavior if no multiplier found - just use the values directly
+        gravity.setRawDirection(this.joystickY, this.joystickX, -10);
+      }
+    }
+
     // Find all gravity UI instances
     const gravityControllers = document.querySelectorAll('.dg .c input[type="text"]');
 
@@ -152,17 +203,17 @@ export class EmuRenderer {
       if (label) {
         const name = label.textContent?.trim();
 
-        if (name === 'G-X' && this.emuForces.gravity) {
+        if (name === 'G-X' && gravity) {
           // Update the X input value
-          input.value = this.emuForces.gravity.directionX.toFixed(1);
+          input.value = gravity.directionX.toFixed(1);
 
           // Trigger change event to update internal state
           const event = new Event('change', { bubbles: true });
           input.dispatchEvent(event);
         }
-        else if (name === 'G-Y' && this.emuForces.gravity) {
+        else if (name === 'G-Y' && gravity) {
           // Update the Y input value
-          input.value = this.emuForces.gravity.directionY.toFixed(1);
+          input.value = gravity.directionY.toFixed(1);
 
           // Trigger change event to update internal state
           const event = new Event('change', { bubbles: true });
@@ -174,18 +225,17 @@ export class EmuRenderer {
 
   updateTurbulenceBiasUI() {
     // Try to find the turbulenceField through various paths
-
     // First try the direct main reference if available
     let turbulenceField = this.main?.turbulenceField;
     let main = this.main;
 
     // If not found, try the direct reference from emuForces
-    if (!turbulenceField) {
+    if (!turbulenceField && this.emuForces) {
       turbulenceField = this.emuForces.turbulenceField;
     }
 
     // If still not found, check other paths
-    if (!turbulenceField) {
+    if (!turbulenceField && this.emuForces) {
       turbulenceField = this.emuForces.simulation?.turbulenceField;
 
       if (!turbulenceField && this.emuForces.gravity?.particleSystem?.main) {
@@ -201,32 +251,32 @@ export class EmuRenderer {
     }
 
     if (!turbulenceField) {
-      console.log("Turbulence field not found in emuRenderer");
+      // console.log("Turbulence field not found in emuRenderer");
       return; // Turbulence field not found
     }
 
-    console.log("Found turbulenceField in emuRenderer:", !!turbulenceField);
+    // Normalize joystick values to -1 to 1 range for bias controls
+    const biasX = Math.max(-1, Math.min(1, this.joystickY / 10));
+    const biasY = Math.max(-1, Math.min(1, this.joystickX / 10));
 
-    // Normalize EMU accel values to -1 to 1 range for bias controls
-    // Use original mapping since we fixed the coordinate system in turbulenceField.js
-    const biasX = Math.max(-1, Math.min(1, this.emuForces.emuData.accelY / 10));
-    const biasY = Math.max(-1, Math.min(1, this.emuForces.emuData.accelX / 10));
-
-    // Update turbulenceField directly
-    if (typeof turbulenceField.setBiasSpeed === 'function') {
-      turbulenceField.setBiasSpeed(biasX, biasY);
-      console.log(`Set biasSpeed: X=${biasX.toFixed(2)}, Y=${biasY.toFixed(2)}`);
+    // Apply joystick input directly to turbulence bias if EMU is not enabled
+    // This makes the joystick controller work independently
+    if (this.joystickActive && typeof turbulenceField.setBiasSpeed === 'function') {
+      // Only apply if biasStrength > 0
+      if (turbulenceField.biasStrength > 0) {
+        turbulenceField.setBiasSpeed(biasX, biasY);
+      }
     }
 
     // If turbulenceUi is available with the updateBiasControllers method, use it
     if (main?.turbulenceUi && typeof main.turbulenceUi.updateBiasControllers === 'function') {
       main.turbulenceUi.updateBiasControllers();
-      console.log("Updated turbulence bias UI via updateBiasControllers");
+      // console.log("Updated turbulence bias UI via updateBiasControllers");
       return; // We're done, no need to manually update DOM elements
     }
 
     // Otherwise fall back to direct DOM manipulation
-    console.log("Falling back to manual DOM updates for turbulence bias UI");
+    // console.log("Falling back to manual DOM updates for turbulence bias UI");
     // Find all controllers in the document
     const biasControllers = document.querySelectorAll('.dg .c input[type="text"]');
 
@@ -243,7 +293,7 @@ export class EmuRenderer {
           // Trigger change event to update internal state
           const event = new Event('change', { bubbles: true });
           input.dispatchEvent(event);
-          console.log(`Updated T-BiasX UI to ${biasX.toFixed(2)}`);
+          // console.log(`Updated T-BiasX UI to ${biasX.toFixed(2)}`);
         }
         else if (name === 'T-BiasY') {
           // Update the Y input value
@@ -252,7 +302,7 @@ export class EmuRenderer {
           // Trigger change event to update internal state
           const event = new Event('change', { bubbles: true });
           input.dispatchEvent(event);
-          console.log(`Updated T-BiasY UI to ${biasY.toFixed(2)}`);
+          // console.log(`Updated T-BiasY UI to ${biasY.toFixed(2)}`);
         }
       }
     });
@@ -260,6 +310,11 @@ export class EmuRenderer {
 
   startAnimation() {
     const animate = () => {
+      // Apply spring force if enabled and not dragging
+      if (this.springEnabled && !this.isDragging && this.joystickActive) {
+        this.applySpringForce();
+      }
+
       this.draw();
       this.animationFrameId = requestAnimationFrame(animate);
     };
@@ -285,14 +340,68 @@ export class EmuRenderer {
     return this;
   }
 
+  // Reset joystick position to center
+  resetJoystick() {
+    this.joystickX = 0;
+    this.joystickY = 0;
+    this.joystickActive = false;
+
+    // Reset actual gravity if EMU is not enabled
+    let gravity = null;
+    if (this.main?.particleSystem?.gravity) {
+      gravity = this.main.particleSystem.gravity;
+    } else if (this.emuForces?.gravity) {
+      gravity = this.emuForces.gravity;
+    }
+
+    if (gravity && !this.emuForces?.enabled) {
+      gravity.setRawDirection(0, 0, gravity.directionZ || -1);
+    }
+
+    // Reset turbulence bias if EMU is not enabled
+    let turbulenceField = this.main?.turbulenceField;
+    if (!turbulenceField && this.emuForces) {
+      turbulenceField = this.emuForces.turbulenceField;
+    }
+
+    if (turbulenceField && !this.emuForces?.enabled && typeof turbulenceField.setBiasSpeed === 'function') {
+      turbulenceField.setBiasSpeed(0, 0);
+    }
+
+    // Update UI to reflect changes
+    this.updateGravityUI();
+    this.updateTurbulenceBiasUI();
+  }
+
   draw() {
-    if (!this.visible || !this.emuForces?.enabled) return;
+    // Remove dependency on emuForces.enabled
+    if (!this.visible) return;
 
     // Clear canvas
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Get current EMU data
-    const data = this.emuForces.emuData;
+    // Get joystick data - either from EMU if enabled, or from stored joystick values
+    let accelX, accelY, accelZ;
+
+    if (this.emuForces?.enabled && !this.isDragging) {
+      // Use real EMU data if available and not currently dragging
+      const data = this.emuForces.emuData;
+      accelX = data.accelX;
+      accelY = data.accelY;
+      accelZ = data.accelZ;
+    } else if (this.joystickActive) {
+      // Use joystick values
+      accelX = this.joystickY; // Swapped as per visualization convention
+      accelY = this.joystickX;
+      accelZ = -1; // Smaller default Z value for better visualization
+    } else {
+      // Default values if neither active
+      accelX = 0;
+      accelY = 0;
+      accelZ = -1; // Smaller default Z value for better visualization
+    }
+
+    const data = { accelX, accelY, accelZ };
 
     // Draw acceleration indicator (centered)
     this.drawAccelerationIndicator(data, 75, 75, 45);
@@ -304,7 +413,7 @@ export class EmuRenderer {
     // Draw title
     ctx.fillStyle = "white";
     ctx.font = "10px Arial";
-    ctx.fillText("Acceleration", centerX - 30, 20);
+    ctx.fillText("Joystick", centerX - 20, 20);
 
     // Draw boundary circle
     ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
@@ -327,8 +436,9 @@ export class EmuRenderer {
     const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
     // For 90° counter-clockwise rotation with correct up/down:
-    const indicatorX = centerX + clamp(data.accelY * scale, -radius, radius);
-    const indicatorY = centerY - clamp(data.accelX * scale, -radius, radius);
+    // Fix position calculation - remove the division by scale
+    const indicatorX = centerX + clamp(data.accelY / 10 * radius, -radius, radius);
+    const indicatorY = centerY - clamp(data.accelX / 10 * radius, -radius, radius);
 
     // Draw gravity vector (opposite to acceleration)
     const arrowLength = radius * 0.75;
@@ -377,7 +487,7 @@ export class EmuRenderer {
     }
 
     // Draw the acceleration indicator (a filled circle)
-    const intensity = Math.abs(data.accelZ);
+    const intensity = Math.min(1, Math.abs(data.accelZ));
     const color = `rgba(${255 * intensity}, ${255 * (1 - intensity)}, 0, 1)`;
 
     ctx.fillStyle = color;
@@ -385,8 +495,8 @@ export class EmuRenderer {
     ctx.arc(indicatorX, indicatorY, 8, 0, Math.PI * 2);
     ctx.fill();
 
-    // Draw the z-acceleration as the size of a ring
-    const zRadius = 5 + Math.abs(data.accelZ) * 3;
+    // Draw the z-acceleration as the size of a ring with more reasonable size
+    const zRadius = 5 + Math.abs(data.accelZ) * 1.5;
     ctx.strokeStyle =
       data.accelZ < 0 ? "rgba(255, 100, 100, 0.8)" : "rgba(100, 255, 100, 0.8)";
     ctx.lineWidth = 2;
@@ -399,5 +509,40 @@ export class EmuRenderer {
     ctx.font = "10px Arial";
     ctx.fillText("Y", centerX + radius + 5, centerY);
     ctx.fillText("X", centerX, centerY - radius - 5);
+  }
+
+  // Apply spring force to move joystick back to center
+  applySpringForce() {
+    // Calculate distance from center
+    const distX = 0 - this.joystickX;
+    const distY = 0 - this.joystickY;
+
+    // Apply spring force proportional to distance and spring strength
+    this.joystickX += distX * this.springStrength;
+    this.joystickY += distY * this.springStrength;
+
+    // If close enough to center, snap to center and deactivate
+    const totalDist = Math.sqrt(this.joystickX * this.joystickX + this.joystickY * this.joystickY);
+    if (totalDist < 0.1) {
+      this.joystickX = 0;
+      this.joystickY = 0;
+      this.joystickActive = false;
+    }
+
+    // Update the driven values (gravity and turbulence)
+    this.updateGravityUI();
+    this.updateTurbulenceBiasUI();
+  }
+
+  // Set spring strength (0-1)
+  setSpringStrength(value) {
+    this.springStrength = Math.max(0, Math.min(1, value));
+    return this;
+  }
+
+  // Enable or disable spring
+  setSpringEnabled(enabled) {
+    this.springEnabled = enabled;
+    return this;
   }
 }

@@ -136,6 +136,70 @@ export class InputsUi extends BaseUi {
     const externalInput = this.main.externalInput;
     const emuForces = externalInput.emuForces;
 
+    // Create a separate Joystick Controls folder first
+    this.joystickFolder = this.gui.addFolder("Joystick Controls");
+
+    // Add joystick controls
+
+    // Add reset button for joystick
+    const resetJoystickButton = {
+      reset: () => {
+        if (this.main.emuRenderer) {
+          this.main.emuRenderer.resetJoystick();
+          console.log("Joystick reset to center");
+        }
+      }
+    };
+
+    this.joystickFolder
+      .add(resetJoystickButton, "reset")
+      .name("Reset Joystick");
+
+    // Add spring-back control slider
+    const springControl = {
+      enabled: this.main.emuRenderer?.springEnabled ?? true,
+      strength: this.main.emuRenderer?.springStrength ?? 0.05
+    };
+
+    // Add spring enable toggle
+    this.joystickFolder
+      .add(springControl, "enabled")
+      .name("Spring Back")
+      .onChange((value) => {
+        if (this.main.emuRenderer) {
+          this.main.emuRenderer.setSpringEnabled(value);
+        }
+      });
+
+    // Add spring strength slider
+    this.joystickFolder
+      .add(springControl, "strength", 0, 0.2, 0.01)
+      .name("Spring Strength")
+      .onChange((value) => {
+        if (this.main.emuRenderer) {
+          this.main.emuRenderer.setSpringStrength(value);
+        }
+      });
+
+    // Add visualizer toggle to Joystick folder instead of EMU folder
+    this.joystickFolder
+      .add({ showVisualizer: true }, "showVisualizer")
+      .name("Show Joystick")
+      .onChange((value) => {
+        if (value) {
+          if (this.main.emuRenderer) {
+            this.main.emuRenderer.show();
+          }
+        } else {
+          if (this.main.emuRenderer) {
+            this.main.emuRenderer.hide();
+          }
+        }
+      });
+
+    // Open joystick folder by default
+    this.joystickFolder.open();
+
     // EMU input enable/disable
     this.emuInputFolder
       .add({ enabled: false }, "enabled")
@@ -195,7 +259,29 @@ export class InputsUi extends BaseUi {
           }
 
           // Update the turbulence bias UI controllers to reflect the change
-          this.updateTurbulenceBiasUI();
+          if (this.main.turbulenceUi && typeof this.main.turbulenceUi.updateBiasControllers === 'function') {
+            this.main.turbulenceUi.updateBiasControllers();
+          }
+        });
+
+      // Also add the same control to joystick folder for convenience
+      this.joystickBiasStrengthController = this.joystickFolder
+        .add(
+          { strength: this.main.turbulenceField.biasStrength },
+          "strength",
+          0,
+          5.0,
+          0.1
+        )
+        .name("T-Bias Strength")
+        .onChange((value) => {
+          // Store the new strength value in the turbulence field
+          this.main.turbulenceField.biasStrength = value;
+
+          // Also update the EMU folder controller if it exists
+          if (this.turbulenceBiasStrengthController) {
+            this.turbulenceBiasStrengthController.setValue(value);
+          }
         });
     }
 
@@ -231,18 +317,6 @@ export class InputsUi extends BaseUi {
         accelController.updateDisplay();
       }
     }, 100);
-
-    // Add visualizer toggle
-    this.emuInputFolder
-      .add({ showVisualizer: true }, "showVisualizer")
-      .name("Show Visualization")
-      .onChange((value) => {
-        if (value) {
-          this.main.emuVisualizer.show();
-        } else {
-          this.main.emuVisualizer.hide();
-        }
-      });
   }
 
   initNetworkControls() {
