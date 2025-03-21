@@ -17,28 +17,8 @@ export class RestStateUi extends BaseUi {
     const particles = this.main.particleSystem;
     if (!particles) return;
 
-    // Create controls object with default values that checks for property existence
-    const controls = {
-      density: particles.restDensity || 1.0,
-      gasConstant: particles.gasConstant || 2.0,
-      velocityThreshold: particles.velocityThreshold || 0.01,
-      positionThreshold: particles.positionThreshold || 0.01,
-    };
-
-    // Only add controllers if the corresponding properties exist
-    if (particles.restDensity !== undefined) {
-      this.restDensityController = this.gui
-        .add(controls, "density", 0, 10, 0.1)
-        .name("Rest Density")
-        .onChange((value) => (particles.restDensity = value));
-    }
-
-    if (particles.gasConstant !== undefined) {
-      this.gasConstantController = this.gui
-        .add(controls, "gasConstant", 0, 100, 0.1)
-        .name("Gas Constant")
-        .onChange((value) => (particles.gasConstant = value));
-    }
+    // Only keep the commented out velocity and position threshold controls
+    // Rest Density has been moved to CollisionUi
 
     // if (particles.velocityThreshold !== undefined) {
     //   this.velocityThresholdController = this.gui
@@ -57,11 +37,7 @@ export class RestStateUi extends BaseUi {
 
   getControlTargets() {
     const targets = {};
-    // Rest state controllers
-    if (this.restDensityController)
-      targets["Rest Density"] = this.restDensityController;
-    if (this.gasConstantController)
-      targets["Gas Constant"] = this.gasConstantController;
+    // Only keep the velocity and position threshold controllers (if uncommented)
     if (this.velocityThresholdController)
       targets["RS-VeloTH"] = this.velocityThresholdController;
     if (this.positionThresholdController)
@@ -122,9 +98,7 @@ export class RestStateUi extends BaseUi {
       }
     };
 
-    // Update rest state controllers
-    safeUpdateDisplay(this.restDensityController);
-    safeUpdateDisplay(this.gasConstantController);
+    // Only update the commented out controllers (if uncommented)
     safeUpdateDisplay(this.velocityThresholdController);
     safeUpdateDisplay(this.positionThresholdController);
   }

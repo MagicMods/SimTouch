@@ -35,6 +35,13 @@ export class CollisionUi extends BaseUi {
         .add(collisionSystem, "damping", 0.01, 1.0, 0.01)
         .name("C-Damping");
     }
+
+    // Add Rest Density control (moved from RestStateUi)
+    if (particles.restDensity !== undefined) {
+      this.restDensityController = this.gui
+        .add(particles, "restDensity", 0, 10, 0.1)
+        .name("C-RestState");
+    }
   }
 
   getControlTargets() {
@@ -47,6 +54,9 @@ export class CollisionUi extends BaseUi {
       targets["C-Bounce"] = this.collisionBounceController;
     if (this.collisionDampingController)
       targets["C-Damping"] = this.collisionDampingController;
+    // Add Rest Density controller to targets
+    if (this.restDensityController)
+      targets["C-RestState"] = this.restDensityController;
 
     return targets;
   }
@@ -107,5 +117,7 @@ export class CollisionUi extends BaseUi {
     safeUpdateDisplay(this.collisionRepulsionController);
     safeUpdateDisplay(this.collisionBounceController);
     safeUpdateDisplay(this.collisionDampingController);
+    // Update Rest Density controller
+    safeUpdateDisplay(this.restDensityController);
   }
 }
