@@ -321,7 +321,7 @@ export class TurbulenceUi extends BaseUi {
     resetBiasButton.style.cssText = `
       display: block;
       margin: 5px auto;
-      padding: 4px 8px;
+      padding: 0px;
       background-color: #333;
       color: #ddd;
       border: 1px solid #555;
