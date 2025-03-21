@@ -210,6 +210,27 @@ export class InputsUi extends BaseUi {
         });
     }
 
+    // Add bias friction control to joystick folder
+    if (this.main?.turbulenceField) {
+      const turbulenceField = this.main.turbulenceField;
+      // The friction value may not exist yet if using an older version
+      const frictionValue = turbulenceField.biasFriction !== undefined ? turbulenceField.biasFriction : 0.05;
+
+      this.biasFrictionController = this.joystickFolder
+        .add(
+          { friction: frictionValue },
+          "friction",
+          0.001,
+          0.2,
+          0.001
+        )
+        .name("T-Bias Friction")
+        .onChange((value) => {
+          // Update turbulence field friction
+          turbulenceField.biasFriction = value;
+        });
+    }
+
     // Add visualizer toggle to Joystick folder instead of EMU folder
     this.joystickFolder
       .add({ showVisualizer: true }, "showVisualizer")

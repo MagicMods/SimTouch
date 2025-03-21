@@ -264,6 +264,7 @@ export class EmuRenderer {
     if (this.joystickActive && typeof turbulenceField.setBiasSpeed === 'function') {
       // Only apply if biasStrength > 0
       if (turbulenceField.biasStrength > 0) {
+        // Use the physics model's acceleration setter
         turbulenceField.setBiasSpeed(biasX, biasY);
       }
     }
@@ -364,8 +365,14 @@ export class EmuRenderer {
       turbulenceField = this.emuForces.turbulenceField;
     }
 
-    if (turbulenceField && !this.emuForces?.enabled && typeof turbulenceField.setBiasSpeed === 'function') {
+    if (turbulenceField && !this.emuForces?.enabled) {
+      // Set bias speed to zero
       turbulenceField.setBiasSpeed(0, 0);
+
+      // Also reset the physics (velocity and position)
+      if (typeof turbulenceField.resetBias === 'function') {
+        turbulenceField.resetBias();
+      }
     }
 
     // Update UI to reflect changes

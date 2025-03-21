@@ -27,10 +27,10 @@ class TurbulenceField {
     // New pattern offset controls
     patternOffsetX = 0.0,
     patternOffsetY = 0.0,
-    // New bias speed controls
+    // New bias speed controls - these are now ignored and used only as initial acceleration
     biasSpeedX = 0.0,
     biasSpeedY = 0.0,
-    biasStrength = 1.0,  // New bias strength parameter
+    biasStrength = 1.0,  // Bias strength parameter
     // New contrast and separation controls
     contrast = 0.5,        // 0 = no contrast, 1 = max contrast
     separation = 0,      // 0 = smooth, 1 = sharp transitions
@@ -38,6 +38,8 @@ class TurbulenceField {
     biasSmoothing = 0.8,   // 0 = no smoothing, 1 = max smoothing
     // New blur parameter
     blurAmount = .8,      // 0 = no blur, 1 = max blur
+    // Physics parameters for bias movement
+    biasFriction = 0.05,   // Friction coefficient for bias movement (0-1)
   } = {}) {
     if (
       !boundary ||
@@ -119,9 +121,7 @@ class TurbulenceField {
     // Apply pattern-specific offset immediately when initializing with a pattern
     this.applyPatternSpecificOffset();
 
-    // New bias speed controls (speed of pattern movement in X/Y)
-    this.biasSpeedX = biasSpeedX;
-    this.biasSpeedY = biasSpeedY;
+    // Initialize physics model (no need for old biasSpeed properties)
     this.biasStrength = biasStrength;  // Store bias strength
 
     // New contrast and separation controls
@@ -134,9 +134,18 @@ class TurbulenceField {
     // Add new blur parameter
     this.blurAmount = blurAmount;
 
-    // Add internal bias state tracking for smoothing
+    // Add internal bias state tracking for physics model
     this._currentBiasOffsetX = 0;
     this._currentBiasOffsetY = 0;
+    this._biasVelocityX = 0;
+    this._biasVelocityY = 0;
+    this._biasAccelX = biasSpeedX * biasStrength * 0.1; // Initialize with any passed acceleration
+    this._biasAccelY = biasSpeedY * biasStrength * 0.1; // but scaled for the physics model
+    this.biasFriction = biasFriction;
+
+    // Create dummy properties for backwards compatibility but never use them
+    this.biasSpeedX = 0;
+    this.biasSpeedY = 0;
   }
 
   // Apply pattern-specific offset based on current pattern style
@@ -152,31 +161,14 @@ class TurbulenceField {
     this.patternOffsetY = offsetY;
   }
 
-  // Coordinate processing pipeline helper functions
-
-  // Apply pattern offset and time-based bias with smoothing
+  // Apply pattern offset and time-based bias with physics model
   applyOffset(x, y, time) {
-    // Calculate target time-based offsets from bias speeds with strength multiplier
-    const targetOffsetX = time * -this.biasSpeedX * this.biasStrength;
-    const targetOffsetY = time * this.biasSpeedY * this.biasStrength;
-
-    // Apply smoothing using exponential moving average
-    if (this.biasSmoothing > 0) {
-      const smoothFactor = Math.max(0, Math.min(1, 1 - this.biasSmoothing));
-      this._currentBiasOffsetX = this._currentBiasOffsetX * (1 - smoothFactor) + targetOffsetX * smoothFactor;
-      this._currentBiasOffsetY = this._currentBiasOffsetY * (1 - smoothFactor) + targetOffsetY * smoothFactor;
-    } else {
-      // No smoothing
-      this._currentBiasOffsetX = targetOffsetX;
-      this._currentBiasOffsetY = targetOffsetY;
-    }
-
-    // Apply both static offset and smoothed time-based bias
-    return [
-      x - this.patternOffsetX + this._currentBiasOffsetX,
-      y + this.patternOffsetY + this._currentBiasOffsetY
-    ];
+    // This method is now empty as we're handling offsets directly in processCoordinates
+    // for better separation of pattern offset and physics-based movement
+    return [x, y];
   }
+
+  // Coordinate processing pipeline helper functions
 
   // Apply symmetry based on amount
   applySymmetry(x, y, centerX, centerY) {
@@ -340,13 +332,20 @@ class TurbulenceField {
     const centerY = (this.boundary && typeof this.boundary.centerY === 'number') ? this.boundary.centerY : 0.5;
 
     // Process in correct order: rotate → scale → warp → symmetry → offset
-    // Rotation and scale should be applied before offset for proper centering
+    // Split the offset application into pattern offset and physics-based bias offset
     let [px, py] = [x, y];
     [px, py] = this.applyRotation(px, py, centerX, centerY, this.rotation);
     [px, py] = this.applyScale(px, py, this.scale, centerX, centerY);
     [px, py] = this.applyDomainWarp(px, py, time, centerX, centerY);
     [px, py] = this.applySymmetry(px, py, centerX, centerY);
-    [px, py] = this.applyOffset(px, py, time);
+
+    // Apply pattern offset separately from physics-based bias
+    px = px - this.patternOffsetX;
+    py = py + this.patternOffsetY;
+
+    // Apply physics-based bias offset only
+    px = px + this._currentBiasOffsetX;
+    py = py + this._currentBiasOffsetY;
 
     return [px, py, centerX, centerY];
   }
@@ -573,7 +572,14 @@ class TurbulenceField {
       [px, py] = this.applyScale(px, py, this.scale, centerX, centerY);
       [px, py] = this.applyDomainWarp(px, py, time, centerX, centerY);
       [px, py] = this.applySymmetry(px, py, centerX, centerY);
-      [px, py] = this.applyOffset(px, py, time);
+
+      // Apply pattern offset separately from physics-based bias (match processCoordinates exactly)
+      px = px - this.patternOffsetX;
+      py = py + this.patternOffsetY;
+
+      // Apply physics-based bias offset only
+      px = px + this._currentBiasOffsetX;
+      py = py + this._currentBiasOffsetY;
 
       // Calculate pattern
       let sampleNoise = this.calculatePattern(this.patternStyle.toLowerCase(), px, py, centerX, centerY);
@@ -802,29 +808,47 @@ class TurbulenceField {
     return [newVx, newVy];
   }
 
+  /**
+   * Update the simulation for the current frame
+   * @param {number} dt - Delta time since last frame in seconds
+   */
   update(dt) {
-    this.time += dt;
+    // Update time variable with delta time
+    this.time += dt * this.speed;
 
     if (this.strength <= 0) return;
 
-    // Apply rotation based on rotation speed
-    if (this.rotationSpeed > 0) {
-      this.rotation += this.rotationSpeed * dt;
-      // Keep rotation within [0, 2π]
-      this.rotation %= Math.PI * 2;
+    // Apply rotation
+    this.rotation += dt * this.rotationSpeed;
+    // Keep rotation in range [0, 2π]
+    this.rotation = this.rotation % (Math.PI * 2);
+
+    // Apply bias physics (acceleration, velocity, position)
+    if (this.biasStrength > 0) {
+      // Use a smaller friction coefficient for smoother deceleration
+      // Scale friction by dt for frame-rate independence
+      const frictionFactor = Math.pow(1 - this.biasFriction, dt * 60);
+
+      // Apply acceleration to velocity
+      // Use a more moderate acceleration multiplier (3.0)
+      // Scale by dt^2 for frame-rate independence and proper physics
+      this._biasVelocityX += this._biasAccelX * 3.0 * dt * dt * 60;
+      this._biasVelocityY += this._biasAccelY * 3.0 * dt * dt * 60;
+
+      // Apply friction using linear interpolation towards zero
+      // This provides more predictable behavior than straight multiplication
+      this._biasVelocityX = this._biasVelocityX * frictionFactor;
+      this._biasVelocityY = this._biasVelocityY * frictionFactor;
+
+      // Apply velocity to position (scaled by dt)
+      this._currentBiasOffsetX += this._biasVelocityX * dt * 60;
+      this._currentBiasOffsetY += this._biasVelocityY * dt * 60;
     }
 
-    // Occasionally shift phase values for more variation
+    // Shift phase values occasionally for variation
     if (Math.random() < 0.001) {
-      for (let i = 0; i < this.patternFrequency; i++) {
-        // Assuming patternFrequency is used for phase shift
-        // This is a placeholder and should be replaced with actual phase shift logic
-      }
+      this.timeOffset = Math.random() * 1000;
     }
-
-    // These time-based updates are now handled directly in the coordinate processing
-    // through the applyOffset method, which calculates time-based offsets based on
-    // biasSpeedX, biasSpeedY, and biasStrength values.
   }
 
   setParameters({
@@ -859,6 +883,8 @@ class TurbulenceField {
     biasSmoothing,
     // New blur parameter
     blurAmount,
+    // Physics parameters
+    biasFriction,
   }) {
     if (strength !== undefined) this.strength = strength;
     if (scale !== undefined) this.scale = scale;
@@ -899,10 +925,29 @@ class TurbulenceField {
       this.applyPatternSpecificOffset();
     }
 
-    // Bias speed controls
-    if (biasSpeedX !== undefined) this.biasSpeedX = biasSpeedX;
-    if (biasSpeedY !== undefined) this.biasSpeedY = biasSpeedY;
+    // Bias speed controls - update to set acceleration only, not position
+    if (biasSpeedX !== undefined) {
+      // Store as acceleration for physics model only, not as a direct offset speed
+      this._biasAccelX = biasSpeedX * (this.biasStrength || 1);
+
+      // IMPORTANT: Remove the old bias speed property that might be causing the issue
+      // We don't want this property to interfere with the physics-based model
+      this.biasSpeedX = 0;
+    }
+
+    if (biasSpeedY !== undefined) {
+      // Store as acceleration for physics model only, not as a direct offset speed
+      this._biasAccelY = biasSpeedY * (this.biasStrength || 1);
+
+      // IMPORTANT: Remove the old bias speed property that might be causing the issue
+      // We don't want this property to interfere with the physics-based model
+      this.biasSpeedY = 0;
+    }
+
     if (biasStrength !== undefined) this.biasStrength = biasStrength;
+
+    // Physics parameters
+    if (biasFriction !== undefined) this.biasFriction = biasFriction;
 
     // Contrast and separation controls
     if (contrast !== undefined) this.contrast = contrast;
@@ -951,44 +996,42 @@ class TurbulenceField {
     console.log("=== End Debug ===");
   }
 
-  // Add new method to set bias speed with strength
-  setBiasSpeed(x, y) {
-    // Ensure values are within -1 to 1 range
-    const clampedX = Math.max(-1, Math.min(1, x));
-    const clampedY = Math.max(-1, Math.min(1, y));
+  /**
+   * Reset the bias physics (velocity and position)
+   */
+  resetBias() {
+    this._currentBiasOffsetX = 0;
+    this._currentBiasOffsetY = 0;
+    this._biasVelocityX = 0;
+    this._biasVelocityY = 0;
+    this._biasAccelX = 0;
+    this._biasAccelY = 0;
 
-    // Store raw bias values (without strength multiplier)
-    this.biasSpeedX = clampedX;
-    this.biasSpeedY = clampedY;
-
-    // Bias strength is applied in applyOffset method:
-    // timeOffsetX = time * this.biasSpeedX * this.biasStrength;
-    // timeOffsetY = time * this.biasSpeedY * this.biasStrength;
-    // Note: Bias speeds work independently of pattern speed
+    // Also reset the old bias speed properties to ensure they don't interfere
+    this.biasSpeedX = 0;
+    this.biasSpeedY = 0;
   }
 
-  // // Reset all pattern offsets to defaults
-  // resetPatternOffsets() {
-  //   // Default offsets configured for scale=3, freq=2
-  //   this.patternOffsets = {
-  //     "checkerboard": [0.17, -0.17],
-  //     "waves": [0, 0],
-  //     "spiral": [0, 0],
-  //     "grid": [0.25, 0.25],
-  //     "circles": [0, 0],
-  //     "diamonds": [0.15, -0.15],
-  //     "ripples": [0, 0],
-  //     "dots": [0, 0],
-  //     "voronoi": [0, 0],
-  //     "cells": [0, 0],
-  //     "fractal": [0, 0],
-  //     "vortex": [0, 0],
-  //     "bubbles": [0, 0]
-  //   };
+  /**
+   * Set bias acceleration based on joystick input
+   * The joystick values x and y are in the range -1 to 1
+   * We'll use these as acceleration values instead of direct speed
+   */
+  setBiasSpeed(x, y) {
+    // Clamp values to -1..1 range
+    const clampedX = Math.max(-1, Math.min(1, x || 0));
+    const clampedY = Math.max(-1, Math.min(1, y || 0));
 
-  //   // Always apply pattern offset for current pattern
-  //   this.applyPatternSpecificOffset();
-  // }
+    // Scale down the acceleration for smoother response
+    // Using a much smaller multiplier (0.2) for gentler acceleration
+    this._biasAccelX = clampedX * this.biasStrength * 0.2;
+    this._biasAccelY = clampedY * this.biasStrength * 0.2;
+
+    // Always keep the old bias speed properties at zero
+    // to ensure they don't interfere with the physics model
+    this.biasSpeedX = 0;
+    this.biasSpeedY = 0;
+  }
 }
 
 export { TurbulenceField };
