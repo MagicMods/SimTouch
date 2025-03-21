@@ -10,18 +10,23 @@ export class InputsUi extends BaseUi {
     this.gui.title("Inputs");
 
     this.mouseInputFolder = this.gui.addFolder("Mouse Input");
+    this.joystickInputFolder = this.gui.addFolder("Joystick Controls");
     this.emuInputFolder = this.gui.addFolder("EMU Input");
     this.externalInputFolder = this.gui.addFolder("Touch Input");
 
+
     // Initialize input controls
     this.initMouseControls();
+    this.initJoystickControls();
     this.initEmuInputControls();
     this.initExternalInputControls();
+
 
     // Set default open states
     this.mouseInputFolder.open(true);
     this.emuInputFolder.open(false);
     this.externalInputFolder.open(false);
+    this.joystickInputFolder.open(false);
   }
 
   //#region Inputs
@@ -132,158 +137,6 @@ export class InputsUi extends BaseUi {
     const externalInput = this.main.externalInput;
     const emuForces = externalInput.emuForces;
 
-    // Create a separate Joystick Controls folder first
-    this.joystickFolder = this.gui.addFolder("Joystick Controls");
-
-    // Add joystick controls
-
-    // Add reset button for joystick
-    const resetJoystickButton = {
-      reset: () => {
-        if (this.main.emuRenderer) {
-          this.main.emuRenderer.resetJoystick();
-          console.log("Joystick reset to center");
-        }
-      }
-    };
-
-    this.joystickFolder
-      .add(resetJoystickButton, "reset")
-      .name("Reset Joystick");
-
-    // Add spring-back control slider
-    const springControl = {
-      strength: this.main.emuRenderer?.springStrength ?? 0.05
-    };
-
-    // Add spring strength slider
-    this.joystickFolder
-      .add(springControl, "strength", 0, 0.2, 0.01)
-      .name("Spring Strength")
-      .onChange((value) => {
-        if (this.main.emuRenderer) {
-          this.main.emuRenderer.setSpringStrength(value);
-          this.main.emuRenderer.setSpringEnabled(value > 0);
-        }
-      });
-
-    // Add gravity strength control to joystick folder
-    if (this.main.externalInput?.emuForces) {
-      const emuForces = this.main.externalInput.emuForces;
-      this.joystickGravityStrengthController = this.joystickFolder
-        .add(
-          { multiplier: emuForces.accelGravityMultiplier || 1.0 },
-          "multiplier",
-          0,
-          1.0,
-          0.1
-        )
-        .name("Gravity Strength")
-        .onChange((value) => {
-          // Update the EMU forces
-          emuForces.setAccelGravityMultiplier(value);
-        });
-    }
-
-    // Add bias friction control to joystick folder
-    if (this.main?.turbulenceField) {
-      const turbulenceField = this.main.turbulenceField;
-      // The friction value may not exist yet if using an older version
-      const frictionValue = turbulenceField.biasFriction !== undefined ? turbulenceField.biasFriction : 0.05;
-
-      this.biasFrictionController = this.joystickFolder
-        .add(
-          { friction: frictionValue },
-          "friction",
-          0.001,
-          0.2,
-          0.001
-        )
-        .name("T-Bias Friction")
-        .onChange((value) => {
-          // Update turbulence field friction
-          turbulenceField.biasFriction = value;
-        });
-
-      // Add turbulence bias strength control to joystick folder
-      this.joystickBiasStrengthController = this.joystickFolder
-        .add(
-          { strength: turbulenceField.biasStrength },
-          "strength",
-          0,
-          1.0,
-          0.1
-        )
-        .name("T-Bias Strength")
-        .onChange((value) => {
-          // Store the new strength value in the turbulence field
-          turbulenceField.biasStrength = value;
-
-          // If EMU input is active, reapply current values to update immediately
-          if (this.main.externalInput?.emuForces?.enabled) {
-            this.main.externalInput.emuForces.apply(0.016);
-          }
-
-          // Update the turbulence bias UI controllers to reflect the change
-          if (this.main.turbulenceUi && typeof this.main.turbulenceUi.updateBiasControllers === 'function') {
-            this.main.turbulenceUi.updateBiasControllers();
-          }
-        });
-    }
-
-    // Force hide the joystick initially (override main.js setting)
-    if (this.main.emuRenderer) {
-      this.main.emuRenderer.hide();
-    }
-
-    // Monitor folder open/close state to show/hide joystick
-    // Get the folder DOM element
-    const folderElement = this.joystickFolder.domElement;
-
-    // Set up a MutationObserver to watch for class changes on the folder
-    const folderObserver = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-          // Check if folder is closed by looking for the 'closed' class
-          const isClosed = folderElement.classList.contains('closed');
-
-          // Update joystick visibility based on folder state
-          if (this.main.emuRenderer) {
-            if (isClosed) {
-              this.main.emuRenderer.hide();
-            } else {
-              this.main.emuRenderer.show();
-            }
-          }
-        }
-      });
-    });
-
-    // Start observing the folder element
-    folderObserver.observe(folderElement, {
-      attributes: true,
-      attributeFilter: ['class']
-    });
-
-    // Also handle the initial folder state when UI is first created
-    // We need to use a small delay to ensure the DOM is ready
-    setTimeout(() => {
-      // Get the initial state (closed or open)
-      const isClosed = folderElement.classList.contains('closed');
-
-      // Set joystick visibility based on initial folder state
-      if (this.main.emuRenderer) {
-        if (isClosed) {
-          this.main.emuRenderer.hide();
-        } else {
-          this.main.emuRenderer.show();
-        }
-      }
-    }, 100);
-
-    // Keep folder closed by default (joystick hidden)
-    this.joystickFolder.open(false);
-
     // EMU input enable/disable
     this.emuInputFolder
       .add({ enabled: false }, "enabled")
@@ -334,6 +187,155 @@ export class InputsUi extends BaseUi {
           2
         )}, Y: ${data.accelY.toFixed(2)}, Z: ${data.accelZ.toFixed(2)}`;
         accelController.updateDisplay();
+      }
+    }, 100);
+  }
+
+  initJoystickControls() {
+    // Make sure EMU renderer exists before adding joystick controls
+    if (!this.main.emuRenderer) return;
+
+    // Add reset button for joystick
+    const resetJoystickButton = {
+      reset: () => {
+        if (this.main.emuRenderer) {
+          this.main.emuRenderer.resetJoystick();
+          console.log("Joystick reset to center");
+        }
+      }
+    };
+
+    this.joystickInputFolder
+      .add(resetJoystickButton, "reset")
+      .name("Reset Joystick");
+
+    // Add spring-back control slider
+    const springControl = {
+      strength: this.main.emuRenderer?.springStrength ?? 0.05
+    };
+
+    // Add spring strength slider
+    this.joystickInputFolder
+      .add(springControl, "strength", 0, 0.2, 0.01)
+      .name("Spring Strength")
+      .onChange((value) => {
+        if (this.main.emuRenderer) {
+          this.main.emuRenderer.setSpringStrength(value);
+          this.main.emuRenderer.setSpringEnabled(value > 0);
+        }
+      });
+
+    // Add gravity strength control to joystick folder
+    if (this.main.externalInput?.emuForces) {
+      const emuForces = this.main.externalInput.emuForces;
+      this.joystickGravityStrengthController = this.joystickInputFolder
+        .add(
+          { multiplier: emuForces.accelGravityMultiplier || 1.0 },
+          "multiplier",
+          0,
+          1.0,
+          0.1
+        )
+        .name("Gravity Strength")
+        .onChange((value) => {
+          // Update the EMU forces
+          emuForces.setAccelGravityMultiplier(value);
+        });
+    }
+
+    // Add bias friction control to joystick folder
+    if (this.main?.turbulenceField) {
+      const turbulenceField = this.main.turbulenceField;
+      // The friction value may not exist yet if using an older version
+      const frictionValue = turbulenceField.biasFriction !== undefined ? turbulenceField.biasFriction : 0.05;
+
+      this.biasFrictionController = this.joystickInputFolder
+        .add(
+          { friction: frictionValue },
+          "friction",
+          0.001,
+          0.2,
+          0.001
+        )
+        .name("T-Bias Friction")
+        .onChange((value) => {
+          // Update turbulence field friction
+          turbulenceField.biasFriction = value;
+        });
+
+      // Add turbulence bias strength control to joystick folder
+      this.joystickBiasStrengthController = this.joystickInputFolder
+        .add(
+          { strength: turbulenceField.biasStrength },
+          "strength",
+          0,
+          1.0,
+          0.1
+        )
+        .name("T-Bias Strength")
+        .onChange((value) => {
+          // Store the new strength value in the turbulence field
+          turbulenceField.biasStrength = value;
+
+          // If EMU input is active, reapply current values to update immediately
+          if (this.main.externalInput?.emuForces?.enabled) {
+            this.main.externalInput.emuForces.apply(0.016);
+          }
+
+          // Update the turbulence bias UI controllers to reflect the change
+          if (this.main.turbulenceUi && typeof this.main.turbulenceUi.updateBiasControllers === 'function') {
+            this.main.turbulenceUi.updateBiasControllers();
+          }
+        });
+    }
+
+    // Force hide the joystick initially (override main.js setting)
+    if (this.main.emuRenderer) {
+      this.main.emuRenderer.hide();
+    }
+
+    // Monitor folder open/close state to show/hide joystick
+    // Get the folder DOM element
+    const folderElement = this.joystickInputFolder.domElement;
+
+    // Set up a MutationObserver to watch for class changes on the folder
+    const folderObserver = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          // Check if folder is closed by looking for the 'closed' class
+          const isClosed = folderElement.classList.contains('closed');
+
+          // Update joystick visibility based on folder state
+          if (this.main.emuRenderer) {
+            if (isClosed) {
+              this.main.emuRenderer.hide();
+            } else {
+              this.main.emuRenderer.show();
+            }
+          }
+        }
+      });
+    });
+
+    // Start observing the folder element
+    folderObserver.observe(folderElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    // Also handle the initial folder state when UI is first created
+    // We need to use a small delay to ensure the DOM is ready
+    setTimeout(() => {
+      // Get the initial state (closed or open)
+      const isClosed = folderElement.classList.contains('closed');
+
+      // Set joystick visibility based on initial folder state
+      if (this.main.emuRenderer) {
+        if (isClosed) {
+          this.main.emuRenderer.hide();
+        } else {
+          this.main.emuRenderer.show();
+        }
       }
     }, 100);
   }
