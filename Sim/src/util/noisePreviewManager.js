@@ -25,6 +25,7 @@ export class NoisePreviewManager {
         this.animationFrameId = null;
         this.refreshingSelected = true; // Toggle between selected and unselected
         this._needsRefreshOnOpen = false; // Flag for refresh needed when reopening
+        this._inRefreshSelectedPreview = false; // Guard against circular function calls
 
         // Performance settings
         this.selectedFps = 15; // Lower default FPS for better performance
@@ -298,7 +299,9 @@ export class NoisePreviewManager {
 
         // Always refresh the selected pattern immediately, 
         // forcing animation if requested
-        this.refreshSelectedPreview(forceAnimation);
+        if (!this._inRefreshSelectedPreview) {
+            this.refreshSelectedPreview(forceAnimation);
+        }
 
         // If not already refreshing and we're visible (or forcing),
         // start the refresh loop
@@ -362,7 +365,7 @@ export class NoisePreviewManager {
         this.refreshingSelected = true;
 
         // Immediately refresh the selected preview before starting the update loop
-        if (this.selectedPattern) {
+        if (this.selectedPattern && !this._inRefreshSelectedPreview) {
             this.refreshSelectedPreview();
         }
 
@@ -474,7 +477,7 @@ export class NoisePreviewManager {
             // If parameters changed, only update the selected preview
             if (this._haveParamsChanged()) {
                 // Only refresh the selected preview in real-time
-                if (this.selectedPattern) {
+                if (this.selectedPattern && !this._inRefreshSelectedPreview) {
                     this.refreshSelectedPreview();
                 }
             }
@@ -483,7 +486,9 @@ export class NoisePreviewManager {
         // Check if it's time for a frame update based on target FPS
         if (elapsedSinceLastFrame > (1000 / this.selectedFps)) {
             // Always prioritize selected pattern refresh
-            this.refreshSelectedPreview();
+            if (!this._inRefreshSelectedPreview) {
+                this.refreshSelectedPreview();
+            }
             this.lastRefreshTime = now;
         }
 
@@ -508,11 +513,20 @@ export class NoisePreviewManager {
     refreshSelectedPreview(forceStart = false) {
         if (!this.selectedPattern) return;
 
+        // Add a guard to prevent circular calls
+        this._inRefreshSelectedPreview = true;
+
         const element = this.previewElements.get(this.selectedPattern);
-        if (!element) return;
+        if (!element) {
+            this._inRefreshSelectedPreview = false;
+            return;
+        }
 
         const img = element.querySelector('img');
-        if (!img) return;
+        if (!img) {
+            this._inRefreshSelectedPreview = false;
+            return;
+        }
 
         // Clean up existing animation if any
         const existingCleanup = this.cleanupFunctions.get(this.selectedPattern);
@@ -567,6 +581,9 @@ export class NoisePreviewManager {
                 );
             }
         }
+
+        // Reset the guard
+        this._inRefreshSelectedPreview = false;
     }
 
     /**
