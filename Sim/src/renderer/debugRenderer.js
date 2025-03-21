@@ -11,12 +11,11 @@ class DebugRenderer extends BaseRenderer {
     this.enabled = false;
 
     // Remove redundant flags and directly expose the field controls
-    this.showVelocityField = false;
-    this.showParticlesInfo = false;
+    this.showVelocityField = true;
 
     // Direct field controls (no nested showNoiseField)
     this.showTurbulenceField = false;
-    this.showVoronoiField = true;
+    this.showVoronoiField = false;
     this.turbulenceOpacity = 0.2; // Single opacity control
   }
 
@@ -32,10 +31,6 @@ class DebugRenderer extends BaseRenderer {
     // Always check both turbulence and voronoi fields directly
     if (this.showTurbulenceField || this.showVoronoiField) {
       this.drawNoiseField(turbulenceField, voronoiField);
-    }
-
-    if (this.showParticlesInfo) {
-      this.drawParticlesInfo(particleSystem);
     }
   }
 
@@ -272,96 +267,6 @@ class DebugRenderer extends BaseRenderer {
 
     // Restore WebGL state
     this.gl.disable(this.gl.BLEND);
-  }
-
-  drawParticlesInfo(particleSystem) {
-    const program = this.shaderManager.use('basic');
-    if (!program) return;
-
-    // Get some statistics from the particle system
-    const particles = particleSystem.getParticles();
-    if (!particles || particles.length === 0) return;
-
-    // Find min/max velocities for visualization
-    let maxVel = 0;
-    for (const p of particles) {
-      const velMag = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-      if (velMag > maxVel) maxVel = velMag;
-    }
-
-    // Draw a legend in the corner
-    const size = 0.15; // Size of the legend box
-    const x1 = -1 + 0.1;  // Left position
-    const y1 = -1 + 0.1;  // Bottom position
-    const x2 = x1 + size;
-    const y2 = y1 + size;
-
-    // Draw background
-    this.gl.uniform4f(program.uniforms.color, 0, 0, 0, 0.7);
-
-    const bgVertices = [
-      x1, y1,
-      x2, y1,
-      x1, y2,
-      x2, y2
-    ];
-
-    const bgBuffer = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, bgBuffer);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(bgVertices), this.gl.STATIC_DRAW);
-
-    this.gl.vertexAttribPointer(program.attributes.position, 2, this.gl.FLOAT, false, 0, 0);
-    this.gl.enableVertexAttribArray(program.attributes.position);
-
-    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
-    this.gl.deleteBuffer(bgBuffer);
-
-    // We can't easily draw text in WebGL, so drawing indicators in different colors
-    // to show particle count and max velocity
-
-    // Draw particle count indicator (green bar)
-    const countRatio = Math.min(particles.length / 1000, 1); // Normalize to 0-1
-
-    const countVertices = [
-      x1 + 0.01, y1 + 0.02,
-      x1 + 0.01 + (size - 0.02) * countRatio, y1 + 0.02,
-      x1 + 0.01, y1 + 0.06,
-      x1 + 0.01 + (size - 0.02) * countRatio, y1 + 0.06
-    ];
-
-    this.gl.uniform4f(program.uniforms.color, 0, 1, 0, 0.9); // Green
-
-    const countBuffer = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, countBuffer);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(countVertices), this.gl.STATIC_DRAW);
-
-    this.gl.vertexAttribPointer(program.attributes.position, 2, this.gl.FLOAT, false, 0, 0);
-    this.gl.enableVertexAttribArray(program.attributes.position);
-
-    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
-    this.gl.deleteBuffer(countBuffer);
-
-    // Draw velocity indicator (blue bar)
-    const velRatio = Math.min(maxVel * 50, 1); // Scale and normalize
-
-    const velVertices = [
-      x1 + 0.01, y1 + 0.08,
-      x1 + 0.01 + (size - 0.02) * velRatio, y1 + 0.08,
-      x1 + 0.01, y1 + 0.12,
-      x1 + 0.01 + (size - 0.02) * velRatio, y1 + 0.12
-    ];
-
-    this.gl.uniform4f(program.uniforms.color, 0, 0.5, 1, 0.9); // Blue
-
-    const velBuffer = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, velBuffer);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(velVertices), this.gl.STATIC_DRAW);
-
-    this.gl.vertexAttribPointer(program.attributes.position, 2, this.gl.FLOAT, false, 0, 0);
-    this.gl.enableVertexAttribArray(program.attributes.position);
-
-    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
-    this.gl.deleteBuffer(velBuffer);
   }
 }
 

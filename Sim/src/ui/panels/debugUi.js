@@ -7,6 +7,13 @@ export class DebugUi extends BaseUi {
     this.controls = {};
     this.gui.title("Debug");
     this.initDebugControls();
+
+    // Set initial state - folder closed by default (debug hidden)
+    if (this.main.debugRenderer) {
+      this.main.debugRenderer.enabled = false;
+    }
+
+    this.setupFolderObserver();
   }
 
   initDebugControls() {
@@ -14,53 +21,72 @@ export class DebugUi extends BaseUi {
 
     const debugRenderer = this.main.debugRenderer;
 
-    // Add master toggle for debug visualizations
-    this.controls.debugEnabled = this.gui
-      .add(debugRenderer, 'enabled')
-      .name("Enable Debug Visualizations")
-      .onChange(value => this.updateDebugVisibility(value));
-
-    // Directly add turbulence and voronoi controls (no folder)
-    this.controls.showTurbulenceField = this.gui
-      .add(debugRenderer, 'showTurbulenceField')
-      .name("Show Turbulence")
-      .disable(!debugRenderer.enabled);
-
+    // Directly add voronoi control (no folder)
     this.controls.showVoronoiField = this.gui
       .add(debugRenderer, 'showVoronoiField')
-      .name("Show Voronoi")
-      .disable(!debugRenderer.enabled);
+      .name("Show Voronoi");
 
-    // Keep opacity control
-    this.controls.turbulenceOpacity = this.gui
-      .add(debugRenderer, 'turbulenceOpacity', 0, 1)
-      .name("Visualization Opacity")
-      .disable(!debugRenderer.enabled);
-
-    // Only keep velocity field and particle info from old debug options
+    // Only keep velocity field from old debug options
     this.controls.showVelocityField = this.gui
       .add(debugRenderer, 'showVelocityField')
-      .name("Show Velocity Field")
-      .disable(!debugRenderer.enabled);
+      .name("Show Velocity Field");
 
-    this.controls.showParticlesInfo = this.gui
-      .add(debugRenderer, 'showParticlesInfo')
-      .name("Show Particle Stats")
-      .disable(!debugRenderer.enabled);
+    // Keep opacity control - moved below Velocity Field
+    this.controls.turbulenceOpacity = this.gui
+      .add(debugRenderer, 'turbulenceOpacity', 0, 1)
+      .name("Visualization Opacity");
+  }
 
-    // Initialize visibility
-    this.updateDebugVisibility(debugRenderer.enabled);
+  setupFolderObserver() {
+    // Get the folder DOM element
+    const folderElement = this.gui.domElement;
+
+    // Set up a MutationObserver to watch for class changes on the folder
+    const folderObserver = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          // Check if folder is closed by looking for the 'closed' class
+          const isClosed = folderElement.classList.contains('closed');
+
+          // Update debug visibility based on folder state
+          if (this.main.debugRenderer) {
+            this.main.debugRenderer.enabled = !isClosed;
+            this.updateDebugVisibility(!isClosed);
+          }
+        }
+      });
+    });
+
+    // Start observing the folder element
+    folderObserver.observe(folderElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    // Also handle the initial folder state when UI is first created
+    // We need to use a small delay to ensure the DOM is ready
+    setTimeout(() => {
+      // Get the initial state (closed or open)
+      const isClosed = folderElement.classList.contains('closed');
+
+      // Set debug visibility based on initial folder state
+      if (this.main.debugRenderer) {
+        this.main.debugRenderer.enabled = !isClosed;
+        this.updateDebugVisibility(!isClosed);
+      }
+    }, 100);
+
+    // Keep folder closed by default (debug hidden)
+    this.gui.close();
   }
 
   updateDebugVisibility(enabled) {
-    // Enable/disable all debug visualization controls
-    for (const key in this.controls) {
-      if (key !== 'debugEnabled') {
-        this.controls[key].enable(enabled);
-      }
-    }
+    if (!this.main.debugRenderer) return;
 
-    // Update controllers to reflect current state
+    this.main.debugRenderer.enabled = enabled;
+
+    // No need to disable/enable controls anymore since they're always enabled
+    // Just update controllers to reflect current state
     this.updateDebugControllers();
   }
 
