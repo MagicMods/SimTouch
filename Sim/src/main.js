@@ -65,7 +65,8 @@ class Main {
 
     // Create the visualizer AFTER externalInput is initialized
     this.emuRenderer = new EmuRenderer(document.body, this.externalInput.emuForces, this);
-    this.emuRenderer.show();
+    // Don't show by default, let the UI control visibility
+    this.emuRenderer.hide();
 
     this.paused = false;
 

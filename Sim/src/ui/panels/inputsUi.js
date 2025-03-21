@@ -157,19 +157,8 @@ export class InputsUi extends BaseUi {
 
     // Add spring-back control slider
     const springControl = {
-      enabled: this.main.emuRenderer?.springEnabled ?? true,
       strength: this.main.emuRenderer?.springStrength ?? 0.05
     };
-
-    // Add spring enable toggle
-    this.joystickFolder
-      .add(springControl, "enabled")
-      .name("Spring Back")
-      .onChange((value) => {
-        if (this.main.emuRenderer) {
-          this.main.emuRenderer.setSpringEnabled(value);
-        }
-      });
 
     // Add spring strength slider
     this.joystickFolder
@@ -178,6 +167,7 @@ export class InputsUi extends BaseUi {
       .onChange((value) => {
         if (this.main.emuRenderer) {
           this.main.emuRenderer.setSpringStrength(value);
+          this.main.emuRenderer.setSpringEnabled(value > 0);
         }
       });
 
@@ -189,7 +179,7 @@ export class InputsUi extends BaseUi {
           { multiplier: emuForces.accelGravityMultiplier || 1.0 },
           "multiplier",
           0,
-          5.0,
+          1.0,
           0.1
         )
         .name("Gravity Strength")
@@ -225,7 +215,7 @@ export class InputsUi extends BaseUi {
           { strength: turbulenceField.biasStrength },
           "strength",
           0,
-          5.0,
+          1.0,
           0.1
         )
         .name("T-Bias Strength")
@@ -245,24 +235,58 @@ export class InputsUi extends BaseUi {
         });
     }
 
-    // Add visualizer toggle to Joystick folder instead of EMU folder
-    this.joystickFolder
-      .add({ showVisualizer: true }, "showVisualizer")
-      .name("Show Joystick")
-      .onChange((value) => {
-        if (value) {
+    // Force hide the joystick initially (override main.js setting)
+    if (this.main.emuRenderer) {
+      this.main.emuRenderer.hide();
+    }
+
+    // Monitor folder open/close state to show/hide joystick
+    // Get the folder DOM element
+    const folderElement = this.joystickFolder.domElement;
+
+    // Set up a MutationObserver to watch for class changes on the folder
+    const folderObserver = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
+          // Check if folder is closed by looking for the 'closed' class
+          const isClosed = folderElement.classList.contains('closed');
+
+          // Update joystick visibility based on folder state
           if (this.main.emuRenderer) {
-            this.main.emuRenderer.show();
-          }
-        } else {
-          if (this.main.emuRenderer) {
-            this.main.emuRenderer.hide();
+            if (isClosed) {
+              this.main.emuRenderer.hide();
+            } else {
+              this.main.emuRenderer.show();
+            }
           }
         }
       });
+    });
 
-    // Open joystick folder by default
-    this.joystickFolder.open();
+    // Start observing the folder element
+    folderObserver.observe(folderElement, {
+      attributes: true,
+      attributeFilter: ['class']
+    });
+
+    // Also handle the initial folder state when UI is first created
+    // We need to use a small delay to ensure the DOM is ready
+    setTimeout(() => {
+      // Get the initial state (closed or open)
+      const isClosed = folderElement.classList.contains('closed');
+
+      // Set joystick visibility based on initial folder state
+      if (this.main.emuRenderer) {
+        if (isClosed) {
+          this.main.emuRenderer.hide();
+        } else {
+          this.main.emuRenderer.show();
+        }
+      }
+    }, 100);
+
+    // Keep folder closed by default (joystick hidden)
+    this.joystickFolder.open(false);
 
     // EMU input enable/disable
     this.emuInputFolder
