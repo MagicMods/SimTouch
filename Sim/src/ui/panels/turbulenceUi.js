@@ -239,7 +239,8 @@ export class TurbulenceUi extends BaseUi {
       "Fractal": "fractal",
       "Vortex": "vortex",
       "Bubbles": "bubbles",
-      "Water": "water"
+      "Water": "water",
+      "Classic Drop": "classicdrop"
     };
 
     // Pattern style selector
@@ -259,7 +260,8 @@ export class TurbulenceUi extends BaseUi {
         "Fractal": "fractal",
         "Vortex": "vortex",
         "Bubbles": "bubbles",
-        "Water": "water"
+        "Water": "water",
+        "Classic Drop": "classicdrop"
       })
       .onChange((value) => {
         if (this.previewManager) {
@@ -289,7 +291,7 @@ export class TurbulenceUi extends BaseUi {
 
     // Restore XY bias controllers
     const biasFolder = this.gui.addFolder("Bias Controls");
-    biasFolder.open(); // Keep it open by default
+    biasFolder.open(false); // Keep it open by default
 
     this.turbulenceDirectionBiasXController = biasFolder.add(turbulence.directionBias, "0", -1, 1).name("T-DirX");
     this.turbulenceDirectionBiasYController = biasFolder.add(turbulence.directionBias, "1", -1, 1).name("T-DirY");
@@ -546,7 +548,13 @@ export class TurbulenceUi extends BaseUi {
 
     // Add blur control
     this.turbulenceBlurController = patternControlsFolder.add(turbulence, "blurAmount", 0, 2, 0.01)
-      .name("T-Blur");
+      .name("T-Blur")
+      .onChange(() => {
+        // Refresh preview when blur amount changes
+        if (this.previewManager) {
+          this.previewManager.refreshSelectedPreview();
+        }
+      });
 
     // Handle folder open/close events
     previewsFolder.domElement.addEventListener('click', (e) => {

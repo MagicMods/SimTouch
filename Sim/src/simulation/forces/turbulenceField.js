@@ -34,12 +34,18 @@ class TurbulenceField {
     // New contrast and separation controls
     contrast = 0.5,        // 0 = no contrast, 1 = max contrast
     separation = 0,      // 0 = smooth, 1 = sharp transitions
+    // Bandpass contrast parameters
+    contrastShadowPoint = 0.1,     // Where dark enhancement begins (0-0.5)
+    contrastMidPoint = 0.35,       // Center of enhancement curve
+    contrastHighlightPoint = 0.7,  // Where enhancement tapers off
+    contrastDarkBoost = 1.5,       // How much to enhance shadows
     // New bias smoothing parameter
     biasSmoothing = 0.8,   // 0 = no smoothing, 1 = max smoothing
     // New blur parameter
     blurAmount = .8,      // 0 = no blur, 1 = max blur
     // Physics parameters for bias movement
     biasFriction = 0.05,   // Friction coefficient for bias movement (0-1)
+    biasTune = 1,       // Fine tuning of bias responsiveness
   } = {}) {
     if (
       !boundary ||
@@ -112,7 +118,8 @@ class TurbulenceField {
       "fractal": [0.5, -0.5],
       "vortex": [0, 0],
       "bubbles": [0, 0],
-      "water": [0, 0]
+      "water": [0, 0],
+      "classicdrop": [0, 0]
     };
 
     // New pattern offset controls
@@ -129,6 +136,12 @@ class TurbulenceField {
     this.contrast = contrast;
     this.separation = separation;
 
+    // Bandpass contrast parameters
+    this.contrastShadowPoint = contrastShadowPoint;
+    this.contrastMidPoint = contrastMidPoint;
+    this.contrastHighlightPoint = contrastHighlightPoint;
+    this.contrastDarkBoost = contrastDarkBoost;
+
     // Add bias smoothing
     this.biasSmoothing = biasSmoothing;
 
@@ -143,10 +156,14 @@ class TurbulenceField {
     this._biasAccelX = biasSpeedX * biasStrength * 0.1; // Initialize with any passed acceleration
     this._biasAccelY = biasSpeedY * biasStrength * 0.1; // but scaled for the physics model
     this.biasFriction = biasFriction;
+    this.biasTune = biasTune;
 
     // Create dummy properties for backwards compatibility but never use them
     this.biasSpeedX = 0;
     this.biasSpeedY = 0;
+
+    // Add debug mode
+    this.debug = false;
   }
 
   // Apply pattern-specific offset based on current pattern style
@@ -248,6 +265,9 @@ class TurbulenceField {
 
   // Apply contrast and separation to pattern value
   applyContrast(value, time) {
+    // Store original value for debugging
+    const originalValue = value;
+
     // ===== PULL MODE EFFECTS =====
     // Apply transformation based on pullFactor (-1 to 1 range)
     if (this.pullFactor !== 0) {
@@ -279,9 +299,54 @@ class TurbulenceField {
       }
     }
 
-    // ===== STANDARD CONTRAST & SEPARATION =====
+    // ===== BANDPASS CONTRAST =====
     // Get base contrast value (removed time animation)
     let contrastValue = this.contrast;
+
+    // Apply bandpass contrast if enabled
+    if (contrastValue > 0) {
+      // Apply bandpass contrast - enhance dark to mid-tones while preserving whites
+
+      // Step 1: Boost contrast in dark regions (below midpoint)
+      if (value < this.contrastMidPoint) {
+        // Calculate how far into the shadow range we are (0-1 range)
+        const shadowRange = (value - this.contrastShadowPoint) /
+          (this.contrastMidPoint - this.contrastShadowPoint);
+
+        // Apply stronger contrast to darker areas while preserving very dark shadows
+        if (shadowRange > 0) {
+          // Apply a non-linear curve to the dark range
+          const boostedValue = this.contrastShadowPoint +
+            shadowRange * (this.contrastMidPoint - this.contrastShadowPoint) *
+            Math.pow(shadowRange, 1.0 / (1.0 + this.contrastDarkBoost * contrastValue));
+
+          // Mix with original value based on contrast strength
+          value = value * (1 - contrastValue) + boostedValue * contrastValue;
+        }
+      }
+      // Step 2: Gradually reduce contrast effect as we approach highlights
+      else if (value < this.contrastHighlightPoint) {
+        // Calculate how far into the transition range we are (0-1)
+        const transitionRange = (value - this.contrastMidPoint) /
+          (this.contrastHighlightPoint - this.contrastMidPoint);
+
+        // Apply less contrast as we approach highlights
+        const contrastReduction = Math.pow(transitionRange, 0.5);
+        const adjustedContrast = contrastValue * (1 - contrastReduction);
+
+        // Apply a gentler curve to the mid-tone range
+        const midCurve = this.contrastMidPoint +
+          (value - this.contrastMidPoint) *
+          Math.pow((value - this.contrastMidPoint) /
+            (this.contrastHighlightPoint - this.contrastMidPoint),
+            1.0 - adjustedContrast * 0.5);
+
+        // Mix with original value based on adjusted contrast strength
+        value = value * (1 - adjustedContrast) + midCurve * adjustedContrast;
+      }
+      // Step 3: Leave values above highlight point untouched
+      // (no code needed - we simply don't modify values above contrastHighlightPoint)
+    }
 
     // Apply separation (threshold) effect if enabled
     if (this.separation > 0) {
@@ -295,33 +360,10 @@ class TurbulenceField {
       value = 1.0 / (1.0 + Math.exp(-centered * sepFactor));
     }
 
-    // Apply contrast power function 
-    if (contrastValue > 0) {
-      // Apply improved contrast function with more gradual transitions
-      // and less pure white while keeping range the same
-
-      // Center the value around 0
-      const centered = value - 0.5;
-
-      // Apply a cubic easing function that maintains 0.5 as middle point
-      // but creates a more gradual transition toward extremes
-      // This curve approaches extremes more slowly than a power function
-      const easeFactor = 1.0 + contrastValue * 2.0;
-      const eased = Math.sign(centered) * Math.pow(Math.abs(centered), 1.0 / easeFactor);
-
-      // Scale back to [0,1] range
-      value = eased + 0.5;
-
-      // Further reduce pure whites without affecting pure blacks
-      // by applying a subtle curve to values > 0.75
-      if (value > 0.75) {
-        // Calculate how far into the top quartile we are (0-1 range)
-        const whiteReduction = (value - 0.75) / 0.25;
-        // Apply subtle compression to highest values, more aggressive with higher contrast
-        const compressionFactor = 0.2 * contrastValue;
-        // Rescale the top range to reduce pure whites
-        value = 0.75 + (0.25 - compressionFactor) * whiteReduction + compressionFactor * Math.sqrt(whiteReduction);
-      }
+    // Debug logging - randomly log some values to avoid flooding console
+    if (this.debug && Math.random() < 0.0001) {
+      console.log(`Contrast ${this.contrast.toFixed(2)} applied:`,
+        originalValue.toFixed(3), "->", value.toFixed(3));
     }
 
     return Math.max(0, Math.min(1, value)); // Clamp to [0,1] range to be safe
@@ -424,6 +466,70 @@ class TurbulenceField {
         // Combine the base water movement with the drops
         patternValue = waterBase * 0.5 + surfaceRipples + drop1 * 0.7 + drop2 * 0.6 + drop3 * 0.5;
         break;
+      case "classicdrop":
+        // Generate classic water drop effect with expanding ripples
+        // Initialize with a calm water surface
+        patternValue = 0;
+
+        // Use the frequency to control the rate of drops
+        // Higher frequency = more drops
+        const maxDrops = Math.max(3, Math.floor(freq * 3)); // 3 drops minimum, more with higher freq
+
+        // Create several drops that appear at random times and locations
+        for (let i = 0; i < maxDrops; i++) {
+          // Use drop-specific seeds for pseudo-random but deterministic behavior
+          const dropSeed = 12.9898 * (i + 1) + 4.1414;
+          const timeSeed = 78.233 * (i + 1) + 7.7575;
+          const sizeSeed = 43758.5453 * (i + 1) + 1.8989;
+
+          // Calculate drop position using hash function for consistent randomness
+          // This creates a fixed position for each drop
+          const dropX = centerX + 0.4 * Math.cos(dropSeed + i * 1.5);
+          const dropY = centerY + 0.4 * Math.sin(timeSeed + i * 2.7);
+
+          // Calculate time cycle for each drop (when it appears)
+          // Each drop has its own cycle offset to avoid all drops appearing at once
+          const dropCycleOffset = i * (Math.PI * 2) / maxDrops; // Evenly distribute drop timing
+          const dropCycleLength = 4.0 / freq; // Longer cycles with lower frequency
+          const dropTimeNorm = ((this.time * this.speed * 0.5) + dropCycleOffset) % dropCycleLength;
+
+          // Drop only appears in the first part of its cycle, then disappears until next cycle
+          const dropActiveTime = dropCycleLength * 0.6; // Active for 60% of cycle
+
+          if (dropTimeNorm < dropActiveTime) {
+            // Calculate normalized age of the drop (0 to 1)
+            const dropAge = dropTimeNorm / dropActiveTime;
+
+            // Calculate distance from drop center
+            const dropDist = Math.sqrt(Math.pow(x - dropX, 2) + Math.pow(y - dropY, 2));
+
+            // Calculate expanding ripple radius
+            // Starts small and expands outward based on age
+            const rippleSpeed = 0.3 + Math.sin(sizeSeed) * 0.1; // Slightly varied speed per drop
+            const rippleRadius = dropAge * rippleSpeed;
+
+            // Calculate width of the ripple (thinner as it expands)
+            const rippleWidth = 0.05 + 0.08 * (1 - dropAge);
+
+            // Calculate intensity of the ripple (fades as it expands)
+            const rippleIntensity = 1.0 - dropAge * 0.8;
+
+            // Create the ripple effect using distance from expanding circle
+            const rippleDist = Math.abs(dropDist - rippleRadius);
+            const ripple = Math.exp(-rippleDist * rippleDist / (rippleWidth * rippleWidth)) * rippleIntensity;
+
+            // Add this drop's contribution to the overall pattern
+            patternValue += ripple;
+          }
+        }
+
+        // Add some subtle background waves for a water surface effect
+        const calmWater = Math.sin(x * freq * 0.2 + y * freq * 0.3 + this.time * this.speed * 0.1) * 0.1;
+        patternValue += calmWater;
+
+        // Normalize the pattern value to avoid excessive brightness with multiple drops
+        patternValue = Math.min(1.0, patternValue * 0.7);
+        break;
       case "cells": // Simplified cellular pattern
         // Use a larger cell size for fewer cells
         const cellSize = 2.4 / freq; // Scaled up from 1.6
@@ -522,9 +628,6 @@ class TurbulenceField {
   // Completely redesigned noise2D function that supports geometric patterns
   noise2D(x, y, time = this.time, applyBlur = false) {
     try {
-      // Get center coordinates
-      const centerX = (this.boundary && typeof this.boundary.centerX === 'number') ? this.boundary.centerX : 0.5;
-      const centerY = (this.boundary && typeof this.boundary.centerY === 'number') ? this.boundary.centerY : 0.5;
 
       // 1. Process coordinates through the standardized pipeline
       const [processedX, processedY, procCenterX, procCenterY] = this.processCoordinates(x, y, time);
@@ -561,6 +664,8 @@ class TurbulenceField {
 
       // 4. Apply contrast and separation as post-processing
       noise = this.applyContrast((noise + 1) * 0.5, time);
+      // Convert back from [0,1] to [-1,1] range
+      noise = noise * 2 - 1;
 
       // 5. Apply blur if enabled and requested
       if (applyBlur && this.blurAmount > 0) {
@@ -583,7 +688,9 @@ class TurbulenceField {
     const sampleRadius = 0.05 * this.blurAmount;
     const numSamples = 16; // Number of samples to take around the center point
 
-    let sum = centerValue; // Start with the center value
+    // Convert centerValue to 0-1 range for contrast processing
+    const centerValueNormalized = (centerValue + 1) * 0.5;
+    let sum = this.applyContrast(centerValueNormalized, time); // Start with the processed center value
     let count = 1; // We've already counted the center
 
     // Take samples in a circle around the center point
@@ -637,7 +744,7 @@ class TurbulenceField {
         sampleNoise *= this.amplitude;
       }
 
-      // Apply contrast to the sample
+      // Apply contrast to the sample (convert to 0-1 range first)
       sampleNoise = this.applyContrast((sampleNoise + 1) * 0.5, time);
 
       // Add to our sum
@@ -645,8 +752,8 @@ class TurbulenceField {
       count++;
     }
 
-    // Return the average
-    return sum / count;
+    // Return the average and convert back to -1 to 1 range
+    return sum / count * 2 - 1;
   }
 
   // Add preview generation methods
@@ -668,12 +775,17 @@ class TurbulenceField {
       for (let x = 0; x < width; x++) {
         const nx = x / width;
         const ny = y / height;
-        const value = this.noise2D(nx, ny);
+        // Enable blur in preview generation
+        const value = this.noise2D(nx, ny, this.time, true);
+
+        // Map from [-1, 1] to [0, 255] for display
+        const mappedValue = (value + 1) * 0.5;
+        const colorValue = Math.floor(mappedValue * 255);
 
         const index = (y * width + x) * 4;
-        data[index] = value * 255;     // R
-        data[index + 1] = value * 255; // G
-        data[index + 2] = value * 255; // B
+        data[index] = colorValue;     // R
+        data[index + 1] = colorValue; // G
+        data[index + 2] = colorValue; // B
         data[index + 3] = 255;         // A
       }
     }
@@ -717,12 +829,17 @@ class TurbulenceField {
         for (let x = 0; x < width; x++) {
           const nx = x / width;
           const ny = y / height;
-          const value = this.noise2D(nx, ny);
+          // Enable blur in animated preview
+          const value = this.noise2D(nx, ny, this.time, true);
+
+          // Map from [-1, 1] to [0, 255] for display
+          const mappedValue = (value + 1) * 0.5;
+          const colorValue = Math.floor(mappedValue * 255);
 
           const index = (y * width + x) * 4;
-          data[index] = value * 255;     // R
-          data[index + 1] = value * 255; // G
-          data[index + 2] = value * 255; // B
+          data[index] = colorValue;     // R
+          data[index + 1] = colorValue; // G
+          data[index + 2] = colorValue; // B
           data[index + 3] = 255;         // A
         }
       }
@@ -910,12 +1027,18 @@ class TurbulenceField {
     biasStrength,
     contrast,
     separation,
+    // Bandpass contrast parameters
+    contrastShadowPoint,
+    contrastMidPoint,
+    contrastHighlightPoint,
+    contrastDarkBoost,
     // New bias smoothing parameter
     biasSmoothing,
     // New blur parameter
     blurAmount,
     // Physics parameters
     biasFriction,
+    biasTune,
   }) {
     if (strength !== undefined) this.strength = strength;
     if (scale !== undefined) this.scale = scale;
@@ -979,10 +1102,17 @@ class TurbulenceField {
 
     // Physics parameters
     if (biasFriction !== undefined) this.biasFriction = biasFriction;
+    if (biasTune !== undefined) this.biasTune = biasTune;
 
     // Contrast and separation controls
     if (contrast !== undefined) this.contrast = contrast;
     if (separation !== undefined) this.separation = separation;
+
+    // Bandpass contrast parameters
+    if (contrastShadowPoint !== undefined) this.contrastShadowPoint = contrastShadowPoint;
+    if (contrastMidPoint !== undefined) this.contrastMidPoint = contrastMidPoint;
+    if (contrastHighlightPoint !== undefined) this.contrastHighlightPoint = contrastHighlightPoint;
+    if (contrastDarkBoost !== undefined) this.contrastDarkBoost = contrastDarkBoost;
 
     // New bias smoothing parameter
     if (biasSmoothing !== undefined) this.biasSmoothing = biasSmoothing;
@@ -1056,18 +1186,25 @@ class TurbulenceField {
     // Scale down the acceleration for smoother response
     // Using a much smaller multiplier (0.2) for gentler acceleration
     // Invert X axis to fix direction
-    this._biasAccelX = -clampedX * this.biasStrength * 0.2;
-    this._biasAccelY = clampedY * this.biasStrength * 0.2;
+    this._biasAccelX = -clampedX * this.biasStrength * 0.2 * this.biasTune;
+    this._biasAccelY = clampedY * this.biasStrength * 0.2 * this.biasTune;
 
     // Also update direction bias to match joystick direction
     // Scale it down a bit to make it less intense
-    this.directionBias[0] = clampedX * 0.5;
-    this.directionBias[1] = clampedY * 0.5;
+    this.directionBias[0] = clampedX * 0.5 * this.biasTune;
+    this.directionBias[1] = clampedY * 0.5 * this.biasTune;
 
     // Always keep the old bias speed properties at zero
     // to ensure they don't interfere with the physics model
     this.biasSpeedX = 0;
     this.biasSpeedY = 0;
+  }
+
+  // Add debug toggle method
+  toggleDebug(enabled) {
+    this.debug = !!enabled;
+    console.log(`Turbulence debug mode: ${this.debug ? 'ON' : 'OFF'}`);
+    return this.debug;
   }
 }
 

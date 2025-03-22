@@ -513,6 +513,11 @@ export class NoisePreviewManager {
     refreshSelectedPreview(forceStart = false) {
         if (!this.selectedPattern) return;
 
+        // Add debug logging
+        if (this.turbulenceField && this.turbulenceField.debug) {
+            console.log(`Refreshing preview for ${this.selectedPattern}, visible: ${this.isVisible}, contrast: ${this.turbulenceField.contrast.toFixed(2)}, blur: ${this.turbulenceField.blurAmount.toFixed(2)}`);
+        }
+
         // Add a guard to prevent circular calls
         this._inRefreshSelectedPreview = true;
 
