@@ -238,7 +238,8 @@ export class TurbulenceUi extends BaseUi {
       "Cells": "cells",
       "Fractal": "fractal",
       "Vortex": "vortex",
-      "Bubbles": "bubbles"
+      "Bubbles": "bubbles",
+      "Water": "water"
     };
 
     // Pattern style selector
@@ -257,7 +258,8 @@ export class TurbulenceUi extends BaseUi {
         "Cells": "cells",
         "Fractal": "fractal",
         "Vortex": "vortex",
-        "Bubbles": "bubbles"
+        "Bubbles": "bubbles",
+        "Water": "water"
       })
       .onChange((value) => {
         if (this.previewManager) {

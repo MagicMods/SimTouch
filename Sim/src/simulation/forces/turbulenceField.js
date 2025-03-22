@@ -111,7 +111,8 @@ class TurbulenceField {
       "cells": [0.5, -0.5],
       "fractal": [0.5, -0.5],
       "vortex": [0, 0],
-      "bubbles": [0, 0]
+      "bubbles": [0, 0],
+      "water": [0, 0]
     };
 
     // New pattern offset controls
@@ -393,6 +394,36 @@ class TurbulenceField {
         const dotValue = Math.sqrt(dotX * dotX + dotY * dotY);
         patternValue = Math.cos(dotValue * Math.PI * 1);
         break;
+      case "water":
+        // Create a flowing water effect with circular drops
+        // Base water movement - gentle waves with time animation
+        const waterBase = Math.sin(y * freq * 0.5 + x * freq * 0.2 + this.time * this.speed * 0.5);
+
+        // Add some smaller ripples for water surface texture
+        const surfaceRipples = Math.sin(x * freq * 1.5 + y * freq * 1.2 + this.time * this.speed * 0.3) * 0.3;
+
+        // Generate water drops at various positions
+        // First drop
+        const drop1X = centerX + Math.sin(this.time * this.speed * 0.2) * 0.3;
+        const drop1Y = centerY + Math.cos(this.time * this.speed * 0.3) * 0.2;
+        const drop1Dist = Math.sqrt(Math.pow(x - drop1X, 2) + Math.pow(y - drop1Y, 2));
+        const drop1 = Math.cos(drop1Dist * freq * 2.5) * Math.exp(-drop1Dist * 3.5);
+
+        // Second drop
+        const drop2X = centerX - 0.2 + Math.sin(this.time * this.speed * 0.25 + 1.5) * 0.25;
+        const drop2Y = centerY + 0.1 + Math.cos(this.time * this.speed * 0.35 + 2.1) * 0.15;
+        const drop2Dist = Math.sqrt(Math.pow(x - drop2X, 2) + Math.pow(y - drop2Y, 2));
+        const drop2 = Math.cos(drop2Dist * freq * 3) * Math.exp(-drop2Dist * 4);
+
+        // Third drop
+        const drop3X = centerX + 0.25 + Math.sin(this.time * this.speed * 0.22 + 3.6) * 0.2;
+        const drop3Y = centerY - 0.15 + Math.cos(this.time * this.speed * 0.27 + 4.2) * 0.15;
+        const drop3Dist = Math.sqrt(Math.pow(x - drop3X, 2) + Math.pow(y - drop3Y, 2));
+        const drop3 = Math.cos(drop3Dist * freq * 3.5) * Math.exp(-drop3Dist * 5);
+
+        // Combine the base water movement with the drops
+        patternValue = waterBase * 0.5 + surfaceRipples + drop1 * 0.7 + drop2 * 0.6 + drop3 * 0.5;
+        break;
       case "cells": // Simplified cellular pattern
         // Use a larger cell size for fewer cells
         const cellSize = 2.4 / freq; // Scaled up from 1.6
@@ -550,7 +581,7 @@ class TurbulenceField {
 
     // Scale blur amount to a more useful range (0 to 0.05)
     const sampleRadius = 0.05 * this.blurAmount;
-    const numSamples = 8; // Number of samples to take around the center point
+    const numSamples = 16; // Number of samples to take around the center point
 
     let sum = centerValue; // Start with the center value
     let count = 1; // We've already counted the center
