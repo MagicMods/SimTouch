@@ -30,7 +30,7 @@ class TurbulenceField {
     // New bias speed controls - these are now ignored and used only as initial acceleration
     biasSpeedX = 0.0,
     biasSpeedY = 0.0,
-    biasStrength = 1.0,  // Bias strength parameter
+    biasStrength = 0.3,  // Bias strength parameter
     // New contrast and separation controls
     contrast = 0.5,        // 0 = no contrast, 1 = max contrast
     separation = 0,      // 0 = smooth, 1 = sharp transitions

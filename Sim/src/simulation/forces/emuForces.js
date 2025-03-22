@@ -15,7 +15,7 @@ export class EmuForces {
     this.manualOverride = false;
 
     // Force multiplier
-    this.accelGravityMultiplier = 1.0;
+    this.accelGravityMultiplier = 0.5;
   }
 
   enable() {

@@ -26,7 +26,7 @@ export class InputsUi extends BaseUi {
     this.mouseInputFolder.open(true);
     this.emuInputFolder.open(false);
     this.externalInputFolder.open(false);
-    this.joystickInputFolder.open(false);
+    this.joystickInputFolder.open(true);
   }
 
   //#region Inputs
@@ -216,7 +216,7 @@ export class InputsUi extends BaseUi {
 
     // Add spring strength slider
     this.joystickInputFolder
-      .add(springControl, "strength", 0, 0.2, 0.01)
+      .add(springControl, "strength", 0, 1, 0.01)
       .name("Spring Strength")
       .onChange((value) => {
         if (this.main.emuRenderer) {

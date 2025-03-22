@@ -13,7 +13,7 @@ export class EmuRenderer {
     this.joystickY = 0;
 
     // Add spring back to center feature
-    this.springStrength = 0.05; // Default spring strength (0 = no spring, 1 = immediate return)
+    this.springStrength = 0.5; // Default spring strength (0 = no spring, 1 = immediate return)
     this.springEnabled = true;  // Spring enabled by default
 
     // Create overlay canvas
