@@ -99,8 +99,9 @@ canvas {
 /* Stats container */
 .stats-container {
     position: absolute;
-    bottom: 0;
+    top: 0;
     right: 0;
+    /* width: 100px; */
 }
  
 /* Preset save dialog */
