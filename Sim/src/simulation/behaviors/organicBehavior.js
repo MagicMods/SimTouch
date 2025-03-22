@@ -40,12 +40,12 @@ class OrganicBehavior {
       },
       Chain: {
         radius: 30,
-        linkDistance: 20,
-        linkStrength: 0.7,   // Now works like O-Force
+        linkDistance: 0,
+        linkStrength: 10,   // Now works like O-Force
         alignment: 0.5,      // Controls straightness (0 = curly, 1 = straight)
         branchProb: 2,       // Maximum branches per particle
         maxLinks: 10,        // Maximum chain length
-        maxChains: 5,        // Maximum number of chains
+        maxChains: 10,        // Maximum number of chains
         mode: "Chain",
       },
     };

@@ -13,7 +13,8 @@ export class RandomizerUi extends BaseUi {
       "Time Step",
       "Boundary Size",
       "Particle Opacity",
-      "Color"
+      "Color",
+      "T-PatternStyle"
     ];
 
     this.controllers = {};
@@ -180,16 +181,17 @@ export class RandomizerUi extends BaseUi {
     const categorizedTargets = {};
 
     const getComponentName = (targetName) => {
-      if (/^(Density|FadInSpd|FadOutSpd|Time Step|SimSpeed|VeloDamp)$/i.test(targetName)) return "Simulation";
+      if (/^(Density|FadInSpd|FadOutSpd|Time Step|SimSpeed|VeloDamp|MaxVelocity)$/i.test(targetName)) return "Simulation";
       if (/^P-(Count|Size|Opacity|Color)$/i.test(targetName)) return "Particles";
       if (/^G-(X|Y)$/i.test(targetName)) return "Gravity";
-      if (/^C-(Repulse|Bounce|Damping)$/i.test(targetName)) return "Collision";
+      if (/^C-(Repulse|Bounce|Damping|RestState)$/i.test(targetName)) return "Collision";
       if (/^B-(Repulse|Friction|Size|Bounce)$/i.test(targetName)) return "Boundary";
-      if (/^T-(AfPosition|AfScaleF|AfScale|Strength|Scale|Speed|Octaves|Persist|Rot|RotSpd|Pull|Decay|ScaleS|MinScale|MaxScale|X|Y)$/i.test(targetName)) return "Turbulence";
-      if (/^V-(Strength|EdgeWidth|Attract|Cell(Count|Speed)|Decay|ForceBlend)$/i.test(targetName)) return "Voronoi";
+      if (/^T-(AfPosition|AfScaleF|AfScale|Strength|Scale|Speed|Octaves|Persist|Rot|RotSpd|Pull|PullMMode|Pull Mode|Decay|ScaleS|MinScale|MaxScale|X|Y|DomWarp|DomWarpSp|PatternStyle|Freq|PhaseSp|Phase|Sym|Blur|BiasX|BiasY|DirX|DirY|OffsetX|OffsetY|Bias Friction)$/i.test(targetName)) return "Turbulence";
+      if (/^V-(Strength|EdgeWidth|Attract|PullMode|Pull Mode|Cell(Count|Speed)|Decay|ForceBlend)$/i.test(targetName)) return "Voronoi";
       if (/^F-(Radius|SurfaceT|Visco|Damp)$/i.test(targetName)) return "Organic Fluid";
       if (/^S-(Radius|Cohesion|Align|Separation|MaxSpeed)$/i.test(targetName)) return "Organic Swarm";
       if (/^A-(Radius|Repulse|Attract|Threshold)$/i.test(targetName)) return "Organic Automata";
+      if (/^Ch-(LinkDist|LinkStr|Align|Branch|MaxLinks|MaxLen|Repel)$/i.test(targetName)) return "Organic Chain";
       if (/^RS-(VeloTH|PosTH)$/i.test(targetName)) return "Rest State";
       if (/^O-(Force|Radius)$/i.test(targetName)) return "Organic";
       return "Other";
@@ -233,12 +235,21 @@ export class RandomizerUi extends BaseUi {
       }
 
       const controller = target.controller;
+
+      // Special handling for slider-type controllers
       if (this._isSlider(controller)) {
+        // Skip if it's a pattern style or other special case
+        if (targetName === "T-PatternStyle") {
+          continue;
+        }
+
         const success = this._randomizeController(controller, target);
         if (success) {
           totalChanged++;
         }
-      } else if (
+      }
+      // For boolean/checkbox type controllers
+      else if (
         this.includeCheckboxes &&
         this._isCheckbox(controller)
       ) {
@@ -247,6 +258,10 @@ export class RandomizerUi extends BaseUi {
           controller.setValue(!currentValue);
           totalChanged++;
         }
+      }
+      // Skip other controller types
+      else {
+        console.log(`Skipping randomization for non-supported controller type: ${targetName}`);
       }
     }
 
@@ -274,8 +289,14 @@ export class RandomizerUi extends BaseUi {
 
   _randomizeController(controller, target) {
     try {
-
       const currentValue = controller.getValue();
+      const targetName = target.name;
+
+      // Special case for pattern style - already excluded in constructor
+      if (targetName === "T-PatternStyle") {
+        console.log("Pattern Style randomization skipped - use presets instead");
+        return false;
+      }
 
       // Get range from target info
       let min = target.min !== undefined ? target.min : 0;

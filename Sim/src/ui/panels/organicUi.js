@@ -159,10 +159,10 @@ export class OrganicUi extends BaseUi {
       // Initialize Chain parameters if they don't exist yet
       if (particles?.organicBehavior?.params) {
         particles.organicBehavior.params.Chain = {
-          linkDistance: 20,    // Distance between chain links
-          linkStrength: 0.7,   // Spring force strength
+          linkDistance: 0,    // Distance between chain links
+          linkStrength: 10,   // Spring force strength
           alignment: 0.5,      // Straight (1) vs curly (0) chains 
-          branchProb: 2,       // Max branches per particle
+          branchProb: 10,       // Max branches per particle
           maxLinks: 10,        // Max links per chain
           mode: "Chain"
         };
@@ -171,11 +171,11 @@ export class OrganicUi extends BaseUi {
     }
 
     const chain = particles.organicBehavior.params.Chain;
-    this.chainLinkDistController = this.chainFolder.add(chain, "linkDistance", 0.01, 50, 0.1).name("C-LinkDist");
-    this.chainLinkStrengthController = this.chainFolder.add(chain, "linkStrength", 0, 10).name("C-LinkStr");
-    this.chainAlignController = this.chainFolder.add(chain, "alignment", 0, 10, 0.1).name("C-Align");
-    this.chainBranchController = this.chainFolder.add(chain, "branchProb", 0, 5, 1).name("C-Branch");
-    this.chainMaxLinksController = this.chainFolder.add(chain, "maxLinks", 2, 100, 1).name("C-MaxLen");
+    this.chainLinkDistController = this.chainFolder.add(chain, "linkDistance", 0.01, 50, 0.1).name("Ch-LinkDist");
+    this.chainLinkStrengthController = this.chainFolder.add(chain, "linkStrength", 0, 10).name("Ch-LinkStr");
+    this.chainAlignController = this.chainFolder.add(chain, "alignment", 0, 10, 0.1).name("Ch-Align");
+    this.chainBranchController = this.chainFolder.add(chain, "branchProb", 0, 10, 1).name("Ch-Branch");
+    this.chainMaxLinksController = this.chainFolder.add(chain, "maxLinks", 2, 100, 1).name("Ch-MaxLen");
   }
 
   updateOrganicFolders(mode) {
@@ -249,12 +249,12 @@ export class OrganicUi extends BaseUi {
     if (this.automataThresholdController) targets["A-Threshold"] = this.automataThresholdController;
 
     // Add chain controllers
-    if (this.chainLinkDistController) targets["C-LinkDist"] = this.chainLinkDistController;
-    if (this.chainLinkStrengthController) targets["C-LinkStr"] = this.chainLinkStrengthController;
-    if (this.chainAlignController) targets["C-Align"] = this.chainAlignController;
-    if (this.chainBranchController) targets["C-Branch"] = this.chainBranchController;
-    if (this.chainMaxLinksController) targets["C-MaxLinks"] = this.chainMaxLinksController;
-    if (this.chainRepelController) targets["C-Repel"] = this.chainRepelController; // Add this controller
+    if (this.chainLinkDistController) targets["Ch-LinkDist"] = this.chainLinkDistController;
+    if (this.chainLinkStrengthController) targets["Ch-LinkStr"] = this.chainLinkStrengthController;
+    if (this.chainAlignController) targets["Ch-Align"] = this.chainAlignController;
+    if (this.chainBranchController) targets["Ch-Branch"] = this.chainBranchController;
+    if (this.chainMaxLinksController) targets["Ch-MaxLinks"] = this.chainMaxLinksController;
+    if (this.chainRepelController) targets["Ch-Repel"] = this.chainRepelController; // Add this controller
 
     return targets;
   }
