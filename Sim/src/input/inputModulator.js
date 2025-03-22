@@ -5,7 +5,9 @@ export class InputModulator {
     this.inputSource = "mic";
     this.frequencyBand = "none";
     this.sensitivity = 1.0;
-    this.smoothing = 0.7;
+    this.smoothing = 0.7; // Kept for backward compatibility
+    this.attack = 0.3;    // Lower value = faster attack (less smoothing on rise)
+    this.release = 0.7;   // Higher value = longer sustain (more smoothing on fall)
     this.threshold = 0; // Add threshold property (0 = disabled)
     this.min = 0;
     this.max = 1;
@@ -136,10 +138,15 @@ export class InputModulator {
       }
     }
 
-    // Apply smoothing between this and the last value
-    if (this.smoothing > 0 && this.lastOutputValue !== undefined) {
-      value =
-        this.lastOutputValue * this.smoothing + value * (1 - this.smoothing);
+    // Apply attack/release depending on signal direction
+    if (this.lastOutputValue !== undefined) {
+      if (value > this.lastOutputValue) {
+        // Signal is increasing - use attack (lower value = faster attack)
+        value = this.lastOutputValue * this.attack + value * (1 - this.attack);
+      } else {
+        // Signal is decreasing - use release (higher value = longer sustain)
+        value = this.lastOutputValue * this.release + value * (1 - this.release);
+      }
     }
 
     // Return the processed value

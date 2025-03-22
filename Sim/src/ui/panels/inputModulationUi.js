@@ -142,6 +142,9 @@ export class InputModulationUi extends BaseUi {
     modulator.type = "input";
     modulator.inputSource = "mic";
 
+    // CRITICAL FIX: Explicitly enable the modulator if sensitivity > 0
+    modulator.enabled = modulator.sensitivity > 0;
+
     console.log("Creating new mic modulator:", modulator);
 
     // Create folder for this modulator
@@ -304,10 +307,21 @@ export class InputModulationUi extends BaseUi {
         this.updateAllBandVisualizations();
       });
 
-    // Add smoothing slider (moved after threshold)
-    controllers.smoothing = folder
-      .add(modulator, "smoothing", 0, 0.99, 0.01)
-      .name("Smoothing");
+    // Add attack slider (lower values = faster attack)
+    controllers.attack = folder
+      .add(modulator, "attack", 0, 0.99, 0.01)
+      .name("Attack")
+      .onChange(() => {
+        this.updateAllBandVisualizations();
+      });
+
+    // Add release slider (higher values = longer sustain)
+    controllers.release = folder
+      .add(modulator, "release", 0, 0.99, 0.01)
+      .name("Release")
+      .onChange(() => {
+        this.updateAllBandVisualizations();
+      });
 
     // Add min/max range controls
     controllers.min = folder
@@ -409,7 +423,9 @@ export class InputModulationUi extends BaseUi {
               enabled: false,
               frequencyBand: "none",
               sensitivity: 0,
-              smoothing: 0.7,
+              smoothing: 0.7,  // Keep for backward compatibility
+              attack: 0.3,     // Add attack property
+              release: 0.7,    // Add release property
               threshold: 0,
               min: 0,
               max: 1,
@@ -977,6 +993,17 @@ export class InputModulationUi extends BaseUi {
         // Set target using the method which connects the modulator to its target
         if (modData.targetName && typeof modulator.setTarget === "function") {
           modulator.setTarget(modData.targetName);
+        }
+
+        // Handle backward compatibility for attack/release
+        if (modData.attack === undefined && modData.smoothing !== undefined) {
+          // If old preset without attack/release, use smoothing for both
+          modulator.attack = modData.smoothing;
+          modulator.release = modData.smoothing;
+        } else {
+          // Otherwise use the properties if defined, or defaults
+          modulator.attack = modData.attack !== undefined ? modData.attack : 0.3;
+          modulator.release = modData.release !== undefined ? modData.release : 0.7;
         }
 
         // Set min/max if available
