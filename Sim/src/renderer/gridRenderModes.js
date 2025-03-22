@@ -1,4 +1,5 @@
 export const GridField = {
+  NOISE: "--RawNoise--",
   PROXIMITY: "Proximity",
   PROXIMITYB: "ProximityB",
   DENSITY: "Density",
@@ -7,7 +8,6 @@ export const GridField = {
   VORTICITY: "Vorticity",
   COLLISION: "Collision",
   OVERLAP: "Overlap",
-  NOISE: "Noise",
 };
 
 class GridRenderModes {
