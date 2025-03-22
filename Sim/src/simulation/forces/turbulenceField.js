@@ -437,39 +437,18 @@ class TurbulenceField {
         patternValue = Math.cos(dotValue * Math.PI * 1);
         break;
       case "water":
-        // Create a flowing water effect with circular drops
-        // Base water movement - gentle waves with time animation
         const waterBase = Math.sin(y * freq * 0.5 + x * freq * 0.2 + this.time * this.speed * 0.5);
-
-        // Add some smaller ripples for water surface texture
         const surfaceRipples = Math.sin(x * freq * 1.5 + y * freq * 1.2 + this.time * this.speed * 0.3) * 0.3;
-
-        // Generate water drops at various positions
-        // First drop
-        const drop1X = centerX + Math.sin(this.time * this.speed * 0.2) * 0.3;
-        const drop1Y = centerY + Math.cos(this.time * this.speed * 0.3) * 0.2;
-        const drop1Dist = Math.sqrt(Math.pow(x - drop1X, 2) + Math.pow(y - drop1Y, 2));
-        const drop1 = Math.cos(drop1Dist * freq * 2.5) * Math.exp(-drop1Dist * 3.5);
-
-        // Second drop
-        const drop2X = centerX - 0.2 + Math.sin(this.time * this.speed * 0.25 + 1.5) * 0.25;
-        const drop2Y = centerY + 0.1 + Math.cos(this.time * this.speed * 0.35 + 2.1) * 0.15;
-        const drop2Dist = Math.sqrt(Math.pow(x - drop2X, 2) + Math.pow(y - drop2Y, 2));
-        const drop2 = Math.cos(drop2Dist * freq * 3) * Math.exp(-drop2Dist * 4);
-
-        // Third drop
-        const drop3X = centerX + 0.25 + Math.sin(this.time * this.speed * 0.22 + 3.6) * 0.2;
-        const drop3Y = centerY - 0.15 + Math.cos(this.time * this.speed * 0.27 + 4.2) * 0.15;
-        const drop3Dist = Math.sqrt(Math.pow(x - drop3X, 2) + Math.pow(y - drop3Y, 2));
-        const drop3 = Math.cos(drop3Dist * freq * 3.5) * Math.exp(-drop3Dist * 5);
-
-        // Combine the base water movement with the drops
-        patternValue = waterBase * 0.5 + surfaceRipples + drop1 * 0.7 + drop2 * 0.6 + drop3 * 0.5;
+        patternValue = waterBase * 0.5 + surfaceRipples;
         break;
       case "classicdrop":
         // Generate classic water drop effect with expanding ripples
         // Initialize with a calm water surface
         patternValue = 0;
+
+        // Ensure animation continues by using phaseSpeed for timing
+        // Create a time factor that always advances regardless of UI state
+        const phaseTime = this.time * Math.max(Math.abs(this.phaseSpeed), 1) * this.speed;
 
         // Use the frequency to control the rate of drops
         // Higher frequency = more drops
@@ -484,17 +463,19 @@ class TurbulenceField {
 
           // Calculate drop position using hash function for consistent randomness
           // This creates a fixed position for each drop
-          const dropX = centerX + 0.4 * Math.cos(dropSeed + i * 1.5);
-          const dropY = centerY + 0.4 * Math.sin(timeSeed + i * 2.7);
+          const dropX = centerX + 1 * Math.cos(dropSeed + i * 2.2);
+          const dropY = centerY + 1 * Math.sin(timeSeed + i * 4.3);
 
           // Calculate time cycle for each drop (when it appears)
           // Each drop has its own cycle offset to avoid all drops appearing at once
           const dropCycleOffset = i * (Math.PI * 2) / maxDrops; // Evenly distribute drop timing
-          const dropCycleLength = 4.0 / freq; // Longer cycles with lower frequency
-          const dropTimeNorm = ((this.time * this.speed * 0.5) + dropCycleOffset) % dropCycleLength;
+          const dropCycleLength = 8.0 / freq; // Longer cycles with lower frequency
+
+          // Use phaseTime instead of this.time * this.speed to keep animation going
+          const dropTimeNorm = (phaseTime + dropCycleOffset) % dropCycleLength;
 
           // Drop only appears in the first part of its cycle, then disappears until next cycle
-          const dropActiveTime = dropCycleLength * 0.6; // Active for 60% of cycle
+          const dropActiveTime = dropCycleLength * 0.75; // Active for 75% of cycle
 
           if (dropTimeNorm < dropActiveTime) {
             // Calculate normalized age of the drop (0 to 1)
@@ -505,11 +486,11 @@ class TurbulenceField {
 
             // Calculate expanding ripple radius
             // Starts small and expands outward based on age
-            const rippleSpeed = 0.3 + Math.sin(sizeSeed) * 0.1; // Slightly varied speed per drop
+            const rippleSpeed = 1.0 + Math.sin(sizeSeed) * 0.4; // Significantly increased speed per drop
             const rippleRadius = dropAge * rippleSpeed;
 
             // Calculate width of the ripple (thinner as it expands)
-            const rippleWidth = 0.05 + 0.08 * (1 - dropAge);
+            const rippleWidth = 0.12 + 0.18 * (1 - dropAge);
 
             // Calculate intensity of the ripple (fades as it expands)
             const rippleIntensity = 1.0 - dropAge * 0.8;
@@ -524,7 +505,8 @@ class TurbulenceField {
         }
 
         // Add some subtle background waves for a water surface effect
-        const calmWater = Math.sin(x * freq * 0.2 + y * freq * 0.3 + this.time * this.speed * 0.1) * 0.1;
+        // Also use phaseTime for consistent animation
+        const calmWater = Math.sin(x * freq * 0.2 + y * freq * 0.3 + phaseTime * 0.2) * 0.1;
         patternValue += calmWater;
 
         // Normalize the pattern value to avoid excessive brightness with multiple drops

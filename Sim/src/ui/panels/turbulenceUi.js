@@ -439,6 +439,18 @@ export class TurbulenceUi extends BaseUi {
           if (this.previewManager) {
             this.previewManager.setSelectedPattern(value);
           }
+        } else {
+          // Clicking on already selected pattern toggles preview refreshing
+          if (this.previewManager) {
+            const isDisabled = this.previewManager.toggleRefreshingDisabled();
+            // Optionally show a temporary status message
+            const statusText = isDisabled ?
+              'Preview animation disabled' :
+              'Preview animation enabled';
+
+            // Create or update status message
+            this.showStatusMessage(statusText, 1500);
+          }
         }
       });
 
@@ -961,5 +973,49 @@ export class TurbulenceUi extends BaseUi {
     if (super.dispose) {
       super.dispose();
     }
+  }
+
+  /**
+   * Shows a temporary status message
+   * @param {String} message - The message to display
+   * @param {Number} duration - How long to show the message in ms
+   */
+  showStatusMessage(message, duration = 2000) {
+    // Remove any existing message
+    const existingMessage = document.querySelector('.turbulence-status-message');
+    if (existingMessage) {
+      document.body.removeChild(existingMessage);
+    }
+
+    // Create and show new message
+    const statusElement = document.createElement('div');
+    statusElement.className = 'turbulence-status-message';
+    statusElement.textContent = message;
+    statusElement.style.cssText = `
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-size: 14px;
+      z-index: 9999;
+      pointer-events: none;
+      transition: opacity 0.3s;
+    `;
+
+    document.body.appendChild(statusElement);
+
+    // Fade out and remove after duration
+    setTimeout(() => {
+      statusElement.style.opacity = '0';
+      setTimeout(() => {
+        if (statusElement.parentNode) {
+          document.body.removeChild(statusElement);
+        }
+      }, 300);
+    }, duration);
   }
 }

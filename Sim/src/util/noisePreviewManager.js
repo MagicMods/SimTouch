@@ -26,6 +26,7 @@ export class NoisePreviewManager {
         this.refreshingSelected = true; // Toggle between selected and unselected
         this._needsRefreshOnOpen = false; // Flag for refresh needed when reopening
         this._inRefreshSelectedPreview = false; // Guard against circular function calls
+        this.refreshingDisabled = false; // New flag to disable refreshing
 
         // Performance settings
         this.selectedFps = 15; // Lower default FPS for better performance
@@ -39,6 +40,50 @@ export class NoisePreviewManager {
 
         // Track hover state
         this.hoveredPattern = null;
+    }
+
+    /**
+     * Toggle refreshing disabled state
+     * @returns {Boolean} - The new disabled state
+     */
+    toggleRefreshingDisabled() {
+        this.refreshingDisabled = !this.refreshingDisabled;
+
+        if (this.refreshingDisabled) {
+            // Stop refreshing and show static previews
+            this.stopRefreshLoop();
+            this.generateAllStaticPreviews();
+        } else if (this.isVisible) {
+            // Resume refreshing
+            this.startRefreshLoop();
+        }
+
+        // Update UI to reflect disabled state
+        this.updateSelectedUI();
+
+        return this.refreshingDisabled;
+    }
+
+    /**
+     * Set refreshing disabled state
+     * @param {Boolean} disabled - Whether refreshing should be disabled
+     */
+    setRefreshingDisabled(disabled) {
+        if (this.refreshingDisabled !== disabled) {
+            this.refreshingDisabled = disabled;
+
+            if (this.refreshingDisabled) {
+                // Stop refreshing and show static previews
+                this.stopRefreshLoop();
+                this.generateAllStaticPreviews();
+            } else if (this.isVisible) {
+                // Resume refreshing
+                this.startRefreshLoop();
+            }
+
+            // Update UI to reflect disabled state
+            this.updateSelectedUI();
+        }
     }
 
     /**
@@ -322,7 +367,55 @@ export class NoisePreviewManager {
             }
 
             // Update border color
-            element.style.borderColor = pattern === this.selectedPattern ? '#fff' : '#666';
+            if (pattern === this.selectedPattern) {
+                // For selected pattern, show different border when disabled
+                if (this.refreshingDisabled) {
+                    element.style.borderColor = '#ff6600'; // Orange border for disabled state
+                    element.style.borderStyle = 'dashed';
+
+                    // Add or update disabled indicator
+                    let indicator = element.querySelector('.disabled-indicator');
+                    if (!indicator) {
+                        indicator = document.createElement('div');
+                        indicator.className = 'disabled-indicator';
+                        indicator.innerHTML = '⏸'; // Pause symbol
+                        indicator.style.cssText = `
+                            position: absolute;
+                            top: 5px;
+                            right: 5px;
+                            background-color: rgba(255, 102, 0, 0.7);
+                            color: white;
+                            border-radius: 50%;
+                            width: 20px;
+                            height: 20px;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 12px;
+                            z-index: 2;
+                        `;
+                        element.appendChild(indicator);
+                    }
+                } else {
+                    element.style.borderColor = '#fff'; // White border for normal active state
+                    element.style.borderStyle = 'solid';
+
+                    // Remove disabled indicator if it exists
+                    const indicator = element.querySelector('.disabled-indicator');
+                    if (indicator) {
+                        element.removeChild(indicator);
+                    }
+                }
+            } else {
+                element.style.borderColor = '#666';
+                element.style.borderStyle = 'solid';
+
+                // Remove any disabled indicator
+                const indicator = element.querySelector('.disabled-indicator');
+                if (indicator) {
+                    element.removeChild(indicator);
+                }
+            }
         });
     }
 
@@ -358,6 +451,9 @@ export class NoisePreviewManager {
      * Start the refresh animation loop
      */
     startRefreshLoop() {
+        // Don't start if refreshing is disabled
+        if (this.refreshingDisabled) return;
+
         if (this.animationFrameId) return; // Already running
 
         this.lastRefreshTime = performance.now();
@@ -459,8 +555,8 @@ export class NoisePreviewManager {
      * Main update loop for refreshing previews
      */
     update() {
-        // Early exit if not visible
-        if (!this.isVisible) {
+        // Early exit if not visible or refreshing is disabled
+        if (!this.isVisible || this.refreshingDisabled) {
             this.animationFrameId = null;
             return;
         }
@@ -511,7 +607,7 @@ export class NoisePreviewManager {
      * @param {Boolean} forceStart - Force animation to start even if already running
      */
     refreshSelectedPreview(forceStart = false) {
-        if (!this.selectedPattern) return;
+        if (!this.selectedPattern || this.refreshingDisabled) return;
 
         // Add debug logging
         if (this.turbulenceField && this.turbulenceField.debug) {
