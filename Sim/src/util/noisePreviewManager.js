@@ -699,9 +699,14 @@ export class NoisePreviewManager {
         this.turbulenceField.patternStyle = patternStyle;
 
         // For performance, use a slightly smaller render size for animation
-        const scaleFactor = 0.8; // 80% of original size for animation (higher than static for quality)
+        const scaleFactor = 0.7; // 70% of original size for animation
         const renderWidth = Math.max(32, Math.floor(width * scaleFactor));
         const renderHeight = Math.max(32, Math.floor(height * scaleFactor));
+
+        // Track performance for dynamic scaling
+        let lastPerformanceWarning = 0;
+        let performanceIssueCount = 0;
+        let dynamicScaleFactor = 1.0;
 
         // Setup for animation
         const canvas = document.createElement('canvas');
@@ -741,19 +746,58 @@ export class NoisePreviewManager {
             // Update last frame time
             lastFrameTime = timestamp;
 
+            // Reduce workload when browser reports performance issues
+            const startTime = performance.now();
+
+            // Apply dynamic scaling based on performance
+            const effectiveWidth = Math.max(16, Math.floor(renderWidth * dynamicScaleFactor));
+            const effectiveHeight = Math.max(16, Math.floor(renderHeight * dynamicScaleFactor));
+            const skipFactor = Math.max(1, Math.floor(2 / dynamicScaleFactor));
+
             // Generate preview using current time (don't manipulate the field's time)
-            for (let y = 0; y < renderHeight; y++) {
-                for (let x = 0; x < renderWidth; x++) {
-                    const nx = x / renderWidth;
-                    const ny = 1 - (y / renderHeight);
+            for (let y = 0; y < effectiveHeight; y++) {
+                for (let x = 0; x < effectiveWidth; x++) {
+                    // Map to full resolution coordinates
+                    const nx = x / effectiveWidth;
+                    const ny = 1 - (y / effectiveHeight);
                     const noiseValue = this.turbulenceField.noise2D(nx, ny, this.turbulenceField.time, applyBlur);
 
-                    const index = (y * renderWidth + x) * 4;
+                    // Map to the actual target position in our buffer
+                    const targetX = Math.floor(x * (renderWidth / effectiveWidth));
+                    const targetY = Math.floor(y * (renderHeight / effectiveHeight));
+                    const index = (targetY * renderWidth + targetX) * 4;
+
                     data[index] = noiseValue * 255;     // R
                     data[index + 1] = noiseValue * 255; // G
                     data[index + 2] = noiseValue * 255; // B
                     data[index + 3] = 255;         // A
+
+                    // Check if we're taking too long and need to break early
+                    if ((x % skipFactor === 0) && (y % skipFactor === 0)) {
+                        const currentTime = performance.now();
+                        if (currentTime - startTime > 12) { // If processing takes >12ms, drop resolution
+                            // Skip more pixels to finish faster
+                            x += skipFactor;
+                        }
+                    }
                 }
+            }
+
+            // Check if we need to adjust dynamic scale factor
+            const renderTime = performance.now() - startTime;
+            if (renderTime > 15) {
+                // Performance warning
+                performanceIssueCount++;
+                lastPerformanceWarning = timestamp;
+                if (performanceIssueCount > 3 && dynamicScaleFactor > 0.5) {
+                    // Reduce resolution if we have persistent performance issues
+                    dynamicScaleFactor = Math.max(0.3, dynamicScaleFactor - 0.1);
+                    performanceIssueCount = 0;
+                }
+            } else if (timestamp - lastPerformanceWarning > 2000 && dynamicScaleFactor < 1.0) {
+                // Gradually increase resolution if performance is good
+                dynamicScaleFactor = Math.min(1.0, dynamicScaleFactor + 0.05);
+                performanceIssueCount = Math.max(0, performanceIssueCount - 1);
             }
 
             ctx.putImageData(imageData, 0, 0);
@@ -762,9 +806,9 @@ export class NoisePreviewManager {
             if (renderWidth !== width || renderHeight !== height) {
                 finalCtx.clearRect(0, 0, width, height);
                 finalCtx.drawImage(canvas, 0, 0, width, height);
-                callback(finalCanvas.toDataURL('image/jpeg', 0.9));
+                callback(finalCanvas.toDataURL('image/jpeg', 0.85)); // Lower quality for performance
             } else {
-                callback(canvas.toDataURL('image/jpeg', 0.9));
+                callback(canvas.toDataURL('image/jpeg', 0.85)); // Lower quality for performance
             }
 
             animationFrame = requestAnimationFrame(animate);
@@ -923,3 +967,4 @@ export class NoisePreviewManager {
         }
     }
 }
+

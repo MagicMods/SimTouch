@@ -203,7 +203,7 @@ class MouseForces {
 
     // Add touch events to support mobile
     canvas.addEventListener("touchstart", (e) => {
-      e.preventDefault();
+      // Don't call preventDefault() in a passive listener
       const touch = e.touches[0];
 
       // Create a synthetic mouse event
@@ -218,10 +218,10 @@ class MouseForces {
         this.joystickActive = true;
         this.handleJoystick(pos);
       }
-    });
+    }, { passive: true });
 
     canvas.addEventListener("touchmove", (e) => {
-      e.preventDefault();
+      // Don't call preventDefault() in a passive listener
       if (!this.mouseState.isPressed) return;
 
       const touch = e.touches[0];
@@ -236,7 +236,7 @@ class MouseForces {
 
       this.mouseState.lastPosition = this.mouseState.position;
       this.mouseState.position = pos;
-    });
+    }, { passive: true });
 
     canvas.addEventListener("touchend", () => {
       // Similar to mouseup
