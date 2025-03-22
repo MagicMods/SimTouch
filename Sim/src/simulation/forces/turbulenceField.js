@@ -461,18 +461,30 @@ class TurbulenceField {
           const timeSeed = 78.233 * (i + 1) + 7.7575;
           const sizeSeed = 43758.5453 * (i + 1) + 1.8989;
 
+          // Add time-based randomness to drop positions
+          // Creating a chaotic but smooth variation in positions
+          const timeVariation = phaseTime * 0.05; // Subtle time influence
+          const positionNoise = Math.sin(dropSeed * 13.33 + timeVariation) * 0.3; // ±0.3 variation
+
           // Calculate drop position using hash function for consistent randomness
-          // This creates a fixed position for each drop
-          const dropX = centerX + 1 * Math.cos(dropSeed + i * 2.2);
-          const dropY = centerY + 1 * Math.sin(timeSeed + i * 4.3);
+          // Now with added time-based variation for less repetitive patterns
+          const positionRadius = 1 + positionNoise; // Radius varies between 0.7 and 1.3
+          const angleVariation = Math.sin(timeSeed * 0.75 + timeVariation * 0.3) * 0.2; // ±0.2 angle variation
+
+          const dropX = centerX + positionRadius * Math.cos(dropSeed + i * 2.2 + angleVariation);
+          const dropY = centerY + positionRadius * Math.sin(timeSeed + i * 4.3 + angleVariation);
 
           // Calculate time cycle for each drop (when it appears)
           // Each drop has its own cycle offset to avoid all drops appearing at once
           const dropCycleOffset = i * (Math.PI * 2) / maxDrops; // Evenly distribute drop timing
           const dropCycleLength = 8.0 / freq; // Longer cycles with lower frequency
 
+          // Add small random variation to cycle timing for more natural look
+          const cycleVariation = Math.sin(sizeSeed * 3.333 + i * 7.1) * 0.1; // ±10% variation in timing
+          const adjustedDropCycleOffset = dropCycleOffset * (1 + cycleVariation);
+
           // Use phaseTime instead of this.time * this.speed to keep animation going
-          const dropTimeNorm = (phaseTime + dropCycleOffset) % dropCycleLength;
+          const dropTimeNorm = (phaseTime + adjustedDropCycleOffset) % dropCycleLength;
 
           // Drop only appears in the first part of its cycle, then disappears until next cycle
           const dropActiveTime = dropCycleLength * 0.75; // Active for 75% of cycle
