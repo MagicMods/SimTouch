@@ -140,11 +140,11 @@ export class ExternalInputConnector {
       this.micForces.sensitivity = value;
 
       // Debug audio levels
-      console.log(
-        `Mic level: ${this.micForces.smoothedAmplitude.toFixed(
-          3
-        )} at sensitivity ${value}`
-      );
+      // console.log(
+      //   `Mic level: ${this.micForces.smoothedAmplitude.toFixed(
+      //     3
+      //   )} at sensitivity ${value}`
+      // );
     }
   }
 

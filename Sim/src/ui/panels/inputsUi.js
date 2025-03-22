@@ -14,6 +14,10 @@ export class InputsUi extends BaseUi {
     this.emuInputFolder = this.gui.addFolder("EMU Input");
     this.externalInputFolder = this.gui.addFolder("Touch Input");
 
+    // If emuRenderer exists, store a reference to this instance
+    if (this.main.emuRenderer) {
+      this.main.emuRenderer.inputsUi = this;
+    }
 
     // Initialize input controls
     this.initMouseControls();
@@ -21,12 +25,114 @@ export class InputsUi extends BaseUi {
     this.initEmuInputControls();
     this.initExternalInputControls();
 
-
     // Set default open states
     this.mouseInputFolder.open(true);
     this.emuInputFolder.open(false);
     this.externalInputFolder.open(false);
     this.joystickInputFolder.open(true);
+
+    // Register joystick controls as modulation targets if modulation system exists
+    if (this.main.modulation) {
+      this.registerJoystickAsModulationTargets();
+    }
+  }
+
+  // Register joystick controls as modulation targets
+  registerJoystickAsModulationTargets() {
+    if (!this.main.modulation) return; // Exit if modulation system not available
+
+    const modulation = this.main.modulation;
+
+    // Register joystick X controller if it exists
+    if (this.joystickXController) {
+      modulation.registerTarget({
+        id: "joystick_x",
+        name: "Joystick X Position",
+        category: "Joystick",
+        min: -1,
+        max: 1,
+        defaultValue: 0,
+        apply: (value) => {
+          if (this.main.emuRenderer) {
+            // Update joystick X position
+            this.main.emuRenderer.joystickX = value * 10; // Convert to -10,10 range
+            this.main.emuRenderer.joystickActive = true;
+
+            // Update UI and physics
+            this.main.emuRenderer.updateGravityUI();
+            this.main.emuRenderer.updateTurbulenceBiasUI();
+
+            // Update slider
+            if (this.joystickXController && this.joystickXController.object) {
+              this.joystickXController.object.x = value;
+              this.joystickXController.updateDisplay();
+            }
+          }
+        }
+      });
+    }
+
+    // Register joystick Y controller if it exists
+    if (this.joystickYController) {
+      modulation.registerTarget({
+        id: "joystick_y",
+        name: "Joystick Y Position",
+        category: "Joystick",
+        min: -1,
+        max: 1,
+        defaultValue: 0,
+        apply: (value) => {
+          if (this.main.emuRenderer) {
+            // Update joystick Y position
+            this.main.emuRenderer.joystickY = value * 10; // Convert to -10,10 range
+            this.main.emuRenderer.joystickActive = true;
+
+            // Update UI and physics
+            this.main.emuRenderer.updateGravityUI();
+            this.main.emuRenderer.updateTurbulenceBiasUI();
+
+            // Update slider
+            if (this.joystickYController && this.joystickYController.object) {
+              this.joystickYController.object.y = value;
+              this.joystickYController.updateDisplay();
+            }
+          }
+        }
+      });
+    }
+
+    // Register gravity and turbulence strength controllers
+    if (this.joystickGravityStrengthController) {
+      modulation.registerTarget({
+        id: "joystick_gravity_strength",
+        name: "Joystick Gravity Strength",
+        category: "Joystick",
+        min: 0,
+        max: 1,
+        defaultValue: 1.0,
+        apply: (value) => {
+          if (this.joystickGravityStrengthController && this.joystickGravityStrengthController.object) {
+            this.joystickGravityStrengthController.setValue(value);
+          }
+        }
+      });
+    }
+
+    if (this.joystickBiasStrengthController) {
+      modulation.registerTarget({
+        id: "joystick_bias_strength",
+        name: "Joystick Turbulence Bias Strength",
+        category: "Joystick",
+        min: 0,
+        max: 1,
+        defaultValue: 0.3,
+        apply: (value) => {
+          if (this.joystickBiasStrengthController && this.joystickBiasStrengthController.object) {
+            this.joystickBiasStrengthController.setValue(value);
+          }
+        }
+      });
+    }
   }
 
   //#region Inputs
@@ -209,6 +315,91 @@ export class InputsUi extends BaseUi {
       .add(resetJoystickButton, "reset")
       .name("Reset Joystick");
 
+    // Add X and Y position sliders
+    const joystickPosition = {
+      x: this.main.emuRenderer.joystickX / 10, // Convert from -10,10 to -1,1 range
+      y: this.main.emuRenderer.joystickY / 10
+    };
+
+    // Add X position slider
+    this.joystickXController = this.joystickInputFolder
+      .add(joystickPosition, "x", -1, 1, 0.01)
+      .name("Joystick X")
+      .onChange((value) => {
+        if (this.main.emuRenderer) {
+          // Update the joystick X position (scaled to -10,10 range)
+          this.main.emuRenderer.joystickX = value * 10;
+          this.main.emuRenderer.joystickActive = true;
+
+          // Apply the changes immediately to both gravity and turbulence
+          this.main.emuRenderer.updateGravityUI();
+          this.main.emuRenderer.updateTurbulenceBiasUI();
+
+          // If we have access to the turbulence field directly, make sure bias is updated
+          if (this.main.turbulenceField) {
+            // For turbulence field, the biasAccel X is inverted in the UI
+            this.main.turbulenceField._displayBiasAccelX = -value * this.main.turbulenceField.biasStrength;
+
+            // Update the turbulence UI controllers if they exist
+            if (this.main.turbulenceUi && typeof this.main.turbulenceUi.updateBiasControllers === 'function') {
+              this.main.turbulenceUi.updateBiasControllers();
+            }
+          }
+        }
+      });
+
+    // Add Y position slider
+    this.joystickYController = this.joystickInputFolder
+      .add(joystickPosition, "y", -1, 1, 0.01)
+      .name("Joystick Y")
+      .onChange((value) => {
+        if (this.main.emuRenderer) {
+          // Update the joystick Y position (scaled to -10,10 range)
+          this.main.emuRenderer.joystickY = value * 10;
+          this.main.emuRenderer.joystickActive = true;
+
+          // Apply the changes immediately to both gravity and turbulence
+          this.main.emuRenderer.updateGravityUI();
+          this.main.emuRenderer.updateTurbulenceBiasUI();
+
+          // If we have access to the turbulence field directly, make sure bias is updated
+          if (this.main.turbulenceField) {
+            // For turbulence field, the biasAccel Y is not inverted
+            this.main.turbulenceField._displayBiasAccelY = value * this.main.turbulenceField.biasStrength;
+
+            // Update the turbulence UI controllers if they exist
+            if (this.main.turbulenceUi && typeof this.main.turbulenceUi.updateBiasControllers === 'function') {
+              this.main.turbulenceUi.updateBiasControllers();
+            }
+          }
+        }
+      });
+
+    // Wait until controllers are created, then register them as modulation targets
+    if (this.main.modulation) {
+      // We need to make sure this is called after the controllers are created
+      setTimeout(() => this.registerJoystickAsModulationTargets(), 0);
+    }
+
+    // Set up refreshing interval to update sliders when joystick moves
+    // This is a fallback in case the direct updates from emuRenderer don't work
+    this.joystickRefreshInterval = setInterval(() => {
+      if (this.main.emuRenderer) {
+        const x = this.main.emuRenderer.joystickX / 10; // Convert to -1,1 range
+        const y = this.main.emuRenderer.joystickY / 10;
+
+        // Only update if values have changed significantly to avoid unnecessary updates
+        if (Math.abs(joystickPosition.x - x) > 0.001 || Math.abs(joystickPosition.y - y) > 0.001) {
+          joystickPosition.x = x;
+          joystickPosition.y = y;
+
+          // Update UI display
+          if (this.joystickXController) this.joystickXController.updateDisplay();
+          if (this.joystickYController) this.joystickYController.updateDisplay();
+        }
+      }
+    }, 100); // Reduced frequency to 10fps as we're using direct updates now
+
     // Add spring-back control slider
     const springControl = {
       strength: this.main.emuRenderer?.springStrength ?? 0.05
@@ -373,4 +564,38 @@ export class InputsUi extends BaseUi {
   }
 
   //#endregion
+
+  // Get all available control targets for modulation
+  getControlTargets() {
+    const targets = {};
+
+    // Add joystick controllers if they exist
+    if (this.joystickXController) targets["Joystick X"] = this.joystickXController;
+    if (this.joystickYController) targets["Joystick Y"] = this.joystickYController;
+
+    // Add gravity strength controller if it exists
+    if (this.joystickGravityStrengthController) {
+      targets["Gravity Strength"] = this.joystickGravityStrengthController;
+    }
+
+    // Add bias strength controller if it exists
+    if (this.joystickBiasStrengthController) {
+      targets["T-Bias Strength"] = this.joystickBiasStrengthController;
+    }
+
+    // Add bias friction controller if it exists
+    if (this.biasFrictionController) {
+      targets["T-Bias Friction"] = this.biasFrictionController;
+    }
+
+    return targets;
+  }
+
+  // Clean up resources when UI is destroyed
+  destroy() {
+    if (this.joystickRefreshInterval) {
+      clearInterval(this.joystickRefreshInterval);
+    }
+    super.destroy && super.destroy();
+  }
 }

@@ -106,6 +106,7 @@ export class UiManager {
         voronoiUi: this.voronoiUi,
         organicUi: this.organicUi,
         randomizerUi: this.randomizerUi,
+        inputsUi: this.inputsUi,
       };
 
       // Register UI components instead of controller targets

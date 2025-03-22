@@ -179,6 +179,9 @@ export class EmuRenderer {
     // Always update the UI regardless of EMU being enabled
     this.updateGravityUI();
     this.updateTurbulenceBiasUI();
+
+    // Update joystick sliders in InputsUi if available
+    this.updateJoystickSliders();
   }
 
   updateGravityUI() {
@@ -400,6 +403,9 @@ export class EmuRenderer {
     // Update UI to reflect changes
     this.updateGravityUI();
     this.updateTurbulenceBiasUI();
+
+    // Update joystick sliders in InputsUi if available
+    this.updateJoystickSliders();
   }
 
   draw() {
@@ -560,6 +566,9 @@ export class EmuRenderer {
     // Update the driven values (gravity and turbulence)
     this.updateGravityUI();
     this.updateTurbulenceBiasUI();
+
+    // Update joystick sliders in InputsUi if available
+    this.updateJoystickSliders();
   }
 
   // Set spring strength (0-1)
@@ -572,5 +581,36 @@ export class EmuRenderer {
   setSpringEnabled(enabled) {
     this.springEnabled = enabled;
     return this;
+  }
+
+  // New method to update joystick sliders in InputsUi
+  updateJoystickSliders() {
+    // Check if we have access to InputsUi directly
+    if (this.inputsUi) {
+      // Check if the joystick sliders exist
+      if (this.inputsUi.joystickXController && this.inputsUi.joystickYController) {
+        // Get the normalized values (-1 to 1 range)
+        const normX = this.joystickX / 10;
+        const normY = this.joystickY / 10;
+
+        // Update the controller objects if they have the correct interface
+        if (this.inputsUi.joystickXController.object &&
+          typeof this.inputsUi.joystickXController.updateDisplay === 'function') {
+          this.inputsUi.joystickXController.object.x = normX;
+          this.inputsUi.joystickXController.updateDisplay();
+        }
+
+        if (this.inputsUi.joystickYController.object &&
+          typeof this.inputsUi.joystickYController.updateDisplay === 'function') {
+          this.inputsUi.joystickYController.object.y = normY;
+          this.inputsUi.joystickYController.updateDisplay();
+        }
+      }
+
+      // Ensure joystick is marked as active if values are non-zero
+      if (Math.abs(this.joystickX) > 0.01 || Math.abs(this.joystickY) > 0.01) {
+        this.joystickActive = true;
+      }
+    }
   }
 }
