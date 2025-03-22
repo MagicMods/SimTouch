@@ -8,9 +8,9 @@ export class MicInputForces {
     this.baselineAmplitude = 0.05; // Silent threshold
 
     // Configuration
-    this.sensitivity = 1.0;
+    this.sensitivity = 5.0;
     this.smoothing = 0.8;
-    this.fftSize = 1024;
+    this.fftSize = 2048;
 
     // Create analyzer with our settings
     this.analyzer = new SoundAnalyzer({

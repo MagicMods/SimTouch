@@ -3,7 +3,7 @@ export class InputModulator {
     this.manager = manager;
     this.enabled = false; // Start disabled
     this.inputSource = "mic";
-    this.frequencyBand = "none";
+    this.frequencyBand = "None";
     this.sensitivity = 1.0;
     this.smoothing = 0.7; // Kept for backward compatibility
     this.attack = 0.3;    // Lower value = faster attack (less smoothing on rise)

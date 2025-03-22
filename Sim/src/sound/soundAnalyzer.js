@@ -32,14 +32,14 @@ export class SoundAnalyzer {
 
     // Frequency bands (common ranges in Hz)
     this.bands = {
-      sub: { min: 20, max: 60 }, // Sub bass
-      bass: { min: 60, max: 250 }, // Bass
-      lowMid: { min: 250, max: 500 }, // Low midrange
-      mid: { min: 500, max: 2000 }, // Midrange
-      highMid: { min: 2000, max: 4000 }, // High midrange
-      presence: { min: 4000, max: 6000 }, // Presence
-      brilliance: { min: 6000, max: 20000 }, // Brilliance
-      custom: { min: 500, max: 2000 }, // Custom band (default range)
+      Sub: { min: 20, max: 60 }, // Sub bass
+      Bass: { min: 60, max: 250 }, // Bass
+      LowMid: { min: 250, max: 500 }, // Low midrange
+      Mid: { min: 500, max: 2000 }, // Midrange
+      HighMid: { min: 2000, max: 4000 }, // High midrange
+      Presence: { min: 4000, max: 6000 }, // Presence
+      Brilliance: { min: 6000, max: 20000 }, // Brilliance
+      Custom: { min: 500, max: 2000 }, // Custom band (default range)
     };
 
     // Beat detection

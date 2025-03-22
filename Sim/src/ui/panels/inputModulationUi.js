@@ -165,15 +165,15 @@ export class InputModulationUi extends BaseUi {
     // Add frequency band selector as first control
     controllers.frequencyBand = folder
       .add(modulator, "frequencyBand", [
-        "none",
-        "sub",
-        "bass",
-        "lowMid",
-        "mid",
-        "highMid",
-        "presence",
-        "brilliance",
-        "custom"  // Add custom option
+        "None",
+        "Sub",
+        "Bass",
+        "LowMid",
+        "Mid",
+        "HighMid",
+        "Presence",
+        "Brilliance",
+        "Custom"  // Add custom option
       ])
       .name("Frequency Band")
       .onChange((value) => {
@@ -205,7 +205,7 @@ export class InputModulationUi extends BaseUi {
       .name("Freq Center (Hz)")
       .onChange((value) => {
         // Update visualizer if available
-        if (this.main.micForces.visualizer && modulator.frequencyBand === "custom") {
+        if (this.main.micForces.visualizer && modulator.frequencyBand === "Custom") {
           this.main.micForces.visualizer.setCustomBandMarker(
             value,
             modulator.customWidth,
@@ -220,7 +220,7 @@ export class InputModulationUi extends BaseUi {
       .name("Band Width (Hz)")
       .onChange((value) => {
         // Update visualizer if available
-        if (this.main.micForces.visualizer && modulator.frequencyBand === "custom") {
+        if (this.main.micForces.visualizer && modulator.frequencyBand === "Custom") {
           this.main.micForces.visualizer.setCustomBandMarker(
             modulator.customFreq,
             value,
@@ -424,7 +424,7 @@ export class InputModulationUi extends BaseUi {
               type: "input",
               inputSource: "mic",
               enabled: false,
-              frequencyBand: "none",
+              frequencyBand: "None",
               sensitivity: 0,
               smoothing: 0.7,  // Keep for backward compatibility
               attack: 0.3,     // Add attack property
@@ -473,7 +473,7 @@ export class InputModulationUi extends BaseUi {
             type: "input",
             inputSource: "mic",
             enabled: mod.enabled,
-            frequencyBand: mod.frequencyBand || "none",
+            frequencyBand: mod.frequencyBand || "None",
             sensitivity: mod.sensitivity || 1,
             smoothing: mod.smoothing || 0.7,
             min: mod.min || 0,
@@ -598,7 +598,7 @@ export class InputModulationUi extends BaseUi {
             // Get the appropriate frequency band value based on modulator's band setting
             let bandValue = 0;
 
-            if (modulator.frequencyBand === "custom") {
+            if (modulator.frequencyBand === "Custom") {
               // Calculate min/max from center frequency and width
               const centerFreq = modulator.customFreq || 1000;
               const width = modulator.customWidth || 100;
@@ -608,7 +608,7 @@ export class InputModulationUi extends BaseUi {
 
               // Get energy for custom frequency range
               bandValue = analyzer.getFrequencyRangeValue(minFreq, maxFreq) || 0;
-            } else if (modulator.frequencyBand && modulator.frequencyBand !== "none") {
+            } else if (modulator.frequencyBand && modulator.frequencyBand !== "None") {
               // Get band-specific audio level
               bandValue = bandLevels[modulator.frequencyBand] || 0;
 
@@ -857,7 +857,7 @@ export class InputModulationUi extends BaseUi {
 
         // Update label with proper percentage
         if (modulator.ui.label) {
-          let bandName = modulator.frequencyBand === "none" ? "All" : modulator.frequencyBand;
+          let bandName = modulator.frequencyBand === "None" ? "All" : modulator.frequencyBand;
 
           // For custom band, show the frequency range
           if (bandName === "custom") {
