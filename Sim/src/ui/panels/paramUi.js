@@ -54,6 +54,7 @@ export class ParamUi extends BaseUi {
         });
 
       this.fieldTypeController.domElement.classList.add("full-width");
+      // presetSelect.classList = "preset-select";
 
       // Store as class property
       this.boundaryModeController = this.gui

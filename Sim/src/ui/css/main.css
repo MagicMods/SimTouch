@@ -165,6 +165,18 @@ canvas {
     color: white;
 }
 
+/* Style lil-gui select elements to match preset-select style */
+.lil-gui select {
+    width: calc(100% - 8px); 
+    padding: 4px;
+    border: 1px solid #242424;
+    border-radius: 4px;
+    background: #3b3b3b;
+    text-align: center;
+    font-size: 10px;
+    color: white;
+}
+
 /* Common UI component styles */
 .preset-control-button {
     background: #3a3a3a;
@@ -191,6 +203,13 @@ canvas {
 .full-width .widget {
     width: 100% !important;
     display: block !important;
+}
+
+/* Enhance full-width to better handle dropdowns */
+.full-width select, 
+.full-width .lil-gui select {
+    width: 100% !important;
+    margin-right: 0 !important;
 }
 
 /* Notification message */
