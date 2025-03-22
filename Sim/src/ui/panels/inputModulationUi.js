@@ -242,6 +242,9 @@ export class InputModulationUi extends BaseUi {
         console.log(`Setting target to ${value}`);
         modulator.setTarget(value);
 
+        // Update the folder name to include the target name
+        folder.title(`Audio Modulator ${index + 1}  |  ${value}`);
+
         // Auto-range when appropriate
         const targetInfo = this.modulatorManager.getTargetInfo(value);
         if (

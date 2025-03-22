@@ -19,6 +19,19 @@ class PulseModulator {
   }
 
   /**
+   * Get a display name for this modulator that includes the target name
+   * @param {number} index - Index of this modulator (defaults to 1)
+   * @returns {string} Formatted display name
+   */
+  getDisplayName(index = 1) {
+    // Format: "Modulator 1 | TARGET'S NAME"
+    if (this.targetName) {
+      return `Modulator ${index} | "${this.targetName}"`;
+    }
+    return `Modulator ${index} | No Target`;
+  }
+
+  /**
    * Set the target to modulate
    * @param {string} targetName - Name of the target to modulate
    */

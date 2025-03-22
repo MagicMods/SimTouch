@@ -131,6 +131,9 @@ export class PulseModulationUi extends BaseUi {
           modulator.targetName = value;
         }
 
+        // Update the folder name to include the target name
+        folder.title(`Modulator ${index + 1}  |  ${value}`);
+
         // Update min/max controllers with the target's range
         const target = this.modulatorManager.getTargetInfo(value);
         if (target && target.min !== undefined && target.max !== undefined) {

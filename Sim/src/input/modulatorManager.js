@@ -248,6 +248,10 @@ export class ModulatorManager {
   getModulatorsState(type) {
     const modulators = type ? this.getModulatorsByType(type) : this.modulators;
 
+    // Count modulators of each type to generate correct indices
+    let pulseCount = 0;
+    let inputCount = 0;
+
     return modulators.map((mod) => {
       // Common properties
       const state = {
@@ -256,6 +260,23 @@ export class ModulatorManager {
         min: mod.min,
         max: mod.max,
       };
+
+      // Calculate the type-specific index (1-based)
+      let typeIndex = 1;
+      if (mod instanceof PulseModulator) {
+        typeIndex = ++pulseCount;
+      } else if (mod instanceof InputModulator) {
+        typeIndex = ++inputCount;
+      }
+
+      // Add display name if method exists
+      if (typeof mod.getDisplayName === "function") {
+        state.displayName = mod.getDisplayName(typeIndex);
+      } else {
+        // Fallback display name format
+        const typePrefix = mod instanceof PulseModulator ? "Modulator" : "Audio Modulator";
+        state.displayName = `${typePrefix} ${typeIndex} | "${mod.targetName || "No Target"}"`;
+      }
 
       // Type-specific properties
       if (mod instanceof PulseModulator) {
@@ -274,6 +295,48 @@ export class ModulatorManager {
       }
 
       return state;
+    });
+  }
+
+  /**
+   * Get display information for modulators including their target names
+   * @param {string} type - Optional type filter ("pulse" or "input")
+   * @returns {Array} Array of modulator display information objects
+   */
+  getModulatorsDisplayInfo(type) {
+    const modulators = type ? this.getModulatorsByType(type) : this.modulators;
+
+    // Count modulators of each type to generate correct indices
+    let pulseCount = 0;
+    let inputCount = 0;
+
+    return modulators.map((mod, index) => {
+      // Calculate the type-specific index (1-based)
+      let typeIndex = 1;
+      if (mod instanceof PulseModulator) {
+        typeIndex = ++pulseCount;
+      } else if (mod instanceof InputModulator) {
+        typeIndex = ++inputCount;
+      }
+
+      // Get display name from modulator or generate a default one
+      let displayName;
+      if (typeof mod.getDisplayName === "function") {
+        displayName = mod.getDisplayName(typeIndex);
+      } else {
+        // Fallback if getDisplayName is not implemented
+        const typeLabel = mod instanceof PulseModulator ? "Modulator" : "Audio Modulator";
+        const targetInfo = mod.targetName ? ` | "${mod.targetName}"` : " | No Target";
+        displayName = `${typeLabel} ${typeIndex}${targetInfo}`;
+      }
+
+      return {
+        index,
+        type: mod instanceof PulseModulator ? "pulse" : "input",
+        displayName,
+        enabled: !!mod.enabled,
+        targetName: mod.targetName || null
+      };
     });
   }
 

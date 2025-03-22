@@ -21,6 +21,14 @@ export class InputModulator {
     this.customWidth = 100;  // Width of band (Hz)
   }
 
+  getDisplayName(index = 1) {
+    // Format: "Audio Modulator 1 | TARGET'S NAME"
+    if (this.targetName) {
+      return `Audio Modulator ${index} | "${this.targetName}"`;
+    }
+    return `Audio Modulator ${index} | No Target`;
+  }
+
   setTarget(targetName) {
     const target = this.manager.targets[targetName];
     if (!target) {
