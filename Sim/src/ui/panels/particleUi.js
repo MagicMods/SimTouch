@@ -20,7 +20,7 @@ export class ParticleUi extends BaseUi {
 
     // Store controllers as class properties with clear naming
     this.particleCountController = this.gui
-      .add(particles, "numParticles", 1, 1000, 1)
+      .add(particles, "numParticles", 0, 1000, 1)
       .name("P-Count")
       .onFinishChange((value) => {
         particles.reinitializeParticles(value);

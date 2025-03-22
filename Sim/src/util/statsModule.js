@@ -102,9 +102,9 @@ Stats.Panel = function (name, fg, bg) {
     TEXT_X = 3 * PR,
     TEXT_Y = 2 * PR,
     GRAPH_X = 3 * PR,
-    GRAPH_Y = 12 * PR,
+    GRAPH_Y = 15 * PR,
     GRAPH_WIDTH = 74 * PR,
-    GRAPH_HEIGHT = 10 * PR;
+    GRAPH_HEIGHT = 30 * PR;
 
   var canvas = document.createElement("canvas");
   canvas.width = WIDTH;
