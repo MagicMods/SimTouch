@@ -1,9 +1,9 @@
 class MouseForces {
   constructor({
-    impulseRadius = 0.75,
-    impulseMag = 0.08,
-    overrideRadius = 0.15, // Inner zone where mouse completely overrides other forces
-    overrideStrength = 2.0, // How strongly to override other forces
+    impulseRadius = 1,
+    impulseMag = 0.111,
+    overrideRadius = 0.2, // Inner zone where mouse completely overrides other forces
+    overrideStrength = 3.0, // How strongly to override other forces
   } = {}) {
     // Force parameters
     this.impulseRadius = impulseRadius;
