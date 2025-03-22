@@ -114,6 +114,12 @@ class MouseForces {
     // Store reference to particle system
     this.particleSystem = particleSystem;
 
+    // Add mouse wheel event listener
+    canvas.addEventListener("wheel", (e) => {
+      e.preventDefault(); // Prevent page scrolling
+      this.handleMouseWheel(e);
+    }, { passive: false });
+
     canvas.addEventListener("mousedown", (e) => {
       const pos = this.getMouseSimulationCoords(e, canvas);
       this.mouseState.position = pos;
@@ -635,6 +641,39 @@ class MouseForces {
     ) {
       particleSystem.voronoi.strength = this._originalVoronoiStrength;
       this._originalVoronoiStrength = undefined;
+    }
+  }
+
+  handleMouseWheel(e) {
+    // Determine direction - normalize for cross-browser compatibility
+    const delta = Math.sign(e.deltaY) * -1; // -1 for scroll down, 1 for scroll up
+
+    // Find turbulence field
+    let turbulenceField = this.main?.turbulenceField;
+    if (!turbulenceField && this.particleSystem?.main?.turbulenceField) {
+      turbulenceField = this.particleSystem.main.turbulenceField;
+    }
+
+    if (!turbulenceField) return;
+
+    // Get current scale value
+    let currentScale = turbulenceField.scale || 1.0;
+
+    // Adjust scale - use smaller delta for finer control
+    // The 0.05 factor can be adjusted for sensitivity
+    const newScale = Math.max(0.1, Math.min(10, currentScale + delta * 0.2));
+
+    // Update turbulence scale
+    if (typeof turbulenceField.setScale === 'function') {
+      turbulenceField.setScale(newScale);
+    } else {
+      // Direct property assignment fallback
+      turbulenceField.scale = newScale;
+    }
+
+    // Update UI if available
+    if (this.main?.turbulenceUi && typeof this.main.turbulenceUi.updateScaleControllers === 'function') {
+      this.main.turbulenceUi.updateScaleControllers();
     }
   }
 }
