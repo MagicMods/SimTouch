@@ -39,11 +39,12 @@ export class UiManager {
     this.collisionUi = new CollisionUi(main, this.leftContainer);
     this.boundaryUi = new BoundaryUi(main, this.leftContainer);
     this.inputsUi = new InputsUi(main, this.leftContainer);
+    this.networkUi = new NetworkUi(main, this.leftContainer);
     this.debugUi = new DebugUi(main, this.leftContainer);
 
     // Right UI
     this.pulseModUi = new PulseModulationUi(main, this.pulseModContainer);
-    this.networkUi = new NetworkUi(main, this.leftContainer);
+
     this.inputModUi = new InputModulationUi(main, this.inputModContainer);
     this.presetUi = new PresetUi(main, this.presetContainer);
 
@@ -64,6 +65,9 @@ export class UiManager {
     this.stats = new Stats();
     this.initStats();
     this.allTargets = {};
+
+
+
 
     this.initializePresetManager();
   }

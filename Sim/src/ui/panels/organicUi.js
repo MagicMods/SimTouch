@@ -6,7 +6,7 @@ export class OrganicUi extends BaseUi {
     super(main, container);
     this.gui.title("Organic Behavior");
     this.initOrganicControls();
-    this.gui.open();
+    this.gui.open(false);
   }
 
   initWithPresetManager(presetManager) {

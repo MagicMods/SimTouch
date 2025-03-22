@@ -8,7 +8,7 @@ export class VoronoiUi extends BaseUi {
     this.presetControls = null;
     this.gui.title("Voronoi Field");
     this.initVoronoiControls();
-    this.gui.open();
+    this.gui.open(false);
   }
 
   initWithPresetManager(presetManager) {
