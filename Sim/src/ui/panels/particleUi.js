@@ -20,14 +20,14 @@ export class ParticleUi extends BaseUi {
 
     // Store controllers as class properties with clear naming
     this.particleCountController = this.gui
-      .add(particles, "numParticles", 1, 2000, 10)
+      .add(particles, "numParticles", 1, 1000, 1)
       .name("P-Count")
       .onFinishChange((value) => {
         particles.reinitializeParticles(value);
       });
 
     this.particleSizeController = this.gui
-      .add(particles, "particleRadius", 0.005, 0.03, 0.001)
+      .add(particles, "particleRadius", 0.005, 0.05, 0.001)
       .name("P-Size")
       .onChange((value) => {
         particles.collisionSystem.particleRadius = value * 2;

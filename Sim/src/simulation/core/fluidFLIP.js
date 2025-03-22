@@ -7,6 +7,7 @@ class FluidFLIP {
     overRelaxation = 1.5,
     boundary = null,
     restDensity = 1.0,
+    particleSystem = null,
     // Remove gasConstant parameter
     ...params
   } = {}) {
@@ -18,6 +19,7 @@ class FluidFLIP {
     this.overRelaxation = overRelaxation;
     this.boundary = boundary;
     this.restDensity = restDensity;
+    this.particleSystem = particleSystem;
     // Remove gasConstant property
 
     // Initialize simulation arrays
@@ -124,6 +126,9 @@ class FluidFLIP {
     // Get dragged particle if any
     const draggedIndex = this.particleSystem?.draggedParticleIndex ?? -1;
 
+    // Get maximum velocity from particle system or use default
+    const maxVelocity = this.particleSystem?.maxVelocity ?? 0.05;
+
     for (let i = 0; i < particles.length / 2; i++) {
       // Skip dragged particles
       if (i === draggedIndex) continue;
@@ -170,13 +175,14 @@ class FluidFLIP {
       }
 
       // Velocity clamping to prevent instability
-      const maxVelocity = 0.05;
       velocitiesX[i] = Math.max(-maxVelocity, Math.min(maxVelocity, velocitiesX[i]));
       velocitiesY[i] = Math.max(-maxVelocity, Math.min(maxVelocity, velocitiesY[i]));
     }
 
-    // Apply rest density effect separately - keep this functionality
-    this.applyRestDensityEffect(particles, velocitiesX, velocitiesY);
+    // Apply rest density effect only if rest density is significant
+    if (this.restDensity > 0.01) {
+      this.applyRestDensityEffect(particles, velocitiesX, velocitiesY);
+    }
   }
 
   applyRestDensityEffect(particles, velocitiesX, velocitiesY) {
@@ -490,7 +496,7 @@ class FluidFLIP {
       fx * fy * v11;
 
     // Velocity magnitude clamping to prevent explosions
-    const maxVelocity = 1.0;
+    const maxVelocity = this.particleSystem?.maxVelocity ?? 1.0;
     const vMag = Math.sqrt(vx * vx + vy * vy);
 
     if (vMag > maxVelocity) {

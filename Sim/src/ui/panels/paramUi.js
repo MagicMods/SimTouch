@@ -107,6 +107,12 @@ export class ParamUi extends BaseUi {
       // .onFinishChange((value) => {
       //   console.log(`Velocity damping set to ${value}`);
       // });
+
+      // Add max velocity controller
+      this.maxVelocityController = this.gui
+        .add(particles, "maxVelocity", 0.01, 1, 0.01)
+        .name("MaxVelocity");
+
       this.ratioPicFlip = this.gui
         .add(particles, "picFlipRatio", 0, 1, 0.01)
         .name("PicFlipRatio")
@@ -125,6 +131,7 @@ export class ParamUi extends BaseUi {
     if (this.timeStepController) targets["Time Step"] = this.timeStepController;
     if (this.timeScaleController) targets["SimSpeed"] = this.timeScaleController;
     if (this.velocityDampingController) targets["VeloDamp"] = this.velocityDampingController;
+    if (this.maxVelocityController) targets["MaxVelocity"] = this.maxVelocityController;
     return targets;
   }
 

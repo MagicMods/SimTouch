@@ -32,6 +32,7 @@ class ParticleSystem {
     this.boundaryDamping = 0.95;
     this.velocityThreshold = 0.001;
     this.positionThreshold = 0.0001;
+    this.maxVelocity = 1; // Maximum particle velocity cap
 
     // Add rest state properties for fluid simulation
     this.restDensity = 1.0;
@@ -80,7 +81,8 @@ class ParticleSystem {
       dt: timeStep,
       boundary: this.boundary,
       restDensity: this.restDensity,
-      gasConstant: this.gasConstant
+      gasConstant: this.gasConstant,
+      particleSystem: this
     });
 
     // Initialize mouse forces
@@ -299,6 +301,13 @@ class ParticleSystem {
       //   this.velocitiesY[i] = 0;
       //   console.log("Recovered escaped particle");
       // }
+    }
+
+    // Apply velocity clamping to ensure max velocity is respected
+    // regardless of whether FLIP simulation is used
+    for (let i = 0; i < this.numParticles; i++) {
+      this.velocitiesX[i] = Math.max(-this.maxVelocity, Math.min(this.maxVelocity, this.velocitiesX[i]));
+      this.velocitiesY[i] = Math.max(-this.maxVelocity, Math.min(this.maxVelocity, this.velocitiesY[i]));
     }
 
     // Use collision system ONCE - not twice
