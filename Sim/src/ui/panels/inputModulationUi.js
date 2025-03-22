@@ -281,6 +281,7 @@ export class InputModulationUi extends BaseUi {
       });
 
     controllers.targetName.domElement.classList.add("full-width");
+    controllers.targetName.domElement.style.paddingBottom = "5px";
 
     // Add sensitivity slider (0-1 range) - this acts as the enable control
     controllers.sensitivity = folder
@@ -331,6 +332,8 @@ export class InputModulationUi extends BaseUi {
       .add(modulator, "max", 0, 1, 0.01)
       .name("Max Value");
 
+    controllers.min.domElement.style.paddingTop = "5px";
+    controllers.max.domElement.style.paddingBottom = "5px";
     // Replace the remove button implementation with this corrected version
     controllers.remove = folder
       .add(
