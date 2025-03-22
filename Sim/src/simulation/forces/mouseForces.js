@@ -34,6 +34,19 @@ class MouseForces {
     };
     this.externalSensitivity = 0.001; // Adjust based on your input scale
     // this.setupMouseDebug();
+
+    // Add reference for the main object to detect render mode
+    this.particleSystem = null;
+    this.main = null; // Direct reference to main instance
+    this.joystickActive = false;
+    this.joystickX = 0;
+    this.joystickY = 0;
+  }
+
+  // Set main instance reference
+  setMainReference(main) {
+    this.main = main;
+    return this;
   }
 
   // Enable external input handling
@@ -98,12 +111,21 @@ class MouseForces {
   setupMouseInteraction(canvas, particleSystem) {
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
+    // Store reference to particle system
+    this.particleSystem = particleSystem;
+
     canvas.addEventListener("mousedown", (e) => {
       const pos = this.getMouseSimulationCoords(e, canvas);
       this.mouseState.position = pos;
       this.mouseState.lastPosition = pos;
       this.mouseState.isPressed = true;
       this.mouseState.buttons.add(e.button);
+
+      // Check if we're in Noise mode and directly activate the joystick
+      if (this.isInNoiseMode()) {
+        this.joystickActive = true;
+        this.handleJoystick(pos);
+      }
     });
 
     canvas.addEventListener("mousemove", (e) => {
@@ -113,16 +135,22 @@ class MouseForces {
       const dx = pos.x - this.mouseState.lastPosition.x;
       const dy = pos.y - this.mouseState.lastPosition.y;
 
-      // Handle different mouse buttons
-      if (this.mouseState.buttons.has(1)) {
-        // Middle mouse button
-        this.applyDragForce(particleSystem, pos.x, pos.y, dx * 2, dy * 2);
-      } else if (this.mouseState.buttons.has(0)) {
-        // Left mouse button
-        this.applyImpulseAt(particleSystem, pos.x, pos.y, "attract");
-      } else if (this.mouseState.buttons.has(2)) {
-        // Right mouse button
-        this.applyImpulseAt(particleSystem, pos.x, pos.y, "repulse");
+      // Check if we're in Noise mode
+      if (this.isInNoiseMode()) {
+        // Handle as joystick for noise mode
+        this.handleJoystick(pos);
+      } else {
+        // Handle normal particle interaction based on mouse button
+        if (this.mouseState.buttons.has(1)) {
+          // Middle mouse button
+          this.applyDragForce(particleSystem, pos.x, pos.y, dx * 2, dy * 2);
+        } else if (this.mouseState.buttons.has(0)) {
+          // Left mouse button
+          this.applyImpulseAt(particleSystem, pos.x, pos.y, "attract");
+        } else if (this.mouseState.buttons.has(2)) {
+          // Right mouse button
+          this.applyImpulseAt(particleSystem, pos.x, pos.y, "repulse");
+        }
       }
 
       this.mouseState.lastPosition = this.mouseState.position;
@@ -132,6 +160,32 @@ class MouseForces {
     canvas.addEventListener("mouseup", (e) => {
       this.mouseState.buttons.delete(e.button);
       if (this.mouseState.buttons.size === 0) {
+        this.mouseState.isPressed = false;
+
+        // If in noise mode, keep joystick active but let spring return work
+        if (this.isInNoiseMode()) {
+          // Keep joystick data but mark as not pressed
+          this.mouseState.position = null;
+          this.mouseState.lastPosition = null;
+        } else {
+          // Reset everything for non-noise modes
+          this.mouseState = {
+            position: null,
+            lastPosition: null,
+            isPressed: false,
+            buttons: new Set(),
+          };
+        }
+      }
+    });
+
+    canvas.addEventListener("mouseleave", () => {
+      // Similar logic to mouseup
+      if (this.isInNoiseMode()) {
+        this.mouseState.isPressed = false;
+        this.mouseState.position = null;
+        this.mouseState.lastPosition = null;
+      } else {
         this.mouseState = {
           position: null,
           lastPosition: null,
@@ -141,13 +195,60 @@ class MouseForces {
       }
     });
 
-    canvas.addEventListener("mouseleave", () => {
-      this.mouseState = {
-        position: null,
-        lastPosition: null,
-        isPressed: false,
-        buttons: new Set(),
-      };
+    // Add touch events to support mobile
+    canvas.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      const touch = e.touches[0];
+
+      // Create a synthetic mouse event
+      const pos = this.getTouchSimulationCoords(touch, canvas);
+      this.mouseState.position = pos;
+      this.mouseState.lastPosition = pos;
+      this.mouseState.isPressed = true;
+      this.mouseState.buttons.add(0); // Simulate left button
+
+      // Directly activate joystick in Noise mode
+      if (this.isInNoiseMode()) {
+        this.joystickActive = true;
+        this.handleJoystick(pos);
+      }
+    });
+
+    canvas.addEventListener("touchmove", (e) => {
+      e.preventDefault();
+      if (!this.mouseState.isPressed) return;
+
+      const touch = e.touches[0];
+      const pos = this.getTouchSimulationCoords(touch, canvas);
+
+      if (this.isInNoiseMode()) {
+        this.handleJoystick(pos);
+      } else {
+        // Handle as left button interaction
+        this.applyImpulseAt(particleSystem, pos.x, pos.y, "attract");
+      }
+
+      this.mouseState.lastPosition = this.mouseState.position;
+      this.mouseState.position = pos;
+    });
+
+    canvas.addEventListener("touchend", () => {
+      // Similar to mouseup
+      this.mouseState.buttons.delete(0);
+      this.mouseState.isPressed = false;
+
+      if (this.isInNoiseMode()) {
+        // Keep joystick active but let spring return work
+        this.mouseState.position = null;
+        this.mouseState.lastPosition = null;
+      } else {
+        this.mouseState = {
+          position: null,
+          lastPosition: null,
+          isPressed: false,
+          buttons: new Set(),
+        };
+      }
     });
   }
 
@@ -159,24 +260,134 @@ class MouseForces {
     };
   }
 
+  getTouchSimulationCoords(touch, canvas) {
+    const rect = canvas.getBoundingClientRect();
+    return {
+      x: (touch.clientX - rect.left) / rect.width,
+      y: 1 - (touch.clientY - rect.top) / rect.height,
+    };
+  }
+
+  isInNoiseMode() {
+    // First try with direct main reference
+    if (this.main &&
+      this.main.gridRenderer &&
+      this.main.gridRenderer.renderModes) {
+      const currentMode = this.main.gridRenderer.renderModes.currentMode;
+      return currentMode === "--RawNoise--";
+    }
+
+    // Fallback to looking through particleSystem
+    if (this.particleSystem &&
+      this.particleSystem.main &&
+      this.particleSystem.main.gridRenderer &&
+      this.particleSystem.main.gridRenderer.renderModes) {
+      const currentMode = this.particleSystem.main.gridRenderer.renderModes.currentMode;
+      return currentMode === "--RawNoise--";
+    }
+
+    return false;
+  }
+
+  handleJoystick(pos) {
+    // For joystick, we'll map the whole canvas as if the center is 0.5, 0.5
+    const centerX = 0.5;
+    const centerY = 0.5;
+    const maxRadius = 0.4; // Maximum distance from center (normalized)
+
+    // Calculate offset from center
+    const dx = pos.x - centerX;
+    const dy = pos.y - centerY;
+
+    // Calculate distance from center
+    const dist = Math.hypot(dx, dy);
+
+    // Calculate normalized x,y values (from -1 to 1)
+    let normX, normY;
+    if (dist > maxRadius) {
+      // If beyond max radius, normalize to max radius
+      normX = (dx / dist) * 1.0;
+      normY = (dy / dist) * 1.0; // Don't invert Y here - we'll do it later
+    } else {
+      // Within radius, scale proportionally to -1...1 range
+      normX = dx / maxRadius;
+      normY = dy / maxRadius;
+    }
+
+    // Store these values for our internal state
+    this.joystickX = normX;
+    this.joystickY = normY; // Use direct normY (don't invert)
+    this.joystickActive = true;
+
+    // If emuRenderer exists, update it directly
+    if (this.main?.emuRenderer) {
+      // EmuRenderer expects values in -10 to 10 range, so scale up
+      this.main.emuRenderer.joystickX = normX * 10;
+      this.main.emuRenderer.joystickY = normY * 10; // Use direct normY (don't invert)
+      this.main.emuRenderer.joystickActive = true;
+
+      // Let emuRenderer update the UI and physics
+      this.main.emuRenderer.updateTurbulenceBiasUI();
+
+      return; // Let emuRenderer handle updates
+    }
+
+    // Fallback to direct turbulence field update if no emuRenderer
+    this.updateTurbulenceField(this.joystickX, this.joystickY);
+  }
+
+  updateTurbulenceField(x, y) {
+    // First try with direct main reference
+    if (this.main && this.main.turbulenceField) {
+      const turbulenceField = this.main.turbulenceField;
+      if (typeof turbulenceField.setBiasSpeed === 'function' && turbulenceField.biasStrength > 0) {
+        turbulenceField.setBiasSpeed(x, y);
+        return true;
+      }
+    }
+
+    // Fallback to looking through particleSystem
+    if (this.particleSystem && this.particleSystem.main && this.particleSystem.main.turbulenceField) {
+      const turbulenceField = this.particleSystem.main.turbulenceField;
+      if (typeof turbulenceField.setBiasSpeed === 'function' && turbulenceField.biasStrength > 0) {
+        turbulenceField.setBiasSpeed(x, y);
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   update(particleSystem) {
     // Reset activity flag at the start of each frame
     this.isActive = false;
+
+    // Check if we're in Noise mode
+    const inNoiseMode = this.isInNoiseMode();
 
     // Process regular mouse input when button is held down
     if (this.mouseState.isPressed && this.mouseState.position) {
       this.isActive = true;
       const pos = this.mouseState.position;
 
-      // Apply appropriate force based on button
-      if (this.mouseState.buttons.has(1)) {
-        // Middle mouse button - need movement for drag, handled in mousemove
-      } else if (this.mouseState.buttons.has(0)) {
-        // Left mouse button - continuous attraction
-        this.applyImpulseAt(particleSystem, pos.x, pos.y, "attract");
-      } else if (this.mouseState.buttons.has(2)) {
-        // Right mouse button - continuous repulsion
-        this.applyImpulseAt(particleSystem, pos.x, pos.y, "repulse");
+      if (inNoiseMode) {
+        // For Noise mode, keep updating joystick if active
+        if (this.joystickActive) {
+          this.handleJoystick(pos);
+        } else {
+          this.handleJoystick(pos); // Start joystick if not active
+        }
+      } else {
+        // Apply appropriate force based on button for normal modes
+        if (this.mouseState.buttons.has(1)) {
+          // Middle mouse button - need movement for drag, handled in mousemove
+        } else if (this.mouseState.buttons.has(0)) {
+          // Left mouse button - continuous attraction
+          this.applyImpulseAt(particleSystem, pos.x, pos.y, "attract");
+        } else if (this.mouseState.buttons.has(2)) {
+          // Right mouse button - continuous repulsion
+          this.applyImpulseAt(particleSystem, pos.x, pos.y, "repulse");
+        }
       }
     }
 
@@ -185,23 +396,96 @@ class MouseForces {
       this.isActive = true;
       const pos = this.externalMouseState.position;
 
-      // Apply appropriate force based on button - CONTINUOUSLY
-      switch (this.externalMouseState.button) {
-        case 0: // Left button
-          this.applyImpulseAt(particleSystem, pos.x, pos.y, "attract");
-          break;
-        case 1: // Middle button
-          // Middle button still needs movement for drag effect
-          const dx = pos.x - this.externalMouseState.lastPosition.x;
-          const dy = pos.y - this.externalMouseState.lastPosition.y;
-          if (Math.hypot(dx, dy) > 0.001) {
-            // Only if there's movement
-            this.applyDragForce(particleSystem, pos.x, pos.y, dx * 2, dy * 2);
-          }
-          break;
-        case 2: // Right button
-          this.applyImpulseAt(particleSystem, pos.x, pos.y, "repulse");
-          break;
+      if (inNoiseMode) {
+        // Handle external input as joystick in Noise mode
+        this.handleJoystick(pos);
+      } else {
+        // Apply appropriate force based on button - CONTINUOUSLY
+        switch (this.externalMouseState.button) {
+          case 0: // Left button
+            this.applyImpulseAt(particleSystem, pos.x, pos.y, "attract");
+            break;
+          case 1: // Middle button
+            // Middle button still needs movement for drag effect
+            const dx = pos.x - this.externalMouseState.lastPosition.x;
+            const dy = pos.y - this.externalMouseState.lastPosition.y;
+            if (Math.hypot(dx, dy) > 0.001) {
+              // Only if there's movement
+              this.applyDragForce(particleSystem, pos.x, pos.y, dx * 2, dy * 2);
+            }
+            break;
+          case 2: // Right button
+            this.applyImpulseAt(particleSystem, pos.x, pos.y, "repulse");
+            break;
+        }
+      }
+    }
+
+    // Apply spring return effect for joystick if active but not being held
+    if (inNoiseMode && this.joystickActive && !this.mouseState.isPressed && !this.externalMouseState.isPressed) {
+      // If emuRenderer exists, let it handle the spring return
+      if (this.main?.emuRenderer && this.main.emuRenderer.visible) {
+        // Don't apply our own spring - let emuRenderer handle it
+      } else {
+        this.applyJoystickSpring();
+      }
+    }
+  }
+
+  applyJoystickSpring() {
+    // Calculate distance from center
+    const distX = 0 - this.joystickX;
+    const distY = 0 - this.joystickY;
+
+    // Spring strength (0-1)
+    const springStrength = 0.1;
+
+    // Apply spring force
+    this.joystickX += distX * springStrength;
+    this.joystickY += distY * springStrength;
+
+    // If close to center, snap to center
+    if (Math.abs(this.joystickX) < 0.02 && Math.abs(this.joystickY) < 0.02) {
+      this.joystickX = 0;
+      this.joystickY = 0;
+
+      // If emuRenderer is available, update it too
+      if (this.main?.emuRenderer) {
+        this.main.emuRenderer.joystickX = 0;
+        this.main.emuRenderer.joystickY = 0;
+        this.main.emuRenderer.joystickActive = false;
+      }
+
+      // Reset turbulence bias when joystick returns to center
+      let turbulenceField = null;
+
+      // First try direct main reference
+      if (this.main?.turbulenceField) {
+        turbulenceField = this.main.turbulenceField;
+      }
+      // Fallback to particle system
+      else if (this.particleSystem?.main?.turbulenceField) {
+        turbulenceField = this.particleSystem.main.turbulenceField;
+      }
+
+      if (turbulenceField) {
+        if (typeof turbulenceField.resetBias === 'function') {
+          turbulenceField.resetBias();
+        } else if (typeof turbulenceField.setBiasSpeed === 'function') {
+          turbulenceField.setBiasSpeed(0, 0);
+        }
+
+        this.joystickActive = false;
+      }
+    } else {
+      // Update emuRenderer if available
+      if (this.main?.emuRenderer) {
+        this.main.emuRenderer.joystickX = this.joystickX * 10; // Scale to expected range
+        this.main.emuRenderer.joystickY = this.joystickY * 10; // Don't invert Y anymore
+        this.main.emuRenderer.updateTurbulenceBiasUI(); // Let it update the UI and turbulence field
+      } else {
+        // Update turbulence field with new values
+        this.updateTurbulenceField(this.joystickX, this.joystickY);
       }
     }
   }

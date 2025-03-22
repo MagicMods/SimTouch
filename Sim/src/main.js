@@ -43,6 +43,7 @@ class Main {
     this.debugRenderer = new DebugRenderer(this.gl, this.shaderManager);
     this.frame = 0;
     this.mouseForces = new MouseForces();
+    this.mouseForces.setMainReference(this); // Set direct reference to main
     this.mouseForces.setupMouseInteraction(this.canvas, this.particleSystem);
     this.micForces = new MicInputForces();
 
