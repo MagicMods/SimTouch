@@ -250,20 +250,31 @@ class PulseModulator {
 
       // Special handling for selector/dropdown type targets
       if (this.isSelector && this.selectorOptions.length > 0) {
-        // Map 0-1 value to option index
+        // Map 0-1 value to option index based on min and max values
         const normalizedValue = value; // Already 0-1
         const numOptions = this.selectorOptions.length;
 
-        // Calculate which option to select (0 to numOptions-1)
-        const optionIndex = Math.floor(normalizedValue * numOptions);
-        const safeIndex = Math.min(numOptions - 1, Math.max(0, optionIndex));
+        // Use min and max to define the range of indices to choose from
+        const minIndex = Math.max(0, Math.min(numOptions - 1, Math.floor(this.min)));
+        const maxIndex = Math.max(0, Math.min(numOptions - 1, Math.floor(this.max)));
 
-        // Get the option value and apply it
-        const optionValue = this.selectorOptions[safeIndex];
-        this.targetController.setValue(optionValue);
+        // If min and max are the same, just use that index
+        if (minIndex === maxIndex) {
+          const optionValue = this.selectorOptions[minIndex];
+          this.targetController.setValue(optionValue);
+        } else {
+          // Calculate which option to select within the min-max range
+          const indexRange = maxIndex - minIndex;
+          const optionIndex = minIndex + Math.floor(normalizedValue * (indexRange + 1));
+          const safeIndex = Math.min(maxIndex, Math.max(minIndex, optionIndex));
 
-        // For debugging
-        // console.log(`Modulating ${this.targetName}: value=${normalizedValue.toFixed(2)}, index=${safeIndex}, setting=${optionValue}`);
+          // Get the option value and apply it
+          const optionValue = this.selectorOptions[safeIndex];
+          this.targetController.setValue(optionValue);
+
+          // For debugging
+          // console.log(`Modulating ${this.targetName}: value=${normalizedValue.toFixed(2)}, range=${minIndex}-${maxIndex}, index=${safeIndex}, setting=${optionValue}`);
+        }
       }
       // Standard handling for numeric targets
       else {
