@@ -14,7 +14,8 @@ export class RandomizerUi extends BaseUi {
       "Boundary Size",
       "Particle Opacity",
       "Color",
-      "T-PatternStyle"
+      "T-PatternStyle",
+      "Mode",
     ];
 
     this.controllers = {};
@@ -181,9 +182,10 @@ export class RandomizerUi extends BaseUi {
     const categorizedTargets = {};
 
     const getComponentName = (targetName) => {
-      if (/^(Density|FadInSpd|FadOutSpd|Time Step|SimSpeed|VeloDamp|MaxVelocity)$/i.test(targetName)) return "Simulation";
+      if (/^(Density|FadInSpd|FadOutSpd|Time Step|SimSpeed|VeloDamp|MaxVelocity|PicFlipRatio|Boundary)$/i.test(targetName)) return "Simulation";
       if (/^P-(Count|Size|Opacity|Color)$/i.test(targetName)) return "Particles";
       if (/^G-(X|Y)$/i.test(targetName)) return "Gravity";
+      if (/^J-(X|Y|G-Strength|T-BiasStrength|SpringStrength)$/i.test(targetName)) return "Joystick";
       if (/^C-(Repulse|Bounce|Damping|RestState)$/i.test(targetName)) return "Collision";
       if (/^B-(Repulse|Friction|Size|Bounce)$/i.test(targetName)) return "Boundary";
       if (/^T-(AfPosition|AfScaleF|AfScale|Strength|Scale|Speed|Octaves|Persist|Rot|RotSpd|Pull|PullMMode|Pull Mode|Decay|ScaleS|MinScale|MaxScale|X|Y|DomWarp|DomWarpSp|PatternStyle|Freq|PhaseSp|Phase|Sym|Blur|BiasX|BiasY|DirX|DirY|OffsetX|OffsetY|Bias Friction)$/i.test(targetName)) return "Turbulence";
@@ -236,6 +238,24 @@ export class RandomizerUi extends BaseUi {
 
       const controller = target.controller;
 
+      // Special case for Boundary parameter
+      if (targetName === "Boundary") {
+        if (Math.random() < this.intensity) {
+          try {
+            // Get the current value
+            const currentValue = controller.getValue();
+            // Toggle between "BOUNCE" and "WARP"
+            const newValue = currentValue === "BOUNCE" ? "WARP" : "BOUNCE";
+            controller.setValue(newValue);
+            console.log(`Randomized Boundary: ${currentValue} -> ${newValue}`);
+            totalChanged++;
+          } catch (err) {
+            console.warn("Error randomizing Boundary:", err);
+          }
+        }
+        continue;
+      }
+
       // Special handling for slider-type controllers
       if (this._isSlider(controller)) {
         // Skip if it's a pattern style or other special case
@@ -257,6 +277,15 @@ export class RandomizerUi extends BaseUi {
           const currentValue = controller.getValue();
           controller.setValue(!currentValue);
           totalChanged++;
+        }
+      }
+      // For dropdown/select controllers
+      else if (this._isDropdown(controller)) {
+        if (Math.random() < this.intensity) { // Use intensity as probability
+          const success = this._randomizeDropdownController(controller);
+          if (success) {
+            totalChanged++;
+          }
         }
       }
       // Skip other controller types
@@ -285,6 +314,50 @@ export class RandomizerUi extends BaseUi {
 
     const value = controller.getValue();
     return typeof value === "boolean";
+  }
+
+  _isDropdown(controller) {
+    if (!controller || typeof controller.getValue !== "function") {
+      return false;
+    }
+
+    // Check if controller has options property or is a select type
+    return controller.options !== undefined ||
+      (typeof controller.getValue() === "string" &&
+        controller.__select !== undefined);
+  }
+
+  _randomizeDropdownController(controller) {
+    try {
+      // Get available options either from controller.options or __select options
+      let options;
+      if (controller.options) {
+        options = Object.values(controller.options);
+      } else if (controller.__select) {
+        options = Array.from(controller.__select.options).map(opt => opt.value);
+      } else {
+        return false;
+      }
+
+      if (options.length < 2) return false; // Need at least 2 options to randomize
+
+      // Pick a random option
+      const randomIndex = Math.floor(Math.random() * options.length);
+      const newValue = options[randomIndex];
+
+      // Set the new value
+      controller.setValue(newValue);
+
+      // Update display
+      if (typeof controller.updateDisplay === "function") {
+        controller.updateDisplay();
+      }
+
+      return true;
+    } catch (err) {
+      console.warn(`Error randomizing dropdown: ${err}`);
+      return false;
+    }
   }
 
   _randomizeController(controller, target) {

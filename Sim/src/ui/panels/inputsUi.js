@@ -47,7 +47,7 @@ export class InputsUi extends BaseUi {
     if (this.joystickXController) {
       modulation.registerTarget({
         id: "joystick_x",
-        name: "Joystick X Position",
+        name: "J-X Position",
         category: "Joystick",
         min: -1,
         max: 1,
@@ -76,7 +76,7 @@ export class InputsUi extends BaseUi {
     if (this.joystickYController) {
       modulation.registerTarget({
         id: "joystick_y",
-        name: "Joystick Y Position",
+        name: "J-Y Position",
         category: "Joystick",
         min: -1,
         max: 1,
@@ -105,7 +105,7 @@ export class InputsUi extends BaseUi {
     if (this.joystickGravityStrengthController) {
       modulation.registerTarget({
         id: "joystick_gravity_strength",
-        name: "Joystick Gravity Strength",
+        name: "Joystick J-G-Strength",
         category: "Joystick",
         min: 0,
         max: 1,
@@ -324,7 +324,7 @@ export class InputsUi extends BaseUi {
     // Add X position slider
     this.joystickXController = this.joystickInputFolder
       .add(joystickPosition, "x", -1, 1, 0.01)
-      .name("Joystick X")
+      .name("J-X")
       .onChange((value) => {
         if (this.main.emuRenderer) {
           // Update the joystick X position (scaled to -10,10 range)
@@ -351,7 +351,7 @@ export class InputsUi extends BaseUi {
     // Add Y position slider
     this.joystickYController = this.joystickInputFolder
       .add(joystickPosition, "y", -1, 1, 0.01)
-      .name("Joystick Y")
+      .name("J-Y")
       .onChange((value) => {
         if (this.main.emuRenderer) {
           // Update the joystick Y position (scaled to -10,10 range)
@@ -408,7 +408,7 @@ export class InputsUi extends BaseUi {
     // Add spring strength slider
     this.joystickInputFolder
       .add(springControl, "strength", 0, 1, 0.01)
-      .name("Spring Strength")
+      .name("J-SpringStrength")
       .onChange((value) => {
         if (this.main.emuRenderer) {
           this.main.emuRenderer.setSpringStrength(value);
@@ -427,34 +427,17 @@ export class InputsUi extends BaseUi {
           1.0,
           0.1
         )
-        .name("Gravity Strength")
+        .name("J-G-Strength")
         .onChange((value) => {
           // Update the EMU forces
           emuForces.setAccelGravityMultiplier(value);
         });
     }
 
-    // Add bias friction control to joystick folder
+    // Add turbulence bias strength control to joystick folder
     if (this.main?.turbulenceField) {
       const turbulenceField = this.main.turbulenceField;
-      // The friction value may not exist yet if using an older version
-      const frictionValue = turbulenceField.biasFriction !== undefined ? turbulenceField.biasFriction : 0.05;
 
-      this.biasFrictionController = this.joystickInputFolder
-        .add(
-          { friction: frictionValue },
-          "friction",
-          0.001,
-          0.2,
-          0.001
-        )
-        .name("T-Bias Friction")
-        .onChange((value) => {
-          // Update turbulence field friction
-          turbulenceField.biasFriction = value;
-        });
-
-      // Add turbulence bias strength control to joystick folder
       this.joystickBiasStrengthController = this.joystickInputFolder
         .add(
           { strength: turbulenceField.biasStrength },
@@ -463,7 +446,7 @@ export class InputsUi extends BaseUi {
           1.0,
           0.1
         )
-        .name("T-Bias Strength")
+        .name("J-T-BiasStrength")
         .onChange((value) => {
           // Store the new strength value in the turbulence field
           turbulenceField.biasStrength = value;
@@ -570,22 +553,17 @@ export class InputsUi extends BaseUi {
     const targets = {};
 
     // Add joystick controllers if they exist
-    if (this.joystickXController) targets["Joystick X"] = this.joystickXController;
-    if (this.joystickYController) targets["Joystick Y"] = this.joystickYController;
+    if (this.joystickXController) targets["J-X"] = this.joystickXController;
+    if (this.joystickYController) targets["J-Y"] = this.joystickYController;
 
     // Add gravity strength controller if it exists
     if (this.joystickGravityStrengthController) {
-      targets["Gravity Strength"] = this.joystickGravityStrengthController;
+      targets["J-G-Strength"] = this.joystickGravityStrengthController;
     }
 
     // Add bias strength controller if it exists
     if (this.joystickBiasStrengthController) {
-      targets["T-Bias Strength"] = this.joystickBiasStrengthController;
-    }
-
-    // Add bias friction controller if it exists
-    if (this.biasFrictionController) {
-      targets["T-Bias Friction"] = this.biasFrictionController;
+      targets["J-T-BiasStrength"] = this.joystickBiasStrengthController;
     }
 
     return targets;
