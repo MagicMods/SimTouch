@@ -722,15 +722,19 @@ export class NoisePreviewManager {
         // Temporarily switch pattern style for preview
         this.turbulenceField.patternStyle = patternStyle;
 
+        // Special handling for Classic Drop pattern which is computationally expensive
+        const isClassicDrop = patternStyle.toLowerCase() === "classicdrop";
+
         // For performance, use a slightly smaller render size for animation
-        const scaleFactor = 0.7; // 70% of original size for animation
+        // Use an even smaller size for Classic Drop pattern
+        const scaleFactor = isClassicDrop ? 0.5 : 0.7; // 50% size for Classic Drop vs 70% for others
         const renderWidth = Math.max(32, Math.floor(width * scaleFactor));
         const renderHeight = Math.max(32, Math.floor(height * scaleFactor));
 
         // Track performance for dynamic scaling
         let lastPerformanceWarning = 0;
         let performanceIssueCount = 0;
-        let dynamicScaleFactor = 1.0;
+        let dynamicScaleFactor = isClassicDrop ? 0.7 : 1.0; // Start with reduced scaling for Classic Drop
 
         // Setup for animation
         const canvas = document.createElement('canvas');
@@ -749,10 +753,13 @@ export class NoisePreviewManager {
 
         let animationFrame;
         let lastFrameTime = 0;
-        const frameInterval = 1000 / this.selectedFps; // Ensure we respect the FPS setting
+        // Use lower FPS for Classic Drop pattern to reduce CPU usage
+        const frameInterval = isClassicDrop ?
+            1000 / Math.min(this.selectedFps, 12) : // Cap at 12 FPS for Classic Drop
+            1000 / this.selectedFps; // Normal FPS for other patterns
 
-        // Only apply blur for the selected pattern
-        const applyBlur = patternStyle === this.selectedPattern;
+        // Only apply blur for the selected pattern, but with special handling for Classic Drop
+        const applyBlur = patternStyle === this.selectedPattern && (!isClassicDrop || this.turbulenceField.blurAmount < 0.5);
 
         const animate = (timestamp) => {
             // Skip animation if not visible
@@ -776,7 +783,11 @@ export class NoisePreviewManager {
             // Apply dynamic scaling based on performance
             const effectiveWidth = Math.max(16, Math.floor(renderWidth * dynamicScaleFactor));
             const effectiveHeight = Math.max(16, Math.floor(renderHeight * dynamicScaleFactor));
-            const skipFactor = Math.max(1, Math.floor(2 / dynamicScaleFactor));
+
+            // Use bigger skip factor for Classic Drop pattern
+            const skipFactor = isClassicDrop ?
+                Math.max(2, Math.floor(3 / dynamicScaleFactor)) : // More aggressive skipping for Classic Drop
+                Math.max(1, Math.floor(2 / dynamicScaleFactor));  // Normal skipping for others
 
             // Generate preview using current time (don't manipulate the field's time)
             for (let y = 0; y < effectiveHeight; y++) {
@@ -799,7 +810,9 @@ export class NoisePreviewManager {
                     // Check if we're taking too long and need to break early
                     if ((x % skipFactor === 0) && (y % skipFactor === 0)) {
                         const currentTime = performance.now();
-                        if (currentTime - startTime > 12) { // If processing takes >12ms, drop resolution
+                        // Use a shorter time threshold for Classic Drop to bail out of rendering earlier
+                        const timeThreshold = isClassicDrop ? 8 : 12; // 8ms for Classic Drop, 12ms for others
+                        if (currentTime - startTime > timeThreshold) {
                             // Skip more pixels to finish faster
                             x += skipFactor;
                         }
@@ -809,18 +822,24 @@ export class NoisePreviewManager {
 
             // Check if we need to adjust dynamic scale factor
             const renderTime = performance.now() - startTime;
-            if (renderTime > 15) {
+            // Use a lower threshold for performance warnings with Classic Drop
+            const performanceThreshold = isClassicDrop ? 12 : 15;
+            if (renderTime > performanceThreshold) {
                 // Performance warning
                 performanceIssueCount++;
                 lastPerformanceWarning = timestamp;
                 if (performanceIssueCount > 3 && dynamicScaleFactor > 0.5) {
                     // Reduce resolution if we have persistent performance issues
-                    dynamicScaleFactor = Math.max(0.3, dynamicScaleFactor - 0.1);
+                    // More aggressive reduction for Classic Drop
+                    const reductionAmount = isClassicDrop ? 0.15 : 0.1;
+                    dynamicScaleFactor = Math.max(0.3, dynamicScaleFactor - reductionAmount);
                     performanceIssueCount = 0;
                 }
             } else if (timestamp - lastPerformanceWarning > 2000 && dynamicScaleFactor < 1.0) {
                 // Gradually increase resolution if performance is good
-                dynamicScaleFactor = Math.min(1.0, dynamicScaleFactor + 0.05);
+                // More cautious increase for Classic Drop
+                const increaseAmount = isClassicDrop ? 0.03 : 0.05;
+                dynamicScaleFactor = Math.min(1.0, dynamicScaleFactor + increaseAmount);
                 performanceIssueCount = Math.max(0, performanceIssueCount - 1);
             }
 
@@ -830,9 +849,12 @@ export class NoisePreviewManager {
             if (renderWidth !== width || renderHeight !== height) {
                 finalCtx.clearRect(0, 0, width, height);
                 finalCtx.drawImage(canvas, 0, 0, width, height);
-                callback(finalCanvas.toDataURL('image/jpeg', 0.85)); // Lower quality for performance
+                // Use lower JPEG quality for Classic Drop pattern
+                const jpegQuality = isClassicDrop ? 0.75 : 0.85;
+                callback(finalCanvas.toDataURL('image/jpeg', jpegQuality));
             } else {
-                callback(canvas.toDataURL('image/jpeg', 0.85)); // Lower quality for performance
+                const jpegQuality = isClassicDrop ? 0.75 : 0.85;
+                callback(canvas.toDataURL('image/jpeg', jpegQuality));
             }
 
             animationFrame = requestAnimationFrame(animate);

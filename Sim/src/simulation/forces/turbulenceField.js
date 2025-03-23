@@ -678,9 +678,15 @@ class TurbulenceField {
   applyBlur(x, y, centerValue, time) {
     if (this.blurAmount <= 0) return centerValue;
 
+    // Check if this is the Classic Drop pattern and reduce samples for better performance
+    const isClassicDrop = this.patternStyle.toLowerCase() === "classicdrop";
+
     // Scale blur amount to a more useful range (0 to 0.05)
     const sampleRadius = 0.05 * this.blurAmount;
-    const numSamples = 16; // Number of samples to take around the center point
+
+    // Use significantly fewer samples for Classic Drop pattern to improve performance
+    // For other patterns, use the full 16 samples for quality
+    const numSamples = isClassicDrop ? 4 : 16; // Only use 4 samples for Classic Drop vs 16 for others
 
     // Convert centerValue to 0-1 range for contrast processing
     const centerValueNormalized = (centerValue + 1) * 0.5;
