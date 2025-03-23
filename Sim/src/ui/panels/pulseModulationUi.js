@@ -169,6 +169,8 @@ export class PulseModulationUi extends BaseUi {
         }
       });
 
+    targetController.domElement.classList.add("full-width");
+
     // Add modulation type
     folder
       .add(modulator, "type", [
@@ -177,7 +179,8 @@ export class PulseModulationUi extends BaseUi {
         "triangle",
         "sawtooth",
       ])
-      .name("Wave Type");
+      .name("Wave Type")
+      .domElement.classList.add("full-width");
 
     // Add sync control
     folder

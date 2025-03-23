@@ -160,9 +160,24 @@ canvas {
     border: 1px solid #242424;
     border-radius: 4px;
     background: #3b3b3b;
-    text-align: center;
+    text-align: center !important;
     font-size: 10px;
     color: white;
+    scrollbar-width: thin;
+    scrollbar-color: #555 #333;
+}
+
+.preset-select::-webkit-scrollbar {
+    width: 8px;
+}
+
+.preset-select::-webkit-scrollbar-track {
+    background: #333; /* Dark grey background */
+}
+
+.preset-select::-webkit-scrollbar-thumb {
+    background: #555; /* Lighter grey for the thumb */
+    border-radius: 4px;
 }
 
 /* Style lil-gui select elements to match preset-select style */
@@ -175,6 +190,22 @@ canvas {
     text-align: center;
     font-size: 10px;
     color: white;
+    scrollbar-width: thin;
+    scrollbar-color: #555 #333;
+}
+
+/* Custom scrollbar for WebKit browsers */
+.lil-gui select::-webkit-scrollbar {
+    width: 8px;
+}
+
+.lil-gui select::-webkit-scrollbar-track {
+    background: #333; /* Dark grey background */
+}
+
+.lil-gui select::-webkit-scrollbar-thumb {
+    background: #555; /* Lighter grey for the thumb */
+    border-radius: 4px;
 }
 
 /* Common UI component styles */
@@ -206,11 +237,12 @@ canvas {
 }
 
 /* Enhance full-width to better handle dropdowns */
-.full-width select, 
-.full-width .lil-gui select {
+.full-width select {
     width: 100% !important;
     margin-right: 0 !important;
+    text-align: left;
 }
+
 
 /* Notification message */
 .notification {
@@ -240,7 +272,7 @@ canvas {
     --hover-color: #4a4a4a;
     --focus-color: #5a5a5a;
     --number-color: #ffbb00;
-    --string-color: #1bd1f1;
+    --string-color: #ffbb00;
     --font-size: 10px;
     --width : 260px;
     --border-radius: 4px;

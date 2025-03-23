@@ -126,6 +126,8 @@ export class ParamUi extends BaseUi {
 
   getControlTargets() {
     const targets = {};
+    if (this.fieldTypeController) targets["Mode"] = this.fieldTypeController;
+    if (this.boundaryModeController) targets["Boundary"] = this.boundaryModeController;
     if (this.maxDensityController) targets["Density"] = this.maxDensityController;
     if (this.fadeInSpeedController) targets["FadInSpd"] = this.fadeInSpeedController;
     if (this.fadeOutSpeedController) targets["FadOutSpd"] = this.fadeOutSpeedController;
@@ -133,6 +135,7 @@ export class ParamUi extends BaseUi {
     if (this.timeScaleController) targets["SimSpeed"] = this.timeScaleController;
     if (this.velocityDampingController) targets["VeloDamp"] = this.velocityDampingController;
     if (this.maxVelocityController) targets["MaxVelocity"] = this.maxVelocityController;
+    if (this.ratioPicFlip) targets["PicFlipRatio"] = this.ratioPicFlip;
     return targets;
   }
 
