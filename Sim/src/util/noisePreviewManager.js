@@ -225,16 +225,49 @@ export class NoisePreviewManager {
     }
 
     /**
+     * Generate static previews for all patterns
+     */
+    generateAllStaticPreviews() {
+        // Store the original pattern style once before the loop
+        const originalStyle = this.turbulenceField.patternStyle;
+
+        this.patternEntries.forEach(([name, patternValue]) => {
+            const element = this.previewElements.get(patternValue);
+            if (element) {
+                const img = element.querySelector('img');
+                if (img) {
+                    // Generate the preview without changing the pattern style in generateStaticPreviewImage
+                    // by setting a flag to skip the style change
+                    this.turbulenceField.patternStyle = patternValue;
+                    img.src = this.generateStaticPreviewImage(
+                        patternValue,
+                        this.previewSize,
+                        this.previewSize,
+                        true // Skip style change in generateStaticPreviewImage
+                    );
+                }
+            }
+        });
+
+        // Restore the original pattern style once after all previews are generated
+        this.turbulenceField.patternStyle = originalStyle;
+    }
+
+    /**
      * Helper method to generate a static preview image for a pattern
      * @param {String} patternValue - The pattern value to generate preview for
      * @param {Number} width - Width of the preview
      * @param {Number} height - Height of the preview
+     * @param {Boolean} skipStyleChange - Skip changing pattern style (used by generateAllStaticPreviews)
      * @returns {String} - Data URL of the preview image
      */
-    generateStaticPreviewImage(patternValue, width, height) {
-        // Temporarily set pattern style
-        const originalStyle = this.turbulenceField.patternStyle;
-        this.turbulenceField.patternStyle = patternValue;
+    generateStaticPreviewImage(patternValue, width, height, skipStyleChange = false) {
+        // Temporarily set pattern style (unless skipStyleChange is true)
+        let originalStyle;
+        if (!skipStyleChange) {
+            originalStyle = this.turbulenceField.patternStyle;
+            this.turbulenceField.patternStyle = patternValue;
+        }
 
         // For performance, use a smaller canvas for static previews
         const scaleFactor = 0.7; // 70% of original size for static previews
@@ -282,37 +315,22 @@ export class NoisePreviewManager {
 
             const dataUrl = finalCanvas.toDataURL('image/jpeg', 0.85); // Use JPEG for smaller size
 
-            // Restore original pattern style
-            this.turbulenceField.patternStyle = originalStyle;
+            // Restore original pattern style if we changed it
+            if (!skipStyleChange) {
+                this.turbulenceField.patternStyle = originalStyle;
+            }
 
             return dataUrl;
         }
 
         const dataUrl = canvas.toDataURL('image/jpeg', 0.85); // Use JPEG for smaller size
 
-        // Restore original pattern style
-        this.turbulenceField.patternStyle = originalStyle;
+        // Restore original pattern style if we changed it
+        if (!skipStyleChange) {
+            this.turbulenceField.patternStyle = originalStyle;
+        }
 
         return dataUrl;
-    }
-
-    /**
-     * Generate static previews for all patterns
-     */
-    generateAllStaticPreviews() {
-        this.patternEntries.forEach(([name, patternValue]) => {
-            const element = this.previewElements.get(patternValue);
-            if (element) {
-                const img = element.querySelector('img');
-                if (img) {
-                    img.src = this.generateStaticPreviewImage(
-                        patternValue,
-                        this.previewSize,
-                        this.previewSize
-                    );
-                }
-            }
-        });
     }
 
     /**
@@ -478,9 +496,15 @@ export class NoisePreviewManager {
             this.animationFrameId = null;
         }
 
+        // Save the current pattern style before cleanup
+        const originalPatternStyle = this.turbulenceField.patternStyle;
+
         // Clean up all active preview animations, but don't reset the field's time
         this.cleanupFunctions.forEach(cleanup => cleanup());
         this.cleanupFunctions.clear();
+
+        // Restore the original pattern style that was saved before cleanup
+        this.turbulenceField.patternStyle = originalPatternStyle;
 
         // Generate static previews since animations are stopped
         this.generateAllStaticPreviews();

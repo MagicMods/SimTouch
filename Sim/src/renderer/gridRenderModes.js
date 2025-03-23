@@ -1,5 +1,5 @@
 export const GridField = {
-  NOISE: "--RawNoise--",
+  NOISE: "--- NOISE ---",
   PROXIMITY: "Proximity",
   PROXIMITYB: "ProximityB",
   DENSITY: "Density",

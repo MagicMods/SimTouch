@@ -280,7 +280,7 @@ class MouseForces {
       this.main.gridRenderer &&
       this.main.gridRenderer.renderModes) {
       const currentMode = this.main.gridRenderer.renderModes.currentMode;
-      return currentMode === "--RawNoise--";
+      return currentMode === "--- NOISE ---";
     }
 
     // Fallback to looking through particleSystem
@@ -289,7 +289,7 @@ class MouseForces {
       this.particleSystem.main.gridRenderer &&
       this.particleSystem.main.gridRenderer.renderModes) {
       const currentMode = this.particleSystem.main.gridRenderer.renderModes.currentMode;
-      return currentMode === "--RawNoise--";
+      return currentMode === "--- NOISE ---";
     }
 
     return false;

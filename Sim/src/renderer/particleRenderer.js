@@ -18,7 +18,7 @@ class ParticleRenderer extends BaseRenderer {
 
   draw(particles) {
     if (!particles || !Array.isArray(particles) || particles.length === 0) {
-      console.warn("No valid particles to draw");
+      // console.warn("No valid particles to draw");
       return;
     }
 
