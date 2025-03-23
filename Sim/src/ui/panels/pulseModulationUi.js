@@ -134,6 +134,9 @@ export class PulseModulationUi extends BaseUi {
         // Update the folder name to include the target name
         folder.title(`Modulator ${index + 1}  |  ${value}`);
 
+        // Check if this is a selector-type target
+        const isSelector = modulator.isSelector || false;
+
         // Update min/max controllers with the target's range
         const target = this.modulatorManager.getTargetInfo(value);
         if (target && target.min !== undefined && target.max !== undefined) {
@@ -143,22 +146,42 @@ export class PulseModulationUi extends BaseUi {
 
           // Always update the controller ranges
           if (minController) {
-            minController.min(min);
-            minController.max(max);
-            minController.step(step);
+            if (isSelector) {
+              // For selectors, set fixed range from 0 to number of options-1
+              minController.min(0);
+              minController.max(modulator.selectorOptions?.length - 1 || 1);
+              minController.step(1);
+            } else {
+              minController.min(min);
+              minController.max(max);
+              minController.step(step);
+            }
           }
 
           if (maxController) {
-            maxController.min(min);
-            maxController.max(max);
-            maxController.step(step);
+            if (isSelector) {
+              // For selectors, set fixed range from 0 to number of options-1
+              maxController.min(0);
+              maxController.max(modulator.selectorOptions?.length - 1 || 1);
+              maxController.step(1);
+            } else {
+              maxController.min(min);
+              maxController.max(max);
+              maxController.step(step);
+            }
           }
 
           // Only update VALUES if not loading from preset
           if (!modulator._loadingFromPreset) {
-            console.log(`Auto-ranging for target ${value}`);
-            modulator.min = min;
-            modulator.max = max;
+            if (isSelector) {
+              // For selectors, set min to 0 and max to last option index
+              modulator.min = 0;
+              modulator.max = modulator.selectorOptions?.length - 1 || 1;
+            } else {
+              console.log(`Auto-ranging for target ${value}`);
+              modulator.min = min;
+              modulator.max = max;
+            }
             minController.updateDisplay();
             maxController.updateDisplay();
           } else {
@@ -166,6 +189,15 @@ export class PulseModulationUi extends BaseUi {
               `Using preset values for target ${value}, updating only input ranges`
             );
           }
+        }
+
+        // Update description for min/max sliders if this is a selector target
+        if (isSelector && minController && maxController) {
+          minController.name("Min Index");
+          maxController.name("Max Index");
+        } else if (minController && maxController) {
+          minController.name("Min Value");
+          maxController.name("Max Value");
         }
       });
 
@@ -488,6 +520,32 @@ export class PulseModulationUi extends BaseUi {
 
           // Then connect to target
           modulator.setTarget(modData.targetName);
+
+          // If this is a selector-type target, ensure min/max are appropriate
+          if (modulator.isSelector && modulator.selectorOptions) {
+            // For selectors from presets, ensure min/max are within valid range
+            const optionsCount = modulator.selectorOptions.length;
+            modulator.min = Math.max(0, Math.min(modulator.min, optionsCount - 1));
+            modulator.max = Math.max(0, Math.min(modulator.max, optionsCount - 1));
+
+            // Find and update min/max controllers
+            const minController = folder.controllers.find(c => c.property === "min");
+            const maxController = folder.controllers.find(c => c.property === "max");
+
+            if (minController) {
+              minController.min(0);
+              minController.max(optionsCount - 1);
+              minController.step(1);
+              minController.name("Min Index");
+            }
+
+            if (maxController) {
+              maxController.min(0);
+              maxController.max(optionsCount - 1);
+              maxController.step(1);
+              maxController.name("Max Index");
+            }
+          }
 
           // Remove the loading flag
           modulator._loadingFromPreset = false;

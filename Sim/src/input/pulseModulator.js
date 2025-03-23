@@ -16,6 +16,8 @@ class PulseModulator {
     this.targetController = null;
     this.originalValue = null; // Store original value to restore when disabled
     this.currentPhase = 0; // Add currentPhase property
+    this.isSelector = false; // Flag to indicate if target is a selector/dropdown
+    this.selectorOptions = []; // Array to store available options for selectors
   }
 
   /**
@@ -55,9 +57,19 @@ class PulseModulator {
       this.originalValue = 0;
     }
 
-    // Only update min and max if we're NOT loading from preset
-    // This allows preset values to override the default target ranges
-    if (!this._loadingFromPreset) {
+    // Check if target is a selector/dropdown (like Boundary or Mode)
+    this.isSelector = this._detectIfSelector(targetName, target);
+
+    // If it's a selector, get the available options
+    if (this.isSelector) {
+      this.selectorOptions = this._getSelectorOptions(targetName, target);
+      // Update min and max based on number of options
+      this.min = 0;
+      this.max = this.selectorOptions.length - 1;
+      console.log(`Target ${targetName} detected as selector with ${this.selectorOptions.length} options:`, this.selectorOptions);
+    }
+    // Only update min and max if we're NOT loading from preset and it's not a selector
+    else if (!this._loadingFromPreset) {
       // Update min and max to match target's range with NaN protection
       this.min = !isNaN(target.min) ? target.min : 0;
       this.max = !isNaN(target.max) ? target.max : 1;
@@ -70,6 +82,86 @@ class PulseModulator {
         `Set target ${targetName} keeping preset range: ${this.min} - ${this.max}`
       );
     }
+  }
+
+  /**
+   * Detect if a target is a selector/dropdown type
+   * @param {string} targetName - Name of the target
+   * @param {object} controller - The controller object
+   * @returns {boolean} True if target is a selector
+   */
+  _detectIfSelector(targetName, controller) {
+    // Check specific target names known to be selectors
+    if (targetName === "Boundary" || targetName === "Mode" || targetName === "T-PatternStyle") {
+      return true;
+    }
+
+    // Check if controller has options property or is a select type
+    if (controller.options !== undefined ||
+      (controller.__select !== undefined)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  /**
+   * Get available options for a selector target
+   * @param {string} targetName - Name of the target
+   * @param {object} controller - The controller object
+   * @returns {Array} Array of available options
+   */
+  _getSelectorOptions(targetName, controller) {
+    // Special case for known targets
+    if (targetName === "Boundary") {
+      return ["BOUNCE", "WARP"];
+    }
+
+    if (targetName === "Mode") {
+      return [
+        "--- NOISE ---",
+        "Proximity",
+        "ProximityB",
+        "Density",
+        "Velocity",
+        "Pressure",
+        "Vorticity",
+        "Collision",
+        "Overlap"
+      ];
+    }
+
+    if (targetName === "T-PatternStyle") {
+      return [
+        "checkerboard",
+        "waves",
+        "spiral",
+        "grid",
+        "circles",
+        "diamonds",
+        "ripples",
+        "dots",
+        "voronoi",
+        "cells",
+        "fractal",
+        "vortex",
+        "bubbles",
+        "water",
+        "classicdrop"
+      ];
+    }
+
+    // Try to get options from controller
+    if (controller.options) {
+      return Object.values(controller.options);
+    }
+
+    if (controller.__select) {
+      return Array.from(controller.__select.options).map(opt => opt.value);
+    }
+
+    // Default fallback
+    return ["Option 1", "Option 2"];
   }
 
   /**
@@ -109,10 +201,20 @@ class PulseModulator {
         this.frequency = this.manager.masterFrequency;
       }
 
+      // Apply frequency adjustment for specific targets
+      let effectiveFrequency = this.frequency;
+      if (this.targetName === "Mode") {
+        // Slow down the frequency for Mode by factor of 10
+        effectiveFrequency = this.frequency * 0.075;
+      } else if (this.targetName === "T-PatternStyle") {
+        // Slow down the frequency for pattern style changes
+        effectiveFrequency = this.frequency * 0.04;
+      }
+
       // Calculate phase based on correct time
       const currentTime = globalTime || this.time;
       const totalPhase =
-        currentTime * this.frequency * Math.PI * 2 + (this.phase || 0);
+        currentTime * effectiveFrequency * Math.PI * 2 + (this.phase || 0);
       this.currentPhase = totalPhase % (Math.PI * 2);
 
       // Get the waveform type correctly - handle both 'type' and 'waveform' properties for compatibility
@@ -146,11 +248,30 @@ class PulseModulator {
         value = 0.5; // Use middle value as fallback
       }
 
-      // Map to target range
-      const mappedValue = this.min + value * (this.max - this.min);
+      // Special handling for selector/dropdown type targets
+      if (this.isSelector && this.selectorOptions.length > 0) {
+        // Map 0-1 value to option index
+        const normalizedValue = value; // Already 0-1
+        const numOptions = this.selectorOptions.length;
 
-      // Apply to target
-      this.targetController.setValue(mappedValue);
+        // Calculate which option to select (0 to numOptions-1)
+        const optionIndex = Math.floor(normalizedValue * numOptions);
+        const safeIndex = Math.min(numOptions - 1, Math.max(0, optionIndex));
+
+        // Get the option value and apply it
+        const optionValue = this.selectorOptions[safeIndex];
+        this.targetController.setValue(optionValue);
+
+        // For debugging
+        // console.log(`Modulating ${this.targetName}: value=${normalizedValue.toFixed(2)}, index=${safeIndex}, setting=${optionValue}`);
+      }
+      // Standard handling for numeric targets
+      else {
+        // Map to target range
+        const mappedValue = this.min + value * (this.max - this.min);
+        // Apply to target
+        this.targetController.setValue(mappedValue);
+      }
     } catch (e) {
       console.error(
         `Error in pulse modulator update for ${this.targetName}:`,
