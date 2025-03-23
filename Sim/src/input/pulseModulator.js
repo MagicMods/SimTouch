@@ -201,87 +201,136 @@ class PulseModulator {
         this.frequency = this.manager.masterFrequency;
       }
 
-      // Apply frequency adjustment for specific targets
-      let effectiveFrequency = this.frequency;
-      if (this.targetName === "Mode") {
-        // Slow down the frequency for Mode by factor of 10
-        effectiveFrequency = this.frequency * 0.075;
-      } else if (this.targetName === "T-PatternStyle") {
-        // Slow down the frequency for pattern style changes
-        effectiveFrequency = this.frequency * 0.04;
+      // =====================================================================
+      // NEW APPROACH: Fixed amplitude oscillation with variable center point
+      // =====================================================================
+
+      // Calculate range midpoint and size
+      const actualRange = Math.abs(this.max - this.min);
+      const midpoint = (this.min + this.max) / 2;
+
+      // Define our standard oscillation rate in units per second
+      // This is the key to fixing the proportionality issue
+      const UNITS_PER_SECOND = 2.0; // Standard rate for all oscillations
+      let adjustedRate = UNITS_PER_SECOND;
+
+      // Get the original base frequency
+      const baseFrequency = this.frequency;
+
+      // For selectors, use a much slower rate of change
+      if (this.isSelector && this.selectorOptions.length > 0) {
+        // Calculate available options within the range
+        const minIndex = Math.max(0, Math.min(this.selectorOptions.length - 1, Math.floor(this.min)));
+        const maxIndex = Math.max(0, Math.min(this.selectorOptions.length - 1, Math.floor(this.max)));
+        const numChoices = maxIndex - minIndex + 1;
+
+        if (numChoices <= 1) {
+          // Special case: single option - just stay at that option
+          adjustedRate = 0;
+        } else {
+          // Use a fixed rate for selectors (options per second)
+          adjustedRate = 0.5; // Half an option per second
+        }
+      } else {
+        // For numeric values, adjust rate based on range size
+        if (actualRange < 0.1) {
+          // Very small ranges
+          adjustedRate = 0.05; // 0.05 units per second
+        } else if (actualRange < 0.5) {
+          // Small ranges
+          adjustedRate = 0.1; // 0.1 units per second
+        } else if (actualRange < 1.0) {
+          // Medium-small ranges
+          adjustedRate = 0.25; // 0.25 units per second
+        } else if (actualRange < 2.0) {
+          // Medium ranges
+          adjustedRate = 0.5; // 0.5 units per second
+        } else if (actualRange < 5.0) {
+          // Larger medium ranges
+          adjustedRate = 1.0; // 1.0 units per second
+        } else {
+          // Large ranges (≥5.0)
+          adjustedRate = 2.0; // 2.0 units per second
+        }
       }
 
-      // Calculate phase based on correct time
-      const currentTime = globalTime || this.time;
-      const totalPhase =
-        currentTime * effectiveFrequency * Math.PI * 2 + (this.phase || 0);
-      this.currentPhase = totalPhase % (Math.PI * 2);
+      // Apply master frequency scaling but maintain our fixed rate relationship
+      adjustedRate *= (baseFrequency / 1.0); // Scale by master frequency ratio
 
-      // Get the waveform type correctly - handle both 'type' and 'waveform' properties for compatibility
+      // Apply target-specific scaling
+      if (this.targetName === "Mode") {
+        adjustedRate *= 0.5; // Slower for Mode selector
+      } else if (this.targetName === "T-PatternStyle") {
+        adjustedRate *= 0.25; // Much slower for pattern styles
+      }
+
+      // Store for debugging
+      this._rateUnitsPerSecond = adjustedRate;
+
+      // Calculate how much the value would change in this timestep
+      const currentTime = globalTime || this.time;
+
+      // Calculate a normalized phase (0-1) based on time and adjusted rate
+      const oscillationPhase = (currentTime * adjustedRate + this.phase) % 1.0;
+      this.currentPhase = oscillationPhase * Math.PI * 2; // Store in radians for compatibility
+
+      // Get the waveform type
       const waveType = this.type || this.waveform || "sine";
 
-      // Calculate the wave value based on type
-      let value;
+      // Calculate a normalized oscillation value (0-1)
+      let normalizedValue;
       switch (waveType) {
         case "sine":
-          value = (Math.sin(totalPhase) + 1) / 2; // 0 to 1
+          normalizedValue = (Math.sin(oscillationPhase * Math.PI * 2) + 1) / 2;
           break;
         case "square":
-          value = totalPhase % (Math.PI * 2) < Math.PI ? 1 : 0;
+          normalizedValue = oscillationPhase < 0.5 ? 1 : 0;
           break;
         case "triangle":
-          const t = (totalPhase % (Math.PI * 2)) / (Math.PI * 2);
-          value = t < 0.5 ? t * 2 : 2 - t * 2;
+          normalizedValue = oscillationPhase < 0.5
+            ? oscillationPhase * 2
+            : 2 - (oscillationPhase * 2);
           break;
         case "sawtooth":
-          value = (totalPhase % (Math.PI * 2)) / (Math.PI * 2);
+          normalizedValue = oscillationPhase;
           break;
         default:
-          value = (Math.sin(totalPhase) + 1) / 2; // Default to sine
+          normalizedValue = (Math.sin(oscillationPhase * Math.PI * 2) + 1) / 2;
       }
 
-      // Safety check for NaN before mapping
-      if (isNaN(value)) {
-        console.log(
-          `Wave calculation produced NaN for ${this.targetName}. Using default value.`
-        );
-        value = 0.5; // Use middle value as fallback
+      // Safety check for NaN
+      if (isNaN(normalizedValue)) {
+        console.log(`Wave calculation produced NaN for ${this.targetName}. Using default value.`);
+        normalizedValue = 0.5;
       }
+
+      // IMPORTANT: This is the key change - we map to the target value range differently
+      let targetValue;
 
       // Special handling for selector/dropdown type targets
       if (this.isSelector && this.selectorOptions.length > 0) {
-        // Map 0-1 value to option index based on min and max values
-        const normalizedValue = value; // Already 0-1
-        const numOptions = this.selectorOptions.length;
+        // For selectors, we need to map to a valid option index
+        const minIndex = Math.max(0, Math.min(this.selectorOptions.length - 1, Math.floor(this.min)));
+        const maxIndex = Math.max(0, Math.min(this.selectorOptions.length - 1, Math.floor(this.max)));
 
-        // Use min and max to define the range of indices to choose from
-        const minIndex = Math.max(0, Math.min(numOptions - 1, Math.floor(this.min)));
-        const maxIndex = Math.max(0, Math.min(numOptions - 1, Math.floor(this.max)));
-
-        // If min and max are the same, just use that index
         if (minIndex === maxIndex) {
+          // Just use the single allowed value
           const optionValue = this.selectorOptions[minIndex];
           this.targetController.setValue(optionValue);
         } else {
-          // Calculate which option to select within the min-max range
+          // Map the normalized value to an index
           const indexRange = maxIndex - minIndex;
           const optionIndex = minIndex + Math.floor(normalizedValue * (indexRange + 1));
           const safeIndex = Math.min(maxIndex, Math.max(minIndex, optionIndex));
 
-          // Get the option value and apply it
+          // Get and apply the option value
           const optionValue = this.selectorOptions[safeIndex];
           this.targetController.setValue(optionValue);
-
-          // For debugging
-          // console.log(`Modulating ${this.targetName}: value=${normalizedValue.toFixed(2)}, range=${minIndex}-${maxIndex}, index=${safeIndex}, setting=${optionValue}`);
         }
-      }
-      // Standard handling for numeric targets
-      else {
-        // Map to target range
-        const mappedValue = this.min + value * (this.max - this.min);
-        // Apply to target
-        this.targetController.setValue(mappedValue);
+      } else {
+        // For numeric values, directly map to the target range
+        targetValue = this.min + normalizedValue * (this.max - this.min);
+        this.targetController.setValue(targetValue);
       }
     } catch (e) {
       console.error(
