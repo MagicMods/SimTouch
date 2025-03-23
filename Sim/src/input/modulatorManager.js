@@ -476,6 +476,10 @@ export class ModulatorManager {
     this.getModulatorsByType("pulse").forEach((mod) => {
       if (mod.sync) {
         mod.frequency = frequency;
+        // Update BPM value if it exists
+        if (mod.frequencyBpm !== undefined) {
+          mod.frequencyBpm = frequency * 60;
+        }
       }
     });
   }

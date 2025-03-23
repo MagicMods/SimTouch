@@ -6,10 +6,17 @@ export class PulseModulationUi extends BaseUi {
     super(main, container);
     this.main = main;
     this.masterFrequency = 1.0;
+    this.masterBpm = this.masterFrequency * 60; // Set BPM based on default frequency
 
     this.modulatorManager = null;
     this.modulatorFolders = [];
     this.presets = [];
+
+    // For tap tempo functionality
+    this.beatTimes = [];
+    this.maxTapHistory = 5; // Number of taps to remember
+    this.tapTempoTimeout = null;
+    this.tapTempoTimeoutDuration = 2000; // Reset after 2 seconds of inactivity
 
     // Change the GUI title
     this.gui.title("Pulse Modulation");
@@ -24,19 +31,37 @@ export class PulseModulationUi extends BaseUi {
   //#region Ui Setup
 
   initBasicControls() {
-    // Add master frequency slider
+    // Add master frequency slider (now as BPM)
     const masterFreqController = this.gui
-      .add(this, "masterFrequency", 0.01, 3, 0.01)
-      .name("PM-Freq")
+      .add(this, "masterBpm", 1, 180, 1)
+      .name("BPM")
       .onChange((value) => {
+        // Convert BPM to Hz for internal use
+        const hzValue = this.bpmToHz(value);
+        this.masterFrequency = hzValue;
+
         // When master frequency changes, update all modulators that are synced
         if (this.modulatorManager) {
-          this.modulatorManager.setMasterFrequency(value);
+          this.modulatorManager.setMasterFrequency(hzValue);
         }
       });
 
     // Add margin to master frequency controller
     masterFreqController.domElement.style.marginTop = "10px";
+
+    // Add tooltip to explain BPM
+    if (masterFreqController.domElement && masterFreqController.domElement.parentElement) {
+      masterFreqController.domElement.parentElement.title = "Beats Per Minute - Controls modulation speed";
+    }
+
+    // Add BEAT button
+    const beatButton = { trigger: () => this.triggerBeat() };
+    const beatButtonController = this.gui
+      .add(beatButton, "trigger")
+      .name("BEAT");
+
+    // Add margin to beat button
+    beatButtonController.domElement.style.marginTop = "10px";
 
     // this.gui.push(this);
 
@@ -75,6 +100,24 @@ export class PulseModulationUi extends BaseUi {
     }
   }
 
+  /**
+   * Convert BPM to Hz frequency
+   * @param {number} bpm - Beats Per Minute value
+   * @returns {number} Frequency in Hz
+   */
+  bpmToHz(bpm) {
+    return bpm / 60;
+  }
+
+  /**
+   * Convert Hz frequency to BPM
+   * @param {number} hz - Frequency in Hz
+   * @returns {number} Beats Per Minute value
+   */
+  hzToBpm(hz) {
+    return hz * 60;
+  }
+
   //#endregion
 
   //#region Modulator
@@ -100,6 +143,9 @@ export class PulseModulationUi extends BaseUi {
 
     // Create a new modulator
     const modulator = this.modulatorManager.createPulseModulator();
+
+    // Add BPM property that maps to frequency
+    modulator.frequencyBpm = this.hzToBpm(modulator.frequency);
 
     // Create folder for this modulator
     const index = this.modulatorFolders.length;
@@ -227,15 +273,20 @@ export class PulseModulationUi extends BaseUi {
         // When enabling sync, update frequency to match master
         if (value) {
           modulator.frequency = this.masterFrequency;
+          modulator.frequencyBpm = this.hzToBpm(this.masterFrequency); // Update BPM value too
           modulator.currentPhase = 0; // Reset phase for better synchronization
           frequencyController.updateDisplay();
         }
       });
 
-    // Add frequency control
+    // Add frequency control (now as BPM)
     const frequencyController = folder
-      .add(modulator, "frequency", 0.01, 3, 0.01)
-      .name("PM-Freq)");
+      .add(modulator, "frequencyBpm", 1, 180, 1)
+      .name("BPM")
+      .onChange((value) => {
+        // Convert BPM to Hz for internal use
+        modulator.frequency = this.bpmToHz(value);
+      });
 
     // Initially hide the frequency controller if sync is enabled
     if (modulator.sync) {
@@ -502,6 +553,11 @@ export class PulseModulationUi extends BaseUi {
           // Other properties are set normally on the modulator object
           else if (modData[prop] !== undefined) {
             modulator[prop] = modData[prop];
+
+            // If we're setting frequency, also update the BPM value
+            if (prop === "frequency") {
+              modulator.frequencyBpm = this.hzToBpm(modData[prop]);
+            }
           }
         });
 
@@ -584,6 +640,95 @@ export class PulseModulationUi extends BaseUi {
     } catch (error) {
       console.error("Error applying pulse modulation preset:", error);
       return false;
+    }
+  }
+
+  /**
+   * Trigger a single beat pulse on all synced modulators
+   * Also calculate BPM based on tap timing if clicked multiple times
+   */
+  triggerBeat() {
+    if (!this.modulatorManager) return;
+
+    // Get all pulse modulators that are synced and enabled
+    const syncedModulators = this.modulatorManager.getModulatorsByType("pulse")
+      .filter(mod => mod.sync && mod.enabled);
+
+    // Reset their phases to 0 to trigger a synchronized beat
+    syncedModulators.forEach(mod => {
+      mod.currentPhase = 0;
+      mod.phase = 0;
+    });
+
+    // Calculate BPM based on tap tempo
+    this.calculateTapTempo();
+
+    console.log(`Triggered beat on ${syncedModulators.length} modulators`);
+  }
+
+  /**
+   * Calculate BPM based on intervals between button clicks
+   */
+  calculateTapTempo() {
+    const now = performance.now();
+
+    // Clear timeout if it exists
+    if (this.tapTempoTimeout) {
+      clearTimeout(this.tapTempoTimeout);
+    }
+
+    // Set timeout to reset tap tempo counter after inactivity
+    this.tapTempoTimeout = setTimeout(() => {
+      this.beatTimes = [];
+      console.log("Tap tempo reset due to inactivity");
+    }, this.tapTempoTimeoutDuration);
+
+    // Add current time to the history
+    this.beatTimes.push(now);
+
+    // Keep only the most recent taps
+    if (this.beatTimes.length > this.maxTapHistory) {
+      this.beatTimes.shift();
+    }
+
+    // Need at least 2 taps to calculate a tempo
+    if (this.beatTimes.length >= 2) {
+      // Calculate intervals between taps
+      const intervals = [];
+      for (let i = 1; i < this.beatTimes.length; i++) {
+        intervals.push(this.beatTimes[i] - this.beatTimes[i - 1]);
+      }
+
+      // Calculate average interval
+      const averageInterval = intervals.reduce((sum, interval) => sum + interval, 0) / intervals.length;
+
+      // Convert to BPM (60000ms = 1 minute)
+      const calculatedBpm = Math.round(60000 / averageInterval);
+
+      // Limit to reasonable BPM range (40-220 BPM)
+      const limitedBpm = Math.max(40, Math.min(220, calculatedBpm));
+
+      // Update UI only if BPM is in the valid range for our slider (1-180)
+      if (limitedBpm >= 1 && limitedBpm <= 180) {
+        this.masterBpm = limitedBpm;
+
+        // Update the masterFrequency value
+        const hzValue = this.bpmToHz(limitedBpm);
+        this.masterFrequency = hzValue;
+
+        // Update modulators using the new frequency
+        if (this.modulatorManager) {
+          this.modulatorManager.setMasterFrequency(hzValue);
+        }
+
+        // Update the BPM slider in the UI
+        const bpmController = this.gui.controllers.find(c => c.property === "masterBpm");
+        if (bpmController) {
+          bpmController.updateDisplay();
+        }
+
+        console.log(`Tap tempo detected: ${limitedBpm} BPM`);
+      }
     }
   }
 

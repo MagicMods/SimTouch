@@ -8,6 +8,7 @@ class PulseModulator {
     this.targetName = "";
     this.type = "sine";
     this.frequency = 1.0;
+    this.frequencyBpm = 60.0; // Add BPM representation of frequency
     this.sync = true; // Add sync property
     this.phase = 0;
     this.min = 0;
