@@ -243,6 +243,17 @@ canvas {
     text-align: left;
 }
 
+.bpm-button {
+    width: 50px !important;
+}
+
+.beat-container {
+    margin-right: 10px;
+}
+
+.slider {
+    --slider-knob-width: 5px !important;
+}
 
 /* Notification message */
 .notification {
@@ -339,4 +350,87 @@ canvas {
 
 .parameter-checkbox-item .name{
     width:80%;
+}
+
+/* BPM slider and value container styling */
+.bpm-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+}
+
+.bpm-slider-row {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2px;
+}
+
+.bpm-label {
+    font-size: 11px;
+    margin-right: 8px;
+    min-width: 30px;
+}
+
+.bpm-value {
+    font-size: 11px;
+    min-width: 30px;
+    text-align: center;
+    background-color: #2a2a2a;
+    padding: 2px 4px;
+    border-radius: 3px;
+    margin-left: 8px;
+}
+
+.bpm-slider {
+    flex: 1;
+    height: 4px;
+    -webkit-appearance: none;
+    background: #3a3a3a;
+    border-radius: 2px;
+    outline: none;
+}
+
+.bpm-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ffbb00;
+    cursor: pointer;
+}
+
+.bpm-slider::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ffbb00;
+    cursor: pointer;
+    border: none;
+}
+
+/* Beat button styling */
+.beat-button {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    background-color: #3a3a3a;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    height: 28px;
+    min-width: 60px;
+    cursor: pointer;
+    transition: background-color 0.1s;
+    font-weight: bold;
+}
+
+.beat-button:hover {
+    background-color: #4a4a4a;
+}
+
+.beat-button:active {
+    background-color: #ff5555;
 }

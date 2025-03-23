@@ -17,6 +17,7 @@ export class PulseModulationUi extends BaseUi {
     this.maxTapHistory = 5; // Number of taps to remember
     this.tapTempoTimeout = null;
     this.tapTempoTimeoutDuration = 2000; // Reset after 2 seconds of inactivity
+    this.beatButtonElement = null; // Store reference to beat button element
 
     // Change the GUI title
     this.gui.title("Pulse Modulation");
@@ -31,39 +32,94 @@ export class PulseModulationUi extends BaseUi {
   //#region Ui Setup
 
   initBasicControls() {
-    // Add master frequency slider (now as BPM)
-    const masterFreqController = this.gui
-      .add(this, "masterBpm", 1, 180, 1)
-      .name("BPM")
-      .onChange((value) => {
-        // Convert BPM to Hz for internal use
-        const hzValue = this.bpmToHz(value);
-        this.masterFrequency = hzValue;
-
-        // When master frequency changes, update all modulators that are synced
-        if (this.modulatorManager) {
-          this.modulatorManager.setMasterFrequency(hzValue);
-        }
-      });
-
-    // Add margin to master frequency controller
-    masterFreqController.domElement.style.marginTop = "10px";
-
-    // Add tooltip to explain BPM
-    if (masterFreqController.domElement && masterFreqController.domElement.parentElement) {
-      masterFreqController.domElement.parentElement.title = "Beats Per Minute - Controls modulation speed";
+    // Create a flex container for BPM and BEAT controls
+    const controlsContainer = document.createElement("div");
+    controlsContainer.style.display = "flex";
+    controlsContainer.style.justifyContent = "space-between";
+    controlsContainer.style.alignItems = "center";
+    controlsContainer.style.padding = "0px 10px";
+    controlsContainer.style.width = "100%";
+    controlsContainer.style.marginTop = "10px";
+    // Add to the GUI DOM directly
+    const parentContainer = this.gui.domElement.querySelector(".children");
+    if (parentContainer) {
+      parentContainer.appendChild(controlsContainer);
     }
 
-    // Add BEAT button
-    const beatButton = { trigger: () => this.triggerBeat() };
-    const beatButtonController = this.gui
-      .add(beatButton, "trigger")
-      .name("BEAT");
+    // Create BPM slider directly
+    const bpmContainer = document.createElement("div");
+    bpmContainer.className = "bpm-container";
+    bpmContainer.style.flex = "1";
+    bpmContainer.style.marginRight = "10px";
 
-    // Add margin to beat button
-    beatButtonController.domElement.style.marginTop = "10px";
+    // Create slider row with label and value
+    const bpmSliderRow = document.createElement("div");
+    bpmSliderRow.className = "bpm-slider-row";
 
-    // this.gui.push(this);
+    // Add BPM label
+    // const bpmLabel = document.createElement("div");
+    // bpmLabel.className = "bpm-label";
+    // bpmLabel.textContent = "BPM";
+
+    const bpmSlider = document.createElement("input");
+    bpmSlider.type = "range";
+    bpmSlider.min = "1";
+    bpmSlider.max = "220";
+    bpmSlider.step = "1";
+    bpmSlider.value = this.masterBpm.toString();
+    bpmSlider.className = "bpm-slider";
+
+    // Add BPM value display
+    const bpmValue = document.createElement("div");
+    bpmValue.className = "bpm-value";
+    bpmValue.textContent = this.masterBpm;
+
+    // Add elements to slider row
+    // bpmSliderRow.appendChild(bpmLabel);
+    bpmSliderRow.appendChild(bpmSlider);
+    bpmSliderRow.appendChild(bpmValue);
+
+    // Add slider row to container
+    bpmContainer.appendChild(bpmSliderRow);
+
+    bpmSlider.addEventListener("input", (e) => {
+      const value = parseInt(e.target.value);
+      this.masterBpm = value;
+
+      // Convert BPM to Hz for internal use
+      const hzValue = this.bpmToHz(value);
+      this.masterFrequency = hzValue;
+
+      // When master frequency changes, update all modulators that are synced
+      if (this.modulatorManager) {
+        this.modulatorManager.setMasterFrequency(hzValue);
+      }
+
+      // Update BPM display value
+      bpmValue.textContent = value;
+    });
+
+    // Create BEAT button directly
+    const beatButton = document.createElement("button");
+    beatButton.textContent = "BPM";
+    beatButton.className = "bpm-button";
+
+
+    beatButton.addEventListener("click", () => {
+      this.triggerBeat();
+      this.flashBeatButton();
+    });
+
+    // Store button reference for visual effects
+    this.beatButtonElement = beatButton;
+
+    // Add elements to the container
+    controlsContainer.appendChild(bpmContainer);
+    controlsContainer.appendChild(beatButton);
+
+    // Store reference to BPM elements for tap tempo updates
+    this.bpmValueElement = bpmValue;
+    this.bpmSliderElement = bpmSlider;
 
     // Add button to add a new modulator
     const addButton = { add: () => this.addPulseModulator() };
@@ -721,15 +777,34 @@ export class PulseModulationUi extends BaseUi {
           this.modulatorManager.setMasterFrequency(hzValue);
         }
 
-        // Update the BPM slider in the UI
-        const bpmController = this.gui.controllers.find(c => c.property === "masterBpm");
-        if (bpmController) {
-          bpmController.updateDisplay();
+        // Update the BPM display in the UI
+        if (this.bpmValueElement) {
+          this.bpmValueElement.textContent = limitedBpm;
+        }
+
+        // Update the slider position
+        if (this.bpmSliderElement) {
+          this.bpmSliderElement.value = limitedBpm;
         }
 
         console.log(`Tap tempo detected: ${limitedBpm} BPM`);
       }
     }
+  }
+
+  /**
+   * Add visual feedback when beat button is clicked
+   */
+  flashBeatButton() {
+    if (!this.beatButtonElement) return;
+
+    // Add/remove active class instead of directly manipulating style
+    this.beatButtonElement.classList.add("active");
+
+    // Reset after brief delay
+    setTimeout(() => {
+      this.beatButtonElement.classList.remove("active");
+    }, 100);
   }
 
   //#endregion
