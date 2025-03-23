@@ -14,8 +14,6 @@ export class RandomizerUi extends BaseUi {
       "Boundary Size",
       "Particle Opacity",
       "Color",
-      "T-PatternStyle",
-      "Mode",
     ];
 
     this.controllers = {};
@@ -182,7 +180,7 @@ export class RandomizerUi extends BaseUi {
     const categorizedTargets = {};
 
     const getComponentName = (targetName) => {
-      if (/^(Density|FadInSpd|FadOutSpd|Time Step|SimSpeed|VeloDamp|MaxVelocity|PicFlipRatio|Boundary)$/i.test(targetName)) return "Simulation";
+      if (/^(Density|FadInSpd|FadOutSpd|Time Step|SimSpeed|VeloDamp|MaxVelocity|PicFlipRatio|Boundary|Mode)$/i.test(targetName)) return "Simulation";
       if (/^P-(Count|Size|Opacity|Color)$/i.test(targetName)) return "Particles";
       if (/^G-(X|Y)$/i.test(targetName)) return "Gravity";
       if (/^J-(X|Y|G-Strength|T-BiasStrength|SpringStrength)$/i.test(targetName)) return "Joystick";
@@ -251,6 +249,73 @@ export class RandomizerUi extends BaseUi {
             totalChanged++;
           } catch (err) {
             console.warn("Error randomizing Boundary:", err);
+          }
+        }
+        continue;
+      }
+
+      // Special case for Mode parameter
+      if (targetName === "Mode") {
+        if (Math.random() < this.intensity) {
+          try {
+            // Get available modes from GridField in gridRenderModes.js
+            const possibleModes = [
+              "--- NOISE ---",
+              "Proximity",
+              "ProximityB",
+              "Density",
+              "Velocity",
+              "Pressure",
+              "Vorticity",
+              "Collision",
+              "Overlap"
+            ];
+
+            // Get the current value
+            const currentValue = controller.getValue();
+            // Select a random different mode
+            let newValue;
+            do {
+              const randomIndex = Math.floor(Math.random() * possibleModes.length);
+              newValue = possibleModes[randomIndex];
+            } while (newValue === currentValue && possibleModes.length > 1);
+
+            controller.setValue(newValue);
+            console.log(`Randomized Mode: ${currentValue} -> ${newValue}`);
+            totalChanged++;
+          } catch (err) {
+            console.warn("Error randomizing Mode:", err);
+          }
+        }
+        continue;
+      }
+
+      // Special case for T-PatternStyle parameter
+      if (targetName === "T-PatternStyle") {
+        if (Math.random() < this.intensity) {
+          try {
+            // Get available pattern styles
+            const patternStyles = [
+              "checkerboard", "waves", "spiral", "grid", "circles",
+              "diamonds", "ripples", "dots", "voronoi", "cells",
+              "fractal", "vortex", "bubbles", "water", "classicdrop"
+            ];
+
+            // Get the current value
+            const currentValue = controller.getValue();
+
+            // Select a random different style
+            let newValue;
+            do {
+              const randomIndex = Math.floor(Math.random() * patternStyles.length);
+              newValue = patternStyles[randomIndex];
+            } while (newValue === currentValue && patternStyles.length > 1);
+
+            controller.setValue(newValue);
+            console.log(`Randomized T-PatternStyle: ${currentValue} -> ${newValue}`);
+            totalChanged++;
+          } catch (err) {
+            console.warn("Error randomizing T-PatternStyle:", err);
           }
         }
         continue;
@@ -364,12 +429,6 @@ export class RandomizerUi extends BaseUi {
     try {
       const currentValue = controller.getValue();
       const targetName = target.name;
-
-      // Special case for pattern style - already excluded in constructor
-      if (targetName === "T-PatternStyle") {
-        console.log("Pattern Style randomization skipped - use presets instead");
-        return false;
-      }
 
       // Get range from target info
       let min = target.min !== undefined ? target.min : 0;
