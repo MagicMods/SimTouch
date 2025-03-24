@@ -207,7 +207,18 @@ export class PulseModulationUi extends BaseUi {
       .add(modulator, "enabled")
       .name("Enabled")
       .onChange((value) => {
-        modulator.enabled = value;
+        // When enabling, reinitialize the modulator
+        if (value) {
+          // Call the reinitialize method to reset all state variables
+          if (typeof modulator.reinitialize === "function") {
+            modulator.reinitialize();
+          }
+        } else {
+          // When disabling, reset to original value
+          if (typeof modulator.resetToOriginal === "function") {
+            modulator.resetToOriginal();
+          }
+        }
       });
 
     // Add target selector
@@ -305,6 +316,8 @@ export class PulseModulationUi extends BaseUi {
         "triangle",
         "sawtooth",
         "pulse",
+        "random",
+        "increment",
       ])
       .name("Wave Type")
       .domElement.classList.add("full-width");
@@ -736,6 +749,13 @@ export class PulseModulationUi extends BaseUi {
       // This ensures all divisions align properly when beat is triggered
       mod.currentPhase = 0;
       mod.phase = 0;
+
+      // For special wave types, trigger their beat-specific behavior
+      if (mod.type === "random" || mod.type === "increment") {
+        if (typeof mod.resetOnBeat === "function") {
+          mod.resetOnBeat();
+        }
+      }
     });
 
     // Calculate BPM based on tap tempo

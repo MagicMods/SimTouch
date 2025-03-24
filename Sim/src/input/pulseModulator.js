@@ -20,6 +20,13 @@ class PulseModulator {
     this.isSelector = false; // Flag to indicate if target is a selector/dropdown
     this.selectorOptions = []; // Array to store available options for selectors
     this.beatDivision = "1"; // Beat division multiplier (1, 1/2, 1/4, 1/8, etc.)
+
+    // For special wave types
+    this._lastBeatTime = 0;  // Track when the last beat occurred
+    this._incrementValue = 0; // Current value for increment mode
+    this._incrementDirection = 1; // Direction for increment mode (1 = up, -1 = down)
+    this._randomValue = 0.5; // Current value for random mode
+    this._wasEnabled = false; // Track previous enabled state
   }
 
 
@@ -52,6 +59,24 @@ class PulseModulator {
     const value = Number(this.beatDivision);
     // console.log(`Beat division value: ${value}`);
     return !isNaN(value) ? 1.0 / value : 1.0;
+  }
+
+  // Add a method to reinitialize state when enabled
+  reinitialize() {
+    // Reset phase and timing related variables
+    this.currentPhase = 0;
+    this.time = 0;
+    this._lastBeatTime = 0;
+
+    // Reset state for special wave types
+    if (this.type === "random") {
+      this._randomValue = Math.random(); // Generate new random value
+    } else if (this.type === "increment") {
+      this._incrementValue = 0; // Reset to starting value
+      this._incrementDirection = 1; // Reset to moving upward
+    }
+
+    console.log(`Reinitialized modulator for ${this.targetName}`);
   }
 
   setTarget(targetName) {
@@ -189,6 +214,14 @@ class PulseModulator {
 
 
   update(deltaTime, globalTime) {
+    // Check if we're transitioning from disabled to enabled
+    if (this.enabled && !this._wasEnabled) {
+      this.reinitialize();
+    }
+
+    // Update previous state tracking
+    this._wasEnabled = this.enabled;
+
     if (!this.enabled || !this.targetController) return;
 
     try {
@@ -221,6 +254,44 @@ class PulseModulator {
       // Get the waveform type
       const waveType = this.type || this.waveform || "sine";
 
+      // For beat-synced modes, detect beat boundaries
+      // A beat occurs when oscillationPhase crosses from high to low values
+      const isBeatBoundary = oscillationPhase < 0.05 &&
+        (currentTime - this._lastBeatTime) >= (0.9 / effectiveFrequency);
+
+      if (isBeatBoundary) {
+        this._lastBeatTime = currentTime;
+
+        // For random wave type, generate a new random value on each beat
+        if (waveType === "random") {
+          this._randomValue = Math.random();
+        }
+
+        // For increment wave type, step the value on each beat
+        if (waveType === "increment") {
+          // Calculate step size based on range and desired steps
+          const stepCount = this.isSelector ?
+            (this.selectorOptions.length - 1) :
+            Math.max(10, Math.round(actualRange * 10)); // At least 10 steps
+
+          const stepSize = 1 / stepCount;
+
+          // Update the current position
+          this._incrementValue += stepSize * this._incrementDirection;
+
+          // Handle boundary conditions (wrap or bounce)
+          if (this._incrementValue >= 1.0) {
+            // Reached top, change direction
+            this._incrementValue = 1.0;
+            this._incrementDirection = -1;
+          } else if (this._incrementValue <= 0.0) {
+            // Reached bottom, change direction
+            this._incrementValue = 0.0;
+            this._incrementDirection = 1;
+          }
+        }
+      }
+
       // Calculate a normalized oscillation value (0-1)
       let normalizedValue;
       switch (waveType) {
@@ -241,6 +312,14 @@ class PulseModulator {
         case "pulse":
           // Inversed sawtooth with sharp decay then smooth ease out
           normalizedValue = oscillationPhase < 0.2 ? 1.0 - oscillationPhase * 5 : 0;
+          break;
+        case "random":
+          // Use the current random value
+          normalizedValue = this._randomValue;
+          break;
+        case "increment":
+          // Use the current increment value
+          normalizedValue = this._incrementValue;
           break;
         default:
           normalizedValue = (Math.sin(oscillationPhase * Math.PI * 2) + 1) / 2;
@@ -326,6 +405,16 @@ class PulseModulator {
         // Sharp decay for first 20% of cycle, then smooth ease out
         value = pos < 0.2 ? 1.0 - pos * 5 : 0; // Sharp decay from 1 to 0 in first 20%
         break;
+      case "random":
+        // In calculation mode, use a pseudo-random value based on time
+        const randomPhase = Math.floor(t / Math.PI);
+        value = ((Math.sin(randomPhase * 12345.6789) + 1) / 2); // Pseudo-random 0-1
+        break;
+      case "increment":
+        // In calculation mode, use a gradual increment based on time
+        const cyclePos = (t % (Math.PI * 2)) / (Math.PI * 2); // Position in cycle (0-1)
+        value = cyclePos; // Simple ramp
+        break;
       case "sustainedPulse":
         // Calculate position in the cycle (0 to 1)
         const position = (t % (Math.PI * 2)) / (Math.PI * 2);
@@ -372,6 +461,14 @@ class PulseModulator {
         // Inversed sawtooth with sharp decay then smooth ease out
         const pos = (phase % (Math.PI * 2)) / (Math.PI * 2); // 0-1 position in cycle
         return pos < 0.2 ? 1.0 - pos * 5 : 0; // Sharp decay in first 20% of cycle
+      case "random":
+        // In global time calculation, use a pseudo-random value based on phase
+        const randomPhase = Math.floor(phase / Math.PI);
+        return ((Math.sin(randomPhase * 12345.6789) + 1) / 2); // Pseudo-random 0-1
+      case "increment":
+        // In global time calculation, use a gradual increment based on phase
+        const cyclePos = (phase % (Math.PI * 2)) / (Math.PI * 2); // Position in cycle (0-1)
+        return cyclePos; // Simple ramp
       default:
         return (Math.sin(phase) + 1) / 2; // Default to sine
     }
@@ -383,6 +480,38 @@ class PulseModulator {
   disable() {
     this.enabled = false;
     this.resetToOriginal(); // Reset to original value when disabled
+  }
+
+  /**
+   * Reset internal state when triggered by a beat
+   * Used for random and increment modes
+   */
+  resetOnBeat() {
+    if (this.type === "random") {
+      // Generate a new random value
+      this._randomValue = Math.random();
+    }
+    else if (this.type === "increment") {
+      // Step increment value
+      const actualRange = Math.abs(this.max - this.min);
+      const stepCount = this.isSelector ?
+        (this.selectorOptions?.length - 1 || 10) :
+        Math.max(10, Math.round(actualRange * 10));
+
+      const stepSize = 1 / stepCount;
+
+      // Update the current position
+      this._incrementValue += stepSize * this._incrementDirection;
+
+      // Handle boundary conditions (wrap or bounce)
+      if (this._incrementValue >= 1.0) {
+        this._incrementValue = 1.0;
+        this._incrementDirection = -1;
+      } else if (this._incrementValue <= 0.0) {
+        this._incrementValue = 0.0;
+        this._incrementDirection = 1;
+      }
+    }
   }
 }
 export { PulseModulator };
