@@ -1,3 +1,5 @@
+import { vsSource, fsSource } from "../shaders/basic.js";
+
 export class BaseRenderer {
     constructor(gl) {
         this.gl = gl;
