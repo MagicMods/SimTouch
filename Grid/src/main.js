@@ -1,9 +1,9 @@
 import GUI from "lil-gui";
 import { GridGenRenderer } from "./renderer/gridGenRenderer.js";
 
-// Initialize WebGL context
+// Initialize WebGL context with stencil buffer
 const canvas = document.getElementById("myCanvas");
-const gl = canvas.getContext("webgl");
+const gl = canvas.getContext("webgl", { stencil: true });
 
 if (!gl) {
     console.error("WebGL not supported");
@@ -17,14 +17,20 @@ const params = {
     target: 341,
     gap: 1,
     aspectRatio: 1,
-    scale: 0.95,
+    scale: 0.985,
     cols: 0,
     rows: 0,
     width: 0,
     height: 0,
-    showCenters: false,  // Show cell centers
-    showIndices: false,  // Show cell indices
-    showBoundary: false  // Highlight boundary cells
+    boundaryMode: 'partial',  // 'center' or 'partial'
+    displayMode: 'all',       // 'all', 'inside', 'boundary', 'masked'
+    showIndices: false,       // Show cell indices
+    showCellCounts: false,    // Show cell count display
+    cellCount: {
+        total: 0,
+        inside: 0,
+        boundary: 0
+    }
 };
 
 // Enhanced UI controls
@@ -43,22 +49,26 @@ gridFolder
     .name("Aspect Ratio")
     .onChange(() => renderer.updateGrid(params));
 gridFolder
-    .add(params, "scale", 0.1, 1, 0.001)
+    .add(params, "scale", 0.8, 1.1, 0.001)
     .name("Grid Scale")
     .onChange(() => renderer.updateGrid(params));
-
-const debugFolder = gui.addFolder('Debug');
-debugFolder
-    .add(params, "showCenters")
-    .name("Show Centers")
+gridFolder
+    .add(params, "boundaryMode", ['center', 'partial'])
+    .name("Boundary Mode")
     .onChange(() => renderer.updateGrid(params));
-debugFolder
+
+const displayFolder = gui.addFolder('Display');
+displayFolder
+    .add(params, "displayMode", ['all', 'inside', 'boundary', 'masked'])
+    .name("Display Mode")
+    .onChange(() => renderer.updateGrid(params));
+displayFolder
     .add(params, "showIndices")
     .name("Show Indices")
     .onChange(() => renderer.updateGrid(params));
-debugFolder
-    .add(params, "showBoundary")
-    .name("Show Boundary")
+displayFolder
+    .add(params, "showCellCounts")
+    .name("Show Cell Counts")
     .onChange(() => renderer.updateGrid(params));
 
 const infoFolder = gui.addFolder('Grid Info');
@@ -66,6 +76,9 @@ infoFolder.add(params, "cols").name("Columns").listen();
 infoFolder.add(params, "rows").name("Rows").listen();
 infoFolder.add(params, "width").name("Rect Width").listen();
 infoFolder.add(params, "height").name("Rect Height").listen();
+infoFolder.add(params.cellCount, "total").name("Total Cells").listen();
+infoFolder.add(params.cellCount, "inside").name("Inside Cells").listen();
+infoFolder.add(params.cellCount, "boundary").name("Boundary Cells").listen();
 
 // Initial render
 renderer.updateGrid(params); 
