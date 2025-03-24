@@ -247,6 +247,11 @@ canvas {
     width: 50px !important;
 }
 
+.bpm-button:active {
+    background-color: #ffbb00 !important;
+}
+
+
 .beat-container {
     margin-right: 10px;
 }
