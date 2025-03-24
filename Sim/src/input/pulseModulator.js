@@ -19,13 +19,10 @@ class PulseModulator {
     this.currentPhase = 0; // Add currentPhase property
     this.isSelector = false; // Flag to indicate if target is a selector/dropdown
     this.selectorOptions = []; // Array to store available options for selectors
+    this.beatDivision = "1"; // Beat division multiplier (1, 1/2, 1/4, 1/8, etc.)
   }
 
-  /**
-   * Get a display name for this modulator that includes the target name
-   * @param {number} index - Index of this modulator (defaults to 1)
-   * @returns {string} Formatted display name
-   */
+
   getDisplayName(index = 1) {
     // Format: "Modulator 1 | TARGET'S NAME"
     if (this.targetName) {
@@ -34,10 +31,29 @@ class PulseModulator {
     return `Modulator ${index} | No Target`;
   }
 
-  /**
-   * Set the target to modulate
-   * @param {string} targetName - Name of the target to modulate
-   */
+
+  getBeatDivisionValue() {
+    // console.log(`Beat division value: ${this.beatDivision}`);
+    if (!this.beatDivision || this.beatDivision === "1") {
+      return 1.0;
+    }
+
+    // Parse fractions like "1/4" into decimal values
+    if (this.beatDivision.includes("/")) {
+      const [numerator, denominator] = this.beatDivision.split("/").map(Number);
+      if (!isNaN(numerator) && !isNaN(denominator) && denominator !== 0) {
+        // For musical notation, 1/4 means 4 notes per measure, so we invert
+        return denominator / numerator;
+      }
+    }
+
+    // If it's a simple number (like "2" or "4"), use as divisor (slower)
+    // This makes "2" half-time (0.5x) and "4" quarter-time (0.25x)
+    const value = Number(this.beatDivision);
+    // console.log(`Beat division value: ${value}`);
+    return !isNaN(value) ? 1.0 / value : 1.0;
+  }
+
   setTarget(targetName) {
     const target = this.manager.targets[targetName];
     if (!target) {
@@ -85,12 +101,7 @@ class PulseModulator {
     }
   }
 
-  /**
-   * Detect if a target is a selector/dropdown type
-   * @param {string} targetName - Name of the target
-   * @param {object} controller - The controller object
-   * @returns {boolean} True if target is a selector
-   */
+
   _detectIfSelector(targetName, controller) {
     // Check specific target names known to be selectors
     if (targetName === "Boundary" || targetName === "Mode" || targetName === "T-PatternStyle") {
@@ -106,12 +117,7 @@ class PulseModulator {
     return false;
   }
 
-  /**
-   * Get available options for a selector target
-   * @param {string} targetName - Name of the target
-   * @param {object} controller - The controller object
-   * @returns {Array} Array of available options
-   */
+
   _getSelectorOptions(targetName, controller) {
     // Special case for known targets
     if (targetName === "Boundary") {
@@ -165,9 +171,6 @@ class PulseModulator {
     return ["Option 1", "Option 2"];
   }
 
-  /**
-   * Reset target to its original value
-   */
   resetToOriginal() {
     if (this.targetController && this.originalValue !== null) {
       try {
@@ -184,11 +187,7 @@ class PulseModulator {
     }
   }
 
-  /**
-   * Update the modulator
-   * @param {number} deltaTime - Time since last update in seconds
-   * @param {number} globalTime - Global time in seconds
-   */
+
   update(deltaTime, globalTime) {
     if (!this.enabled || !this.targetController) return;
 
@@ -202,77 +201,21 @@ class PulseModulator {
         this.frequency = this.manager.masterFrequency;
       }
 
-      // =====================================================================
-      // NEW APPROACH: Fixed amplitude oscillation with variable center point
-      // =====================================================================
+      // Get beat division multiplier (e.g., 1 for whole notes, 2 for half notes, 4 for quarter notes)
+      const divisionMultiplier = this.getBeatDivisionValue();
 
-      // Calculate range midpoint and size
+      // Calculate the effective frequency based on the beat division
+      const effectiveFrequency = this.frequency * divisionMultiplier;
+
+      // Calculate range for value mapping
       const actualRange = Math.abs(this.max - this.min);
-      const midpoint = (this.min + this.max) / 2;
 
-      // Define our standard oscillation rate in units per second
-      // This is the key to fixing the proportionality issue
-      const UNITS_PER_SECOND = 2.0; // Standard rate for all oscillations
-      let adjustedRate = UNITS_PER_SECOND;
-
-      // Get the original base frequency
-      const baseFrequency = this.frequency;
-
-      // For selectors, use a much slower rate of change
-      if (this.isSelector && this.selectorOptions.length > 0) {
-        // Calculate available options within the range
-        const minIndex = Math.max(0, Math.min(this.selectorOptions.length - 1, Math.floor(this.min)));
-        const maxIndex = Math.max(0, Math.min(this.selectorOptions.length - 1, Math.floor(this.max)));
-        const numChoices = maxIndex - minIndex + 1;
-
-        if (numChoices <= 1) {
-          // Special case: single option - just stay at that option
-          adjustedRate = 0;
-        } else {
-          // Use a fixed rate for selectors (options per second)
-          adjustedRate = 0.5; // Half an option per second
-        }
-      } else {
-        // For numeric values, adjust rate based on range size
-        if (actualRange < 0.1) {
-          // Very small ranges
-          adjustedRate = 0.05; // 0.05 units per second
-        } else if (actualRange < 0.5) {
-          // Small ranges
-          adjustedRate = 0.1; // 0.1 units per second
-        } else if (actualRange < 1.0) {
-          // Medium-small ranges
-          adjustedRate = 0.25; // 0.25 units per second
-        } else if (actualRange < 2.0) {
-          // Medium ranges
-          adjustedRate = 0.5; // 0.5 units per second
-        } else if (actualRange < 5.0) {
-          // Larger medium ranges
-          adjustedRate = 1.0; // 1.0 units per second
-        } else {
-          // Large ranges (≥5.0)
-          adjustedRate = 2.0; // 2.0 units per second
-        }
-      }
-
-      // Apply master frequency scaling but maintain our fixed rate relationship
-      adjustedRate *= (baseFrequency / 1.0); // Scale by master frequency ratio
-
-      // Apply target-specific scaling
-      if (this.targetName === "Mode") {
-        adjustedRate *= 0.5; // Slower for Mode selector
-      } else if (this.targetName === "T-PatternStyle") {
-        adjustedRate *= 0.25; // Much slower for pattern styles
-      }
-
-      // Store for debugging
-      this._rateUnitsPerSecond = adjustedRate;
-
-      // Calculate how much the value would change in this timestep
+      // Get current time from global time or internal time
       const currentTime = globalTime || this.time;
 
-      // Calculate a normalized phase (0-1) based on time and adjusted rate
-      const oscillationPhase = (currentTime * adjustedRate + this.phase) % 1.0;
+      // Calculate phase directly from effective frequency and time
+      // This ensures exact beat timing with division multipliers
+      const oscillationPhase = (currentTime * effectiveFrequency + this.phase) % 1.0;
       this.currentPhase = oscillationPhase * Math.PI * 2; // Store in radians for compatibility
 
       // Get the waveform type
@@ -309,9 +252,6 @@ class PulseModulator {
         normalizedValue = 0.5;
       }
 
-      // IMPORTANT: This is the key change - we map to the target value range differently
-      let targetValue;
-
       // Special handling for selector/dropdown type targets
       if (this.isSelector && this.selectorOptions.length > 0) {
         // For selectors, we need to map to a valid option index
@@ -334,7 +274,7 @@ class PulseModulator {
         }
       } else {
         // For numeric values, directly map to the target range
-        targetValue = this.min + normalizedValue * (this.max - this.min);
+        const targetValue = this.min + normalizedValue * (this.max - this.min);
         this.targetController.setValue(targetValue);
       }
     } catch (e) {
@@ -360,7 +300,11 @@ class PulseModulator {
       frequency = this.sync ? this.manager.masterFrequency : this.frequency;
     }
 
-    const t = time * frequency * Math.PI * 2 + this.phase;
+    // Apply beat division
+    const divisionMultiplier = this.getBeatDivisionValue();
+    const effectiveFrequency = frequency * divisionMultiplier;
+
+    const t = time * effectiveFrequency * Math.PI * 2 + this.phase;
 
     let value = 0;
     switch (this.type) {
@@ -407,7 +351,11 @@ class PulseModulator {
    * @returns {number} Modulation value 0-1
    */
   calculateModulationWithGlobalTime(globalTime) {
-    const phase = globalTime * this.frequency * Math.PI * 2 + this.phase;
+    // Apply beat division
+    const divisionMultiplier = this.getBeatDivisionValue();
+    const effectiveFrequency = this.frequency * divisionMultiplier;
+
+    const phase = globalTime * effectiveFrequency * Math.PI * 2 + this.phase;
 
     // Select waveform calculation
     switch (this.type) {

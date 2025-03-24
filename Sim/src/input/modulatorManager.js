@@ -285,6 +285,7 @@ export class ModulatorManager {
         state.frequency = mod.frequency;
         state.phase = mod.phase;
         state.sync = !!mod.sync;
+        if (mod.beatDivision !== undefined) state.beatDivision = mod.beatDivision;
         if (mod.pwm !== undefined) state.pwm = mod.pwm;
       } else if (mod instanceof InputModulator) {
         state.type = "input";
@@ -298,11 +299,7 @@ export class ModulatorManager {
     });
   }
 
-  /**
-   * Get display information for modulators including their target names
-   * @param {string} type - Optional type filter ("pulse" or "input")
-   * @returns {Array} Array of modulator display information objects
-   */
+
   getModulatorsDisplayInfo(type) {
     const modulators = type ? this.getModulatorsByType(type) : this.modulators;
 
@@ -357,6 +354,7 @@ export class ModulatorManager {
         modulator.frequency = state.frequency || 1.0;
         modulator.phase = state.phase || 0;
         modulator.sync = !!state.sync;
+        modulator.beatDivision = state.beatDivision || "1"; // Set beat division if present
         if (state.pwm !== undefined) modulator.pwm = state.pwm;
       } else if (state.type === "input") {
         modulator = this.createInputModulator();

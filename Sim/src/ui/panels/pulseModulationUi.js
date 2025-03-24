@@ -156,20 +156,12 @@ export class PulseModulationUi extends BaseUi {
     }
   }
 
-  /**
-   * Convert BPM to Hz frequency
-   * @param {number} bpm - Beats Per Minute value
-   * @returns {number} Frequency in Hz
-   */
+
   bpmToHz(bpm) {
     return bpm / 60;
   }
 
-  /**
-   * Convert Hz frequency to BPM
-   * @param {number} hz - Frequency in Hz
-   * @returns {number} Beats Per Minute value
-   */
+
   hzToBpm(hz) {
     return hz * 60;
   }
@@ -350,6 +342,28 @@ export class PulseModulationUi extends BaseUi {
       frequencyController.domElement.style.display = "none";
     }
 
+    // Add beat division dropdown
+    const beatDivisionController = folder
+      .add(modulator, "beatDivision", [
+        "1",    // Whole note (1 per beat)
+        "1/2",  // Half note (2 per beat)
+        "1/4",  // Quarter note (4 per beat)
+        "1/8",  // Eighth note (8 per beat)
+        "1/16", // Sixteenth note (16 per beat)
+        "1/32", // Thirty-second note (32 per beat)
+        "2",    // Half time (twice as slow)
+        "4"     // Quarter time (4 times as slow)
+      ])
+      .name("Beat Division")
+      .onChange(() => {
+        // Reset phase when changing division for better sync
+        if (modulator.sync) {
+          modulator.currentPhase = 0;
+        }
+      });
+
+    beatDivisionController.domElement.classList.add("full-width");
+
     // Add min/max controls
     const minController = folder
       .add(modulator, "min", -10, 10)
@@ -431,6 +445,7 @@ export class PulseModulationUi extends BaseUi {
         min: 0,
         max: 1,
         targetName: "None",
+        beatDivision: "1", // Add default beatDivision
       };
 
       // Extract values from controllers
@@ -606,6 +621,10 @@ export class PulseModulationUi extends BaseUi {
             // Explicitly set the UI value for enabled toggle
             controller.setValue(modData[prop]);
             console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
+          } else if (prop === "beatDivision" && modData[prop] !== undefined) {
+            // Set beat division if present in preset
+            controller.setValue(modData[prop]);
+            console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
           }
           // Other properties are set normally on the modulator object
           else if (modData[prop] !== undefined) {
@@ -713,6 +732,8 @@ export class PulseModulationUi extends BaseUi {
 
     // Reset their phases to 0 to trigger a synchronized beat
     syncedModulators.forEach(mod => {
+      // Reset phase with respect to beat division
+      // This ensures all divisions align properly when beat is triggered
       mod.currentPhase = 0;
       mod.phase = 0;
     });
