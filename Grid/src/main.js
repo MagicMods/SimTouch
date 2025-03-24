@@ -17,15 +17,15 @@ const params = {
     target: 341,
     gap: 1,
     aspectRatio: 1,
-    scale: 0.985,
+    scale: 0.978,
     cols: 0,
     rows: 0,
     width: 0,
     height: 0,
-    boundaryMode: 'partial',  // 'center' or 'partial'
-    displayMode: 'all',       // 'all', 'inside', 'boundary', 'masked'
-    showIndices: false,       // Show cell indices
-    showCellCounts: false,    // Show cell count display
+    allowCut: 1,            // 0-3: Controls how many corners can be outside the circle
+    displayMode: 'masked',  // Default to masked view
+    showIndices: false,     // Show cell indices
+    showCellCounts: true,   // Enable cell counts by default
     cellCount: {
         total: 0,
         inside: 0,
@@ -53,8 +53,8 @@ gridFolder
     .name("Grid Scale")
     .onChange(() => renderer.updateGrid(params));
 gridFolder
-    .add(params, "boundaryMode", ['center', 'partial'])
-    .name("Boundary Mode")
+    .add(params, "allowCut", 0, 3, 1)
+    .name("Allow Cut")
     .onChange(() => renderer.updateGrid(params));
 
 const displayFolder = gui.addFolder('Display');
