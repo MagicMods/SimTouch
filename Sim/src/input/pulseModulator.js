@@ -295,6 +295,10 @@ class PulseModulator {
         case "sawtooth":
           normalizedValue = oscillationPhase;
           break;
+        case "pulse":
+          // Inversed sawtooth with sharp decay then smooth ease out
+          normalizedValue = oscillationPhase < 0.2 ? 1.0 - oscillationPhase * 5 : 0;
+          break;
         default:
           normalizedValue = (Math.sin(oscillationPhase * Math.PI * 2) + 1) / 2;
       }
@@ -372,6 +376,12 @@ class PulseModulator {
       case "sawtooth":
         value = ((t / Math.PI) % 2) / 2 + 0.5; // Map to 0-1
         break;
+      case "pulse":
+        // Inversed sawtooth with sharp decay then smooth ease out
+        const pos = ((t / Math.PI) % 2) / 2; // 0-1 position in cycle
+        // Sharp decay for first 20% of cycle, then smooth ease out
+        value = pos < 0.2 ? 1.0 - pos * 5 : 0; // Sharp decay from 1 to 0 in first 20%
+        break;
       case "sustainedPulse":
         // Calculate position in the cycle (0 to 1)
         const position = (t % (Math.PI * 2)) / (Math.PI * 2);
@@ -410,6 +420,10 @@ class PulseModulator {
         return t < 0.5 ? t * 2 : 2 - t * 2;
       case "sawtooth":
         return (phase % (Math.PI * 2)) / (Math.PI * 2);
+      case "pulse":
+        // Inversed sawtooth with sharp decay then smooth ease out
+        const pos = (phase % (Math.PI * 2)) / (Math.PI * 2); // 0-1 position in cycle
+        return pos < 0.2 ? 1.0 - pos * 5 : 0; // Sharp decay in first 20% of cycle
       default:
         return (Math.sin(phase) + 1) / 2; // Default to sine
     }

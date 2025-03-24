@@ -312,6 +312,7 @@ export class PulseModulationUi extends BaseUi {
         "square",
         "triangle",
         "sawtooth",
+        "pulse",
       ])
       .name("Wave Type")
       .domElement.classList.add("full-width");
