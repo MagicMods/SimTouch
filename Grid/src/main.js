@@ -17,19 +17,28 @@ const params = {
     target: 341,
     gap: 1,
     aspectRatio: 1,
-    scale: 0.978,
+    scale: 1.05,
     cols: 0,
     rows: 0,
     width: 0,
     height: 0,
-    allowCut: 1,            // 0-3: Controls how many corners can be outside the circle
+    allowCut: 3,            // 0-3: Controls how many corners can be outside the circle
     displayMode: 'masked',  // Default to masked view
     showIndices: false,     // Show cell indices
-    showCellCounts: true,   // Enable cell counts by default
+    showCellCounts: false,   // Enable cell counts by default
     cellCount: {
         total: 0,
         inside: 0,
         boundary: 0
+    },
+    // Color settings - using [r,g,b] normalized format (0-1)
+    colors: {
+        insideCells: [0.5, 0.5, 0.5],      // Gray for inside cells
+        boundaryCells: [0.6, 0.4, 0.4],    // Reddish for boundary cells
+        outsideCells: [0.3, 0.3, 0.3],     // Darker gray for outside cells
+        indexText: [1, 1, 0],              // Yellow for indices
+        outerCircle: [0.9, 0.9, 0.9],      // Light gray for outer circle
+        innerCircle: [0.1, 0.1, 0.1]       // Dark gray for inner circle
     }
 };
 
@@ -69,6 +78,33 @@ displayFolder
 displayFolder
     .add(params, "showCellCounts")
     .name("Show Cell Counts")
+    .onChange(() => renderer.updateGrid(params));
+
+// Color controls
+const colorFolder = gui.addFolder('Colors');
+colorFolder
+    .addColor(params.colors, "insideCells")
+    .name("Inside Cells")
+    .onChange(() => renderer.updateGrid(params));
+colorFolder
+    .addColor(params.colors, "boundaryCells")
+    .name("Boundary Cells")
+    .onChange(() => renderer.updateGrid(params));
+colorFolder
+    .addColor(params.colors, "outsideCells")
+    .name("Outside Cells")
+    .onChange(() => renderer.updateGrid(params));
+colorFolder
+    .addColor(params.colors, "indexText")
+    .name("Index Text")
+    .onChange(() => renderer.updateGrid(params));
+colorFolder
+    .addColor(params.colors, "outerCircle")
+    .name("Outer Circle")
+    .onChange(() => renderer.updateGrid(params));
+colorFolder
+    .addColor(params.colors, "innerCircle")
+    .name("Inner Circle")
     .onChange(() => renderer.updateGrid(params));
 
 const infoFolder = gui.addFolder('Grid Info');

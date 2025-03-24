@@ -87,9 +87,18 @@ export class GridGenRenderer extends BaseRenderer {
             this.TARGET_HEIGHT
         );
 
+        // Get colors from params for circles
+        const outerCircleColor = params.colors && params.colors.outerCircle
+            ? [...params.colors.outerCircle, 1] // Add alpha=1
+            : [0.9, 0.9, 0.9, 1];
+
+        const innerCircleColor = params.colors && params.colors.innerCircle
+            ? [...params.colors.innerCircle, 1] // Add alpha=1
+            : [0.1, 0.1, 0.1, 1];
+
         // Draw reference circles
-        this.drawCircle(120, 120, 120, [0.9, 0.9, 0.9, 1]); // Outer circle
-        this.drawCircle(120, 120, 120 * params.scale, [0.1, 0.1, 0.1, 1]); // Inner circle
+        this.drawCircle(120, 120, 120, outerCircleColor); // Outer circle
+        this.drawCircle(120, 120, 120 * params.scale, innerCircleColor); // Inner circle
 
         // Generate grid
         const rectangles = this.generateRectangles(params);
@@ -97,12 +106,28 @@ export class GridGenRenderer extends BaseRenderer {
         // Classify cells as inside or boundary
         this.classifyCells(rectangles, params.allowCut);
 
+        // Store color parameters to be used in rendering
+        if (params.colors) {
+            this.cellColors = {
+                inside: [...params.colors.insideCells, 1.0], // Add alpha=1 
+                boundary: [...params.colors.boundaryCells, 1.0],
+                outside: [...params.colors.outsideCells, 1.0]
+            };
+        } else {
+            // Default colors if not specified
+            this.cellColors = {
+                inside: [0.5, 0.5, 0.5, 1.0],
+                boundary: [0.6, 0.4, 0.4, 1.0],
+                outside: [0.3, 0.3, 0.3, 1.0]
+            };
+        }
+
         // Draw cells based on display mode
         this.renderCells(rectangles, params.displayMode);
 
         // Draw indices if enabled
         if (params.showIndices) {
-            this.updateCellIndices(rectangles, params.displayMode);
+            this.updateCellIndices(rectangles, params.displayMode, params.colors?.indexText);
         }
 
         // Update cell count display
@@ -170,7 +195,6 @@ export class GridGenRenderer extends BaseRenderer {
             if (cornersOutside === 0) {
                 // Cell is fully inside the circle (all 4 corners inside)
                 rect.cellType = 'inside';
-                rect.color = [0.5, 0.5, 0.5, 1.0]; // Normal gray
             } else if (
                 // Allow cell if it has center inside OR
                 // if the number of corners outside is <= allowCut
@@ -180,11 +204,9 @@ export class GridGenRenderer extends BaseRenderer {
             ) {
                 // Cell is on the boundary based on corner count criteria
                 rect.cellType = 'boundary';
-                rect.color = [0.6, 0.4, 0.4, 1.0]; // Reddish
             } else {
                 // Cell is outside or has too many corners outside
                 rect.cellType = 'outside';
-                rect.color = [0.3, 0.3, 0.3, 1.0]; // Darker gray
             }
 
             // Store the corner counts for debugging
@@ -194,11 +216,11 @@ export class GridGenRenderer extends BaseRenderer {
     }
 
     renderCells(rectangles, displayMode) {
-        // Define colors for different cell types
-        const colors = {
-            inside: [0.5, 0.5, 0.5, 1.0],     // Normal gray
-            boundary: [0.6, 0.4, 0.4, 1.0],   // Reddish
-            outside: [0.3, 0.3, 0.3, 1.0]     // Darker gray
+        // Use stored colors from updateGrid
+        const colors = this.cellColors || {
+            inside: [0.5, 0.5, 0.5, 1.0],
+            boundary: [0.6, 0.4, 0.4, 1.0],
+            outside: [0.3, 0.3, 0.3, 1.0]
         };
 
         // Special handling for masked mode
@@ -216,10 +238,12 @@ export class GridGenRenderer extends BaseRenderer {
                 case 'all':
                     // Draw all cells with their regular color
                     shouldDraw = true;
+                    customColor = colors[rect.cellType];
                     break;
                 case 'inside':
                     // Only draw cells fully inside the circle
                     shouldDraw = rect.cellType === 'inside';
+                    customColor = colors.inside;
                     break;
                 case 'boundary':
                     // Only draw boundary cells, with highlighted color
@@ -231,7 +255,7 @@ export class GridGenRenderer extends BaseRenderer {
             if (shouldDraw) {
                 this.drawRectangle(
                     rect.x, rect.y, rect.width, rect.height,
-                    customColor || rect.color
+                    customColor
                 );
             }
         });
@@ -267,13 +291,13 @@ export class GridGenRenderer extends BaseRenderer {
         // Draw each rectangle, applying the stencil mask
         rectangles.forEach(rect => {
             if (rect.cellType === 'inside') {
-                // Inside cells are neutral gray
+                // Inside cells with the custom color
                 this.drawRectangle(
                     rect.x, rect.y, rect.width, rect.height,
                     colors.inside
                 );
             } else if (rect.cellType === 'boundary') {
-                // Boundary cells are reddish
+                // Boundary cells with the custom color
                 this.drawRectangle(
                     rect.x, rect.y, rect.width, rect.height,
                     colors.boundary
@@ -285,7 +309,7 @@ export class GridGenRenderer extends BaseRenderer {
         gl.disable(gl.STENCIL_TEST);
     }
 
-    updateCellIndices(rectangles, displayMode) {
+    updateCellIndices(rectangles, displayMode, indexTextColor) {
         // Determine which cells to display indices for
         const filteredRects = rectangles.filter(rect => {
             switch (displayMode) {
@@ -304,6 +328,12 @@ export class GridGenRenderer extends BaseRenderer {
         this.textOverlay.style.width = `${canvas.width}px`;
         this.textOverlay.style.height = `${canvas.height}px`;
 
+        // Keep the index color as yellow by default (as set by user)
+        // We don't modify the CSS color unless explicitly requested
+        const textColorCSS = indexTextColor
+            ? `rgb(${Math.round(indexTextColor[0] * 255)}, ${Math.round(indexTextColor[1] * 255)}, ${Math.round(indexTextColor[2] * 255)})`
+            : 'yellow';
+
         // Create an index label for each filtered cell
         filteredRects.forEach((rect, i) => {
             // Calculate font size based on cell dimensions
@@ -316,10 +346,9 @@ export class GridGenRenderer extends BaseRenderer {
             label.style.left = `${rect.x + rect.width / 2}px`;
             label.style.top = `${rect.y + rect.height / 2}px`;
             label.style.transform = 'translate(-50%, -50%)';
-            label.style.color = 'red';
+            label.style.color = textColorCSS;
             label.style.fontSize = `${fontSize}px`;
             label.style.fontFamily = 'Arial, sans-serif';
-            label.style.fontWeight = 'bold';
             label.style.textAlign = 'center';
             label.style.display = 'flex';
             label.style.alignItems = 'center';
