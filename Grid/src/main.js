@@ -33,12 +33,14 @@ const params = {
     },
     // Color settings - using [r,g,b] normalized format (0-1)
     colors: {
-        insideCells: [0.5, 0.5, 0.5],      // Gray for inside cells
-        boundaryCells: [0.6, 0.4, 0.4],    // Reddish for boundary cells
-        outsideCells: [0.3, 0.3, 0.3],     // Darker gray for outside cells
-        indexText: [1, 1, 0],              // Yellow for indices
-        outerCircle: [0.9, 0.9, 0.9],      // Light gray for outer circle
-        innerCircle: [0.1, 0.1, 0.1]       // Dark gray for inner circle
+        background: [0, 0, 0],            // Black background
+        insideCells: [0.5, 0.5, 0.5],     // Gray for inside cells
+        boundaryCells: [0.6, 0.4, 0.4],   // Reddish for boundary cells
+        outsideCells: [0.3, 0.3, 0.3],    // Darker gray for outside cells
+        indexText: [1, 1, 0],             // Yellow for indices
+        outerCircle: [0.9, 0.9, 0.9],     // Light gray for outer circle
+        innerCircle: [0.1, 0.1, 0.1],     // Dark gray for inner circle
+        maskCircle: [0.15, 0.15, 0.15]    // Dark gray for mask circle
     }
 };
 
@@ -83,6 +85,10 @@ displayFolder
 // Color controls
 const colorFolder = gui.addFolder('Colors');
 colorFolder
+    .addColor(params.colors, "background")
+    .name("Background")
+    .onChange(() => renderer.updateGrid(params));
+colorFolder
     .addColor(params.colors, "insideCells")
     .name("Inside Cells")
     .onChange(() => renderer.updateGrid(params));
@@ -105,6 +111,10 @@ colorFolder
 colorFolder
     .addColor(params.colors, "innerCircle")
     .name("Inner Circle")
+    .onChange(() => renderer.updateGrid(params));
+colorFolder
+    .addColor(params.colors, "maskCircle")
+    .name("Mask Circle")
     .onChange(() => renderer.updateGrid(params));
 
 const infoFolder = gui.addFolder('Grid Info');

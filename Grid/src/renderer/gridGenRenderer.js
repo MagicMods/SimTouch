@@ -74,8 +74,13 @@ export class GridGenRenderer extends BaseRenderer {
     }
 
     updateGrid(params) {
+        // Get background color from params or default to black
+        const bgColor = params.colors && params.colors.background
+            ? [...params.colors.background, 1.0] // Add alpha=1
+            : [0, 0, 0, 1.0];
+
         // Clear canvas and overlays
-        this.gl.clearColor(0, 0, 0, 1.0);
+        this.gl.clearColor(bgColor[0], bgColor[1], bgColor[2], bgColor[3]);
         this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT);
         this.textOverlay.innerHTML = '';
 
@@ -96,6 +101,10 @@ export class GridGenRenderer extends BaseRenderer {
             ? [...params.colors.innerCircle, 1] // Add alpha=1
             : [0.1, 0.1, 0.1, 1];
 
+        const maskCircleColor = params.colors && params.colors.maskCircle
+            ? [...params.colors.maskCircle, 1] // Add alpha=1
+            : [0.15, 0.15, 0.15, 1];
+
         // Draw reference circles
         this.drawCircle(120, 120, 120, outerCircleColor); // Outer circle
         this.drawCircle(120, 120, 120 * params.scale, innerCircleColor); // Inner circle
@@ -111,14 +120,18 @@ export class GridGenRenderer extends BaseRenderer {
             this.cellColors = {
                 inside: [...params.colors.insideCells, 1.0], // Add alpha=1 
                 boundary: [...params.colors.boundaryCells, 1.0],
-                outside: [...params.colors.outsideCells, 1.0]
+                outside: [...params.colors.outsideCells, 1.0],
+                background: bgColor,
+                maskCircle: maskCircleColor
             };
         } else {
             // Default colors if not specified
             this.cellColors = {
                 inside: [0.5, 0.5, 0.5, 1.0],
                 boundary: [0.6, 0.4, 0.4, 1.0],
-                outside: [0.3, 0.3, 0.3, 1.0]
+                outside: [0.3, 0.3, 0.3, 1.0],
+                background: [0, 0, 0, 1.0],
+                maskCircle: [0.15, 0.15, 0.15, 1.0]
             };
         }
 
@@ -267,20 +280,21 @@ export class GridGenRenderer extends BaseRenderer {
         const CENTER_Y = 120;
         const RADIUS = 120;
 
-        // First, draw all cells normally
-        gl.clearColor(0, 0, 0, 1.0);
+        // Clear with background color
+        gl.clearColor(colors.background[0], colors.background[1], colors.background[2], colors.background[3]);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
+
+        // Draw the mask circle (this is visible outside the stencil)
+        this.drawCircle(CENTER_X, CENTER_Y, RADIUS, colors.maskCircle);
 
         // Enable stencil test
         gl.enable(gl.STENCIL_TEST);
-        gl.clear(gl.STENCIL_BUFFER_BIT);
-
-        // First pass: Draw the circle into the stencil buffer
         gl.stencilFunc(gl.ALWAYS, 1, 0xFF);
         gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
         gl.stencilMask(0xFF);
-        gl.colorMask(false, false, false, false); // Don't draw to color buffer
 
-        // Fill the stencil with the circle
+        // First pass: Draw the circle into the stencil buffer (but don't show it)
+        gl.colorMask(false, false, false, false); // Don't draw to color buffer
         this.drawCircle(CENTER_X, CENTER_Y, RADIUS, [1, 1, 1, 1]);
 
         // Second pass: Only draw where the stencil is 1 (inside circle)
