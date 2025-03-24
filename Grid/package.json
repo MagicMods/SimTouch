@@ -1,0 +1,10 @@
+{
+  "name": "grid-gen",
+  "version": "1.0.0",
+  "description": "Grid generation tool for Svibe",
+  "main": "src/main.js",
+  "type": "module",
+  "dependencies": {
+    "lil-gui": "^0.19.2"
+  }
+}

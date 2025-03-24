@@ -135,7 +135,7 @@
                 y: Math.round(center + dy - scaledH / 2),
                 width: scaledW,
                 height: scaledH,
-                color: [1, 1, 1, 1],
+                color: [0.5, 0.5, 0.5, 1],
               });
             }
           }
@@ -161,7 +161,7 @@
 
       // [Keep drawScene, drawCircle, and drawRectangle functions identical...]
       function drawScene() {
-        gl.clearColor(1.0, 1.0, 1.0, 1.0);
+        gl.clearColor(0, 0, 0, 1.0);
         gl.clear(gl.COLOR_BUFFER_BIT);
         // drawCircle(120, 120, 125, [0, 0, 0, 1]);
         gl.useProgram(programInfo.program);
@@ -170,8 +170,8 @@
           canvas.width,
           canvas.height
         );
-        drawCircle(120, 120, 125, [0.9, 0.9, 0.9, 1]);
-        drawCircle(120, 120, 120, [0, 0, 0, 1]);
+        drawCircle(120, 120, 120, [0.9, 0.9, 0.9, 1]);
+        // drawCircle(120, 120, 120, [0.1, 0.1, 0.1, 1]);
 
         const rectangles = generateRectangles();
         // rectangles.forEach((rect) => {
@@ -266,7 +266,7 @@
         .name("Aspect Ratio")
         .onChange(drawScene);
       gui
-        .add(params, "scale", 0.1, 1, 0.01)
+        .add(params, "scale", 0.1, 1, 0.001)
         .name("Grid Scale")
         .onChange(drawScene);
       gui.add(params, "cols").name("Columns").listen();
