@@ -56,7 +56,7 @@ export class PresetUi extends BaseUi {
   _createActionButtons(containerElement) {
     const actionsContainer = document.createElement("div");
     actionsContainer.style.display = "flex";
-    actionsContainer.style.margin = "10px 0";
+    actionsContainer.style.margin = "8px 4px";
 
     const saveButton = this._createButton("Save", () => {
       const name = prompt("Enter preset name:");
@@ -171,10 +171,7 @@ export class PresetUi extends BaseUi {
   _createPresetSelector(containerElement) {
     const presetSelect = document.createElement("select");
     presetSelect.classList = "preset-select";
-    presetSelect.style.padding = "5px";
-    presetSelect.style.width = "100%";
-    presetSelect.style.margin = "10px 0";
-    presetSelect.style.display = "block"; // Ensure it's a block element
+
 
     this.updatePresetDropdown(presetSelect);
 
@@ -192,7 +189,7 @@ export class PresetUi extends BaseUi {
     const navContainer = document.createElement("div");
     navContainer.style.display = "flex";
     navContainer.style.justifyContent = "space-between";
-    navContainer.style.margin = "10px 0 10px 0";
+    navContainer.style.margin = "8px 4px";
 
     const prevButton = this._createButton("← Prev", () => {
       this.navigatePreset(-1);
@@ -215,7 +212,7 @@ export class PresetUi extends BaseUi {
 
     // ADD THIS: Create speed control container
     const speedContainer = document.createElement("div");
-    speedContainer.style.margin = "5px 0";
+    speedContainer.style.margin = "8px 0";
     speedContainer.style.display = "none"; // Hidden initially
 
     const speedLabel = document.createElement("div");

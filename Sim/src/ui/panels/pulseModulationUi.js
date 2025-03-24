@@ -36,10 +36,10 @@ export class PulseModulationUi extends BaseUi {
     const controlsContainer = document.createElement("div");
     controlsContainer.style.display = "flex";
     controlsContainer.style.justifyContent = "space-between";
-    controlsContainer.style.alignItems = "center";
-    controlsContainer.style.padding = "0px 10px";
+    // controlsContainer.style.alignItems = "center";
+    controlsContainer.style.padding = "1px 8px";
     controlsContainer.style.width = "100%";
-    controlsContainer.style.marginTop = "10px";
+    // controlsContainer.style.marginTop = "10px";
     // Add to the GUI DOM directly
     const parentContainer = this.gui.domElement.querySelector(".children");
     if (parentContainer) {
@@ -187,7 +187,7 @@ export class PulseModulationUi extends BaseUi {
       .name("Add Modulator");
 
     // Add margin to the add modulator button
-    addModulatorController.domElement.style.marginTop = "10px";
+    // addModulatorController.domElement.style.marginTop = "10px";
   }
 
   initPresetControls(presetManager) {

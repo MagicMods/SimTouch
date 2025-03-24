@@ -87,7 +87,7 @@ export class PresetManager {
     container.style.alignItems = "center";
     container.style.marginTop = "8px";
     container.style.marginBottom = "8px";
-    container.style.width = "100%";
+    // container.style.width = "100%";
 
     const presetSelect = document.createElement("select");
     presetSelect.classList.add("preset-select");

@@ -147,7 +147,7 @@ export class InputsUi extends BaseUi {
 
     this.mouseInputFolder
       .add(particles.mouseForces, "impulseMag", 0.01, 0.12, 0.001)
-      .name("Impulse Magnitude");
+      .name("Impulse Mag");
   }
 
   initExternalInputControls() {

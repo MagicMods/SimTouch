@@ -154,11 +154,12 @@ canvas {
 }
 
 .preset-select {
-    width: calc(100% - 8px); 
-    padding: 4px; 
+    width: calc(100% - 10px) !important; 
+    padding: 3px !important; 
+    margin: 0 5px;
     /* margin: 5px; */
-    border: 1px solid #242424;
-    border-radius: 4px;
+    /* border: 1px solid #242424; */
+    border-radius: 0px !important;
     background: #3b3b3b;
     text-align: center !important;
     font-size: 10px;
@@ -227,7 +228,7 @@ canvas {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin: 5px;
+    margin: 8px;
     gap: 5px;
 }
 
@@ -306,9 +307,8 @@ canvas {
 .turbulence-toggle-buttons {
     display: flex;
     justify-content: space-between;
-    margin-bottom: 8px;
-    margin-top: 8px;
-    width: 100%;
+    margin: 6px;
+    /* width: 100%; */
 }
 
 .toggle-button {
@@ -380,13 +380,14 @@ canvas {
 }
 
 .bpm-value {
-    font-size: 11px;
+    font-size: 12px;
     width: 20% !important;
     text-align: center;
-    background-color: #ffbb00;
+    color: #ffbb00;
     padding: 2px 4px;
     border-radius: 3px;
     margin-left: 8px; 
+    /* font-weight: bold; */
 }
 
 .bpm-slider {
@@ -430,7 +431,7 @@ canvas {
     min-width: 60px;
     cursor: pointer;
     transition: background-color 0.1s;
-    font-weight: bold;
+    /* font-weight: bold; */
 }
 
 .bpm-button:hover {
