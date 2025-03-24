@@ -4,7 +4,7 @@
 class PulseModulator {
   constructor(manager) {
     this.manager = manager;
-    this.enabled = false;
+    this.enabled = true;
     this.targetName = "";
     this.type = "sine";
     this.frequency = 1.0;

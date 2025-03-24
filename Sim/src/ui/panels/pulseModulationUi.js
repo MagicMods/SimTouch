@@ -202,24 +202,77 @@ export class PulseModulationUi extends BaseUi {
     // Store the folder reference
     this.modulatorFolders.push(folder);
 
-    // Add enable/disable toggle
-    folder
-      .add(modulator, "enabled")
-      .name("Enabled")
-      .onChange((value) => {
-        // When enabling, reinitialize the modulator
-        if (value) {
-          // Call the reinitialize method to reset all state variables
-          if (typeof modulator.reinitialize === "function") {
-            modulator.reinitialize();
-          }
-        } else {
-          // When disabling, reset to original value
-          if (typeof modulator.resetToOriginal === "function") {
-            modulator.resetToOriginal();
-          }
+    // Create button group container for Enable and Sync
+    const buttonContainer = document.createElement("div");
+    buttonContainer.className = "modulator-toggle-buttons";
+    buttonContainer.style.cssText = `
+      display: flex;
+      gap: 5px;
+      margin-bottom: 10px;
+      width: 100%;
+    `;
+
+    // Create Enable button
+    const enableButton = document.createElement("button");
+    enableButton.textContent = "Enable";
+    enableButton.className = "toggle-button";
+    if (modulator.enabled) enableButton.classList.add("active");
+
+    enableButton.addEventListener("click", () => {
+      modulator.enabled = !modulator.enabled;
+      enableButton.classList.toggle("active", modulator.enabled);
+
+      // When enabling, reinitialize the modulator
+      if (modulator.enabled) {
+        if (typeof modulator.reinitialize === "function") {
+          modulator.reinitialize();
         }
-      });
+      } else {
+        // When disabling, reset to original value
+        if (typeof modulator.resetToOriginal === "function") {
+          modulator.resetToOriginal();
+        }
+      }
+    });
+
+    // Create Sync button
+    const syncButton = document.createElement("button");
+    syncButton.textContent = "Sync";
+    syncButton.className = "toggle-button";
+    if (modulator.sync) syncButton.classList.add("active");
+    syncButton.addEventListener("click", () => {
+      modulator.sync = !modulator.sync;
+      syncButton.classList.toggle("active", modulator.sync);
+
+      // Show/hide the frequency control based on sync state
+      if (frequencyController) {
+        frequencyController.domElement.style.display = modulator.sync ? "none" : "";
+      }
+
+      // When enabling sync, update frequency to match master
+      if (modulator.sync) {
+        modulator.frequency = this.masterFrequency;
+        modulator.frequencyBpm = this.hzToBpm(this.masterFrequency); // Update BPM value too
+        modulator.currentPhase = 0; // Reset phase for better synchronization
+        frequencyController.updateDisplay();
+      }
+    });
+
+
+    // Add buttons to container
+    buttonContainer.appendChild(enableButton);
+    buttonContainer.appendChild(syncButton);
+
+    // Add button container to the folder
+    const folderContent = folder.domElement.querySelector(".children");
+    if (folderContent) {
+      folderContent.insertBefore(buttonContainer, folderContent.firstChild);
+    }
+
+    // Store buttons with the modulator for easier updates later
+    modulator._uiElements = modulator._uiElements || {};
+    modulator._uiElements.enableButton = enableButton;
+    modulator._uiElements.syncButton = syncButton;
 
     // Add target selector
     const targetController = folder
@@ -322,38 +375,7 @@ export class PulseModulationUi extends BaseUi {
       .name("Wave Type")
       .domElement.classList.add("full-width");
 
-    // Add sync control
-    folder
-      .add(modulator, "sync")
-      .name("Sync with Master")
-      .onChange((value) => {
-        // Show/hide the frequency control based on sync state
-        if (frequencyController) {
-          frequencyController.domElement.style.display = value ? "none" : "";
-        }
 
-        // When enabling sync, update frequency to match master
-        if (value) {
-          modulator.frequency = this.masterFrequency;
-          modulator.frequencyBpm = this.hzToBpm(this.masterFrequency); // Update BPM value too
-          modulator.currentPhase = 0; // Reset phase for better synchronization
-          frequencyController.updateDisplay();
-        }
-      });
-
-    // Add frequency control (now as BPM)
-    const frequencyController = folder
-      .add(modulator, "frequencyBpm", 1, 180, 1)
-      .name("BPM")
-      .onChange((value) => {
-        // Convert BPM to Hz for internal use
-        modulator.frequency = this.bpmToHz(value);
-      });
-
-    // Initially hide the frequency controller if sync is enabled
-    if (modulator.sync) {
-      frequencyController.domElement.style.display = "none";
-    }
 
     // Add beat division dropdown
     const beatDivisionController = folder
@@ -376,8 +398,31 @@ export class PulseModulationUi extends BaseUi {
       });
 
     beatDivisionController.domElement.classList.add("full-width");
+    beatDivisionController.domElement.style.marginTop = "10px";
 
-    // Add min/max controls
+    // Add frequency control (now as BPM)
+    const frequencyController = folder
+      .add(modulator, "frequencyBpm", 1, 180, 1)
+      .name("BPM")
+      .onChange((value) => {
+        // Convert BPM to Hz for internal use
+        modulator.frequency = this.bpmToHz(value);
+      });
+
+    // Initially hide the frequency controller if sync is enabled
+    if (modulator.sync) {
+      frequencyController.domElement.style.display = "none";
+    }
+
+    const phaseController = folder
+      .add(modulator, "phase", 0, Math.PI)
+      .name("Phase")
+      .onChange(() => {
+        // No additional handling needed
+      });
+    phaseController.domElement.style.marginBottom = "10px";
+
+
     const minController = folder
       .add(modulator, "min", -10, 10)
       .name("Min Value");
@@ -386,13 +431,8 @@ export class PulseModulationUi extends BaseUi {
       .add(modulator, "max", -10, 10)
       .name("Max Value");
 
-    // REMOVE both phase controller implementations and replace with this:
-    const phaseController = folder
-      .add(modulator, "phase", 0, Math.PI)
-      .name("Phase")
-      .onChange(() => {
-        // No additional handling needed
-      });
+    maxController.domElement.style.marginBottom = "10px";
+
 
     // Simplified remove button implementation
     const removeButton = {
@@ -428,6 +468,7 @@ export class PulseModulationUi extends BaseUi {
         }
       },
     };
+
     folder.add(removeButton, "remove").name("Remove");
 
     // Open the folder by default
@@ -547,6 +588,33 @@ export class PulseModulationUi extends BaseUi {
         const folder = this.modulatorFolders[index];
         if (!folder) return;
 
+        // Update the button states if available
+        if (modulator._uiElements) {
+          if (modulator._uiElements.enableButton) {
+            modulator._uiElements.enableButton.classList.toggle("active", modulator.enabled);
+            // Update button styling
+            if (modulator.enabled) {
+              modulator._uiElements.enableButton.style.backgroundColor = "#555";
+              modulator._uiElements.enableButton.style.borderColor = "#888";
+            } else {
+              modulator._uiElements.enableButton.style.backgroundColor = "#333";
+              modulator._uiElements.enableButton.style.borderColor = "#555";
+            }
+          }
+
+          if (modulator._uiElements.syncButton) {
+            modulator._uiElements.syncButton.classList.toggle("active", modulator.sync);
+            // Update button styling
+            if (modulator.sync) {
+              modulator._uiElements.syncButton.style.backgroundColor = "#555";
+              modulator._uiElements.syncButton.style.borderColor = "#888";
+            } else {
+              modulator._uiElements.syncButton.style.backgroundColor = "#333";
+              modulator._uiElements.syncButton.style.borderColor = "#555";
+            }
+          }
+        }
+
         // Update all controllers in the folder
         folder.controllers.forEach((controller) => {
           // Only update controllers for properties that exist on the modulator
@@ -623,21 +691,56 @@ export class PulseModulationUi extends BaseUi {
           continue;
         }
 
+        // Reference to the frequency controller for showing/hiding based on sync
+        let frequencyController = null;
+
         // Update UI controllers directly for special properties
         folder.controllers.forEach((controller) => {
           const prop = controller.property;
+
+          // Store frequency controller reference for later use
+          if (prop === "frequencyBpm") {
+            frequencyController = controller;
+          }
+
           if (prop === "targetName" && modData[prop] !== undefined) {
             // Explicitly set the UI value for target dropdown
             controller.setValue(modData[prop]);
             console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
           } else if (prop === "enabled" && modData[prop] !== undefined) {
-            // Explicitly set the UI value for enabled toggle
-            controller.setValue(modData[prop]);
-            console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
+            // Handle enabled separately with button UI
+            modulator.enabled = modData[prop];
+            if (modulator._uiElements && modulator._uiElements.enableButton) {
+              modulator._uiElements.enableButton.classList.toggle("active", modulator.enabled);
+              // Update button styling
+              if (modulator.enabled) {
+                modulator._uiElements.enableButton.style.backgroundColor = "#555";
+                modulator._uiElements.enableButton.style.borderColor = "#888";
+              } else {
+                modulator._uiElements.enableButton.style.backgroundColor = "#333";
+                modulator._uiElements.enableButton.style.borderColor = "#555";
+              }
+            }
+            console.log(`Set enabled to ${modData[prop]}`);
           } else if (prop === "beatDivision" && modData[prop] !== undefined) {
             // Set beat division if present in preset
             controller.setValue(modData[prop]);
             console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
+          } else if (prop === "sync" && modData[prop] !== undefined) {
+            // Handle sync separately
+            modulator.sync = modData[prop];
+            if (modulator._uiElements && modulator._uiElements.syncButton) {
+              modulator._uiElements.syncButton.classList.toggle("active", modulator.sync);
+              // Update button styling
+              if (modulator.sync) {
+                modulator._uiElements.syncButton.style.backgroundColor = "#555";
+                modulator._uiElements.syncButton.style.borderColor = "#888";
+              } else {
+                modulator._uiElements.syncButton.style.backgroundColor = "#333";
+                modulator._uiElements.syncButton.style.borderColor = "#555";
+              }
+            }
+            console.log(`Set sync to ${modData[prop]}`);
           }
           // Other properties are set normally on the modulator object
           else if (modData[prop] !== undefined) {
@@ -712,6 +815,13 @@ export class PulseModulationUi extends BaseUi {
 
           if (minController) minController.setValue(modData.min);
           if (maxController) maxController.setValue(modData.max);
+        }
+
+        // Update frequency controller visibility based on sync status
+        if (frequencyController && modulator.sync) {
+          frequencyController.domElement.style.display = "none";
+        } else if (frequencyController) {
+          frequencyController.domElement.style.display = "";
         }
       }
 

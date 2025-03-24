@@ -975,11 +975,7 @@ export class TurbulenceUi extends BaseUi {
     }
   }
 
-  /**
-   * Shows a temporary status message
-   * @param {String} message - The message to display
-   * @param {Number} duration - How long to show the message in ms
-   */
+
   showStatusMessage(message, duration = 2000) {
     // Remove any existing message
     const existingMessage = document.querySelector('.turbulence-status-message');
