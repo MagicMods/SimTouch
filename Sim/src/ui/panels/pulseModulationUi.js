@@ -70,9 +70,68 @@ export class PulseModulationUi extends BaseUi {
     bpmSlider.className = "bpm-slider";
 
     // Add BPM value display
-    const bpmValue = document.createElement("div");
+    const bpmValue = document.createElement("input");
+    bpmValue.type = "text";
     bpmValue.className = "bpm-value";
-    bpmValue.textContent = this.masterBpm;
+    bpmValue.value = this.masterBpm;
+
+
+    // Add event listener for manual BPM input
+    bpmValue.addEventListener("change", (e) => {
+      // Parse input value and limit to valid range
+      let value = parseInt(e.target.value);
+
+      // Ensure the value is a valid number within range
+      if (isNaN(value)) {
+        value = this.masterBpm;
+      } else {
+        value = Math.max(1, Math.min(220, value));
+      }
+
+      // Update displayed value
+      bpmValue.value = value;
+
+      // Update slider position
+      bpmSlider.value = value;
+
+      // Update internal BPM and frequency
+      this.masterBpm = value;
+      const hzValue = this.bpmToHz(value);
+      this.masterFrequency = hzValue;
+
+      // Update synced modulators
+      if (this.modulatorManager) {
+        this.modulatorManager.setMasterFrequency(hzValue);
+      }
+    });
+
+    // Handle Enter key press and prevent non-numeric input
+    bpmValue.addEventListener("keydown", (e) => {
+      // Allow: backspace, delete, tab, escape, enter
+      if ([46, 8, 9, 27, 13].indexOf(e.keyCode) !== -1 ||
+        // Allow: Ctrl+A, Ctrl+C, Ctrl+V, Ctrl+X
+        (e.keyCode === 65 && e.ctrlKey === true) ||
+        (e.keyCode === 67 && e.ctrlKey === true) ||
+        (e.keyCode === 86 && e.ctrlKey === true) ||
+        (e.keyCode === 88 && e.ctrlKey === true) ||
+        // Allow: home, end, left, right
+        (e.keyCode >= 35 && e.keyCode <= 39)) {
+
+        // Enter key - trigger change event
+        if (e.keyCode === 13) {
+          bpmValue.dispatchEvent(new Event('change'));
+          bpmValue.blur(); // Remove focus
+        }
+
+        return;
+      }
+
+      // Ensure that it's a number and stop the keypress if not
+      if ((e.shiftKey || (e.keyCode < 48 || e.keyCode > 57)) &&
+        (e.keyCode < 96 || e.keyCode > 105)) {
+        e.preventDefault();
+      }
+    });
 
     // Add elements to slider row
     // bpmSliderRow.appendChild(bpmLabel);
@@ -96,7 +155,7 @@ export class PulseModulationUi extends BaseUi {
       }
 
       // Update BPM display value
-      bpmValue.textContent = value;
+      bpmValue.value = value;
     });
 
     // Create BEAT button directly
@@ -931,7 +990,7 @@ export class PulseModulationUi extends BaseUi {
 
         // Update the BPM display in the UI
         if (this.bpmValueElement) {
-          this.bpmValueElement.textContent = limitedBpm;
+          this.bpmValueElement.value = limitedBpm;
         }
 
         // Update the slider position
