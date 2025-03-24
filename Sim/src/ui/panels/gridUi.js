@@ -53,7 +53,7 @@ export class GridUi extends BaseUi {
         .onChange(() => gridRenderer.updateGrid());
 
       this.gridScaleController = gridParamFolder
-        .add(gridRenderer.gridParams, "scale", 0.1, 1, 0.01)
+        .add(gridRenderer.gridParams, "scale", 0.1, 1, 0.001)
         .name("Grid Scale")
         .onChange(() => gridRenderer.updateGrid());
 
