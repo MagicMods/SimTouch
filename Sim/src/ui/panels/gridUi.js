@@ -97,6 +97,24 @@ export class GridUi extends BaseUi {
         .name("Show Cell Indices")
         .onChange(() => gridRenderer.updateGrid());
 
+      // Add shadow controls
+      const shadowFolder = gridParamFolder.addFolder("Shadow Settings");
+
+      this.shadowIntensityController = shadowFolder
+        .add(gridRenderer.gridParams, "shadowIntensity", 0, 1, 0.1)
+        .name("Shadow Intensity")
+        .onChange(() => gridRenderer.updateGrid());
+
+      this.shadowBlurController = shadowFolder
+        .add(gridRenderer.gridParams, "shadowBlur", 0, 1, 0.1)
+        .name("Shadow Blur")
+        .onChange(() => gridRenderer.updateGrid());
+
+      this.shadowOffsetController = shadowFolder
+        .add(gridRenderer.gridParams, "shadowOffset", 0, 1, 0.1)
+        .name("Shadow Offset")
+        .onChange(() => gridRenderer.updateGrid());
+
       // Grid Stats
       const stats = gridParamFolder.addFolder("Stats");
       stats.add(gridRenderer.gridParams, "cols").name("Columns").listen();
@@ -145,6 +163,12 @@ export class GridUi extends BaseUi {
       targets["Show Centers"] = this.gridShowCellCentersController;
     if (this.gridShowIndicesController)
       targets["Show Indices"] = this.gridShowIndicesController;
+    if (this.shadowIntensityController)
+      targets["Shadow Intensity"] = this.shadowIntensityController;
+    if (this.shadowBlurController)
+      targets["Shadow Blur"] = this.shadowBlurController;
+    if (this.shadowOffsetController)
+      targets["Shadow Offset"] = this.shadowOffsetController;
 
     return targets;
   }
@@ -172,5 +196,8 @@ export class GridUi extends BaseUi {
     safeUpdateDisplay(this.gridAllowCutController);
     safeUpdateDisplay(this.gridShowCellCentersController);
     safeUpdateDisplay(this.gridShowIndicesController);
+    safeUpdateDisplay(this.shadowIntensityController);
+    safeUpdateDisplay(this.shadowBlurController);
+    safeUpdateDisplay(this.shadowOffsetController);
   }
 }

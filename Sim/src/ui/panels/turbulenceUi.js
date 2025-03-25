@@ -1036,7 +1036,7 @@ export class TurbulenceUi extends BaseUi {
           const isOpen = !this.gui.domElement.classList.contains('closed');
           this.isTurbulenceFolderOpen = isOpen;
           if (this.previewManager) {
-            this.previewManager.setTurbulenceFolderOpen(isOpen);
+            this.previewManager.setFolderOpen(isOpen);
           }
           break;
         }
@@ -1055,7 +1055,7 @@ export class TurbulenceUi extends BaseUi {
             const isOpen = !noiseFolder.classList.contains('closed');
             this.isNoiseFolderOpen = isOpen;
             if (this.previewManager) {
-              this.previewManager.setNoiseFolderOpen(isOpen);
+              this.previewManager.setFolderOpen(isOpen);
             }
             break;
           }
@@ -1075,7 +1075,7 @@ export class TurbulenceUi extends BaseUi {
             const isOpen = !previewsFolder.classList.contains('closed');
             this.isPreviewsFolderOpen = isOpen;
             if (this.previewManager) {
-              this.previewManager.setPreviewsFolderOpen(isOpen);
+              this.previewManager.setFolderOpen(isOpen);
             }
             break;
           }

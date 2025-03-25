@@ -14,9 +14,9 @@ class GridRenderer extends BaseRenderer {
     // Grid parameters (all in pixels)
     this.gridParams = {
       target: 341,
-      gap: 1,
+      gap: 0,
       aspectRatio: 1,
-      scale: 1.05,      // Scale controls the classification radius (120 * scale)
+      scale: 0.972,      // Scale controls the classification radius (120 * scale)
       width: 10,
       height: 10,
       cols: 23,
@@ -24,6 +24,9 @@ class GridRenderer extends BaseRenderer {
       allowCut: 3,      // Controls how many corners can be outside the circle (0-3)
       showCellCenters: false, // Whether to display cell centers
       showIndices: false,     // Whether to display cell indices
+      shadowIntensity: 0.4,   // Controls shadow strength (0-1)
+      shadowBlur: 0.2,        // Controls shadow softness (0-1)
+      shadowOffset: 0.15,     // Controls shadow offset (0-1)
     };
 
     // Fixed masking radius - always 120 pixels regardless of scale
@@ -150,11 +153,8 @@ class GridRenderer extends BaseRenderer {
   }
 
   draw(particleSystem) {
-    const program = this.shaderManager.use("basic");
-    if (!program || !particleSystem) return;
-
-    // Make sure we're starting with a clean state
     const gl = this.gl;
+    if (!particleSystem) return;
 
     // Use existing grid geometry (which now contains only inside and boundary cells)
     const rectangles = this.gridGeometry;
@@ -184,31 +184,13 @@ class GridRenderer extends BaseRenderer {
       this.sendGridData(byteArray);
     }
 
-    // Map values to colors for all cells
-    rectangles.forEach((rect, index) => {
-      const value = this.density[index];
-
-      // Use consistent normalization for all modes
-      const normalizedValue = Math.max(0, Math.min(1, value / this.maxDensity));
-
-      const gradientIdx = Math.floor(normalizedValue * 255);
-      const colorValues = this.gradient.getValues();
-      const color = colorValues[gradientIdx];
-
-      rect.color = color
-        ? [color.r, color.g, color.b, 1.0]
-        : [0.2, 0.2, 0.2, 1.0]; // Dark grey for debugging
-    });
-
-    // Set up variables for circle mask
-    const center = 120;
-
-    // Use the fixed mask radius constant (always 120)
-    const maskRadius = this.FIXED_MASK_RADIUS;
-
     // Clear both color and stencil buffers
     gl.clearColor(0, 0, 0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
+
+    // Define center point for stencil buffer circle
+    const center = 120; // Center point in pixel coordinates
+    const maskRadius = this.FIXED_MASK_RADIUS;
 
     // ---- Stencil buffer setup matching GridGenRenderer.js exactly ----
     gl.enable(gl.STENCIL_TEST);
@@ -225,8 +207,23 @@ class GridRenderer extends BaseRenderer {
     gl.stencilFunc(gl.EQUAL, 1, 0xFF);    // Draw only where stencil is 1
     gl.stencilMask(0x00);                 // Don't modify stencil buffer
 
-    // Draw each rectangle, applying the stencil mask
-    // We can draw all rectangles now since they're all inside or boundary cells
+    // Map values to colors for all cells
+    rectangles.forEach((rect, index) => {
+      const value = this.density[index];
+
+      // Use consistent normalization for all modes
+      const normalizedValue = Math.max(0, Math.min(1, value / this.maxDensity));
+
+      const gradientIdx = Math.floor(normalizedValue * 255);
+      const colorValues = this.gradient.getValues();
+      const color = colorValues[gradientIdx];
+
+      rect.color = color
+        ? [color.r, color.g, color.b, 1.0]
+        : [0.2, 0.2, 0.2, 1.0]; // Dark grey for debugging
+    });
+
+    // Draw each rectangle independently with its own shadow
     rectangles.forEach(rect => {
       this.drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color);
     });
@@ -319,7 +316,7 @@ class GridRenderer extends BaseRenderer {
   }
 
   drawRectangle(x, y, width, height, color, clipPath) {
-    const program = this.shaderManager.use("basic");
+    const program = this.shaderManager.use("gridCell");
     if (!program) return;
 
     // If we have a clip path, draw as a clipped polygon
@@ -327,7 +324,7 @@ class GridRenderer extends BaseRenderer {
       return this.drawClippedCell(clipPath, color);
     }
 
-    // Regular rectangle drawing (existing code)
+    // Regular rectangle drawing with shadows
     // Convert positions from pixel to clip space
     const pos = this.pixelToClipSpace(x, y);
     const size = {
@@ -341,13 +338,14 @@ class GridRenderer extends BaseRenderer {
     const x2 = pos.x + size.width;
     const y2 = pos.y - size.height; // Subtract height since Y is flipped
 
+    // Create vertices in cell-local space (0 to 1)
     const vertices = [
-      x1, y1, // Top-left
-      x2, y1, // Top-right
-      x1, y2, // Bottom-left
-      x1, y2, // Bottom-left
-      x2, y1, // Top-right
-      x2, y2, // Bottom-right
+      0, 0,    // Top-left
+      1, 0,    // Top-right
+      0, 1,    // Bottom-left
+      0, 1,    // Bottom-left
+      1, 0,    // Top-right
+      1, 1,    // Bottom-right
     ];
 
     // Use temporary buffer for this single rectangle
@@ -369,10 +367,35 @@ class GridRenderer extends BaseRenderer {
       0
     );
     this.gl.enableVertexAttribArray(program.attributes.position);
+
+    // Set uniforms for the gridCell shader
     this.gl.uniform4fv(program.uniforms.color, color);
+    this.gl.uniform2f(program.uniforms.resolution, this.TARGET_WIDTH, this.TARGET_HEIGHT);
+    this.gl.uniform2f(program.uniforms.cellSize, width, height);
+    this.gl.uniform1f(program.uniforms.shadowIntensity, this.gridParams.shadowIntensity);
+    this.gl.uniform1f(program.uniforms.shadowBlur, this.gridParams.shadowBlur);
+    this.gl.uniform1f(program.uniforms.shadowOffset, this.gridParams.shadowOffset);
+
+    // Set up transformation matrix to position the cell
+    const transform = new Float32Array([
+      size.width, 0, 0, 0,
+      0, size.height, 0, 0,
+      0, 0, 1, 0,
+      x1, y1, 0, 1
+    ]);
+    this.gl.uniformMatrix4fv(program.uniforms.transform, false, transform);
+
+    // Enable blending for smooth shadows
+    this.gl.enable(this.gl.BLEND);
+    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 
     // Draw and cleanup
     this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
+
+    // Disable blending
+    this.gl.disable(this.gl.BLEND);
+
+    // Cleanup
     this.gl.deleteBuffer(buffer);
   }
 
@@ -537,14 +560,14 @@ class GridRenderer extends BaseRenderer {
         rect.cellType === 'inside' || rect.cellType === 'boundary'
       );
 
-      // Log post-filter cell counts for debugging
-      console.log("Grid cell filtering:", {
-        preFilter: { total: preFilterTotal, inside: preFilterInside, boundary: preFilterBoundary, outside: preFilterOutside },
-        postFilter: {
-          total: filteredRectangles.length, inside: filteredRectangles.filter(r => r.cellType === 'inside').length,
-          boundary: filteredRectangles.filter(r => r.cellType === 'boundary').length
-        }
-      });
+      // // Log post-filter cell counts for debugging
+      // console.log("Grid cell filtering:", {
+      //   preFilter: { total: preFilterTotal, inside: preFilterInside, boundary: preFilterBoundary, outside: preFilterOutside },
+      //   postFilter: {
+      //     total: filteredRectangles.length, inside: filteredRectangles.filter(r => r.cellType === 'inside').length,
+      //     boundary: filteredRectangles.filter(r => r.cellType === 'boundary').length
+      //   }
+      // });
 
       if (filteredRectangles.length >= this.gridParams.target) {
         this.gridParams.cols = cols;

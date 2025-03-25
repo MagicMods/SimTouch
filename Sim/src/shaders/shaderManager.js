@@ -152,6 +152,57 @@ class ShaderManager {
           }
         `,
     },
+    gridCell: {
+      vert: `
+          attribute vec2 position;
+          uniform vec2 resolution;
+          uniform vec2 cellSize;
+          uniform mat4 transform;
+          varying vec2 vUv;
+          
+          void main() {
+              // Position is in cell-local space (0 to 1)
+              vUv = position;
+              
+              // Transform position to clip space
+              vec4 pos = transform * vec4(position, 0.0, 1.0);
+              gl_Position = pos;
+          }
+        `,
+      frag: `
+          precision mediump float;
+          uniform vec4 color;
+          uniform float shadowIntensity;
+          uniform float shadowBlur;
+          uniform float shadowOffset;
+          varying vec2 vUv;
+          
+          void main() {
+              // Calculate distance from cell center (0-1)
+              vec2 center = vec2(0.5, 0.5);
+              float dist = length(vUv - center);
+              
+              // Calculate shadow direction and position relative to cell center
+              vec2 shadowDir = normalize(vUv - center);
+              vec2 shadowPos = center + shadowDir * shadowOffset;
+              float shadowDist = length(vUv - shadowPos);
+              
+              // Create cell-specific shadow
+              float shadow = smoothstep(0.5, 0.5 - shadowBlur * 2.0, shadowDist);
+              shadow = mix(1.0, shadow, shadowIntensity * 2.0);
+              
+              // Apply shadow to color
+              vec4 finalColor = color;
+              finalColor.rgb *= shadow;
+              
+              // Add subtle edge highlight
+              float edge = smoothstep(0.0, 0.1, dist);
+              finalColor.rgb = mix(finalColor.rgb, finalColor.rgb * 1.2, edge);
+              
+              gl_FragColor = finalColor;
+          }
+        `,
+    },
     particles: {
       vert: `
           attribute vec2 position;
