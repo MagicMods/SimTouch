@@ -24,8 +24,8 @@ class GridRenderer extends BaseRenderer {
       allowCut: 3,      // Controls how many corners can be outside the circle (0-3)
       showCellCenters: false, // Whether to display cell centers
       showIndices: false,     // Whether to display cell indices
-      shadowIntensity: 0.4,   // Controls shadow strength (0-1)
-      shadowBlur: 0.2,        // Controls shadow softness (0-1)
+      shadowIntensity: 0.3,   // Controls shadow strength (0-1)
+      shadowBlur: 1.2,        // Controls shadow softness (0-1)
       shadowOffset: 0.15,     // Controls shadow offset (0-1)
     };
 

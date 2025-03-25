@@ -101,17 +101,17 @@ export class GridUi extends BaseUi {
       const shadowFolder = gridParamFolder.addFolder("Shadow Settings");
 
       this.shadowIntensityController = shadowFolder
-        .add(gridRenderer.gridParams, "shadowIntensity", 0, 1, 0.1)
+        .add(gridRenderer.gridParams, "shadowIntensity", 0, 1, 0.01)
         .name("Shadow Intensity")
         .onChange(() => gridRenderer.updateGrid());
 
       this.shadowBlurController = shadowFolder
-        .add(gridRenderer.gridParams, "shadowBlur", 0, 1, 0.1)
+        .add(gridRenderer.gridParams, "shadowBlur", 0, 1.5, 0.01)
         .name("Shadow Blur")
         .onChange(() => gridRenderer.updateGrid());
 
       this.shadowOffsetController = shadowFolder
-        .add(gridRenderer.gridParams, "shadowOffset", 0, 1, 0.1)
+        .add(gridRenderer.gridParams, "shadowOffset", -1, 1, 0.01)
         .name("Shadow Offset")
         .onChange(() => gridRenderer.updateGrid());
 

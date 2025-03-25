@@ -180,24 +180,24 @@ class ShaderManager {
           void main() {
               // Calculate distance from cell center (0-1)
               vec2 center = vec2(0.5, 0.5);
-              float dist = length(vUv - center);
+              vec2 dist = abs(vUv - center) * 2.0; // Scale to 0-1 range
               
               // Calculate shadow direction and position relative to cell center
               vec2 shadowDir = normalize(vUv - center);
               vec2 shadowPos = center + shadowDir * shadowOffset;
-              float shadowDist = length(vUv - shadowPos);
+              vec2 shadowDist = abs(vUv - shadowPos) * 2.0; // Scale to 0-1 range
               
-              // Create cell-specific shadow
-              float shadow = smoothstep(0.5, 0.5 - shadowBlur * 2.0, shadowDist);
-              shadow = mix(1.0, shadow, shadowIntensity * 2.0);
+              // Create rectangular shadow
+              float shadow = smoothstep(1.0, 1.0 - shadowBlur, max(shadowDist.x, shadowDist.y));
+              shadow = mix(1.0, shadow, shadowIntensity * 0.5);
               
               // Apply shadow to color
               vec4 finalColor = color;
               finalColor.rgb *= shadow;
               
               // Add subtle edge highlight
-              float edge = smoothstep(0.0, 0.1, dist);
-              finalColor.rgb = mix(finalColor.rgb, finalColor.rgb * 1.2, edge);
+              float edge = smoothstep(0.0, 0.05, max(dist.x, dist.y));
+              finalColor.rgb = mix(finalColor.rgb, finalColor.rgb * 1.1, edge);
               
               gl_FragColor = finalColor;
           }
