@@ -1157,9 +1157,6 @@ class TurbulenceField {
     console.log("=== End Debug ===");
   }
 
-  /**
-   * Reset the bias physics (velocity and position)
-   */
   resetBias() {
     this._currentBiasOffsetX = 0;
     this._currentBiasOffsetY = 0;

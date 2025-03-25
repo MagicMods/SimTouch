@@ -13,6 +13,14 @@ export class TurbulenceUi extends BaseUi {
 
     // Set up periodic UI refresh for bias controllers (every 100ms)
     this.refreshInterval = setInterval(() => this.updateFromTurbulenceField(), 100);
+
+    // Track folder states
+    this.isTurbulenceFolderOpen = true;
+    this.isNoiseFolderOpen = true;
+    this.isPreviewsFolderOpen = true;
+
+    // Set up folder state observers
+    this.setupFolderStateObservers();
   }
 
   initWithPresetManager(presetManager) {
@@ -975,7 +983,6 @@ export class TurbulenceUi extends BaseUi {
     }
   }
 
-
   showStatusMessage(message, duration = 2000) {
     // Remove any existing message
     const existingMessage = document.querySelector('.turbulence-status-message');
@@ -1013,5 +1020,98 @@ export class TurbulenceUi extends BaseUi {
         }
       }, 300);
     }, duration);
+  }
+
+  /**
+   * Set up observers for folder state changes
+   */
+  setupFolderStateObservers() {
+    // Initialize observers array
+    this.folderObservers = [];
+
+    // Observe the main turbulence folder
+    const turbulenceObserver = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.attributeName === 'class') {
+          const isOpen = !this.gui.domElement.classList.contains('closed');
+          this.isTurbulenceFolderOpen = isOpen;
+          if (this.previewManager) {
+            this.previewManager.setTurbulenceFolderOpen(isOpen);
+          }
+          break;
+        }
+      }
+    });
+
+    turbulenceObserver.observe(this.gui.domElement, { attributes: true });
+    this.folderObservers.push(turbulenceObserver);
+
+    // Find and observe the noise folder
+    const noiseFolder = this.gui.domElement.querySelector('.folder[data-name="Noise"]');
+    if (noiseFolder) {
+      const noiseObserver = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          if (mutation.attributeName === 'class') {
+            const isOpen = !noiseFolder.classList.contains('closed');
+            this.isNoiseFolderOpen = isOpen;
+            if (this.previewManager) {
+              this.previewManager.setNoiseFolderOpen(isOpen);
+            }
+            break;
+          }
+        }
+      });
+
+      noiseObserver.observe(noiseFolder, { attributes: true });
+      this.folderObservers.push(noiseObserver);
+    }
+
+    // Find and observe the previews folder
+    const previewsFolder = this.gui.domElement.querySelector('.folder[data-name="Previews"]');
+    if (previewsFolder) {
+      const previewsObserver = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+          if (mutation.attributeName === 'class') {
+            const isOpen = !previewsFolder.classList.contains('closed');
+            this.isPreviewsFolderOpen = isOpen;
+            if (this.previewManager) {
+              this.previewManager.setPreviewsFolderOpen(isOpen);
+            }
+            break;
+          }
+        }
+      });
+
+      previewsObserver.observe(previewsFolder, { attributes: true });
+      this.folderObservers.push(previewsObserver);
+    }
+  }
+
+  /**
+   * Clean up observers when disposing
+   */
+  dispose() {
+    // Clear the refresh interval
+    if (this.refreshInterval) {
+      clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
+    }
+
+    // Clean up folder observers
+    if (this.folderObservers) {
+      this.folderObservers.forEach(observer => observer.disconnect());
+      this.folderObservers = null;
+    }
+
+    // Clean up the NoisePreviewManager
+    if (this.previewManager) {
+      this.previewManager.dispose();
+      this.previewManager = null;
+    }
+
+    // Call the parent class dispose method if it exists
+    if (super.dispose) {
+      super.dispose();
+    }
   }
 }
