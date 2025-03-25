@@ -11,6 +11,21 @@ export class GridUi extends BaseUi {
 
     // Open GUI by default
     this.gui.open(false);
+
+    // Debug state tracking
+    this.debugSettings = { showBoundaryDebug: false };
+    this.isNormalViewPaused = false;
+  }
+
+  // Add an update method to handle debug visualization state
+  update(deltaTime) {
+    // Check if debug visualization is active and needs to be redrawn
+    if (this.debugSettings && this.debugSettings.showBoundaryDebug) {
+      // We need to keep showing the debug view until user disables it
+      if (this.main && this.main.gridRenderer) {
+        this.main.gridRenderer.drawDebugBoundary();
+      }
+    }
   }
 
   initGridControls() {
@@ -53,9 +68,22 @@ export class GridUi extends BaseUi {
         .onChange(() => gridRenderer.updateGrid());
 
       this.gridScaleController = gridParamFolder
-        .add(gridRenderer.gridParams, "scale", 0.1, 1, 0.001)
+        .add(gridRenderer.gridParams, "scale", 0.1, 1.1, 0.001)
         .name("Grid Scale")
         .onChange(() => gridRenderer.updateGrid());
+
+      // Add allowCut parameter
+      this.gridAllowCutController = gridParamFolder
+        .add(gridRenderer.gridParams, "allowCut", 0, 3, 1)
+        .name("Allow Cut")
+        .onChange(() => gridRenderer.updateGrid());
+
+      // Add tooltip for Allow Cut parameter
+      this.gridAllowCutController.domElement.parentElement.setAttribute('title',
+        'Controls how many corners of a cell can be outside the circle. ' +
+        '0 = strict (only cells with center inside circle), ' +
+        '1-3 = progressively more cells at the boundary. ' +
+        'Use "Visualize Boundary" in Debug Tools to see the effect.');
 
       // Grid Stats
       const stats = gridParamFolder.addFolder("Stats");
@@ -63,6 +91,30 @@ export class GridUi extends BaseUi {
       stats.add(gridRenderer.gridParams, "rows").name("Rows").listen();
       stats.add(gridRenderer.gridParams, "width").name("Rect Width").listen();
       stats.add(gridRenderer.gridParams, "height").name("Rect Height").listen();
+
+      // Add debug tools for allowCut visualization
+      const debugFolder = gridParamFolder.addFolder("Debug Tools");
+      this.debugSettings = { showBoundaryDebug: false };
+
+      debugFolder
+        .add(this.debugSettings, "showBoundaryDebug")
+        .name("Visualize Boundary")
+        .onChange((value) => {
+          if (value) {
+            // Show boundary debug view
+            this.isNormalViewPaused = this.main.paused;
+            if (!this.isNormalViewPaused) {
+              // Pause simulation while in debug view
+              this.main.paused = true;
+            }
+            gridRenderer.drawDebugBoundary();
+          } else {
+            // Restore normal view
+            if (!this.isNormalViewPaused) {
+              this.main.paused = false;
+            }
+          }
+        });
     }
   }
 
@@ -75,6 +127,8 @@ export class GridUi extends BaseUi {
     if (this.gridGapController) targets["Grid Gap"] = this.gridGapController;
     if (this.gridScaleController)
       targets["Grid Scale"] = this.gridScaleController;
+    if (this.gridAllowCutController)
+      targets["Allow Cut"] = this.gridAllowCutController;
 
     return targets;
   }
@@ -99,5 +153,6 @@ export class GridUi extends BaseUi {
     safeUpdateDisplay(this.gridGapController);
     safeUpdateDisplay(this.gridAspectRatioController);
     safeUpdateDisplay(this.gridScaleController);
+    safeUpdateDisplay(this.gridAllowCutController);
   }
 }

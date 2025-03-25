@@ -154,6 +154,11 @@ export class UiManager {
     if (this.inputModUi) {
       this.inputModUi.update(deltaTime);
     }
+
+    // Update gridUi for debug visualization
+    if (this.gridUi) {
+      this.gridUi.update(deltaTime);
+    }
   }
 
 

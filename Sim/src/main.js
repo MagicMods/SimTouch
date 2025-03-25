@@ -22,8 +22,8 @@ class Main {
     this.canvas = document.getElementById("glCanvas");
     if (!this.canvas) throw new Error("Canvas not found");
 
-    // Create GL context and store it locally
-    this.gl = this.canvas.getContext("webgl2");
+    // Create GL context with stencil buffer and store it locally
+    this.gl = this.canvas.getContext("webgl2", { stencil: true });
     if (!this.gl) throw new Error("WebGL2 not supported");
 
     this.shaderManager = new ShaderManager(this.gl);

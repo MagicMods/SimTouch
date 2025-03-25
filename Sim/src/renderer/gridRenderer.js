@@ -16,12 +16,16 @@ class GridRenderer extends BaseRenderer {
       target: 341,
       gap: 1,
       aspectRatio: 1,
-      scale: 0.95,
+      scale: 0.95,      // Scale controls the classification radius (120 * scale)
       width: 10,
       height: 10,
       cols: 23,
       rows: 23,
+      allowCut: 3,      // Controls how many corners can be outside the circle (0-3)
     };
+
+    // Fixed masking radius - always 120 pixels regardless of scale
+    this.FIXED_MASK_RADIUS = 120;
 
     // Density parameters
     this.minDensity = 0.0;
@@ -56,6 +60,8 @@ class GridRenderer extends BaseRenderer {
       resolution: `${this.TARGET_WIDTH}x${this.TARGET_HEIGHT}`,
       cellSize: `${this.gridParams.width}x${this.gridParams.height}`,
       totalCells: this.gridParams.target,
+      maskRadius: this.FIXED_MASK_RADIUS,
+      classificationRadius: 120 * this.gridParams.scale
     });
   }
   sendGridData(byteArray) {
@@ -75,32 +81,20 @@ class GridRenderer extends BaseRenderer {
         height: rect.height,
       },
       isBoundary: rect.isBoundary,
-      clipPath: rect.clipPath,
+      cellType: rect.cellType || (rect.isBoundary ? 'boundary' : 'inside'),
       contains: function (px, py) {
-        // For boundary cells, check if point is inside both the rectangle and the circle
-        if (this.isBoundary && this.clipPath) {
-          // First quickly check if point is inside the rectangle bounds
-          if (
-            px >= this.bounds.x &&
-            px < this.bounds.x + this.bounds.width &&
-            py >= this.bounds.y &&
-            py < this.bounds.y + this.bounds.height
-          ) {
-            // For boundary cells, also check if point is inside the polygon
-            return this.pointInPolygon(px, py, this.clipPath);
-          }
-          return false;
-        }
-
-        // For regular cells, just check rectangle bounds
-        return (
+        // Quick check if point is inside rectangle bounds
+        if (
           px >= this.bounds.x &&
           px < this.bounds.x + this.bounds.width &&
           py >= this.bounds.y &&
           py < this.bounds.y + this.bounds.height
-        );
+        ) {
+          return true;
+        }
+        return false;
       },
-      // Helper method to check if a point is inside a polygon
+      // Helper method to check if a point is inside a polygon - kept for compatibility
       pointInPolygon: function (px, py, polygon) {
         if (!polygon || polygon.length < 3) return false;
 
@@ -124,18 +118,14 @@ class GridRenderer extends BaseRenderer {
     const program = this.shaderManager.use("basic");
     if (!program || !particleSystem) return;
 
+    // Make sure we're starting with a clean state
+    const gl = this.gl;
+
     // Use existing grid geometry
     const rectangles = this.gridGeometry;
 
     // Get density values
     this.density = this.renderModes.getValues(particleSystem);
-
-    // // Debug current mode and values
-    // console.log("Current render mode:", this.renderModes.currentMode);
-    // console.log("Density value range:", {
-    //   min: Math.min(...this.density),
-    //   max: Math.max(...this.density)
-    // });
 
     if (this.socket.isConnected) {
       const byteArray = new Uint8Array(this.density.length + 1);
@@ -165,31 +155,47 @@ class GridRenderer extends BaseRenderer {
       const colorValues = this.gradient.getValues();
       const color = colorValues[gradientIdx];
 
-      // // Debug first few cells
-      // if (index < 5) {
-      //   console.log(`Cell ${index} color:`, {
-      //     value,
-      //     normalizedValue,
-      //     gradientIdx,
-      //     color
-      //   });
-      // }
-
       rect.color = color
         ? [color.r, color.g, color.b, 1.0]
         : [0.2, 0.2, 0.2, 1.0]; // Dark grey for debugging
     });
 
-    // Draw rectangles
+    // Set up variables for circle mask
+    const center = 120;
+
+    // Use the fixed mask radius constant (always 120)
+    const maskRadius = this.FIXED_MASK_RADIUS;
+
+    // Clear both color and stencil buffers - match GridGenRenderer approach
+    gl.clearColor(0, 0, 0, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
+
+    // ---- Stencil buffer setup matching GridGenRenderer.js ----
+    gl.enable(gl.STENCIL_TEST);
+    gl.stencilFunc(gl.ALWAYS, 1, 0xFF);
+    gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
+    gl.stencilMask(0xFF);
+
+    // First pass: Draw the circle into the stencil buffer (but don't show it)
+    // Use fixed mask radius for stencil buffer
+    gl.colorMask(false, false, false, false); // Don't draw to color buffer
+    this.drawCircle(center, center, maskRadius, [1, 1, 1, 1]);
+
+    // Second pass: Only draw where the stencil is 1 (inside circle)
+    gl.colorMask(true, true, true, true); // Re-enable drawing to color buffer
+    gl.stencilFunc(gl.EQUAL, 1, 0xFF);    // Draw only where stencil is 1
+    gl.stencilMask(0x00);                 // Don't modify stencil buffer
+
+    // Draw all rectangles - they will be masked to the circle
     rectangles.forEach((rect) => {
-      if (rect.isBoundary && rect.clipPath) {
-        // For boundary cells, use the clipped drawing method
-        this.drawClippedCell(rect.clipPath, rect.color);
-      } else {
-        // For regular cells, use the standard rectangle drawing
+      // Draw only cells that should be visible (inside or boundary)
+      if (rect.cellType !== 'outside') {
         this.drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color);
       }
     });
+
+    // Cleanup - disable stencil test
+    gl.disable(gl.STENCIL_TEST);
   }
 
   ///////////////////////////////////////////////////
@@ -323,59 +329,45 @@ class GridRenderer extends BaseRenderer {
     this.gl.deleteBuffer(buffer);
   }
 
-  // Method to draw cells with clip paths
+  // Method to draw cells with clip paths - Kept for compatibility
   drawClippedCell(clipPath, color) {
-    const program = this.shaderManager.use("basic");
-    if (!program) return;
+    // Simply log a deprecation warning - no fallback needed
+    console.warn("drawClippedCell is deprecated. Using stencil buffer masking instead.");
 
-    // Convert points to clip space
-    const clipVertices = [];
+    // Don't do anything if clipPath is invalid
+    if (!clipPath || clipPath.length < 3) return;
+
+    // Fallback: Draw an approximation by getting the bounding box of the clip path
+    let minX = Infinity, minY = Infinity;
+    let maxX = -Infinity, maxY = -Infinity;
+
     clipPath.forEach(point => {
-      const clipPoint = this.pixelToClipSpace(point.x, point.y);
-      clipVertices.push(clipPoint.x, clipPoint.y);
+      minX = Math.min(minX, point.x);
+      minY = Math.min(minY, point.y);
+      maxX = Math.max(maxX, point.x);
+      maxY = Math.max(maxY, point.y);
     });
 
-    // Triangulate the polygon (fan triangulation from first point)
-    const vertices = [];
-    for (let i = 1; i < clipPath.length - 1; i++) {
-      // First point
-      vertices.push(clipVertices[0], clipVertices[1]);
-      // Second point
-      vertices.push(clipVertices[i * 2], clipVertices[i * 2 + 1]);
-      // Third point
-      vertices.push(clipVertices[(i + 1) * 2], clipVertices[(i + 1) * 2 + 1]);
-    }
+    const width = maxX - minX;
+    const height = maxY - minY;
 
-    // Use temporary buffer
-    const buffer = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      new Float32Array(vertices),
-      this.gl.STATIC_DRAW
-    );
-
-    // Set up attributes and uniforms
-    this.gl.vertexAttribPointer(
-      program.attributes.position,
-      2,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
-    this.gl.enableVertexAttribArray(program.attributes.position);
-    this.gl.uniform4fv(program.uniforms.color, color);
-
-    // Draw and cleanup
-    this.gl.drawArrays(this.gl.TRIANGLES, 0, vertices.length / 2);
-    this.gl.deleteBuffer(buffer);
+    // Draw rectangle with provided color
+    this.drawRectangle(minX, minY, width, height, color);
   }
 
   generateRectangles() {
     let bestRects = [];
     const center = 120;
+
+    // NOTE: For cell generation and classification, we use a scaled radius based on the scale parameter
+    // The final visible boundary is always masked to exactly 120 pixels by the stencil buffer in draw()
     const radius = 120 * this.gridParams.scale;
+
+    // allowCut: Controls how many corners of a cell can be outside the circle
+    // 0: Only allows cells with center inside the circle (strict)
+    // 1-3: Allows cells with 1-3 corners outside circle (more relaxed)
+    const allowCut = this.gridParams.allowCut !== undefined ? this.gridParams.allowCut : 3;
+    const boundaryMode = allowCut > 0 ? 'partial' : 'center';
 
     for (let cellH = 120; cellH >= 1; cellH--) {
       const scaledH = Math.max(1, Math.round(cellH * this.gridParams.scale));
@@ -392,9 +384,12 @@ class GridRenderer extends BaseRenderer {
       while (Math.hypot(maxCols * stepX, 0) <= radius) maxCols++;
       while (Math.hypot(0, maxRows * stepY) <= radius) maxRows++;
 
-      // Add one more in each direction to include partial cells
-      maxCols += 1;
-      maxRows += 1;
+      // Add extra columns and rows to catch partial cells at the boundary
+      // Only if we're allowing cut cells (allowCut > 0)
+      if (boundaryMode === 'partial') {
+        maxCols += 1;
+        maxRows += 1;
+      }
 
       const cols = maxCols * 2 + 1;
       const rows = maxRows * 2 + 1;
@@ -415,29 +410,65 @@ class GridRenderer extends BaseRenderer {
           const cellTop = cellCenterY - scaledH / 2;
           const cellBottom = cellCenterY + scaledH / 2;
 
-          // Determine if cell is completely outside the circle
-          const cornerDistances = [
-            Math.hypot(cellLeft - center, cellTop - center),
-            Math.hypot(cellRight - center, cellTop - center),
-            Math.hypot(cellLeft - center, cellBottom - center),
-            Math.hypot(cellRight - center, cellBottom - center)
-          ];
-
           // Cell center distance from circle center
           const centerDist = Math.hypot(dx, dy);
+          const centerInside = centerDist <= radius;
 
-          // Include the cell if:
-          // 1. Cell center is within radius (original condition)
-          // 2. OR at least one corner is inside the circle (new condition for partial cells)
-          if (centerDist <= radius || cornerDistances.some(dist => dist <= radius)) {
+          // Determine corners and their positions relative to the circle
+          let includeCell = centerInside;
+          let cornersOutside = 0;
+
+          if (boundaryMode === 'partial' && !centerInside) {
+            const corners = [
+              { x: cellLeft, y: cellTop },          // Top-left
+              { x: cellRight, y: cellTop },         // Top-right
+              { x: cellLeft, y: cellBottom },       // Bottom-left
+              { x: cellRight, y: cellBottom }       // Bottom-right
+            ];
+
+            // Count corners outside the circle
+            cornersOutside = corners.filter(corner =>
+              Math.hypot(corner.x - center, corner.y - center) > radius
+            ).length;
+
+            // Check against the allowCut parameter
+            if (cornersOutside <= allowCut && cornersOutside < 4) {
+              includeCell = true;
+            }
+
+            // Edge case: If all corners are outside but allowCut > 0, check if any edge 
+            // actually intersects with the circle (could still be a valid boundary cell)
+            if (!includeCell && cornersOutside === 4 && allowCut > 0) {
+              const edges = [
+                // Horizontal edges
+                { x1: cellLeft, y1: cellTop, x2: cellRight, y2: cellTop }, // Top edge
+                { x1: cellLeft, y1: cellBottom, x2: cellRight, y2: cellBottom }, // Bottom edge
+                // Vertical edges
+                { x1: cellLeft, y1: cellTop, x2: cellLeft, y2: cellBottom }, // Left edge
+                { x1: cellRight, y1: cellTop, x2: cellRight, y2: cellBottom }  // Right edge
+              ];
+
+              // Check if any edge intersects the circle
+              const edgeIntersects = edges.some(edge =>
+                this.lineIntersectsCircle(
+                  edge.x1, edge.y1, edge.x2, edge.y2,
+                  center, center, radius
+                )
+              );
+
+              includeCell = edgeIntersects;
+            }
+          }
+
+          if (includeCell) {
             const rect = {
               x: Math.round(cellLeft),
               y: Math.round(cellTop),
               width: scaledW,
               height: scaledH,
               color: [1, 1, 1, 1],
-              isBoundary: centerDist > radius, // Flag boundary cells
-              centerDist: centerDist        // Store for clipping calculation
+              cornersOutside: cornersOutside, // Store for debugging and classification
+              cornersInside: 4 - cornersOutside
             };
 
             rectangles.push(rect);
@@ -451,12 +482,8 @@ class GridRenderer extends BaseRenderer {
         this.gridParams.width = scaledW;
         this.gridParams.height = scaledH;
 
-        // Update boundary cells with clip path data
-        rectangles.forEach(rect => {
-          if (rect.isBoundary) {
-            rect.clipPath = this.clipCellToCircle(rect, { x: center, y: center }, radius);
-          }
-        });
+        // Classify cells (inside, boundary, outside)
+        this.classifyCells(rectangles, allowCut);
 
         return rectangles.slice(0, this.gridParams.target);
       }
@@ -470,121 +497,119 @@ class GridRenderer extends BaseRenderer {
       }
     }
 
-    // Update boundary cells with clip path data for best result
-    bestRects.forEach(rect => {
-      if (rect.isBoundary) {
-        rect.clipPath = this.clipCellToCircle(rect, { x: 120, y: 120 }, 120 * this.gridParams.scale);
-      }
-    });
+    // Classify cells in best result
+    this.classifyCells(bestRects, allowCut);
 
     return bestRects.slice(0, this.gridParams.target);
   }
 
-  // Helper method to calculate clip path for boundary cells
-  clipCellToCircle(rect, center, radius) {
-    // Calculate the intersection of the rectangle with the circle
-    const clipSegments = 16; // Number of segments to approximate arc
-    const points = [];
+  // Classify cells as inside, boundary, or outside
+  classifyCells(rectangles, allowCut = 3) {
+    const CENTER_X = 120;
+    const CENTER_Y = 120;
 
-    // Rectangle corners
-    const corners = [
-      { x: rect.x, y: rect.y },  // Top-left
-      { x: rect.x + rect.width, y: rect.y },  // Top-right
-      { x: rect.x + rect.width, y: rect.y + rect.height },  // Bottom-right
-      { x: rect.x, y: rect.y + rect.height }  // Bottom-left
-    ];
+    // NOTE: For cell classification, we use the scaled radius
+    // This controls how the cells are classified, but the final visible boundary
+    // is always masked to exactly 120 pixels by the stencil buffer
+    const RADIUS = 120 * this.gridParams.scale;
 
-    // Find corners inside circle
-    const insideCorners = corners.filter(corner =>
-      Math.hypot(corner.x - center.x, corner.y - center.y) <= radius
-    );
+    rectangles.forEach(rect => {
+      // Cell corners
+      const corners = [
+        { x: rect.x, y: rect.y }, // Top-left
+        { x: rect.x + rect.width, y: rect.y }, // Top-right
+        { x: rect.x, y: rect.y + rect.height }, // Bottom-left
+        { x: rect.x + rect.width, y: rect.y + rect.height } // Bottom-right
+      ];
 
-    // Add all inside corners to clip path
-    insideCorners.forEach(corner => points.push(corner));
+      // Cell center
+      const centerX = rect.x + rect.width / 2;
+      const centerY = rect.y + rect.height / 2;
+      const centerDist = Math.hypot(centerX - CENTER_X, centerY - CENTER_Y);
 
-    // Find intersection points of rectangle edges with circle
-    const edges = [
-      // Top edge: x varies, y fixed at rect.y
-      { start: corners[0], end: corners[1], isHorizontal: true },
-      // Right edge: x fixed at rect.x + rect.width, y varies
-      { start: corners[1], end: corners[2], isHorizontal: false },
-      // Bottom edge: x varies, y fixed at rect.y + rect.height
-      { start: corners[2], end: corners[3], isHorizontal: true },
-      // Left edge: x fixed at rect.x, y varies
-      { start: corners[3], end: corners[0], isHorizontal: false }
-    ];
+      // Count corners outside circle
+      const cornersOutside = corners.filter(corner =>
+        Math.hypot(corner.x - CENTER_X, corner.y - CENTER_Y) > RADIUS
+      ).length;
 
-    edges.forEach(edge => {
-      const intersections = this.findLineCircleIntersections(
-        edge.start, edge.end, center, radius
-      );
+      // Count corners inside circle
+      const cornersInside = 4 - cornersOutside;
 
-      intersections.forEach(point => points.push(point));
+      // Check if any edge intersects the circle (for edge case with allowCut=0)
+      let edgeIntersectsCircle = false;
+
+      if (cornersInside === 0 && allowCut > 0) {
+        const edges = [
+          // Horizontal edges
+          { x1: rect.x, y1: rect.y, x2: rect.x + rect.width, y2: rect.y },
+          { x1: rect.x, y1: rect.y + rect.height, x2: rect.x + rect.width, y2: rect.y + rect.height },
+          // Vertical edges
+          { x1: rect.x, y1: rect.y, x2: rect.x, y2: rect.y + rect.height },
+          { x1: rect.x + rect.width, y1: rect.y, x2: rect.x + rect.width, y2: rect.y + rect.height }
+        ];
+
+        edgeIntersectsCircle = edges.some(edge =>
+          this.lineIntersectsCircle(
+            edge.x1, edge.y1, edge.x2, edge.y2,
+            CENTER_X, CENTER_Y, RADIUS
+          )
+        );
+      }
+
+      // Classify the cell based on corners outside and allowCut
+      if (cornersOutside === 0) {
+        // Cell is fully inside the circle (all 4 corners inside)
+        rect.cellType = 'inside';
+        rect.isBoundary = false;
+      } else if (
+        // Allow cell if it has center inside OR
+        // if the number of corners outside is <= allowCut
+        (centerDist <= RADIUS) ||
+        (cornersOutside <= allowCut && allowCut > 0) ||
+        (allowCut > 0 && edgeIntersectsCircle)
+      ) {
+        // Cell is on the boundary based on corner count criteria
+        rect.cellType = 'boundary';
+        rect.isBoundary = true;
+      } else {
+        // Cell is outside or has too many corners outside
+        rect.cellType = 'outside';
+        rect.isBoundary = true;
+      }
+
+      // Store the corner counts for debugging
+      rect.cornersInside = cornersInside;
+      rect.cornersOutside = cornersOutside;
     });
-
-    // If we have fewer than 3 points, can't form polygon - return null
-    if (points.length < 3) return null;
-
-    // Add arc points between intersection points if needed
-    // This requires sorting the points by angle from center
-    const sortedPoints = this.sortPointsByAngle(points, center);
-
-    return sortedPoints;
   }
 
-  // Find intersections between line segment and circle
-  findLineCircleIntersections(start, end, center, radius) {
-    const intersections = [];
+  // Helper method to determine if a line segment intersects with a circle
+  lineIntersectsCircle(x1, y1, x2, y2, cx, cy, r) {
+    // Calculate the closest point on the line to the circle center
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const len = Math.sqrt(dx * dx + dy * dy);
 
-    // Line parameterization: P = start + t * (end - start), t ∈ [0, 1]
-    const dx = end.x - start.x;
-    const dy = end.y - start.y;
+    // Normalize direction vector
+    const nx = dx / len;
+    const ny = dy / len;
 
-    // Translate to origin
-    const cx = center.x;
-    const cy = center.y;
+    // Vector from line start to circle center
+    const vx = cx - x1;
+    const vy = cy - y1;
 
-    // Quadratic equation coefficients
-    const a = dx * dx + dy * dy;
-    const b = 2 * (dx * (start.x - cx) + dy * (start.y - cy));
-    const c = (start.x - cx) * (start.x - cx) + (start.y - cy) * (start.y - cy) - radius * radius;
+    // Project this vector onto the line direction
+    const projection = vx * nx + vy * ny;
 
-    const discriminant = b * b - 4 * a * c;
+    // Clamp projection to line segment
+    const projectionClamped = Math.max(0, Math.min(len, projection));
 
-    if (discriminant < 0) {
-      // No intersections
-      return intersections;
-    }
+    // Calculate closest point on line
+    const closestX = x1 + projectionClamped * nx;
+    const closestY = y1 + projectionClamped * ny;
 
-    // Find t values for intersections
-    const t1 = (-b + Math.sqrt(discriminant)) / (2 * a);
-    const t2 = (-b - Math.sqrt(discriminant)) / (2 * a);
-
-    // Check if t values are in [0, 1] range (on the line segment)
-    if (t1 >= 0 && t1 <= 1) {
-      intersections.push({
-        x: start.x + t1 * dx,
-        y: start.y + t1 * dy
-      });
-    }
-
-    if (t2 >= 0 && t2 <= 1) {
-      intersections.push({
-        x: start.x + t2 * dx,
-        y: start.y + t2 * dy
-      });
-    }
-
-    return intersections;
-  }
-
-  // Sort points by angle around center
-  sortPointsByAngle(points, center) {
-    return [...points].sort((a, b) => {
-      const angleA = Math.atan2(a.y - center.y, a.x - center.x);
-      const angleB = Math.atan2(b.y - center.y, b.x - center.x);
-      return angleA - angleB;
-    });
+    // Check if closest point is within radius
+    return Math.hypot(closestX - cx, closestY - cy) <= r;
   }
 
   updateGrid(newParams) {
@@ -624,6 +649,93 @@ class GridRenderer extends BaseRenderer {
 
     // Save a reference image to compare with the microcontroller output
     console.log("Debug index visualization complete");
+  }
+
+  // Debug method to visualize boundary cells and their corner counts
+  drawDebugBoundary() {
+    const program = this.shaderManager.use("basic");
+    if (!program) return;
+
+    // Use existing grid geometry
+    const rectangles = this.gridGeometry;
+
+    // Clear canvas - consistent with how we clear in the main draw method
+    this.gl.clearColor(0.1, 0.1, 0.1, 1.0);
+    this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT);
+
+    // Draw reference circles
+    const center = 120;
+
+    // Use the fixed mask radius constant (always 120)
+    const fixedRadius = this.FIXED_MASK_RADIUS;
+
+    // Draw the fixed boundary circle
+    this.drawCircle(center, center, fixedRadius, [0.2, 0.2, 0.2, 1.0]);
+
+    // Draw the scaled circle used for cell classification if different from fixed
+    const scaledRadius = 120 * this.gridParams.scale;
+    if (Math.abs(scaledRadius - fixedRadius) > 0.01) {
+      // Only draw if different from fixed radius
+      this.drawCircle(center, center, scaledRadius, [0.3, 0.3, 0.3, 0.3]); // Translucent
+    }
+
+    // Color cells based on their boundary status and corners outside
+    rectangles.forEach((rect) => {
+      let color;
+
+      if (rect.cellType === 'boundary') {
+        // Boundary cells: color based on corners outside (red gradient)
+        const cornersOutside = rect.cornersOutside || 0;
+        switch (cornersOutside) {
+          case 1:
+            color = [0.5, 0.2, 0.2, 1.0]; // Light red
+            break;
+          case 2:
+            color = [0.7, 0.2, 0.2, 1.0]; // Medium red
+            break;
+          case 3:
+            color = [0.9, 0.2, 0.2, 1.0]; // Bright red
+            break;
+          case 4:
+            color = [1.0, 0.0, 0.0, 1.0]; // Full red (edge case)
+            break;
+          default:
+            color = [0.3, 0.3, 0.6, 1.0]; // Blue for unusual cases
+        }
+      } else if (rect.cellType === 'inside') {
+        // Inside cells: green
+        color = [0.2, 0.6, 0.2, 1.0];
+      } else {
+        // Outside cells (shouldn't be any): dark gray
+        color = [0.1, 0.1, 0.1, 1.0];
+      }
+
+      // Draw the cell - all as normal rectangles
+      this.drawRectangle(rect.x, rect.y, rect.width, rect.height, color);
+    });
+
+    console.log("Debug boundary visualization complete");
+    console.log(`Grid has ${rectangles.length} cells, allowCut = ${this.gridParams.allowCut}`);
+    console.log(`Fixed boundary radius: ${fixedRadius}, Classification radius: ${scaledRadius}`);
+
+    // Count cells by corner status
+    const boundaryCounts = [0, 0, 0, 0, 0]; // 0, 1, 2, 3, 4 corners outside
+    let boundaryTotal = 0;
+    let insideTotal = 0;
+
+    rectangles.forEach(rect => {
+      if (rect.cellType === 'boundary') {
+        boundaryTotal++;
+        if (rect.cornersOutside !== undefined && rect.cornersOutside >= 0 && rect.cornersOutside <= 4) {
+          boundaryCounts[rect.cornersOutside]++;
+        }
+      } else if (rect.cellType === 'inside') {
+        insideTotal++;
+      }
+    });
+
+    console.log(`Inside cells: ${insideTotal}, Boundary cells: ${boundaryTotal}`);
+    console.log(`Boundary corners outside: 0=${boundaryCounts[0]}, 1=${boundaryCounts[1]}, 2=${boundaryCounts[2]}, 3=${boundaryCounts[3]}, 4=${boundaryCounts[4]}`);
   }
 
   // Helper function to convert hue to RGB
