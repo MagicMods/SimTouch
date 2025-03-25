@@ -85,6 +85,18 @@ export class GridUi extends BaseUi {
         '1-3 = progressively more cells at the boundary. ' +
         'Use "Visualize Boundary" in Debug Tools to see the effect.');
 
+      // Add cell centers parameter
+      this.gridShowCellCentersController = gridParamFolder
+        .add(gridRenderer.gridParams, "showCellCenters")
+        .name("Show Cell Centers")
+        .onChange(() => gridRenderer.updateGrid());
+
+      // Add cell indices parameter  
+      this.gridShowIndicesController = gridParamFolder
+        .add(gridRenderer.gridParams, "showIndices")
+        .name("Show Cell Indices")
+        .onChange(() => gridRenderer.updateGrid());
+
       // Grid Stats
       const stats = gridParamFolder.addFolder("Stats");
       stats.add(gridRenderer.gridParams, "cols").name("Columns").listen();
@@ -129,6 +141,10 @@ export class GridUi extends BaseUi {
       targets["Grid Scale"] = this.gridScaleController;
     if (this.gridAllowCutController)
       targets["Allow Cut"] = this.gridAllowCutController;
+    if (this.gridShowCellCentersController)
+      targets["Show Centers"] = this.gridShowCellCentersController;
+    if (this.gridShowIndicesController)
+      targets["Show Indices"] = this.gridShowIndicesController;
 
     return targets;
   }
@@ -154,5 +170,7 @@ export class GridUi extends BaseUi {
     safeUpdateDisplay(this.gridAspectRatioController);
     safeUpdateDisplay(this.gridScaleController);
     safeUpdateDisplay(this.gridAllowCutController);
+    safeUpdateDisplay(this.gridShowCellCentersController);
+    safeUpdateDisplay(this.gridShowIndicesController);
   }
 }

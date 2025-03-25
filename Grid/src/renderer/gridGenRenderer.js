@@ -21,9 +21,20 @@ export class GridGenRenderer extends BaseRenderer {
         this.textOverlay.style.pointerEvents = 'none'; // Allow clicks to pass through
         this.textOverlay.style.overflow = 'hidden';
 
-        // Insert the overlay after the canvas
+        // Create another div container for cell center indicators
+        this.centerOverlay = document.createElement('div');
+        this.centerOverlay.style.position = 'absolute';
+        this.centerOverlay.style.top = '0';
+        this.centerOverlay.style.left = '0';
+        this.centerOverlay.style.width = `${this.TARGET_WIDTH}px`;
+        this.centerOverlay.style.height = `${this.TARGET_HEIGHT}px`;
+        this.centerOverlay.style.pointerEvents = 'none'; // Allow clicks to pass through
+        this.centerOverlay.style.overflow = 'hidden';
+
+        // Insert the overlays after the canvas
         const canvas = gl.canvas;
         canvas.parentNode.insertBefore(this.textOverlay, canvas.nextSibling);
+        canvas.parentNode.insertBefore(this.centerOverlay, canvas.nextSibling);
 
         // Set canvas position to relative if it's not already positioned
         const canvasStyle = window.getComputedStyle(canvas);
@@ -83,6 +94,7 @@ export class GridGenRenderer extends BaseRenderer {
         this.gl.clearColor(bgColor[0], bgColor[1], bgColor[2], bgColor[3]);
         this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT);
         this.textOverlay.innerHTML = '';
+        this.centerOverlay.innerHTML = '';
 
         // Setup shader program
         this.gl.useProgram(this.programInfo.program);
@@ -141,6 +153,11 @@ export class GridGenRenderer extends BaseRenderer {
         // Draw indices if enabled
         if (params.showIndices) {
             this.updateCellIndices(rectangles, params.displayMode, params.colors?.indexText);
+        }
+
+        // Draw cell centers if enabled
+        if (params.showCellCenters) {
+            this.updateCellCenters(rectangles, params.displayMode);
         }
 
         // Update cell count display
@@ -342,6 +359,10 @@ export class GridGenRenderer extends BaseRenderer {
         this.textOverlay.style.width = `${canvas.width}px`;
         this.textOverlay.style.height = `${canvas.height}px`;
 
+        // Calculate the scaling ratio between our fixed target size and actual canvas size
+        const scaleX = canvas.width / this.TARGET_WIDTH;
+        const scaleY = canvas.height / this.TARGET_HEIGHT;
+
         // Keep the index color as yellow by default (as set by user)
         // We don't modify the CSS color unless explicitly requested
         const textColorCSS = indexTextColor
@@ -350,15 +371,27 @@ export class GridGenRenderer extends BaseRenderer {
 
         // Create an index label for each filtered cell
         filteredRects.forEach((rect, i) => {
-            // Calculate font size based on cell dimensions
+            // Calculate font size based on cell dimensions and scaling
             const cellSize = Math.min(rect.width, rect.height);
-            const fontSize = Math.max(5.5, Math.min(12, cellSize / 3.5));
+            const fontSize = Math.max(5.5, Math.min(12, cellSize / 3.5)) * Math.min(scaleX, scaleY);
+
+            // Calculate the center position in target coordinates (240x240)
+            const centerX = rect.x + rect.width / 2;
+            const centerY = rect.y + rect.height / 2;
+
+            // Scale the position to match actual canvas size
+            const scaledX = centerX * scaleX;
+            const scaledY = centerY * scaleY;
+
+            // Scale the width and height to match actual canvas size
+            const scaledWidth = rect.width * scaleX;
+            const scaledHeight = rect.height * scaleY;
 
             const label = document.createElement('div');
             label.textContent = rectangles.indexOf(rect).toString(); // Use original index
             label.style.position = 'absolute';
-            label.style.left = `${rect.x + rect.width / 2}px`;
-            label.style.top = `${rect.y + rect.height / 2}px`;
+            label.style.left = `${scaledX}px`;
+            label.style.top = `${scaledY}px`;
             label.style.transform = 'translate(-50%, -50%)';
             label.style.color = textColorCSS;
             label.style.fontSize = `${fontSize}px`;
@@ -367,8 +400,8 @@ export class GridGenRenderer extends BaseRenderer {
             label.style.display = 'flex';
             label.style.alignItems = 'center';
             label.style.justifyContent = 'center';
-            label.style.width = `${rect.width}px`;
-            label.style.height = `${rect.height}px`;
+            label.style.width = `${scaledWidth}px`;
+            label.style.height = `${scaledHeight}px`;
             label.style.userSelect = 'none';
             label.style.pointerEvents = 'none';
             label.style.margin = '0';
@@ -383,6 +416,21 @@ export class GridGenRenderer extends BaseRenderer {
         this.countOverlay.style.display = show ? 'block' : 'none';
 
         if (show) {
+            // Position overlay relative to the actual canvas size
+            const canvas = this.gl.canvas;
+            this.countOverlay.style.top = `${canvas.offsetTop + 10}px`;
+            this.countOverlay.style.left = `${canvas.offsetLeft + 10}px`;
+
+            // Adjust font size based on canvas scaling
+            const scaleX = canvas.width / this.TARGET_WIDTH;
+            const scaleY = canvas.height / this.TARGET_HEIGHT;
+            const scaleFactor = Math.min(scaleX, scaleY);
+
+            // Adjust font size proportionally
+            const fontSize = Math.max(8, Math.round(12 * scaleFactor));
+            this.countOverlay.style.fontSize = `${fontSize}px`;
+            this.countOverlay.style.padding = `${Math.max(4, Math.round(8 * scaleFactor))}px`;
+
             const total = rectangles.length;
             const inside = rectangles.filter(r => r.cellType === 'inside').length;
             const boundary = rectangles.filter(r => r.cellType === 'boundary').length;
@@ -569,5 +617,59 @@ export class GridGenRenderer extends BaseRenderer {
             }
         }
         return bestRects.slice(0, params.target);
+    }
+
+    // New method to display cell centers
+    updateCellCenters(rectangles, displayMode) {
+        // Determine which cells to display centers for
+        const filteredRects = rectangles.filter(rect => {
+            switch (displayMode) {
+                case 'all': return true;
+                case 'inside': return rect.cellType === 'inside';
+                case 'boundary': return rect.cellType === 'boundary';
+                case 'masked': return rect.cellType !== 'outside';
+                default: return true;
+            }
+        });
+
+        // Make sure the overlay has the same position as the canvas
+        const canvas = this.gl.canvas;
+        this.centerOverlay.style.top = `${canvas.offsetTop}px`;
+        this.centerOverlay.style.left = `${canvas.offsetLeft}px`;
+        this.centerOverlay.style.width = `${canvas.width}px`;
+        this.centerOverlay.style.height = `${canvas.height}px`;
+
+        // Calculate the scaling ratio between our fixed target size and actual canvas size
+        const scaleX = canvas.width / this.TARGET_WIDTH;
+        const scaleY = canvas.height / this.TARGET_HEIGHT;
+
+        // Create a center indicator for each filtered cell
+        filteredRects.forEach(rect => {
+            // Calculate center position in target coordinates (240x240)
+            const centerX = rect.x + rect.width / 2;
+            const centerY = rect.y + rect.height / 2;
+
+            // Scale the position to match actual canvas size
+            const scaledX = centerX * scaleX;
+            const scaledY = centerY * scaleY;
+
+            // Create the center dot
+            const dot = document.createElement('div');
+            dot.style.position = 'absolute';
+            dot.style.left = `${scaledX}px`;
+            dot.style.top = `${scaledY}px`;
+            dot.style.width = '3px';
+            dot.style.height = '3px';
+            dot.style.backgroundColor = rect.cellType === 'inside' ? 'lime' : 'red';
+            dot.style.borderRadius = '50%';
+            dot.style.transform = 'translate(-50%, -50%)';
+            dot.style.pointerEvents = 'none';
+            dot.style.boxShadow = '0 0 2px rgba(0,0,0,0.8)';
+
+            // Add a class based on the cell type for styling
+            dot.classList.add(`cell-center-${rect.cellType}`);
+
+            this.centerOverlay.appendChild(dot);
+        });
     }
 } 

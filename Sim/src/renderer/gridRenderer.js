@@ -16,12 +16,14 @@ class GridRenderer extends BaseRenderer {
       target: 341,
       gap: 1,
       aspectRatio: 1,
-      scale: 0.95,      // Scale controls the classification radius (120 * scale)
+      scale: 1.05,      // Scale controls the classification radius (120 * scale)
       width: 10,
       height: 10,
       cols: 23,
       rows: 23,
       allowCut: 3,      // Controls how many corners can be outside the circle (0-3)
+      showCellCenters: false, // Whether to display cell centers
+      showIndices: false,     // Whether to display cell indices
     };
 
     // Fixed masking radius - always 120 pixels regardless of scale
@@ -34,8 +36,37 @@ class GridRenderer extends BaseRenderer {
     // Initialize systems
     this.gradient = new Gradient();
 
-    // Generate initial grid
+    // Create a div container for cell center indicators
+    this.centerOverlay = document.createElement('div');
+    this.centerOverlay.style.position = 'absolute';
+    this.centerOverlay.style.top = '0';
+    this.centerOverlay.style.left = '0';
+    this.centerOverlay.style.width = `${this.TARGET_WIDTH}px`;
+    this.centerOverlay.style.height = `${this.TARGET_HEIGHT}px`;
+    this.centerOverlay.style.pointerEvents = 'none'; // Allow clicks to pass through
+    this.centerOverlay.style.overflow = 'hidden';
+    this.centerOverlay.style.zIndex = '10'; // Make sure it's above the canvas
+
+    // Create a div container for text indices
+    this.textOverlay = document.createElement('div');
+    this.textOverlay.style.position = 'absolute';
+    this.textOverlay.style.top = '0';
+    this.textOverlay.style.left = '0';
+    this.textOverlay.style.width = `${this.TARGET_WIDTH}px`;
+    this.textOverlay.style.height = `${this.TARGET_HEIGHT}px`;
+    this.textOverlay.style.pointerEvents = 'none'; // Allow clicks to pass through
+    this.textOverlay.style.overflow = 'hidden';
+    this.textOverlay.style.zIndex = '9'; // Below the cell centers
+
+    // Insert the overlays after the canvas
+    const canvas = gl.canvas;
+    canvas.parentNode.insertBefore(this.centerOverlay, canvas.nextSibling);
+    canvas.parentNode.insertBefore(this.textOverlay, canvas.nextSibling);
+
+    // Generate initial grid - this will filter out 'outside' cells
     this.gridGeometry = this.generateRectangles();
+
+    // Create grid map from already filtered cells
     this.gridMap = this.createGridMap(this.gridGeometry);
 
     // Initialize modes with grid data and maxDensity reference
@@ -59,7 +90,12 @@ class GridRenderer extends BaseRenderer {
     console.log("GridRenderer initialized:", {
       resolution: `${this.TARGET_WIDTH}x${this.TARGET_HEIGHT}`,
       cellSize: `${this.gridParams.width}x${this.gridParams.height}`,
-      totalCells: this.gridParams.target,
+      totalCells: this.gridGeometry.length,
+      cellTypes: {
+        inside: this.gridGeometry.filter(r => r.cellType === 'inside').length,
+        boundary: this.gridGeometry.filter(r => r.cellType === 'boundary').length,
+        outside: this.gridGeometry.filter(r => r.cellType === 'outside').length
+      },
       maskRadius: this.FIXED_MASK_RADIUS,
       classificationRadius: 120 * this.gridParams.scale
     });
@@ -80,8 +116,7 @@ class GridRenderer extends BaseRenderer {
         width: rect.width,
         height: rect.height,
       },
-      isBoundary: rect.isBoundary,
-      cellType: rect.cellType || (rect.isBoundary ? 'boundary' : 'inside'),
+      cellType: rect.cellType,
       contains: function (px, py) {
         // Quick check if point is inside rectangle bounds
         if (
@@ -121,13 +156,18 @@ class GridRenderer extends BaseRenderer {
     // Make sure we're starting with a clean state
     const gl = this.gl;
 
-    // Use existing grid geometry
+    // Use existing grid geometry (which now contains only inside and boundary cells)
     const rectangles = this.gridGeometry;
 
-    // Get density values
+    // Clear any existing overlays
+    this.centerOverlay.innerHTML = '';
+    this.textOverlay.innerHTML = '';
+
+    // Get density values for all cells
     this.density = this.renderModes.getValues(particleSystem);
 
     if (this.socket.isConnected) {
+      // Since we no longer have outside cells in gridGeometry, we can simplify this
       const byteArray = new Uint8Array(this.density.length + 1);
 
       // Set identifier byte (0) at the start
@@ -144,7 +184,7 @@ class GridRenderer extends BaseRenderer {
       this.sendGridData(byteArray);
     }
 
-    // Map values to colors
+    // Map values to colors for all cells
     rectangles.forEach((rect, index) => {
       const value = this.density[index];
 
@@ -166,18 +206,17 @@ class GridRenderer extends BaseRenderer {
     // Use the fixed mask radius constant (always 120)
     const maskRadius = this.FIXED_MASK_RADIUS;
 
-    // Clear both color and stencil buffers - match GridGenRenderer approach
+    // Clear both color and stencil buffers
     gl.clearColor(0, 0, 0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
 
-    // ---- Stencil buffer setup matching GridGenRenderer.js ----
+    // ---- Stencil buffer setup matching GridGenRenderer.js exactly ----
     gl.enable(gl.STENCIL_TEST);
     gl.stencilFunc(gl.ALWAYS, 1, 0xFF);
     gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
     gl.stencilMask(0xFF);
 
     // First pass: Draw the circle into the stencil buffer (but don't show it)
-    // Use fixed mask radius for stencil buffer
     gl.colorMask(false, false, false, false); // Don't draw to color buffer
     this.drawCircle(center, center, maskRadius, [1, 1, 1, 1]);
 
@@ -186,16 +225,24 @@ class GridRenderer extends BaseRenderer {
     gl.stencilFunc(gl.EQUAL, 1, 0xFF);    // Draw only where stencil is 1
     gl.stencilMask(0x00);                 // Don't modify stencil buffer
 
-    // Draw all rectangles - they will be masked to the circle
-    rectangles.forEach((rect) => {
-      // Draw only cells that should be visible (inside or boundary)
-      if (rect.cellType !== 'outside') {
-        this.drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color);
-      }
+    // Draw each rectangle, applying the stencil mask
+    // We can draw all rectangles now since they're all inside or boundary cells
+    rectangles.forEach(rect => {
+      this.drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color);
     });
 
-    // Cleanup - disable stencil test
+    // Disable stencil test when done
     gl.disable(gl.STENCIL_TEST);
+
+    // Draw cell centers if enabled
+    if (this.gridParams.showCellCenters) {
+      this.drawCellCenters();
+    }
+
+    // Draw cell indices if enabled
+    if (this.gridParams.showIndices) {
+      this.drawCellIndices();
+    }
   }
 
   ///////////////////////////////////////////////////
@@ -366,7 +413,7 @@ class GridRenderer extends BaseRenderer {
     // allowCut: Controls how many corners of a cell can be outside the circle
     // 0: Only allows cells with center inside the circle (strict)
     // 1-3: Allows cells with 1-3 corners outside circle (more relaxed)
-    const allowCut = this.gridParams.allowCut !== undefined ? this.gridParams.allowCut : 3;
+    const allowCut = this.gridParams.allowCut !== undefined ? this.gridParams.allowCut : 1;
     const boundaryMode = allowCut > 0 ? 'partial' : 'center';
 
     for (let cellH = 120; cellH >= 1; cellH--) {
@@ -404,13 +451,13 @@ class GridRenderer extends BaseRenderer {
           const cellCenterX = center + dx;
           const cellCenterY = center + dy;
 
-          // Cell boundaries
+          // Cell corners
           const cellLeft = cellCenterX - scaledW / 2;
           const cellRight = cellCenterX + scaledW / 2;
           const cellTop = cellCenterY - scaledH / 2;
           const cellBottom = cellCenterY + scaledH / 2;
 
-          // Cell center distance from circle center
+          // Check if cell center is inside the circle
           const centerDist = Math.hypot(dx, dy);
           const centerInside = centerDist <= radius;
 
@@ -431,7 +478,7 @@ class GridRenderer extends BaseRenderer {
               Math.hypot(corner.x - center, corner.y - center) > radius
             ).length;
 
-            // Check against the allowCut parameter
+            // Check against the allowCut parameter (match exactly with gridGenRenderer.js)
             if (cornersOutside <= allowCut && cornersOutside < 4) {
               includeCell = true;
             }
@@ -460,36 +507,56 @@ class GridRenderer extends BaseRenderer {
             }
           }
 
+          // Only add cells that pass the inclusion criteria
           if (includeCell) {
-            const rect = {
+            rectangles.push({
               x: Math.round(cellLeft),
               y: Math.round(cellTop),
               width: scaledW,
               height: scaledH,
-              color: [1, 1, 1, 1],
-              cornersOutside: cornersOutside, // Store for debugging and classification
+              color: [0.5, 0.5, 0.5, 1],
+              cellType: 'unknown', // Will be classified later
+              cornersOutside: cornersOutside,
               cornersInside: 4 - cornersOutside
-            };
-
-            rectangles.push(rect);
+            });
           }
         }
       }
 
-      if (rectangles.length >= this.gridParams.target) {
+      // Classify cells
+      this.classifyCells(rectangles, allowCut);
+
+      // Log pre-filter cell counts for debugging
+      const preFilterTotal = rectangles.length;
+      const preFilterInside = rectangles.filter(r => r.cellType === 'inside').length;
+      const preFilterBoundary = rectangles.filter(r => r.cellType === 'boundary').length;
+      const preFilterOutside = rectangles.filter(r => r.cellType === 'outside').length;
+
+      // CRITICAL CHANGE: Filter out 'outside' cells immediately after classification
+      const filteredRectangles = rectangles.filter(rect =>
+        rect.cellType === 'inside' || rect.cellType === 'boundary'
+      );
+
+      // Log post-filter cell counts for debugging
+      console.log("Grid cell filtering:", {
+        preFilter: { total: preFilterTotal, inside: preFilterInside, boundary: preFilterBoundary, outside: preFilterOutside },
+        postFilter: {
+          total: filteredRectangles.length, inside: filteredRectangles.filter(r => r.cellType === 'inside').length,
+          boundary: filteredRectangles.filter(r => r.cellType === 'boundary').length
+        }
+      });
+
+      if (filteredRectangles.length >= this.gridParams.target) {
         this.gridParams.cols = cols;
         this.gridParams.rows = rows;
         this.gridParams.width = scaledW;
         this.gridParams.height = scaledH;
 
-        // Classify cells (inside, boundary, outside)
-        this.classifyCells(rectangles, allowCut);
-
-        return rectangles.slice(0, this.gridParams.target);
+        return filteredRectangles.slice(0, this.gridParams.target);
       }
 
-      if (rectangles.length > bestRects.length) {
-        bestRects = rectangles;
+      if (filteredRectangles.length > bestRects.length) {
+        bestRects = filteredRectangles;
         this.gridParams.cols = cols;
         this.gridParams.rows = rows;
         this.gridParams.width = scaledW;
@@ -497,20 +564,13 @@ class GridRenderer extends BaseRenderer {
       }
     }
 
-    // Classify cells in best result
-    this.classifyCells(bestRects, allowCut);
-
     return bestRects.slice(0, this.gridParams.target);
   }
 
-  // Classify cells as inside, boundary, or outside
-  classifyCells(rectangles, allowCut = 3) {
+  // Classify cells as inside, boundary, or outside - match logic exactly with gridGenRenderer.js
+  classifyCells(rectangles, allowCut = 1) {
     const CENTER_X = 120;
     const CENTER_Y = 120;
-
-    // NOTE: For cell classification, we use the scaled radius
-    // This controls how the cells are classified, but the final visible boundary
-    // is always masked to exactly 120 pixels by the stencil buffer
     const RADIUS = 120 * this.gridParams.scale;
 
     rectangles.forEach(rect => {
@@ -560,7 +620,6 @@ class GridRenderer extends BaseRenderer {
       if (cornersOutside === 0) {
         // Cell is fully inside the circle (all 4 corners inside)
         rect.cellType = 'inside';
-        rect.isBoundary = false;
       } else if (
         // Allow cell if it has center inside OR
         // if the number of corners outside is <= allowCut
@@ -570,11 +629,9 @@ class GridRenderer extends BaseRenderer {
       ) {
         // Cell is on the boundary based on corner count criteria
         rect.cellType = 'boundary';
-        rect.isBoundary = true;
       } else {
         // Cell is outside or has too many corners outside
         rect.cellType = 'outside';
-        rect.isBoundary = true;
       }
 
       // Store the corner counts for debugging
@@ -613,11 +670,19 @@ class GridRenderer extends BaseRenderer {
   }
 
   updateGrid(newParams) {
+    // Log the current parameters and what's changing
+    console.log("Updating grid parameters:", {
+      current: { ...this.gridParams },
+      new: { ...newParams }
+    });
+
     // Update grid parameters
     Object.assign(this.gridParams, newParams);
 
-    // Regenerate grid
+    // Regenerate grid - cells are already filtered to only inside and boundary
     this.gridGeometry = this.generateRectangles();
+
+    // Create gridMap from the filtered geometry (no filtering needed again)
     this.gridMap = this.createGridMap(this.gridGeometry);
 
     // Update renderModes with new grid
@@ -626,6 +691,28 @@ class GridRenderer extends BaseRenderer {
       gridGeometry: this.gridGeometry,
       gridMap: this.gridMap,
     });
+
+    // Clear any existing overlays
+    this.centerOverlay.innerHTML = '';
+    this.textOverlay.innerHTML = '';
+
+    // Log details about the new grid
+    console.log("Grid updated - final counts:", {
+      totalCells: this.gridGeometry.length,
+      insideCells: this.gridGeometry.filter(r => r.cellType === 'inside').length,
+      boundaryCells: this.gridGeometry.filter(r => r.cellType === 'boundary').length,
+      outsideCells: this.gridGeometry.filter(r => r.cellType === 'outside').length // Should be 0
+    });
+
+    // If cell centers are enabled, update them right away
+    if (this.gridParams.showCellCenters) {
+      this.drawCellCenters();
+    }
+
+    // If cell indices are enabled, update them right away
+    if (this.gridParams.showIndices) {
+      this.drawCellIndices();
+    }
   }
 
   drawDebugIndexes() {
@@ -656,7 +743,7 @@ class GridRenderer extends BaseRenderer {
     const program = this.shaderManager.use("basic");
     if (!program) return;
 
-    // Use existing grid geometry
+    // Use existing grid geometry - there should no longer be any 'outside' cells
     const rectangles = this.gridGeometry;
 
     // Clear canvas - consistent with how we clear in the main draw method
@@ -669,23 +756,64 @@ class GridRenderer extends BaseRenderer {
     // Use the fixed mask radius constant (always 120)
     const fixedRadius = this.FIXED_MASK_RADIUS;
 
-    // Draw the fixed boundary circle
-    this.drawCircle(center, center, fixedRadius, [0.2, 0.2, 0.2, 1.0]);
+    // Draw the fixed boundary circle (white outline)
+    this.drawCircle(center, center, fixedRadius, [0.4, 0.4, 0.4, 1.0]);
 
     // Draw the scaled circle used for cell classification if different from fixed
     const scaledRadius = 120 * this.gridParams.scale;
     if (Math.abs(scaledRadius - fixedRadius) > 0.01) {
-      // Only draw if different from fixed radius
-      this.drawCircle(center, center, scaledRadius, [0.3, 0.3, 0.3, 0.3]); // Translucent
+      // Only draw if different from fixed radius (yellow outline)
+      this.drawCircle(center, center, scaledRadius, [0.6, 0.6, 0.2, 0.6]);
     }
 
-    // Color cells based on their boundary status and corners outside
+    // Count cells by classification and corner status
+    let insideTotal = 0;
+    let boundaryTotal = 0;
+    let outsideTotal = 0;
+    const boundaryCounts = [0, 0, 0, 0, 0]; // 0, 1, 2, 3, 4 corners outside
+
+    console.log("DETAILED DEBUG - Grid cells analysis:");
+    console.log(`Grid has ${rectangles.length} cells in total, allowCut = ${this.gridParams.allowCut}`);
+    console.log(`Classification radius: ${scaledRadius}px, Display mask radius: ${fixedRadius}px`);
+
+    // Check each cell and log statistics
+    const cellTypesCount = {
+      inside: rectangles.filter(r => r.cellType === 'inside').length,
+      boundary: rectangles.filter(r => r.cellType === 'boundary').length,
+      outside: rectangles.filter(r => r.cellType === 'outside').length,
+      unknown: rectangles.filter(r => r.cellType === 'unknown').length
+    };
+
+    console.log("Cell types distribution:", cellTypesCount);
+
+    // Log any outside cells (shouldn't exist if our filtering is working)
+    const outsideCells = rectangles.filter(r => r.cellType === 'outside');
+    if (outsideCells.length > 0) {
+      console.warn("ERROR: Found 'outside' cells that should have been filtered!");
+      console.warn("First 5 outside cells:", outsideCells.slice(0, 5));
+    }
+
+    // Color cells based on their type and corner count
     rectangles.forEach((rect) => {
       let color;
 
-      if (rect.cellType === 'boundary') {
+      // Debug - log detailed info about each cell
+      const centerX = rect.x + rect.width / 2;
+      const centerY = rect.y + rect.height / 2;
+      const centerDist = Math.hypot(centerX - center, centerY - center);
+      const insideFixedCircle = centerDist <= fixedRadius;
+      const insideScaledCircle = centerDist <= scaledRadius;
+
+      if (rect.cellType === 'inside') {
+        // Inside cells: green
+        color = [0.2, 0.6, 0.2, 1.0];
+        insideTotal++;
+      } else if (rect.cellType === 'boundary') {
         // Boundary cells: color based on corners outside (red gradient)
         const cornersOutside = rect.cornersOutside || 0;
+        boundaryTotal++;
+        boundaryCounts[cornersOutside]++;
+
         switch (cornersOutside) {
           case 1:
             color = [0.5, 0.2, 0.2, 1.0]; // Light red
@@ -702,40 +830,43 @@ class GridRenderer extends BaseRenderer {
           default:
             color = [0.3, 0.3, 0.6, 1.0]; // Blue for unusual cases
         }
-      } else if (rect.cellType === 'inside') {
-        // Inside cells: green
-        color = [0.2, 0.6, 0.2, 1.0];
+      } else if (rect.cellType === 'outside') {
+        // Outside cells: magenta with transparency - this should never happen now
+        // that we filter at generation time
+        color = [1.0, 0.0, 1.0, 0.7]; // Make it highly visible as an error state
+        outsideTotal++;
+
+        // Log detailed diagnostic info about any outside cells found
+        console.error("ERROR - Found outside cell:", {
+          bounds: { x: rect.x, y: rect.y, width: rect.width, height: rect.height },
+          center: { x: centerX, y: centerY, dist: centerDist },
+          circle: { radius: scaledRadius, insideScaled: insideScaledCircle, insideFixed: insideFixedCircle },
+          corners: { inside: rect.cornersInside, outside: rect.cornersOutside }
+        });
       } else {
-        // Outside cells (shouldn't be any): dark gray
-        color = [0.1, 0.1, 0.1, 1.0];
+        // Unknown classification (should never happen)
+        color = [0.0, 1.0, 1.0, 0.9]; // Cyan for errors - make it highly visible
+        console.error("ERROR - Found cell with unknown type:", rect);
       }
 
       // Draw the cell - all as normal rectangles
       this.drawRectangle(rect.x, rect.y, rect.width, rect.height, color);
     });
 
-    console.log("Debug boundary visualization complete");
-    console.log(`Grid has ${rectangles.length} cells, allowCut = ${this.gridParams.allowCut}`);
-    console.log(`Fixed boundary radius: ${fixedRadius}, Classification radius: ${scaledRadius}`);
-
-    // Count cells by corner status
-    const boundaryCounts = [0, 0, 0, 0, 0]; // 0, 1, 2, 3, 4 corners outside
-    let boundaryTotal = 0;
-    let insideTotal = 0;
-
-    rectangles.forEach(rect => {
-      if (rect.cellType === 'boundary') {
-        boundaryTotal++;
-        if (rect.cornersOutside !== undefined && rect.cornersOutside >= 0 && rect.cornersOutside <= 4) {
-          boundaryCounts[rect.cornersOutside]++;
-        }
-      } else if (rect.cellType === 'inside') {
-        insideTotal++;
-      }
-    });
-
-    console.log(`Inside cells: ${insideTotal}, Boundary cells: ${boundaryTotal}`);
+    console.log("Debug boundary visualization summary:");
+    console.log(`Inside cells: ${insideTotal}, Boundary cells: ${boundaryTotal}, Outside cells: ${outsideTotal}`);
     console.log(`Boundary corners outside: 0=${boundaryCounts[0]}, 1=${boundaryCounts[1]}, 2=${boundaryCounts[2]}, 3=${boundaryCounts[3]}, 4=${boundaryCounts[4]}`);
+
+    if (outsideTotal > 0) {
+      console.error(`CRITICAL ERROR: ${outsideTotal} cells are classified as 'outside' but still present in the grid! The filtering in generateRectangles() is not working correctly.`);
+    } else {
+      console.log("SUCCESS: No outside cells found - grid filtering is working correctly!");
+    }
+
+    // Check if cells match the target count
+    if (this.gridGeometry.length < this.gridParams.target) {
+      console.warn(`NOTE: Only ${this.gridGeometry.length} cells present (target: ${this.gridParams.target}). Not enough cells may be available after filtering.`);
+    }
   }
 
   // Helper function to convert hue to RGB
@@ -772,6 +903,121 @@ class GridRenderer extends BaseRenderer {
     }
 
     return [r, g, b, 1.0];
+  }
+
+  // Method to draw cell centers
+  drawCellCenters() {
+    // Update overlay position to match canvas
+    const canvas = this.gl.canvas;
+    this.centerOverlay.style.top = `${canvas.offsetTop}px`;
+    this.centerOverlay.style.left = `${canvas.offsetLeft}px`;
+    this.centerOverlay.style.width = `${canvas.width}px`;
+    this.centerOverlay.style.height = `${canvas.height}px`;
+
+    // Calculate the scaling ratio between our fixed target size and actual canvas size
+    const scaleX = canvas.width / this.TARGET_WIDTH;
+    const scaleY = canvas.height / this.TARGET_HEIGHT;
+
+    // Clear any existing content
+    this.centerOverlay.innerHTML = '';
+
+    // All cells in this.gridGeometry are now guaranteed to be inside or boundary cells
+    // No need to filter again
+    const visibleCells = this.gridGeometry;
+
+    // Create center indicators for each cell
+    visibleCells.forEach(rect => {
+      // Calculate center position in target coordinates (240x240)
+      const centerX = rect.x + rect.width / 2;
+      const centerY = rect.y + rect.height / 2;
+
+      // Scale the position to match actual canvas size
+      const scaledX = centerX * scaleX;
+      const scaledY = centerY * scaleY;
+
+      // Create the center dot
+      const dot = document.createElement('div');
+      dot.style.position = 'absolute';
+      dot.style.left = `${scaledX}px`;
+      dot.style.top = `${scaledY}px`;
+      dot.style.width = '3px';
+      dot.style.height = '3px';
+      dot.style.backgroundColor = rect.cellType === 'inside' ? 'lime' : 'red';
+      dot.style.borderRadius = '50%';
+      dot.style.transform = 'translate(-50%, -50%)';
+      dot.style.pointerEvents = 'none';
+      dot.style.boxShadow = '0 0 2px rgba(0,0,0,0.8)';
+
+      // Add a class based on the cell type for styling
+      dot.classList.add(`cell-center-${rect.cellType}`);
+
+      this.centerOverlay.appendChild(dot);
+    });
+  }
+
+  drawCellIndices() {
+    // Update overlay position to match canvas
+    const canvas = this.gl.canvas;
+    this.textOverlay.style.top = `${canvas.offsetTop}px`;
+    this.textOverlay.style.left = `${canvas.offsetLeft}px`;
+    this.textOverlay.style.width = `${canvas.width}px`;
+    this.textOverlay.style.height = `${canvas.height}px`;
+
+    // Calculate the scaling ratio between our fixed target size and actual canvas size
+    const scaleX = canvas.width / this.TARGET_WIDTH;
+    const scaleY = canvas.height / this.TARGET_HEIGHT;
+
+    // Clear any existing content
+    this.textOverlay.innerHTML = '';
+
+    // All cells in this.gridGeometry are now guaranteed to be inside or boundary cells
+    // No need to filter again
+    const visibleCells = this.gridGeometry;
+
+    // Create index labels for each cell
+    visibleCells.forEach((rect, index) => {
+      // Calculate center position in target coordinates (240x240)
+      const centerX = rect.x + rect.width / 2;
+      const centerY = rect.y + rect.height / 2;
+
+      // Scale the position to match actual canvas size
+      const scaledX = centerX * scaleX;
+      const scaledY = centerY * scaleY;
+
+      // Calculate font size based on cell dimensions and scaling
+      const cellSize = Math.min(rect.width, rect.height);
+      const fontSize = Math.max(5.5, Math.min(12, cellSize / 3.5)) * Math.min(scaleX, scaleY);
+
+      // Scale the width and height to match actual canvas size
+      const scaledWidth = rect.width * scaleX;
+      const scaledHeight = rect.height * scaleY;
+
+      // Create the index label
+      const label = document.createElement('div');
+      label.textContent = index.toString(); // Use current index in the filtered array
+      label.style.position = 'absolute';
+      label.style.left = `${scaledX}px`;
+      label.style.top = `${scaledY}px`;
+      label.style.transform = 'translate(-50%, -50%)';
+      label.style.color = 'yellow'; // Default to yellow for indices
+      label.style.fontSize = `${fontSize}px`;
+      label.style.fontFamily = 'Arial, sans-serif';
+      label.style.textAlign = 'center';
+      label.style.display = 'flex';
+      label.style.alignItems = 'center';
+      label.style.justifyContent = 'center';
+      label.style.width = `${scaledWidth}px`;
+      label.style.height = `${scaledHeight}px`;
+      label.style.userSelect = 'none';
+      label.style.pointerEvents = 'none';
+      label.style.margin = '0';
+      label.style.padding = '0';
+
+      // Add outline effect to make text more readable on any background
+      label.style.textShadow = '1px 1px 1px rgba(0,0,0,0.7), -1px -1px 1px rgba(0,0,0,0.7), 1px -1px 1px rgba(0,0,0,0.7), -1px 1px 1px rgba(0,0,0,0.7)';
+
+      this.textOverlay.appendChild(label);
+    });
   }
 }
 

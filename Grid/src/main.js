@@ -25,6 +25,7 @@ const params = {
     allowCut: 3,            // 0-3: Controls how many corners can be outside the circle
     displayMode: 'masked',  // Default to masked view
     showIndices: false,     // Show cell indices
+    showCellCenters: false, // Show cell centers
     showCellCounts: false,   // Enable cell counts by default
     cellCount: {
         total: 0,
@@ -76,6 +77,10 @@ displayFolder
 displayFolder
     .add(params, "showIndices")
     .name("Show Indices")
+    .onChange(() => renderer.updateGrid(params));
+displayFolder
+    .add(params, "showCellCenters")
+    .name("Show Cell Centers")
     .onChange(() => renderer.updateGrid(params));
 displayFolder
     .add(params, "showCellCounts")
