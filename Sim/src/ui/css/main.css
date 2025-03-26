@@ -14,13 +14,13 @@ body {
 }
 
 
-/* /* 
+
 canvas#glCanvas {
     background-color: #1a1a1a;
     max-width: 100%;
     max-height: 100%;
     border-radius: 100%;
-} */
+}
 
 /* canvas.emu-visualization {
     background-color: #1a1a1a;

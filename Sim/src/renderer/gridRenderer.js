@@ -27,11 +27,9 @@ class GridRenderer extends BaseRenderer {
       allowCut: 3,      // Controls how many corners can be outside the circle (0-3)
       showCellCenters: false, // Whether to display cell centers
       showIndices: false,     // Whether to display cell indices
-      shadowIntensity: 0.3,   // Shadow intensity (0-1)
-      blurAmount: 0.2,        // Base blur amount (0-1)
-      shadowThreshold: 0.1,   // Distance from edge where shadow starts (0-1)
-      shadowSpread: 1.0,      // How far the shadow spreads (0.1-5)
-      shadowColor: [0.0, 0.0, 0.0, 1.0] // Shadow color tint (RGBA)
+      shadowIntensity: 0.33,   // Shadow intensity (0-1)
+      blurAmount: 0.40,        // Base blur amount (0-1)
+      shadowThreshold: 0.0,   // Distance from edge where shadow starts (0-1)
     };
 
     // Fixed masking radius - always 120 pixels regardless of scale
@@ -390,8 +388,6 @@ class GridRenderer extends BaseRenderer {
     this.gl.uniform1f(program.uniforms.shadowIntensity, this.gridParams.shadowIntensity);
     this.gl.uniform1f(program.uniforms.blurAmount, this.gridParams.blurAmount);
     this.gl.uniform1f(program.uniforms.shadowThreshold, this.gridParams.shadowThreshold);
-    this.gl.uniform1f(program.uniforms.shadowSpread, this.gridParams.shadowSpread);
-    this.gl.uniform4fv(program.uniforms.shadowColor, this.gridParams.shadowColor);
 
     // Draw and cleanup
     this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
@@ -559,14 +555,14 @@ class GridRenderer extends BaseRenderer {
         rect.cellType === 'inside' || rect.cellType === 'boundary'
       );
 
-      // Log post-filter cell counts for debugging
-      console.log("Grid cell filtering:", {
-        preFilter: { total: preFilterTotal, inside: preFilterInside, boundary: preFilterBoundary, outside: preFilterOutside },
-        postFilter: {
-          total: filteredRectangles.length, inside: filteredRectangles.filter(r => r.cellType === 'inside').length,
-          boundary: filteredRectangles.filter(r => r.cellType === 'boundary').length
-        }
-      });
+      // // Log post-filter cell counts for debugging
+      // console.log("Grid cell filtering:", {
+      //   preFilter: { total: preFilterTotal, inside: preFilterInside, boundary: preFilterBoundary, outside: preFilterOutside },
+      //   postFilter: {
+      //     total: filteredRectangles.length, inside: filteredRectangles.filter(r => r.cellType === 'inside').length,
+      //     boundary: filteredRectangles.filter(r => r.cellType === 'boundary').length
+      //   }
+      // });
 
       if (filteredRectangles.length >= this.gridParams.target) {
         this.gridParams.cols = cols;

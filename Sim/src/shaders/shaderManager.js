@@ -169,8 +169,6 @@ class ShaderManager {
           uniform float shadowIntensity;
           uniform float blurAmount;
           uniform float shadowThreshold;
-          uniform float shadowSpread;
-          uniform vec4 shadowColor;
           varying vec2 vUv;
           
           void main() {
@@ -183,13 +181,19 @@ class ShaderManager {
               // Create shadow effect with threshold and spread
               float shadow = 1.0 - smoothstep(
                   shadowThreshold, 
-                  shadowThreshold + (blurAmount * shadowSpread), 
+                  shadowThreshold + (blurAmount), 
                   distFromEdge
               );
               
+              // Calculate color brightness (0-1)
+              float brightness = max(max(color.r, color.g), color.b);
+              
+              // Scale shadow intensity inversely with color brightness
+              float scaledShadowIntensity = shadowIntensity * (1.0 - brightness *0.75);
+              
               // Apply shadow independently of base color
               vec4 finalColor = color;
-              finalColor.rgb = mix(finalColor.rgb, shadowColor.rgb, shadow * shadowIntensity);
+              finalColor.rgb = mix(finalColor.rgb, vec3(0.0), shadow * scaledShadowIntensity);
               
               gl_FragColor = finalColor;
           }
