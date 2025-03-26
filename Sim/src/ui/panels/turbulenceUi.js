@@ -1036,7 +1036,8 @@ export class TurbulenceUi extends BaseUi {
           const isOpen = !this.gui.domElement.classList.contains('closed');
           this.isTurbulenceFolderOpen = isOpen;
           if (this.previewManager) {
-            this.previewManager.setTurbulenceFolderOpen(isOpen);
+            // Update parent folder visibility since turbulence is a parent
+            this.previewManager.checkParentFolderVisibility();
           }
           break;
         }
@@ -1055,7 +1056,8 @@ export class TurbulenceUi extends BaseUi {
             const isOpen = !noiseFolder.classList.contains('closed');
             this.isNoiseFolderOpen = isOpen;
             if (this.previewManager) {
-              this.previewManager.setNoiseFolderOpen(isOpen);
+              // Update parent folder visibility since noise is a parent
+              this.previewManager.checkParentFolderVisibility();
             }
             break;
           }
@@ -1075,7 +1077,8 @@ export class TurbulenceUi extends BaseUi {
             const isOpen = !previewsFolder.classList.contains('closed');
             this.isPreviewsFolderOpen = isOpen;
             if (this.previewManager) {
-              this.previewManager.setPreviewsFolderOpen(isOpen);
+              // This is the actual previews folder, use setFolderOpen
+              this.previewManager.setFolderOpen(isOpen);
             }
             break;
           }
