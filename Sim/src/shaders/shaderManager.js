@@ -189,15 +189,15 @@ class ShaderManager {
               
               // Create rectangular shadow
               float shadow = smoothstep(1.0, 1.0 - shadowBlur, max(shadowDist.x, shadowDist.y));
-              shadow = mix(1.0, shadow, shadowIntensity * 0.5);
+              shadow = mix(1.0, shadow, shadowIntensity * 1.0);
               
               // Apply shadow to color
               vec4 finalColor = color;
               finalColor.rgb *= shadow;
               
               // Add subtle edge highlight
-              float edge = smoothstep(0.0, 0.05, max(dist.x, dist.y));
-              finalColor.rgb = mix(finalColor.rgb, finalColor.rgb * 1.1, edge);
+              float edge = smoothstep(0.0, 0.1, max(dist.x, dist.y));
+              finalColor.rgb = mix(finalColor.rgb, finalColor.rgb * 1.0, edge);
               
               gl_FragColor = finalColor;
           }
