@@ -32,7 +32,6 @@ export class VoronoiUi extends BaseUi {
     const voronoi = this.main.voronoiField;
     if (!voronoi) return;
 
-    // Add pullMode if it doesn't exist
     if (voronoi.pullMode === undefined) {
       voronoi.pullMode = false;
     }
@@ -44,14 +43,11 @@ export class VoronoiUi extends BaseUi {
     this.voronoiSpeedController = this.gui.add(voronoi, "cellMovementSpeed", 0, 4).name("V-CellSpeed");
     this.voronoiDecayRateController = this.gui.add(voronoi, "decayRate", 0.1, 1).name("V-Decay");
     this.voronoiBlendController = this.gui.add(voronoi, "velocityBlendFactor", 0, 1).name("V-ForceBlend");
-
-    // NEW: Add pull mode toggle
     this.voronoiPullModeController = this.gui.add(voronoi, "pullMode").name("V-Pull Mode");
   }
 
   getControlTargets() {
     const targets = {};
-
     if (this.voronoiStrengthController) targets["V-Strength"] = this.voronoiStrengthController;
     if (this.voronoiSpeedController) targets["V-CellSpeed"] = this.voronoiSpeedController;
     if (this.voronoiEdgeWidthController) targets["V-EdgeWidth"] = this.voronoiEdgeWidthController;

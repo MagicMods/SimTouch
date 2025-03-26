@@ -1,6 +1,3 @@
-/**
- * Advanced audio analysis system with configurable parameters and analysis capabilities
- */
 export class SoundAnalyzer {
   constructor(options = {}) {
     // Configuration
@@ -68,9 +65,7 @@ export class SoundAnalyzer {
     this.analyze = this.analyze.bind(this);
   }
 
-  /**
-   * Initialize the audio context and analyzer
-   */
+
   async initialize() {
     if (this.isInitialized) return true;
 
@@ -101,9 +96,7 @@ export class SoundAnalyzer {
     }
   }
 
-  /**
-   * Get list of available audio input devices
-   */
+
   async refreshDevices() {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices();
@@ -115,10 +108,6 @@ export class SoundAnalyzer {
     }
   }
 
-  /**
-   * Start audio capture and analysis
-   * @param {string} deviceId - Optional device ID to use
-   */
   async enable(deviceId = null) {
     if (this.isEnabled) return true;
 
@@ -155,9 +144,7 @@ export class SoundAnalyzer {
     }
   }
 
-  /**
-   * Stop audio capture and analysis
-   */
+
   disable() {
     if (!this.isEnabled) return;
 
@@ -183,16 +170,12 @@ export class SoundAnalyzer {
     console.log("Sound analyzer disabled");
   }
 
-  /**
-   * Start the continuous analysis loop
-   */
+
   startAnalysisLoop() {
     this.analyze();
   }
 
-  /**
-   * Perform audio analysis (called each animation frame)
-   */
+
   analyze() {
     if (!this.isEnabled || !this.analyser) {
       this.analysisLoopId = null;
@@ -226,9 +209,7 @@ export class SoundAnalyzer {
     this.analysisLoopId = requestAnimationFrame(this.analyze);
   }
 
-  /**
-   * Calculate current audio volume
-   */
+
   calculateVolume() {
     // Store previous volume for delta calculation
     this.lastVolume = this.volume;
@@ -256,9 +237,7 @@ export class SoundAnalyzer {
     return this.volume;
   }
 
-  /**
-   * Calculate energy levels for defined frequency bands
-   */
+
   calculateBandLevels() {
     const bandLevels = {};
     const binCount = this.analyser.frequencyBinCount;
@@ -290,9 +269,7 @@ export class SoundAnalyzer {
     return bandLevels;
   }
 
-  /**
-   * Get the energy level for a specific frequency range
-   */
+
   getFrequencyRangeValue(minFreq, maxFreq) {
     if (!this.analyser || !this.frequencyData) return 0;
 
@@ -320,9 +297,7 @@ export class SoundAnalyzer {
     return count > 0 ? sum / (count * 255) : 0;
   }
 
-  /**
-   * Beat detection algorithm
-   */
+
   detectBeat() {
     const now = performance.now();
     const instantEnergy = this.volume;
@@ -372,9 +347,7 @@ export class SoundAnalyzer {
     return this.beatDetection.isInBeat;
   }
 
-  /**
-   * Set audio analyzer configuration
-   */
+
   setConfig(options) {
     if (!options) return this;
 
@@ -402,9 +375,7 @@ export class SoundAnalyzer {
     return this;
   }
 
-  /**
-   * Configure beat detection parameters
-   */
+
   setBeatDetectionConfig(config) {
     if (!config) return this;
 
@@ -422,19 +393,13 @@ export class SoundAnalyzer {
     return this;
   }
 
-  /**
-   * Set or modify a frequency band definition
-   */
+
   setFrequencyBand(name, minFreq, maxFreq) {
     this.bands[name] = { min: minFreq, max: maxFreq };
     return this;
   }
 
-  /**
-   * Calibrate baseline volume based on current ambient sound
-   * @param {number} sampleDurationMs - How long to sample for calibration in milliseconds
-   * @param {number} multiplier - Multiplier to apply to detected baseline
-   */
+
   async calibrate(sampleDurationMs = 1000, multiplier = 1.2) {
     return new Promise((resolve) => {
       if (!this.isEnabled) {
@@ -490,9 +455,7 @@ export class SoundAnalyzer {
     });
   }
 
-  /**
-   * Change audio input device
-   */
+
   async changeDevice(deviceId) {
     // If we're enabled, restart with the new device
     const wasEnabled = this.isEnabled;
@@ -510,9 +473,7 @@ export class SoundAnalyzer {
     return true;
   }
 
-  /**
-   * Clean up resources
-   */
+
   dispose() {
     this.disable();
 

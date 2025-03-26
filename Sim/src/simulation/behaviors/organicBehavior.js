@@ -14,7 +14,6 @@ class OrganicBehavior {
   constructor() {
     this.currentBehavior = "None";
 
-    // Default parameters for each behavior
     this.params = {
       Fluid: {
         radius: 20,
@@ -41,16 +40,15 @@ class OrganicBehavior {
       Chain: {
         radius: 30,
         linkDistance: 0,
-        linkStrength: 10,   // Now works like O-Force
-        alignment: 0.5,      // Controls straightness (0 = curly, 1 = straight)
-        branchProb: 2,       // Maximum branches per particle
-        maxLinks: 10,        // Maximum chain length
-        maxChains: 10,        // Maximum number of chains
+        linkStrength: 10,
+        alignment: 0.5,
+        branchProb: 2,
+        maxLinks: 10,
+        maxChains: 10,
         mode: "Chain",
       },
     };
 
-    // Force scales
     this.forceScales = {
       Fluid: {
         base: 0.1,
@@ -58,24 +56,22 @@ class OrganicBehavior {
         viscosity: 0.2,
       },
       Swarm: {
-        base: 0.01, // Lower base force
+        base: 0.01,
         cohesion: 0.1,
         separation: 0.15,
       },
       Automata: {
-        base: 0.1, // Increased base force
+        base: 0.1,
       },
       Chain: {
-        base: 1.5,  // Increased significantly 
+        base: 1.5,
       },
     };
 
-    // Initialize components
     this.forces = new OrganicForces(this.forceScales);
     this.neighborSearch = new NeighborSearch({ resolution: 24 });
     this.automataRules = new AutomataRules();
 
-    // Debug settings
     this.debug = false;
     this.debugEnabled = false;
 

@@ -1,13 +1,5 @@
-/**
- * NoisePreviewManager
- * Efficiently manages pattern previews with priority-based refreshing
- */
 export class NoisePreviewManager {
-    /**
-     * @param {Object} turbulenceField - The turbulence field to generate previews from
-     * @param {Number} previewSize - The size of the preview thumbnails
-     * @param {Object} patterns - Map of pattern names to values
-     */
+
     constructor(turbulenceField, previewSize, patterns) {
         this.turbulenceField = turbulenceField;
         this.previewSize = previewSize;
@@ -17,80 +9,62 @@ export class NoisePreviewManager {
         // State
         this.selectedPattern = null;
         this.isFolderOpen = false;
-        this.isParentFolderOpen = true; // New state to track parent folder visibility
-        this.isVisible = false; // Will be updated after folder state is determined
-        this.previewElements = new Map(); // Maps pattern values to DOM elements
-        this.cleanupFunctions = new Map(); // Maps pattern values to cleanup functions
+        this.isParentFolderOpen = true;
+        this.isVisible = false;
+        this.previewElements = new Map();
+        this.cleanupFunctions = new Map();
         this.lastRefreshTime = 0;
         this.animationFrameId = null;
-        this.refreshingSelected = true; // Toggle between selected and unselected
-        this._needsRefreshOnOpen = false; // Flag for refresh needed when reopening
-        this._inRefreshSelectedPreview = false; // Guard against circular function calls
-        this.refreshingDisabled = false; // New flag to disable refreshing
+        this.refreshingSelected = true;
+        this._needsRefreshOnOpen = false;
+        this._inRefreshSelectedPreview = false;
+        this.refreshingDisabled = false;
 
         // Performance settings
-        this.selectedFps = 15; // Lower default FPS for better performance
-        this.hoverRefreshInterval = 100; // Refresh rate for hovered previews
+        this.selectedFps = 15;
+        this.hoverRefreshInterval = 100;
         this.lastHoverRefreshTime = 0;
 
         // Parameter tracking for automatic refresh
         this._lastTurbulenceParams = this._captureCurrentParams();
-        this._paramsCheckInterval = 500; // Check for parameter changes every 500ms
+        this._paramsCheckInterval = 500;
         this._lastParamsCheckTime = 0;
 
         // Track hover state
         this.hoveredPattern = null;
     }
 
-    /**
-     * Toggle refreshing disabled state
-     * @returns {Boolean} - The new disabled state
-     */
+
     toggleRefreshingDisabled() {
         this.refreshingDisabled = !this.refreshingDisabled;
 
         if (this.refreshingDisabled) {
-            // Stop refreshing and show static previews
             this.stopRefreshLoop();
             this.generateAllStaticPreviews();
         } else if (this.isVisible) {
-            // Resume refreshing
             this.startRefreshLoop();
         }
-
         // Update UI to reflect disabled state
         this.updateSelectedUI();
-
         return this.refreshingDisabled;
     }
 
-    /**
-     * Set refreshing disabled state
-     * @param {Boolean} disabled - Whether refreshing should be disabled
-     */
+
     setRefreshingDisabled(disabled) {
         if (this.refreshingDisabled !== disabled) {
             this.refreshingDisabled = disabled;
 
             if (this.refreshingDisabled) {
-                // Stop refreshing and show static previews
                 this.stopRefreshLoop();
                 this.generateAllStaticPreviews();
             } else if (this.isVisible) {
-                // Resume refreshing
                 this.startRefreshLoop();
             }
-
-            // Update UI to reflect disabled state
             this.updateSelectedUI();
         }
     }
 
-    /**
-     * Initialize with DOM container and create preview elements
-     * @param {HTMLElement} containerElement - The container for preview elements
-     * @param {Boolean} folderIsOpen - Whether the previews folder is open initially
-     */
+
     initialize(containerElement, folderIsOpen = false) {
         this.containerElement = containerElement;
 
@@ -130,10 +104,6 @@ export class NoisePreviewManager {
         this.ensureRefreshLoopStarted();
     }
 
-    /**
-     * Ensure the refresh loop is started if the previews are visible
-     * This helps with initial load when the folder may already be open
-     */
     ensureRefreshLoopStarted() {
         // Make sure visibility state is up to date
         this.updateVisibilityState();
@@ -149,9 +119,7 @@ export class NoisePreviewManager {
         }
     }
 
-    /**
-     * Check if any parent folders are closed, which would hide previews
-     */
+
     checkParentFolderVisibility() {
         if (!this.containerElement) return;
 
@@ -194,9 +162,7 @@ export class NoisePreviewManager {
         }
     }
 
-    /**
-     * Update the combined visibility state
-     */
+
     updateVisibilityState() {
         const wasVisible = this.isVisible;
         this.isVisible = this.isFolderOpen && this.isParentFolderOpen;
@@ -207,9 +173,7 @@ export class NoisePreviewManager {
         }
     }
 
-    /**
-     * Handle visibility changes by starting or stopping the refresh loop
-     */
+
     handleVisibilityChange() {
         if (this.isVisible) {
             // If becoming visible, check if refresh needed
@@ -224,9 +188,7 @@ export class NoisePreviewManager {
         }
     }
 
-    /**
-     * Generate static previews for all patterns
-     */
+
     generateAllStaticPreviews() {
         // Store the original pattern style once before the loop
         const originalStyle = this.turbulenceField.patternStyle;
@@ -253,14 +215,7 @@ export class NoisePreviewManager {
         this.turbulenceField.patternStyle = originalStyle;
     }
 
-    /**
-     * Helper method to generate a static preview image for a pattern
-     * @param {String} patternValue - The pattern value to generate preview for
-     * @param {Number} width - Width of the preview
-     * @param {Number} height - Height of the preview
-     * @param {Boolean} skipStyleChange - Skip changing pattern style (used by generateAllStaticPreviews)
-     * @returns {String} - Data URL of the preview image
-     */
+
     generateStaticPreviewImage(patternValue, width, height, skipStyleChange = false) {
         // Temporarily set pattern style (unless skipStyleChange is true)
         let originalStyle;
@@ -333,11 +288,7 @@ export class NoisePreviewManager {
         return dataUrl;
     }
 
-    /**
-     * Set the selected pattern and update previews accordingly
-     * @param {String} pattern - The pattern value to select
-     * @param {Boolean} forceAnimation - Force animation to start even if not visible
-     */
+
     setSelectedPattern(pattern, forceAnimation = false) {
         // Clean up previous selected pattern preview only (not affecting the field's animation)
         if (this.selectedPattern) {
@@ -373,9 +324,7 @@ export class NoisePreviewManager {
         }
     }
 
-    /**
-     * Update UI to reflect selected pattern
-     */
+
     updateSelectedUI() {
         // Hide title for selected, show for others
         this.previewElements.forEach((element, pattern) => {
@@ -437,10 +386,7 @@ export class NoisePreviewManager {
         });
     }
 
-    /**
-     * Set whether the preview folder is open
-     * @param {Boolean} isOpen - Whether the folder is open
-     */
+
     setFolderOpen(isOpen) {
         // Skip if no change
         if (this.isFolderOpen === isOpen) return;
@@ -451,10 +397,7 @@ export class NoisePreviewManager {
         this.updateVisibilityState();
     }
 
-    /**
-     * Set whether a parent folder containing the previews is open
-     * @param {Boolean} isOpen - Whether the parent folder is open
-     */
+
     setParentFolderOpen(isOpen) {
         // Skip if no change
         if (this.isParentFolderOpen === isOpen) return;
@@ -465,9 +408,7 @@ export class NoisePreviewManager {
         this.updateVisibilityState();
     }
 
-    /**
-     * Start the refresh animation loop
-     */
+
     startRefreshLoop() {
         // Don't start if refreshing is disabled
         if (this.refreshingDisabled) return;
@@ -486,10 +427,6 @@ export class NoisePreviewManager {
         this.update();
     }
 
-    /**
-     * Stop the refresh animation loop and clean up
-     * IMPORTANT: Only cleans up preview animations, not affecting turbulence field's actual animation
-     */
     stopRefreshLoop() {
         if (this.animationFrameId) {
             cancelAnimationFrame(this.animationFrameId);
@@ -510,10 +447,7 @@ export class NoisePreviewManager {
         this.generateAllStaticPreviews();
     }
 
-    /**
-     * Capture current parameter values for change detection
-     * @private
-     */
+
     _captureCurrentParams() {
         const field = this.turbulenceField;
         if (!field) return {};
@@ -545,11 +479,7 @@ export class NoisePreviewManager {
         };
     }
 
-    /**
-     * Check if turbulence parameters have changed
-     * @private
-     * @returns {Boolean} - True if parameters changed
-     */
+
     _haveParamsChanged() {
         const currentParams = this._captureCurrentParams();
         const lastParams = this._lastTurbulenceParams;
@@ -575,9 +505,6 @@ export class NoisePreviewManager {
         return false;
     }
 
-    /**
-     * Main update loop for refreshing previews
-     */
     update() {
         // Early exit if not visible or refreshing is disabled
         if (!this.isVisible || this.refreshingDisabled) {
@@ -626,10 +553,7 @@ export class NoisePreviewManager {
         }
     }
 
-    /**
-     * Refresh the selected preview
-     * @param {Boolean} forceStart - Force animation to start even if already running
-     */
+
     refreshSelectedPreview(forceStart = false) {
         if (!this.selectedPattern || this.refreshingDisabled) return;
 
@@ -711,10 +635,6 @@ export class NoisePreviewManager {
         this._inRefreshSelectedPreview = false;
     }
 
-    /**
-     * Custom preview animation generator that doesn't affect the turbulence field's time
-     * This wraps the turbulence field's generateAnimatedPreview method but preserves the time state
-     */
     generatePreviewAnimation(width, height, patternStyle, callback) {
         // Get current pattern style
         const originalStyle = this.turbulenceField.patternStyle;
@@ -877,9 +797,7 @@ export class NoisePreviewManager {
         };
     }
 
-    /**
-     * Refresh the currently hovered preview
-     */
+
     refreshHoveredPreview() {
         if (!this.hoveredPattern) return;
 
@@ -897,10 +815,7 @@ export class NoisePreviewManager {
         );
     }
 
-    /**
-     * Refresh all previews (e.g., when turbulence parameters change)
-     * @param {Boolean} force - Force refresh even if folder is closed
-     */
+
     refreshAllPreviews(force = false) {
         // Skip if not visible and we're not forcing a refresh
         if (!this.isVisible && !force) {
@@ -941,28 +856,17 @@ export class NoisePreviewManager {
         }
     }
 
-    /**
-     * Set the refresh rate for the preview animation
-     * @param {Number} fps - Frames per second for the refresh cycle
-     */
+
     setRefreshRate(fps) {
         if (fps > 0) {
             this.selectedFps = fps;
         }
     }
 
-    /**
-     * Check if a preview folder is currently open
-     * @returns {Boolean} - True if the preview folder is open
-     */
     isFolderOpenState() {
         return this.isFolderOpen;
     }
 
-    /**
-     * Clean up all resources
-     * This should be called when the UI is destroyed
-     */
     dispose() {
         this.stopRefreshLoop();
         this.previewElements.clear();
@@ -971,10 +875,6 @@ export class NoisePreviewManager {
         this.turbulenceField = null;
     }
 
-    /**
-     * Set the performance profile for preview generation
-     * @param {String} profile - 'low', 'medium', or 'high'
-     */
     setPerformanceProfile(profile) {
         switch (profile) {
             case 'low':

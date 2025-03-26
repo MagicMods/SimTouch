@@ -6,29 +6,21 @@ class DebugRenderer extends BaseRenderer {
     this.shaderManager = shaderManager;
     this.arrowLength = 2;
     this.pressureScale = 0.01;
-
-    // Debug visualization flags
     this.enabled = false;
-
-    // Remove redundant flags and directly expose the field controls
     this.showVelocityField = true;
 
-    // Direct field controls (no nested showNoiseField)
     this.showTurbulenceField = false;
     this.showVoronoiField = false;
-    this.turbulenceOpacity = 0.2; // Single opacity control
+    this.turbulenceOpacity = 0.2;
   }
 
   draw(particleSystem, turbulenceField, voronoiField) {
     if (!this.enabled) return;
 
-    // Remove grid and boundary drawing
-
     if (this.showVelocityField) {
       this.drawVelocityField(particleSystem);
     }
 
-    // Always check both turbulence and voronoi fields directly
     if (this.showTurbulenceField || this.showVoronoiField) {
       this.drawNoiseField(turbulenceField, voronoiField);
     }

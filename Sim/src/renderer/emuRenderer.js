@@ -1,25 +1,21 @@
 export class EmuRenderer {
   constructor(container, emuForces, main = null) {
     this.emuForces = emuForces;
-    this.main = main; // Store reference to main if provided
+    this.main = main;
     this.visible = false;
-
-    // Track if we're currently dragging
     this.isDragging = false;
 
-    // Add joystick state - will work even when EMU hardware is disabled
     this.joystickActive = false;
     this.joystickX = 0;
     this.joystickY = 0;
 
-    // Add spring back to center feature
-    this.springStrength = 0.5; // Default spring strength (0 = no spring, 1 = immediate return)
-    this.springEnabled = true;  // Spring enabled by default
+    this.springStrength = 0.5;
+    this.springEnabled = true;
 
     // Create overlay canvas
     this.canvas = document.createElement("canvas");
     this.canvas.className = "emu-visualization";
-    this.canvas.width = 150; // We only need one visualization now
+    this.canvas.width = 150;
     this.canvas.height = 150;
     this.canvas.style.position = "absolute";
     this.canvas.style.bottom = "40px";
@@ -30,17 +26,13 @@ export class EmuRenderer {
     this.canvas.style.zIndex = "10";
     this.ctx = this.canvas.getContext("2d");
 
-    // Add to container
     container.appendChild(this.canvas);
 
-    // Setup mouse interaction
     this.setupMouseInteraction();
 
-    // Animation frame
     this.animationFrameId = null;
     this.startAnimation();
 
-    // Log if we have direct access to turbulenceField
     if (this.main?.turbulenceField) {
       console.log("EmuRenderer has direct access to turbulenceField via main");
     }
@@ -104,7 +96,7 @@ export class EmuRenderer {
     // Check if click is inside the circle (using center coordinates from drawAccelerationIndicator)
     const centerX = this.canvas.width / 2;  // 75
     const centerY = this.canvas.height / 2; // 75
-    const radius = 45; // Same as used in drawAccelerationIndicator
+    const radius = 45;
 
     const distFromCenter = Math.sqrt(
       Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2)
@@ -336,7 +328,6 @@ export class EmuRenderer {
 
   startAnimation() {
     const animate = () => {
-      // Apply spring force if enabled and not dragging
       if (this.springEnabled && !this.isDragging && this.joystickActive) {
         this.applySpringForce();
       }
@@ -366,7 +357,6 @@ export class EmuRenderer {
     return this;
   }
 
-  // Reset joystick position to center
   resetJoystick() {
     this.joystickX = 0;
     this.joystickY = 0;
@@ -400,19 +390,14 @@ export class EmuRenderer {
       }
     }
 
-    // Update UI to reflect changes
     this.updateGravityUI();
     this.updateTurbulenceBiasUI();
-
-    // Update joystick sliders in InputsUi if available
     this.updateJoystickSliders();
   }
 
   draw() {
-    // Remove dependency on emuForces.enabled
     if (!this.visible) return;
 
-    // Clear canvas
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
     // Get joystick data - either from EMU if enabled, or from stored joystick values
@@ -426,8 +411,8 @@ export class EmuRenderer {
       accelZ = data.accelZ;
     } else if (this.joystickActive) {
       // Use joystick values without swapping
-      accelX = this.joystickX; // X controls X
-      accelY = this.joystickY; // Y controls Y
+      accelX = this.joystickX;
+      accelY = this.joystickY;
       accelZ = -1; // Smaller default Z value for better visualization
     } else {
       // Default values if neither active
@@ -545,9 +530,7 @@ export class EmuRenderer {
     ctx.fillText("X", centerX - radius - 16, centerY + 2);
   }
 
-  // Apply spring force to move joystick back to center
   applySpringForce() {
-    // Calculate distance from center
     const distX = 0 - this.joystickX;
     const distY = 0 - this.joystickY;
 
@@ -563,31 +546,25 @@ export class EmuRenderer {
       this.joystickActive = false;
     }
 
-    // Update the driven values (gravity and turbulence)
     this.updateGravityUI();
     this.updateTurbulenceBiasUI();
-
-    // Update joystick sliders in InputsUi if available
     this.updateJoystickSliders();
   }
 
-  // Set spring strength (0-1)
   setSpringStrength(value) {
     this.springStrength = Math.max(0, Math.min(1, value));
     return this;
   }
 
-  // Enable or disable spring
   setSpringEnabled(enabled) {
     this.springEnabled = enabled;
     return this;
   }
 
-  // New method to update joystick sliders in InputsUi
+
   updateJoystickSliders() {
-    // Check if we have access to InputsUi directly
+
     if (this.inputsUi) {
-      // Check if the joystick sliders exist
       if (this.inputsUi.joystickXController && this.inputsUi.joystickYController) {
         // Get the normalized values (-1 to 1 range)
         const normX = this.joystickX / 10;

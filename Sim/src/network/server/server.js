@@ -2,10 +2,7 @@ import { WebSocketServer } from "ws";
 import { createSocket } from "dgram";
 import { NetworkConfig } from "../networkConfig.js";
 
-/**
- * Starts WebSocket and UDP servers
- * @returns {Object} Server instances
- */
+
 export const startServer = () => {
   console.log("Starting network servers...");
 

@@ -5,28 +5,16 @@ export class InputModulationUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
 
-    // Initialize arrays and references
     this.audioDevices = [];
     this.modulatorFolders = [];
     this.micControllers = [];
-
-    // Track internal state separately from UI state
     this.audioInputEnabled = false;
-
-    // ModulatorManager will be set by UiManager
     this.modulatorManager = null;
-
-    // Change the GUI title
     this.gui.title("Input Modulation");
-
-    // Initialize controls directly in the root GUI
     this.initInputControls();
-
-    // PresetManager will be initialized later
     this.presetManager = null;
-    this.presetSelect = null; // Reference to the HTML select element
+    this.presetSelect = null;
 
-    // Create a single interval for updating all band visualizations
     this.bandVisualizationInterval = setInterval(() => {
       this.updateAllBandVisualizations();
     }, 50);
@@ -41,7 +29,6 @@ export class InputModulationUi extends BaseUi {
 
     const externalInput = this.main.externalInput;
 
-    // Global sensitivity control (now directly in root GUI)
     this.micSensitivityController = this.gui
       .add(
         { sensitivity: externalInput?.micForces?.sensitivity || 1.0 },
@@ -59,7 +46,6 @@ export class InputModulationUi extends BaseUi {
     this.micSensitivityController.domElement.style.marginTop = "10px";
     this.micControllers.push(this.micSensitivityController);
 
-    // Global smoothing control
     this.micSmoothingController = this.gui
       .add(
         { smoothing: externalInput?.micForces?.smoothing || 0.8 },
@@ -76,7 +62,6 @@ export class InputModulationUi extends BaseUi {
       });
     this.micControllers.push(this.micSmoothingController);
 
-    // Add modulator button
     const addModulatorControl = {
       add: () => this.addInputModulator(),
     };
@@ -121,48 +106,37 @@ export class InputModulationUi extends BaseUi {
     console.log("ModulatorManager set in InputModulationUi");
   }
 
-  // Fixed implementation of addInputModulator
   addInputModulator() {
     if (!this.modulatorManager) {
       console.error("ModulatorManager not available");
       return null;
     }
 
-    // ADDED: Enable audio input when adding a modulator
     this.enableDisableAudioInput(true);
 
-    // Create a new modulator
     const modulator = this.modulatorManager.createInputModulator("mic");
     if (!modulator) {
       console.error("Failed to create input modulator");
       return null;
     }
 
-    // Ensure type is correctly set
     modulator.type = "input";
     modulator.inputSource = "mic";
-
-    // CRITICAL FIX: Explicitly enable the modulator if sensitivity > 0
     modulator.enabled = modulator.sensitivity > 0;
 
     console.log("Creating new mic modulator:", modulator);
 
-    // Create folder for this modulator
     const index = this.modulatorFolders.length;
     const folder = this.gui.addFolder(`Audio Modulator ${index + 1}`);
 
     // Store the folder reference
     this.modulatorFolders.push(folder);
 
-    // Explicitly open the folder (important for visibility)
     folder.open();
+    // console.log(`Created folder for modulator ${index + 1}`);
 
-    console.log(`Created folder for modulator ${index + 1}`);
-
-    // Store references to controllers
     const controllers = {};
 
-    // Add frequency band selector as first control
     controllers.frequencyBand = folder
       .add(modulator, "frequencyBand", [
         "None",
@@ -173,11 +147,11 @@ export class InputModulationUi extends BaseUi {
         "HighMid",
         "Presence",
         "Brilliance",
-        "Custom"  // Add custom option
+        "Custom"
       ])
       .name("Frequency Band")
       .onChange((value) => {
-        // Show/hide custom controls when band changes
+
         const showCustom = value === "custom";
 
         controllers.customFreq.show(showCustom);
@@ -198,8 +172,7 @@ export class InputModulationUi extends BaseUi {
       });
 
     controllers.frequencyBand.domElement.classList.add("full-width");
-    // Add these controls after the frequency band control
-    // Add custom center frequency
+
     controllers.customFreq = folder
       .add(modulator, "customFreq", 20, 20000, 10)
       .name("Freq Center (Hz)")
@@ -214,7 +187,6 @@ export class InputModulationUi extends BaseUi {
         }
       });
 
-    // Add custom bandwidth
     controllers.customWidth = folder
       .add(modulator, "customWidth", 10, 10000, 10)
       .name("Band Width (Hz)")
@@ -232,7 +204,6 @@ export class InputModulationUi extends BaseUi {
     controllers.customFreq.show(false);
     controllers.customWidth.show(false);
 
-    // Add target selector - done after frequency band so it's more prominent
     const targetNames = this.modulatorManager.getTargetNames();
     controllers.targetName = folder
       .add(modulator, "targetName", ["None", ...targetNames])
@@ -283,12 +254,10 @@ export class InputModulationUi extends BaseUi {
     controllers.targetName.domElement.classList.add("full-width");
     controllers.targetName.domElement.style.paddingBottom = "5px";
 
-    // Add sensitivity slider (0-1 range) - this acts as the enable control
     controllers.sensitivity = folder
       .add(modulator, "sensitivity", 0, 1, 0.01)
       .name("Sensitivity")
       .onChange((value) => {
-        // Enable/disable based on sensitivity
         const wasEnabled = modulator.enabled;
         modulator.enabled = value > 0;
 
@@ -299,7 +268,6 @@ export class InputModulationUi extends BaseUi {
         }
       });
 
-    // Add threshold slider after the sensitivity slider
     controllers.threshold = folder
       .add(modulator, "threshold", 0, 1, 0.01)
       .name("Threshold")
@@ -308,7 +276,6 @@ export class InputModulationUi extends BaseUi {
         this.updateAllBandVisualizations();
       });
 
-    // Add attack slider (lower values = faster attack)
     controllers.attack = folder
       .add(modulator, "attack", 0, 0.99, 0.01)
       .name("Attack")
@@ -316,7 +283,6 @@ export class InputModulationUi extends BaseUi {
         this.updateAllBandVisualizations();
       });
 
-    // Add release slider (higher values = longer sustain)
     controllers.release = folder
       .add(modulator, "release", 0, 0.99, 0.01)
       .name("Release")
@@ -324,7 +290,6 @@ export class InputModulationUi extends BaseUi {
         this.updateAllBandVisualizations();
       });
 
-    // Add min/max range controls
     controllers.min = folder
       .add(modulator, "min", 0, 1, 0.01)
       .name("Min Value");
@@ -334,7 +299,7 @@ export class InputModulationUi extends BaseUi {
 
     controllers.min.domElement.style.paddingTop = "5px";
     controllers.max.domElement.style.paddingBottom = "5px";
-    // Replace the remove button implementation with this corrected version
+
     controllers.remove = folder
       .add(
         {
@@ -343,7 +308,6 @@ export class InputModulationUi extends BaseUi {
               `Removing input modulator with target ${modulator.targetName}`
             );
 
-            // CRITICAL FIX: Reset the target to its original value FIRST
             if (modulator && typeof modulator.resetToOriginal === "function") {
               console.log(
                 `Explicitly resetting ${modulator.targetName} to original value ${modulator.originalValue}`
@@ -351,7 +315,6 @@ export class InputModulationUi extends BaseUi {
               modulator.resetToOriginal();
             }
 
-            // Disable the modulator to prevent any future updates
             modulator.enabled = false;
 
             // Now remove it from the modulators array
@@ -366,7 +329,6 @@ export class InputModulationUi extends BaseUi {
                 );
             }
 
-            // Remove folder from UI
             folder.destroy();
 
             // Remove from tracking array
@@ -381,12 +343,9 @@ export class InputModulationUi extends BaseUi {
         "remove"
       )
       .name("Remove");
-
-    // Store controllers in modulator for easy access
     modulator.controllers = controllers;
 
     try {
-      // Add visualization bar
       this.addVisualizationToModulator(modulator, folder);
       console.log(`Added visualization to modulator ${index + 1}`);
     } catch (error) {
@@ -397,7 +356,7 @@ export class InputModulationUi extends BaseUi {
   }
 
   getModulatorsData() {
-    // TEMPORARY DEBUG CHECK - REMOVE IN PRODUCTION
+
     if (!this.modulatorManager) {
       console.error(
         `Error getting modulator data: modulatorManager is not defined`
@@ -408,7 +367,7 @@ export class InputModulationUi extends BaseUi {
     const modulators = [];
 
     try {
-      // First try to get data from modulator folders
+
       if (
         Array.isArray(this.modulatorFolders) &&
         this.modulatorFolders.length > 0

@@ -8,7 +8,6 @@ class FluidFLIP {
     boundary = null,
     restDensity = 1.0,
     particleSystem = null,
-    // Remove gasConstant parameter
     ...params
   } = {}) {
     this.gridSize = gridSize;
@@ -20,9 +19,7 @@ class FluidFLIP {
     this.boundary = boundary;
     this.restDensity = restDensity;
     this.particleSystem = particleSystem;
-    // Remove gasConstant property
 
-    // Initialize simulation arrays
     const size = gridSize * gridSize;
     this.u = new Array(size).fill(0);
     this.v = new Array(size).fill(0);
@@ -32,7 +29,6 @@ class FluidFLIP {
     this.divergence = new Array(size).fill(0);
     this.solid = new Array(size).fill(false);
 
-    // Initialize boundary conditions
     this.initializeBoundary();
   }
 
@@ -54,7 +50,6 @@ class FluidFLIP {
     const n = this.gridSize;
     const h = this.h;
 
-    // Use boundary properties
     const centerX = this.boundary.centerX;
     const centerY = this.boundary.centerY;
     const radius = this.boundary.getRadius();
@@ -152,9 +147,8 @@ class FluidFLIP {
       const oldVx = velocitiesX[i];
       const oldVy = velocitiesY[i];
 
-      // CORRECT PIC/FLIP IMPLEMENTATION (without gas effect)
+
       if (this.picFlipRatio <= 0) {
-        // Pure FLIP - use velocity changes
         velocitiesX[i] = oldVx + gridVx;
         velocitiesY[i] = oldVy + gridVy;
       }
@@ -173,21 +167,16 @@ class FluidFLIP {
         velocitiesX[i] = this.picFlipRatio * picVx + (1 - this.picFlipRatio) * flipVx;
         velocitiesY[i] = this.picFlipRatio * picVy + (1 - this.picFlipRatio) * flipVy;
       }
-
-      // Velocity clamping to prevent instability
       velocitiesX[i] = Math.max(-maxVelocity, Math.min(maxVelocity, velocitiesX[i]));
       velocitiesY[i] = Math.max(-maxVelocity, Math.min(maxVelocity, velocitiesY[i]));
     }
-
-    // Apply rest density effect only if rest density is significant
     if (this.restDensity > 0.01) {
       this.applyRestDensityEffect(particles, velocitiesX, velocitiesY);
     }
   }
 
   applyRestDensityEffect(particles, velocitiesX, velocitiesY) {
-    // Rest density controls particle spacing preference
-    // Lower rest density = more spacing between particles
+
     const restEffect = 1.0 / Math.max(0.01, this.restDensity);
     const repulsionStrength = 0.002 * restEffect;
 
@@ -333,19 +322,18 @@ class FluidFLIP {
       }
     }
 
-    // Add this AFTER applying pressure to velocities
-    for (let i = 0; i < n; i++) {
-      for (let j = 0; j < n * n; j++) {
-        if (this.u[j] !== undefined) {
-          // Scale velocity based on gas constant (more dramatic effect)
-          this.u[j] *= 1.0 + (this.gasConstant - 1.0) * 0.1;
-        }
-        if (this.v[j] !== undefined) {
-          // Scale velocity based on gas constant (more dramatic effect)
-          this.v[j] *= 1.0 + (this.gasConstant - 1.0) * 0.1;
-        }
-      }
-    }
+    // for (let i = 0; i < n; i++) {
+    //   for (let j = 0; j < n * n; j++) {
+    //     if (this.u[j] !== undefined) {
+    //       // Scale velocity based on gas constant (more dramatic effect)
+    //       this.u[j] *= 1.0 + (this.gasConstant - 1.0) * 0.1;
+    //     }
+    //     if (this.v[j] !== undefined) {
+    //       // Scale velocity based on gas constant (more dramatic effect)
+    //       this.v[j] *= 1.0 + (this.gasConstant - 1.0) * 0.1;
+    //     }
+    //   }
+    // }
 
     // Add Direct Parameter Effect - creates visible difference
     for (let i = 0; i < n; i++) {

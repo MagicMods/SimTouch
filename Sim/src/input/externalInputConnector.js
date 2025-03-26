@@ -17,7 +17,6 @@ export class ExternalInputConnector {
   }
 
   enableOnConnection() {
-    // Set flag to auto-enable when connection is established
     this.autoEnableOnConnection = true;
 
     // Register for connection state changes
@@ -48,7 +47,6 @@ export class ExternalInputConnector {
 
       socketManager.addMouseHandler(this.handleMouseData);
 
-      // If EMU forces are available, setup handlers
       if (this.emuForces && this.emuEnabled) {
         socketManager.addEmuHandler(this.handleEmuData);
       }
@@ -134,7 +132,6 @@ export class ExternalInputConnector {
     return this;
   }
 
-  // Add/update this method in your ExternalInput class
   setMicSensitivity(value) {
     if (this.micForces) {
       this.micForces.sensitivity = value;
@@ -171,7 +168,6 @@ export class ExternalInputConnector {
       const currentButtonType = this.mouseForces.externalMouseState.button;
       this.setMouseButton(currentButtonType, true);
     }
-
     // Process the data
     this.mouseForces.handleExternalMouseData(x, y);
   }
@@ -227,7 +223,6 @@ export class ExternalInputConnector {
     return this;
   }
 
-  // Add this new method to handle setting mic targets
   setMicTarget(controller, min, max, sensitivity = 1.0, frequency = null) {
     if (this.micForces) {
       this.micForces.addTarget(
@@ -242,7 +237,6 @@ export class ExternalInputConnector {
     return this;
   }
 
-  // Add this method to clear mic targets
   clearMicTargets() {
     if (this.micForces) {
       this.micForces.clearTargets();
@@ -271,7 +265,6 @@ export class ExternalInputConnector {
 
     console.log("Changing audio input device:", deviceId);
 
-    // Use the new changeDevice method
     this.micForces
       .changeDevice(deviceId)
       .then((success) => {

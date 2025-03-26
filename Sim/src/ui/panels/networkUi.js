@@ -5,10 +5,7 @@ import { socketManager } from "../../network/socketManager.js";
 export class NetworkUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-
-    // Change the GUI title
     this.gui.title("Network");
-
     this.initNetworkControls();
 
     // Monitor folder open/close state to enable/disable network
@@ -78,9 +75,7 @@ export class NetworkUi extends BaseUi {
 
     // Status display (keep at top level)
     const statusController = this.gui.add(status, "connection").name("Status");
-    // .disable();
 
-    // Brightness control
     this.gui
       .add({ brightness: 100 }, "brightness", 0, 100, 1)
       .name("N-Brightness")
@@ -121,7 +116,6 @@ export class NetworkUi extends BaseUi {
         console.log(`Note: UDP input port changes require server restart`);
       });
 
-    // Debug toggles in config folder
     configFolder
       .add(controls, "debugSend")
       .name("Debug Send")
@@ -136,7 +130,6 @@ export class NetworkUi extends BaseUi {
         socket.debugReceive = value;
       });
 
-    // Message info in config folder
     const lastMessageController = configFolder
       .add(status, "lastMessage")
       .name("Last Input")
@@ -155,16 +148,12 @@ export class NetworkUi extends BaseUi {
       msgCountController.updateDisplay();
     });
 
-    // Update status periodically
     setInterval(() => {
       status.connection = socket.isConnected ? "Connected" : "Disconnected";
       statusController.updateDisplay();
     }, 1000);
 
-    // Open the config folder by default
     configFolder.open(false);
-
-    // Default network folder to closed
     this.gui.open(true);
   }
 }

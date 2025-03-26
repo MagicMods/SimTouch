@@ -3,10 +3,7 @@ import { BaseUi } from "../baseUi.js";
 export class InputsUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-
-    // Initialize controls collection to store references
     this.controls = {};
-    // Change the GUI title
     this.gui.title("Inputs");
 
     this.mouseInputFolder = this.gui.addFolder("Mouse Input");
@@ -14,7 +11,6 @@ export class InputsUi extends BaseUi {
     this.emuInputFolder = this.gui.addFolder("EMU Input");
     this.externalInputFolder = this.gui.addFolder("Touch Input");
 
-    // If emuRenderer exists, store a reference to this instance
     if (this.main.emuRenderer) {
       this.main.emuRenderer.inputsUi = this;
     }
@@ -37,7 +33,6 @@ export class InputsUi extends BaseUi {
     }
   }
 
-  // Register joystick controls as modulation targets
   registerJoystickAsModulationTargets() {
     if (!this.main.modulation) return; // Exit if modulation system not available
 
@@ -190,11 +185,9 @@ export class InputsUi extends BaseUi {
           value,
           mouseForces.externalMouseState.isPressed
         );
-
         // console.log("Button type changed to:", value);
       });
 
-    // Update the UI when external data changes button type
     externalInput.onButtonTypeChange = (type) => {
       buttonTypeControl.type = type;
       buttonController.updateDisplay();
@@ -381,26 +374,6 @@ export class InputsUi extends BaseUi {
       setTimeout(() => this.registerJoystickAsModulationTargets(), 0);
     }
 
-    // Set up refreshing interval to update sliders when joystick moves
-    // This is a fallback in case the direct updates from emuRenderer don't work
-    this.joystickRefreshInterval = setInterval(() => {
-      if (this.main.emuRenderer) {
-        const x = this.main.emuRenderer.joystickX / 10; // Convert to -1,1 range
-        const y = this.main.emuRenderer.joystickY / 10;
-
-        // Only update if values have changed significantly to avoid unnecessary updates
-        if (Math.abs(joystickPosition.x - x) > 0.001 || Math.abs(joystickPosition.y - y) > 0.001) {
-          joystickPosition.x = x;
-          joystickPosition.y = y;
-
-          // Update UI display
-          if (this.joystickXController) this.joystickXController.updateDisplay();
-          if (this.joystickYController) this.joystickYController.updateDisplay();
-        }
-      }
-    }, 100); // Reduced frequency to 10fps as we're using direct updates now
-
-    // Add spring-back control slider
     const springControl = {
       strength: this.main.emuRenderer?.springStrength ?? 0.05
     };
@@ -448,7 +421,6 @@ export class InputsUi extends BaseUi {
         )
         .name("J-T-BiasStrength")
         .onChange((value) => {
-          // Store the new strength value in the turbulence field
           turbulenceField.biasStrength = value;
 
           // If EMU input is active, reapply current values to update immediately
@@ -456,7 +428,6 @@ export class InputsUi extends BaseUi {
             this.main.externalInput.emuForces.apply(0.016);
           }
 
-          // Update the turbulence bias UI controllers to reflect the change
           if (this.main.turbulenceUi && typeof this.main.turbulenceUi.updateBiasControllers === 'function') {
             this.main.turbulenceUi.updateBiasControllers();
           }
@@ -491,7 +462,6 @@ export class InputsUi extends BaseUi {
       });
     });
 
-    // Start observing the folder element
     folderObserver.observe(folderElement, {
       attributes: true,
       attributeFilter: ['class']
@@ -548,28 +518,18 @@ export class InputsUi extends BaseUi {
 
   //#endregion
 
-  // Get all available control targets for modulation
   getControlTargets() {
     const targets = {};
 
-    // Add joystick controllers if they exist
     if (this.joystickXController) targets["J-X"] = this.joystickXController;
     if (this.joystickYController) targets["J-Y"] = this.joystickYController;
 
-    // Add gravity strength controller if it exists
-    if (this.joystickGravityStrengthController) {
-      targets["J-G-Strength"] = this.joystickGravityStrengthController;
-    }
-
-    // Add bias strength controller if it exists
-    if (this.joystickBiasStrengthController) {
-      targets["J-T-BiasStrength"] = this.joystickBiasStrengthController;
-    }
+    if (this.joystickGravityStrengthController) targets["J-G-Strength"] = this.joystickGravityStrengthController;
+    if (this.joystickBiasStrengthController) targets["J-T-BiasStrength"] = this.joystickBiasStrengthController;
 
     return targets;
   }
 
-  // Clean up resources when UI is destroyed
   destroy() {
     if (this.joystickRefreshInterval) {
       clearInterval(this.joystickRefreshInterval);

@@ -1,6 +1,3 @@
-/**
- * A pulse modulator that can modify a parameter over time
- */
 class PulseModulator {
   constructor(manager) {
     this.manager = manager;
@@ -9,14 +6,14 @@ class PulseModulator {
     this.type = "sine";
     this.frequency = 1.0;
     this.frequencyBpm = 60.0; // Add BPM representation of frequency
-    this.sync = true; // Add sync property
+    this.sync = true;
     this.phase = 0;
     this.min = 0;
     this.max = 1;
     this.time = 0;
     this.targetController = null;
-    this.originalValue = null; // Store original value to restore when disabled
-    this.currentPhase = 0; // Add currentPhase property
+    this.originalValue = null;
+    this.currentPhase = 0;
     this.isSelector = false; // Flag to indicate if target is a selector/dropdown
     this.selectorOptions = []; // Array to store available options for selectors
     this.beatDivision = "1"; // Beat division multiplier (1, 1/2, 1/4, 1/8, etc.)
@@ -144,7 +141,6 @@ class PulseModulator {
 
 
   _getSelectorOptions(targetName, controller) {
-    // Special case for known targets
     if (targetName === "Boundary") {
       return ["BOUNCE", "WARP"];
     }
@@ -367,12 +363,6 @@ class PulseModulator {
     this.time += deltaTime;
   }
 
-  /**
-   * Calculate the modulation value based on time and settings
-   * @param {number} time - Current time in seconds
-   * @param {number} frequency - Frequency to use (could be master or local)
-   * @returns {number} Modulation value 0-1
-   */
   calculateModulation(time, frequency = null) {
     // If no frequency provided, use the appropriate one based on sync setting
     if (frequency === null) {
@@ -434,11 +424,6 @@ class PulseModulator {
     return value; // Return 0-1 value
   }
 
-  /**
-   * Calculate the modulation value based on global time
-   * @param {number} globalTime - Global time in seconds
-   * @returns {number} Modulation value 0-1
-   */
   calculateModulationWithGlobalTime(globalTime) {
     // Apply beat division
     const divisionMultiplier = this.getBeatDivisionValue();
@@ -474,18 +459,12 @@ class PulseModulator {
     }
   }
 
-  /**
-   * Disable modulation and clean up
-   */
+
   disable() {
     this.enabled = false;
     this.resetToOriginal(); // Reset to original value when disabled
   }
 
-  /**
-   * Reset internal state when triggered by a beat
-   * Used for random and increment modes
-   */
   resetOnBeat() {
     if (this.type === "random") {
       // Generate a new random value

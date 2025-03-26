@@ -74,7 +74,7 @@ export class OrganicUi extends BaseUi {
     this.initFluidControls();
     this.initSwarmControls();
     this.initAutomataControls();
-    this.initChainControls();  // Add this if missing
+    this.initChainControls();
 
     this.updateOrganicFolders(this.main.gridRenderer.renderModes.currentMode);
   }
@@ -159,11 +159,11 @@ export class OrganicUi extends BaseUi {
       // Initialize Chain parameters if they don't exist yet
       if (particles?.organicBehavior?.params) {
         particles.organicBehavior.params.Chain = {
-          linkDistance: 0,    // Distance between chain links
-          linkStrength: 10,   // Spring force strength
-          alignment: 0.5,      // Straight (1) vs curly (0) chains 
+          linkDistance: 0,
+          linkStrength: 10,
+          alignment: 1,      // Straight (1) vs curly (0) chains 
           branchProb: 10,       // Max branches per particle
-          maxLinks: 10,        // Max links per chain
+          maxLinks: 20,        // Max links per chain
           mode: "Chain"
         };
       }
@@ -318,12 +318,11 @@ export class OrganicUi extends BaseUi {
     safeUpdateDisplay(this.automataAttractionController);
     safeUpdateDisplay(this.automataThresholdController);
 
-    // Add chain controllers
     safeUpdateDisplay(this.chainLinkDistController);
     safeUpdateDisplay(this.chainLinkStrengthController);
     safeUpdateDisplay(this.chainAlignController);
     safeUpdateDisplay(this.chainBranchController);
     safeUpdateDisplay(this.chainMaxLinksController);
-    safeUpdateDisplay(this.chainRepelController); // Add this controller
+    safeUpdateDisplay(this.chainRepelController);
   }
 }

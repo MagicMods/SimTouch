@@ -1,19 +1,18 @@
 export class InputModulator {
   constructor(manager) {
     this.manager = manager;
-    this.enabled = false; // Start disabled
+    this.enabled = true;
     this.inputSource = "mic";
     this.frequencyBand = "None";
     this.sensitivity = 1.0;
-    this.smoothing = 0.7; // Kept for backward compatibility
-    this.attack = 0.3;    // Lower value = faster attack (less smoothing on rise)
-    this.release = 0.7;   // Higher value = longer sustain (more smoothing on fall)
-    this.threshold = 0; // Add threshold property (0 = disabled)
+    this.attack = 0.3;
+    this.release = 0.7;
+    this.threshold = 0;
     this.min = 0;
     this.max = 1;
-    this.targetName = null; // Start with no target
-    this.target = null; // No target object
-    this.targetController = null; // No target controller
+    this.targetName = null;
+    this.target = null;
+    this.targetController = null;
     this.originalValue = 0;
     this.currentInputValue = 0;
     this.lastOutputValue = 0;
@@ -44,7 +43,7 @@ export class InputModulator {
       this.target = target;
 
       // CRITICAL FIX: Set the targetController property which is used in update()
-      this.targetController = target; // This line was missing!
+      this.targetController = target;
 
       // Get current value and store as original
       this.originalValue = target.getValue();
@@ -148,14 +147,11 @@ export class InputModulator {
         value = this.lastOutputValue * this.release + value * (1 - this.release);
       }
     }
-
-    // Return the processed value
     return value;
   }
 
-  // Fix the update method to use the processed input
+
   update(deltaTime) {
-    // Skip if disabled
     if (!this.enabled || this.sensitivity === 0) {
       return;
     }
@@ -194,6 +190,6 @@ export class InputModulator {
 
   disable() {
     this.enabled = false;
-    this.resetToOriginal(); // Reset to original value when disabled
+    this.resetToOriginal();
   }
 }

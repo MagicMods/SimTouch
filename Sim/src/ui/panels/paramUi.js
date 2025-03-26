@@ -6,12 +6,8 @@ export class ParamUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
     this.presetManager = null;
-    // Initialize controls collection to store references
     this.controls = {};
-    // Change the GUI title
     this.gui.title("Parameters");
-
-    // Initialize folders and controllers
     this.initGlobalControls();
   }
 
@@ -70,30 +66,29 @@ export class ParamUi extends BaseUi {
       this.boundaryModeController.domElement.style.marginBottom = "10px";
       const smoothing = this.main.gridRenderer.renderModes.smoothing;
 
-      // Store as class property
+
       this.maxDensityController = this.gui
         .add(this.main.gridRenderer, "maxDensity", 0.1, 10, 0.1)
         .name("Density");
 
-      // Store as class property
+
       this.fadeInSpeedController = this.gui
         .add(smoothing, "rateIn", 0.01, 0.5)
         .name("FadInSpd")
       // .onFinishChange(() => console.log("Smoothing in:", smoothing.rateIn));
 
-      // Store as class property
+
       this.fadeOutSpeedController = this.gui
         .add(smoothing, "rateOut", 0.01, 0.5)
         .name("FadOutSpd")
       // .onFinishChange(() => console.log("Smoothing out:", smoothing.rateOut));
-      // 
-      // Store as class property
+
       this.timeStepController = this.gui
         .add(particles, "timeStep", 0.001, 0.05, 0.001)
         .name("Time Step");
       this.timeStepController.domElement.style.marginTop = "10px";
 
-      // Store as class property
+
       this.timeScaleController = this.gui
         .add(particles, "timeScale", 0, 4, 0.1)
         .name("SimSpeed")
@@ -101,7 +96,6 @@ export class ParamUi extends BaseUi {
       // console.log(`Animation speed: ${value}x`);
       // });
 
-      // Store as class property
       this.velocityDampingController = this.gui
         .add(particles, "velocityDamping", 0.8, 1, 0.01)
         .name("VeloDamp")
@@ -109,7 +103,6 @@ export class ParamUi extends BaseUi {
       //   console.log(`Velocity damping set to ${value}`);
       // });
 
-      // Add max velocity controller
       this.maxVelocityController = this.gui
         .add(particles, "maxVelocity", 0.01, 1, 0.01)
         .name("MaxVelocity");
@@ -139,7 +132,6 @@ export class ParamUi extends BaseUi {
     return targets;
   }
 
-  // Add to ParamUi class
   getData() {
     const controllers = {};
     const targets = this.getControlTargets();

@@ -23,7 +23,6 @@ export class EmuData {
 
   // Update from binary data (13 bytes: 3 float32 values + 1 ghost byte)
   updateFromBinary(buffer) {
-    // Skip the ghost byte
     const view = new DataView(buffer);
 
     // Read 3 float32 values (4 bytes each)
@@ -52,7 +51,6 @@ export class EmuData {
   }
 
   calibrate() {
-    // Store current values as offsets
     this.accelOffsetX = this.accelX / this.accelSensitivity + this.accelOffsetX;
     this.accelOffsetY = this.accelY / this.accelSensitivity + this.accelOffsetY;
 
@@ -60,8 +58,8 @@ export class EmuData {
     const gravityMagnitude =
       Math.sqrt(
         this.accelX * this.accelX +
-          this.accelY * this.accelY +
-          this.accelZ * this.accelZ
+        this.accelY * this.accelY +
+        this.accelZ * this.accelZ
       ) / this.accelSensitivity;
 
     this.accelOffsetZ =

@@ -234,13 +234,11 @@ export class PulseModulationUi extends BaseUi {
   }
 
   addPulseModulator() {
-    // Check if we have ModulatorManager reference
     if (!this.modulatorManager) {
       console.error("ModulatorManager not initialized in PulseModulationUi");
       return null;
     }
 
-    // Get target names from ModulatorManager
     const targetNames = this.modulatorManager.getTargetNames();
     if (targetNames.length === 0) {
       console.warn("No targets available for modulation");
@@ -248,7 +246,6 @@ export class PulseModulationUi extends BaseUi {
       return null;
     }
 
-    // Create a new modulator
     const modulator = this.modulatorManager.createPulseModulator();
 
     // Add BPM property that maps to frequency
@@ -311,8 +308,8 @@ export class PulseModulationUi extends BaseUi {
       // When enabling sync, update frequency to match master
       if (modulator.sync) {
         modulator.frequency = this.masterFrequency;
-        modulator.frequencyBpm = this.hzToBpm(this.masterFrequency); // Update BPM value too
-        modulator.currentPhase = 0; // Reset phase for better synchronization
+        modulator.frequencyBpm = this.hzToBpm(this.masterFrequency);
+        modulator.currentPhase = 0;
         frequencyController.updateDisplay();
       }
     });
@@ -434,9 +431,6 @@ export class PulseModulationUi extends BaseUi {
       .name("Wave Type")
       .domElement.classList.add("full-width");
 
-
-
-    // Add beat division dropdown
     const beatDivisionController = folder
       .add(modulator, "beatDivision", [
         "1",    // Whole note (1 per beat)
@@ -450,7 +444,6 @@ export class PulseModulationUi extends BaseUi {
       ])
       .name("Beat Division")
       .onChange(() => {
-        // Reset phase when changing division for better sync
         if (modulator.sync) {
           modulator.currentPhase = 0;
         }
@@ -468,7 +461,6 @@ export class PulseModulationUi extends BaseUi {
         modulator.frequency = this.bpmToHz(value);
       });
 
-    // Initially hide the frequency controller if sync is enabled
     if (modulator.sync) {
       frequencyController.domElement.style.display = "none";
     }
@@ -476,9 +468,6 @@ export class PulseModulationUi extends BaseUi {
     const phaseController = folder
       .add(modulator, "phase", 0, Math.PI)
       .name("Phase")
-      .onChange(() => {
-        // No additional handling needed
-      });
     phaseController.domElement.style.marginBottom = "10px";
 
 
@@ -493,7 +482,6 @@ export class PulseModulationUi extends BaseUi {
     maxController.domElement.style.marginBottom = "10px";
 
 
-    // Simplified remove button implementation
     const removeButton = {
       remove: () => {
         console.log(`Removing modulator with target ${modulator.targetName}`);
@@ -516,8 +504,6 @@ export class PulseModulationUi extends BaseUi {
         if (index !== -1) {
           this.modulatorManager.modulators.splice(index, 1);
         }
-
-        // Remove the folder
         folder.destroy();
 
         // Remove from our tracking array
@@ -529,8 +515,6 @@ export class PulseModulationUi extends BaseUi {
     };
 
     folder.add(removeButton, "remove").name("Remove");
-
-    // Open the folder by default
     folder.open();
 
     return modulator;
@@ -546,7 +530,6 @@ export class PulseModulationUi extends BaseUi {
 
     const modulators = [];
 
-    // Extract data from each modulator folder in the UI
     this.modulatorFolders.forEach((folder) => {
       const modData = {
         type: "pulse",
@@ -558,7 +541,7 @@ export class PulseModulationUi extends BaseUi {
         min: 0,
         max: 1,
         targetName: "None",
-        beatDivision: "1", // Add default beatDivision
+        beatDivision: "1",
       };
 
       // Extract values from controllers
@@ -684,7 +667,6 @@ export class PulseModulationUi extends BaseUi {
       });
   }
 
-  // Fix getData method to return only modulators data
   getData() {
     // Get modulators data using existing method (which already returns the correct structure)
     return this.getModulatorsData();
@@ -718,10 +700,8 @@ export class PulseModulationUi extends BaseUi {
         );
         return false;
       }
-
       console.log(`Loading ${data.modulators.length} modulators from preset`);
 
-      // First clear existing modulators
       this.clearAllModulators();
 
       // MANUALLY CREATE MODULATORS INSTEAD OF USING loadModulatorsState
@@ -853,8 +833,6 @@ export class PulseModulationUi extends BaseUi {
               maxController.name("Max Index");
             }
           }
-
-          // Remove the loading flag
           modulator._loadingFromPreset = false;
 
           console.log(
@@ -862,7 +840,6 @@ export class PulseModulationUi extends BaseUi {
           );
         }
 
-        // Set min/max if available
         if (modData.min !== undefined && modData.max !== undefined) {
           // Find min/max controllers and update them
           const minController = folder.controllers.find(
@@ -886,7 +863,6 @@ export class PulseModulationUi extends BaseUi {
 
       // Update UI after all modulators are created
       this.update();
-
       // Force refresh of UI controllers
       this.updateControllerDisplays();
 
@@ -901,10 +877,6 @@ export class PulseModulationUi extends BaseUi {
     }
   }
 
-  /**
-   * Trigger a single beat pulse on all synced modulators
-   * Also calculate BPM based on tap timing if clicked multiple times
-   */
   triggerBeat() {
     if (!this.modulatorManager) return;
 
@@ -915,7 +887,6 @@ export class PulseModulationUi extends BaseUi {
     // Reset their phases to 0 to trigger a synchronized beat
     syncedModulators.forEach(mod => {
       // Reset phase with respect to beat division
-      // This ensures all divisions align properly when beat is triggered
       mod.currentPhase = 0;
       mod.phase = 0;
 
@@ -926,20 +897,14 @@ export class PulseModulationUi extends BaseUi {
         }
       }
     });
-
-    // Calculate BPM based on tap tempo
     this.calculateTapTempo();
 
     console.log(`Triggered beat on ${syncedModulators.length} modulators`);
   }
 
-  /**
-   * Calculate BPM based on intervals between button clicks
-   */
   calculateTapTempo() {
     const now = performance.now();
 
-    // Clear timeout if it exists
     if (this.tapTempoTimeout) {
       clearTimeout(this.tapTempoTimeout);
     }
@@ -950,7 +915,6 @@ export class PulseModulationUi extends BaseUi {
       console.log("Tap tempo reset due to inactivity");
     }, this.tapTempoTimeoutDuration);
 
-    // Add current time to the history
     this.beatTimes.push(now);
 
     // Keep only the most recent taps
@@ -1003,15 +967,10 @@ export class PulseModulationUi extends BaseUi {
     }
   }
 
-  /**
-   * Add visual feedback when beat button is clicked
-   */
+
   flashBeatButton() {
     if (!this.beatButtonElement) return;
-
-    // Add/remove active class instead of directly manipulating style
     this.beatButtonElement.classList.add("active");
-
     // Reset after brief delay
     setTimeout(() => {
       this.beatButtonElement.classList.remove("active");

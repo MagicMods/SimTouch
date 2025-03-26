@@ -1,5 +1,3 @@
-import { ShaderManager } from "../shaders/shaderManager.js";
-
 class BaseRenderer {
   constructor(gl, shaderManager) {
     if (!gl) {

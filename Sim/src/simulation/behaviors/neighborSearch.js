@@ -7,9 +7,9 @@ class NeighborSearch {
     // Grid parameters matching GridRenderer
     this.gridParams = {
       target: 341, // Total cells
-      gap: 1, // Gap between cells
-      width: 10, // Cell width
-      height: 10, // Cell height
+      gap: 0, // Gap between cells
+      width: 11, // Cell width
+      height: 11, // Cell height
       cols: 23, // Grid columns
       rows: 23, // Grid rows
     };
@@ -39,7 +39,7 @@ class NeighborSearch {
 
       const col = Math.floor(px / this.cellSize);
       const row = Math.floor(py / this.cellSize);
-      
+
       if (this.debugEnabled && p.y > 0.7) {
         console.log(`Mapping particle at (${px.toFixed(1)}, ${py.toFixed(1)}) to cell [${row}, ${col}]`);
       }

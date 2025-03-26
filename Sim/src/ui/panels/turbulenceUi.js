@@ -727,7 +727,6 @@ export class TurbulenceUi extends BaseUi {
       };
     }
 
-    // Add regular controllers
     if (this.turbulenceStrengthController) targets["T-Strength"] = this.turbulenceStrengthController;
     if (this.turbulenceScaleController) targets["T-Scale"] = this.turbulenceScaleController;
     if (this.turbulenceSpeedController) targets["T-Speed"] = this.turbulenceSpeedController;
@@ -739,35 +738,26 @@ export class TurbulenceUi extends BaseUi {
     if (this.turbulenceRotationSpeedController) targets["T-RotSpd"] = this.turbulenceRotationSpeedController;
     if (this.turbulenceDecayRateController) targets["T-Decay"] = this.turbulenceDecayRateController;
 
-    // Direction bias controllers (for particle movement)
     if (this.turbulenceDirectionBiasXController) targets["T-DirX"] = this.turbulenceDirectionBiasXController;
     if (this.turbulenceDirectionBiasYController) targets["T-DirY"] = this.turbulenceDirectionBiasYController;
-
-    // Add domain warp controller
     if (this.turbulenceDomainWarpController) targets["T-DomWarp"] = this.turbulenceDomainWarpController;
     if (this.turbulenceDomainWarpSpeedController) targets["T-DomWarpSp"] = this.turbulenceDomainWarpSpeedController;
-
-    // Add pull mode controller
     if (this.turbulencePullFactorController) targets["T-Pull Mode"] = this.turbulencePullFactorController;
 
-    // Add pattern control targets
     if (this.turbulencePatternStyleController) targets["T-PatternStyle"] = this.turbulencePatternStyleController;
     if (this.turbulencePatternFrequencyController) targets["T-Freq"] = this.turbulencePatternFrequencyController;
     if (this.turbulencePhaseController) targets["T-PhaseSp"] = this.turbulencePhaseController;
     if (this.turbulenceStaticPhaseController) targets["T-Phase"] = this.turbulenceStaticPhaseController;
     if (this.turbulenceSymmetryController) targets["T-Sym"] = this.turbulenceSymmetryController;
+    if (this.turbulenceBlurController) targets["T-Blur"] = this.turbulenceBlurController;
 
-    // Add new pattern offset controllers
     if (this.turbulenceOffsetXController) targets["T-OffsetX"] = this.turbulenceOffsetXController;
     if (this.turbulenceOffsetYController) targets["T-OffsetY"] = this.turbulenceOffsetYController;
 
-    // Add new bias speed controllers
     if (this.turbulenceBiasXController) targets["T-BiasX"] = this.turbulenceBiasXController;
     if (this.turbulenceBiasYController) targets["T-BiasY"] = this.turbulenceBiasYController;
     if (this.turbulenceBiasFrictionController) targets["T-Bias Friction"] = this.turbulenceBiasFrictionController;
 
-    // Add blur controller to control targets
-    if (this.turbulenceBlurController) targets["T-Blur"] = this.turbulenceBlurController;
 
     return targets;
   }
@@ -809,8 +799,6 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulencePhaseController);
     safeUpdateDisplay(this.turbulenceStaticPhaseController);
     safeUpdateDisplay(this.turbulenceSymmetryController);
-
-    // Update new controller displays
     safeUpdateDisplay(this.turbulenceOffsetXController);
     safeUpdateDisplay(this.turbulenceOffsetYController);
     safeUpdateDisplay(this.turbulenceBiasXController);
@@ -902,7 +890,6 @@ export class TurbulenceUi extends BaseUi {
     }
   }
 
-  // Update UI values from the turbulence field (like GravityUi's updateFromGravity)
   updateFromTurbulenceField() {
     const turbulence = this.main?.turbulenceField;
     if (!turbulence) return;
@@ -930,7 +917,7 @@ export class TurbulenceUi extends BaseUi {
     }
   }
 
-  // Add a method to reset all bias values
+
   resetBias() {
     const turbulence = this.main?.turbulenceField;
     if (!turbulence) return;
@@ -946,21 +933,18 @@ export class TurbulenceUi extends BaseUi {
     this.updateFromTurbulenceField();
   }
 
-  // Add this method to the TurbulenceUi class
+
   dispose() {
-    // Clear the refresh interval
     if (this.refreshInterval) {
       clearInterval(this.refreshInterval);
       this.refreshInterval = null;
     }
 
-    // Clean up the MutationObserver
     if (this.previewFolderObserver) {
       this.previewFolderObserver.disconnect();
       this.previewFolderObserver = null;
     }
 
-    // Clean up the additional observers
     if (this.noiseFolderObserver) {
       this.noiseFolderObserver.disconnect();
       this.noiseFolderObserver = null;
@@ -971,13 +955,11 @@ export class TurbulenceUi extends BaseUi {
       this.guiStateObserver = null;
     }
 
-    // Clean up the NoisePreviewManager
     if (this.previewManager) {
       this.previewManager.dispose();
       this.previewManager = null;
     }
 
-    // Call the parent class dispose method if it exists
     if (super.dispose) {
       super.dispose();
     }
@@ -1022,9 +1004,6 @@ export class TurbulenceUi extends BaseUi {
     }, duration);
   }
 
-  /**
-   * Set up observers for folder state changes
-   */
   setupFolderStateObservers() {
     // Initialize observers array
     this.folderObservers = [];
@@ -1090,9 +1069,6 @@ export class TurbulenceUi extends BaseUi {
     }
   }
 
-  /**
-   * Clean up observers when disposing
-   */
   dispose() {
     // Clear the refresh interval
     if (this.refreshInterval) {

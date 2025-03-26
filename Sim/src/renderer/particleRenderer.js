@@ -7,7 +7,7 @@ class ParticleRenderer extends BaseRenderer {
     this.shaderManager = shaderManager;
     this.shaderType = shaderType;
     this.particleBuffer = gl.createBuffer();
-    this.sizeBuffer = gl.createBuffer(); // Add new buffer for individual sizes
+    this.sizeBuffer = gl.createBuffer();
     this.config = {
       size: 10.0,
       color: [1, 1, 1, 0.1],
@@ -22,7 +22,6 @@ class ParticleRenderer extends BaseRenderer {
       return;
     }
 
-    // Use specified shader program
     const program = this.shaderManager.use(this.shaderType);
     if (!program) {
       console.error("Failed to setup particle shader");

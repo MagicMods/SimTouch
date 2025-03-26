@@ -353,7 +353,6 @@ export class PresetManager {
       console.warn(`No handler for preset type: ${type}`);
       return false;
     }
-
     return handler.deletePreset(presetName);
   }
 

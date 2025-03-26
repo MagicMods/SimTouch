@@ -3,13 +3,8 @@ import { BaseUi } from "../baseUi.js";
 export class ParticleUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-
-    // Initialize controls collection to store references
     this.controls = {};
-    // Change the GUI title
     this.gui.title("Particles");
-
-    // Initialize folders and controllers
     this.initParticleControls();
   }
 
@@ -47,7 +42,6 @@ export class ParticleUi extends BaseUi {
 
   getControlTargets() {
     const targets = {};
-    // // Particle controllers
     if (this.particleCountController)
       targets["P-Count"] = this.particleCountController;
     if (this.particleSizeController)
@@ -57,7 +51,6 @@ export class ParticleUi extends BaseUi {
     return targets;
   }
 
-  // Add to ParamUi class
   getData() {
     const controllers = {};
     const targets = this.getControlTargets();
@@ -87,8 +80,6 @@ export class ParticleUi extends BaseUi {
           targets[key].setValue(value);
         }
       }
-
-      // Update UI display
       this.updateControllerDisplays();
       return true;
     } catch (error) {
@@ -109,7 +100,6 @@ export class ParticleUi extends BaseUi {
       }
     };
 
-    // Update particle controllers
     safeUpdateDisplay(this.particleSizeController);
     safeUpdateDisplay(this.particleCountController);
     safeUpdateDisplay(this.particleOpacityController);

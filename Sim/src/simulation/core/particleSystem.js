@@ -171,7 +171,6 @@ class ParticleSystem {
     }
   }
 
-  // REMOVE the direct gas effect from step() - that was the wrong approach
   step() {
     const dt = this.timeStep * this.timeScale;
 

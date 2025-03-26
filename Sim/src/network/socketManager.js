@@ -146,17 +146,14 @@ class SocketManager {
     };
   }
 
-  // Add method to register message handlers
   addMessageHandler(callback) {
     this.callbacks.add(callback);
   }
 
-  // Add method to remove message handlers
   removeMessageHandler(callback) {
     this.callbacks.delete(callback);
   }
 
-  // Add specialized handler for mouse movements
   addMouseHandler(callback) {
     this.mouseCallbacks.add(callback);
   }
@@ -165,19 +162,16 @@ class SocketManager {
     this.mouseCallbacks.delete(callback);
   }
 
-  // Add an EMU data handler function
   addEmuHandler(callback) {
     this.emuHandlers.push(callback);
     return this;
   }
 
-  // Remove an EMU data handler function
   removeEmuHandler(callback) {
     this.emuHandlers = this.emuHandlers.filter((h) => h !== callback);
     return this;
   }
 
-  // Call this from your message handling code when EMU data arrives
   handleEmuData(data) {
     if (this.emuHandlers && this.emuHandlers.length > 0) {
       this.emuHandlers.forEach((handler) => handler(data));

@@ -444,12 +444,6 @@ export class SoundVisualizer {
       );
     }
 
-    // // Label
-    // this.ctx.fillStyle = this.colors.text;
-    // this.ctx.font = "12px sans-serif";
-    // this.ctx.textAlign = "left";
-    // this.ctx.fillText("Spectrum", padding, yOffset + padding + 12);
-
     this.ctx.restore();
 
     return height + padding;
@@ -505,12 +499,6 @@ export class SoundVisualizer {
     }
 
     this.ctx.stroke();
-
-    // // Label
-    // this.ctx.fillStyle = this.colors.text;
-    // this.ctx.font = "12px sans-serif";
-    // this.ctx.textAlign = "left";
-    // this.ctx.fillText("Waveform", padding, yOffset + padding + 12);
 
     this.ctx.restore();
 
@@ -576,9 +564,6 @@ export class SoundVisualizer {
       yOffset + padding + height / 2 + 4
     );
 
-    // this.ctx.textAlign = "left";
-    // this.ctx.fillText("Volume", padding, yOffset + padding + 12);
-
     this.ctx.restore();
 
     return height + padding;
@@ -641,12 +626,6 @@ export class SoundVisualizer {
         yOffset + padding + height - 2
       );
     }
-
-    // // Label
-    // this.ctx.fillStyle = this.colors.text;
-    // this.ctx.font = "12px sans-serif";
-    // this.ctx.textAlign = "left";
-    // this.ctx.fillText("Frequency Bands", padding, yOffset + padding + 12);
 
     this.ctx.restore();
 
@@ -713,12 +692,6 @@ export class SoundVisualizer {
     this.ctx.closePath();
     this.ctx.fillStyle = "rgba(0, 255, 204, 0.1)";
     this.ctx.fill();
-
-    // Label
-    // this.ctx.fillStyle = this.colors.text;
-    // this.ctx.font = "12px sans-serif";
-    // this.ctx.textAlign = "left";
-    // this.ctx.fillText("History", padding, yOffset + padding + 12);
 
     this.ctx.restore();
 

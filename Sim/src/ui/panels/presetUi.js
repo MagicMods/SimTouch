@@ -8,9 +8,7 @@ export class PresetUi extends BaseUi {
     this.presetControls = {};
     this.autoPlayActive = false;
     this.autoPlayInterval = null;
-    this.autoPlaySpeed = 3000; // Default: 3 seconds
-
-    // Change the GUI title
+    this.autoPlaySpeed = 3000;
     this.gui.title("Presets");
   }
 

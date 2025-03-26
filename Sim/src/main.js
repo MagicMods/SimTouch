@@ -13,9 +13,7 @@ import { ExternalInputConnector } from "./input/externalInputConnector.js";
 import { EmuForces } from "./simulation/forces/emuForces.js";
 import { EmuRenderer } from "./renderer/emuRenderer.js";
 import { MicInputForces } from "./simulation/forces/micForces.js";
-import { ModulatorManager } from "./input/modulatorManager.js"; // Add this import
-import { PulseModulator } from "./input/pulseModulator.js"; // Add this import
-import { InputModulator } from "./input/inputModulator.js"; // Add this import
+import { ModulatorManager } from "./input/modulatorManager.js";
 
 class Main {
   constructor() {
@@ -55,7 +53,6 @@ class Main {
       gravity: this.particleSystem.gravity,
     });
 
-    // Pass both mouseForces and emuForces to ExternalInputConnector
     this.externalInput = new ExternalInputConnector(
       this.mouseForces,
       this.emuForces,
@@ -66,18 +63,15 @@ class Main {
 
     // Create the visualizer AFTER externalInput is initialized
     this.emuRenderer = new EmuRenderer(document.body, this.externalInput.emuForces, this);
-    // Don't show by default, let the UI control visibility
     this.emuRenderer.hide();
 
     this.paused = false;
 
-    // Set up socket connection
     socketManager.enable = true;
     socketManager.connect();
 
     // this.setupMouseDebug();
 
-    // Make sure the emuRenderer can access the turbulenceField
     if (this.emuRenderer && this.turbulenceField && this.externalInput?.emuForces) {
       console.log("Directly connecting turbulenceField to emuRenderer and emuForces");
       // Add direct reference to turbulenceField in emuForces
@@ -87,7 +81,6 @@ class Main {
       if (this.externalInput.emuForces.simulation) {
         this.externalInput.emuForces.simulation.main = this;
       }
-
       // Also store main reference in emuRenderer
       this.emuRenderer.main = this;
     }
@@ -112,32 +105,16 @@ class Main {
     }
   }
 
-  initialize() {
-    // Existing initialization code...
-
-    // Add a global reference for debugging
-    if (typeof window !== 'undefined') {
-      window.svibeSim = window.svibeSim || {};
-      window.svibeSim.turbulenceField = this.turbulenceField;
-      window.svibeSim.voronoiField = this.voronoiField;
-      window.svibeSim.particleSystem = this.particleSystem;
-      console.log("Debug objects available via window.svibeSim");
-    }
-
-    // Rest of initialization...
-  }
-
   animate() {
     if (!this.paused) {
       this.render();
     }
-    // Request next frame
     requestAnimationFrame(() => this.animate());
   }
 
   render() {
     this.frame++;
-    // this.gridRenderer.drawGridTest();
+
     this.particleSystem.mouseForces.update(this.particleSystem);
 
     // Apply EMU forces if enabled
@@ -162,7 +139,6 @@ class Main {
       this.ui.update(this.particleSystem.timeStep);
     }
 
-    // Update ModulatorManager - ADD THIS
     if (this.modulatorManager) {
       this.modulatorManager.update(this.particleSystem.timeStep);
     }

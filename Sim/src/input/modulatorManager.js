@@ -9,7 +9,7 @@ export class ModulatorManager {
     this.lastUpdateTime = Date.now();
     this.uiComponents = {}; // Single structure for ALL UI components
     this.masterFrequency = 1.0;
-    this.globalTime = 0; // Add global time reference
+    this.globalTime = 0;
   }
 
   //#region Target
@@ -292,7 +292,6 @@ export class ModulatorManager {
         state.inputSource = mod.inputSource;
         state.frequencyBand = mod.frequencyBand;
         state.sensitivity = mod.sensitivity;
-        state.smoothing = mod.smoothing;
       }
 
       return state;

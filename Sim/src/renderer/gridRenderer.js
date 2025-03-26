@@ -392,31 +392,6 @@ class GridRenderer extends BaseRenderer {
     this.gl.deleteBuffer(buffer);
   }
 
-  // Method to draw cells with clip paths - Kept for compatibility
-  drawClippedCell(clipPath, color) {
-    // Simply log a deprecation warning - no fallback needed
-    console.warn("drawClippedCell is deprecated. Using stencil buffer masking instead.");
-
-    // Don't do anything if clipPath is invalid
-    if (!clipPath || clipPath.length < 3) return;
-
-    // Fallback: Draw an approximation by getting the bounding box of the clip path
-    let minX = Infinity, minY = Infinity;
-    let maxX = -Infinity, maxY = -Infinity;
-
-    clipPath.forEach(point => {
-      minX = Math.min(minX, point.x);
-      minY = Math.min(minY, point.y);
-      maxX = Math.max(maxX, point.x);
-      maxY = Math.max(maxY, point.y);
-    });
-
-    const width = maxX - minX;
-    const height = maxY - minY;
-
-    // Draw rectangle with provided color
-    this.drawRectangle(minX, minY, width, height, color);
-  }
 
   generateRectangles() {
     let bestRects = [];

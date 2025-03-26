@@ -124,7 +124,6 @@ export class RandomizerUi extends BaseUi {
   }
 
   findControllerByName(name) {
-    // Look through all folders in paramFolder
     for (const folder of this.paramFolder.folders) {
       for (const controller of folder.controllers) {
         if (controller.property === name) {
