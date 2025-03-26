@@ -27,7 +27,7 @@ export class ParticleUi extends BaseUi {
       });
 
     this.particleSizeController = this.gui
-      .add(particles, "particleRadius", 0.005, 0.05, 0.001)
+      .add(particles, "particleRadius", 0.01, 0.04, 0.001)
       .name("P-Size")
       .onChange((value) => {
         particles.collisionSystem.particleRadius = value * 2;

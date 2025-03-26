@@ -111,7 +111,6 @@ export class GridUi extends BaseUi {
         .name("Threshold")
         .onChange(() => gridRenderer.updateGrid());
 
-
       this.blurAmountController = shadowFolder
         .add(gridRenderer.gridParams, "blurAmount", 0, 1, 0.01)
         .name("Blur")
@@ -129,6 +128,39 @@ export class GridUi extends BaseUi {
 
       // Grid Stats
       const stats = gridParamFolder.addFolder("Stats");
+
+      // Add resolution selector to Stats folder
+      const resolutionOptions = {
+        "240x240": 240,
+        "360x360": 360,
+        "480x480": 480
+      };
+
+      this.resolutionController = stats
+        .add({ resolution: "240x240" }, "resolution", Object.keys(resolutionOptions))
+        .name("Resolution")
+        .onChange((value) => {
+          const newSize = resolutionOptions[value];
+          // Only update the resolution parameter
+          gridRenderer.gridParams.resolution = newSize;
+
+          // Calculate new cell dimensions while maintaining the same number of cells
+          const scale = newSize / 240; // Scale factor based on new resolution
+          gridRenderer.gridParams.width = Math.round(gridRenderer.gridParams.width * scale);
+          gridRenderer.gridParams.height = Math.round(gridRenderer.gridParams.height * scale);
+
+          // Update the grid
+          gridRenderer.updateGrid();
+
+          // Force update the stats display
+          stats.updateDisplay();
+        });
+
+      // Add tooltip for resolution control
+      this.resolutionController.domElement.parentElement.setAttribute('title',
+        'Select the grid resolution. This affects the internal cell dimensions (Rect Width/Height) without changing the visual size.');
+
+      // Add stats controllers
       stats.add(gridRenderer.gridParams, "cols").name("Columns").listen();
       stats.add(gridRenderer.gridParams, "rows").name("Rows").listen();
       stats.add(gridRenderer.gridParams, "width").name("Rect Width").listen();

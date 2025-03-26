@@ -19,16 +19,16 @@ canvas#glCanvas {
     background-color: #1a1a1a;
     max-width: 100%;
     max-height: 100%;
-    border-radius: 100%;
+    border-radius: 50%;
 }
 
-/* canvas.emu-visualization {
+ canvas.emu-visualization {
     background-color: #1a1a1a;
     max-width: 100%;
     max-height: 100%;
-    border-radius: 20% !important;
+    border-radius: 15% !important;
 } 
-*/ 
+
 
 /* Main panel positions */
 .gui-container-left {

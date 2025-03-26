@@ -7,17 +7,14 @@ class GridRenderer extends BaseRenderer {
   constructor(gl, shaderManager) {
     super(gl, shaderManager);
 
-    //240x240
-    //360x360
-    //480x480
-    // Fixed target resolution
+    // Default target resolution
     this.TARGET_WIDTH = 240;
     this.TARGET_HEIGHT = 240;
 
     // Grid parameters (all in pixels)
     this.gridParams = {
       target: 341,
-      gap: 0,
+      gap: 1,
       aspectRatio: 1,
       scale: 0.98,      // Scale controls the classification radius (120 * scale)
       width: 10,
@@ -28,8 +25,9 @@ class GridRenderer extends BaseRenderer {
       showCellCenters: false, // Whether to display cell centers
       showIndices: false,     // Whether to display cell indices
       shadowIntensity: 0.33,   // Shadow intensity (0-1)
-      blurAmount: 0.40,        // Base blur amount (0-1)
+      blurAmount: 0.4,        // Base blur amount (0-1)
       shadowThreshold: 0.0,   // Distance from edge where shadow starts (0-1)
+      resolution: 240,        // Current resolution size
     };
 
     // Fixed masking radius - always 120 pixels regardless of scale
