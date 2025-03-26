@@ -30,7 +30,8 @@ class GridRenderer extends BaseRenderer {
       shadowIntensity: 0.3,   // Shadow intensity (0-1)
       blurAmount: 0.2,        // Base blur amount (0-1)
       shadowThreshold: 0.1,   // Distance from edge where shadow starts (0-1)
-      shadowSpread: 1.0       // How far the shadow spreads (0.1-5)
+      shadowSpread: 1.0,      // How far the shadow spreads (0.1-5)
+      shadowColor: [0.0, 0.0, 0.0, 1.0] // Shadow color tint (RGBA)
     };
 
     // Fixed masking radius - always 120 pixels regardless of scale
@@ -157,8 +158,11 @@ class GridRenderer extends BaseRenderer {
   }
 
   draw(particleSystem) {
+    const program = this.shaderManager.use("basic");
+    if (!program || !particleSystem) return;
+
+    // Make sure we're starting with a clean state
     const gl = this.gl;
-    if (!particleSystem) return;
 
     // Use existing grid geometry (which now contains only inside and boundary cells)
     const rectangles = this.gridGeometry;
@@ -188,29 +192,6 @@ class GridRenderer extends BaseRenderer {
       this.sendGridData(byteArray);
     }
 
-    // Clear both color and stencil buffers
-    gl.clearColor(0, 0, 0, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
-
-    // Define center point for stencil buffer circle
-    const center = 120; // Center point in pixel coordinates
-    const maskRadius = this.FIXED_MASK_RADIUS;
-
-    // ---- Stencil buffer setup matching GridGenRenderer.js exactly ----
-    gl.enable(gl.STENCIL_TEST);
-    gl.stencilFunc(gl.ALWAYS, 1, 0xFF);
-    gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
-    gl.stencilMask(0xFF);
-
-    // First pass: Draw the circle into the stencil buffer (but don't show it)
-    gl.colorMask(false, false, false, false); // Don't draw to color buffer
-    this.drawCircle(center, center, maskRadius, [1, 1, 1, 1]);
-
-    // Second pass: Only draw where the stencil is 1 (inside circle)
-    gl.colorMask(true, true, true, true); // Re-enable drawing to color buffer
-    gl.stencilFunc(gl.EQUAL, 1, 0xFF);    // Draw only where stencil is 1
-    gl.stencilMask(0x00);                 // Don't modify stencil buffer
-
     // Map values to colors for all cells
     rectangles.forEach((rect, index) => {
       const value = this.density[index];
@@ -227,7 +208,33 @@ class GridRenderer extends BaseRenderer {
         : [0.2, 0.2, 0.2, 1.0]; // Dark grey for debugging
     });
 
-    // Draw each rectangle independently with its own shadow
+    // Set up variables for circle mask
+    const center = 120;
+
+    // Use the fixed mask radius constant (always 120)
+    const maskRadius = this.FIXED_MASK_RADIUS;
+
+    // Clear both color and stencil buffers
+    gl.clearColor(0, 0, 0, 1.0);
+    gl.clear(gl.COLOR_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
+
+    // ---- Stencil buffer setup matching GridGenRenderer.js exactly ----
+    gl.enable(gl.STENCIL_TEST);
+    gl.stencilFunc(gl.ALWAYS, 1, 0xFF);
+    gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
+    gl.stencilMask(0xFF);
+
+    // First pass: Draw the circle into the stencil buffer (but don't show it)
+    gl.colorMask(false, false, false, false); // Don't draw to color buffer
+    this.drawCircle(center, center, maskRadius, [1, 1, 1, 1]);
+
+    // Second pass: Only draw where the stencil is 1 (inside circle)
+    gl.colorMask(true, true, true, true); // Re-enable drawing to color buffer
+    gl.stencilFunc(gl.EQUAL, 1, 0xFF);    // Draw only where stencil is 1
+    gl.stencilMask(0x00);                 // Don't modify stencil buffer
+
+    // Draw each rectangle, applying the stencil mask
+    // We can draw all rectangles now since they're all inside or boundary cells
     rectangles.forEach(rect => {
       this.drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color);
     });
@@ -362,9 +369,13 @@ class GridRenderer extends BaseRenderer {
     // Use temporary buffer for this single rectangle
     const buffer = this.gl.createBuffer();
     this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.STATIC_DRAW);
+    this.gl.bufferData(
+      this.gl.ARRAY_BUFFER,
+      new Float32Array(vertices),
+      this.gl.STATIC_DRAW
+    );
 
-    // Set up vertex attributes
+    // Set up attributes and uniforms
     this.gl.vertexAttribPointer(
       program.attributes.position,
       2,
@@ -380,36 +391,10 @@ class GridRenderer extends BaseRenderer {
     this.gl.uniform1f(program.uniforms.blurAmount, this.gridParams.blurAmount);
     this.gl.uniform1f(program.uniforms.shadowThreshold, this.gridParams.shadowThreshold);
     this.gl.uniform1f(program.uniforms.shadowSpread, this.gridParams.shadowSpread);
+    this.gl.uniform4fv(program.uniforms.shadowColor, this.gridParams.shadowColor);
 
-    // Set uniforms using the program's uniform locations
-    this.gl.uniformMatrix4fv(
-      program.uniforms.transform,
-      false,
-      transform
-    );
-
-    // Set color and shadow parameters
-    this.gl.uniform4fv(
-      program.uniforms.color,
-      color
-    );
-    this.gl.uniform1f(
-      program.uniforms.shadowIntensity,
-      this.gridParams.shadowIntensity
-    );
-    this.gl.uniform1f(
-      program.uniforms.shadowBlur,
-      this.gridParams.shadowBlur
-    );
-    this.gl.uniform1f(
-      program.uniforms.shadowOffset,
-      this.gridParams.shadowOffset
-    );
-
-    // Draw the rectangle
-    this.gl.drawArrays(this.gl.TRIANGLE_STRIP, 0, 4);
-
-    // Clean up
+    // Draw and cleanup
+    this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);
     this.gl.deleteBuffer(buffer);
   }
 
@@ -455,12 +440,16 @@ class GridRenderer extends BaseRenderer {
 
     for (let cellH = 120; cellH >= 1; cellH--) {
       const scaledH = Math.max(1, Math.round(cellH * this.gridParams.scale));
-      const scaledW = Math.max(1, Math.round(this.gridParams.aspectRatio * scaledH));
+      const scaledW = Math.max(
+        1,
+        Math.round(this.gridParams.aspectRatio * scaledH)
+      );
 
       const stepX = scaledW + this.gridParams.gap;
       const stepY = scaledH + this.gridParams.gap;
 
-      let maxCols = 0, maxRows = 0;
+      let maxCols = 0,
+        maxRows = 0;
       while (Math.hypot(maxCols * stepX, 0) <= radius) maxCols++;
       while (Math.hypot(0, maxRows * stepY) <= radius) maxRows++;
 
@@ -480,9 +469,9 @@ class GridRenderer extends BaseRenderer {
           const dx = c * stepX;
           const dy = r * stepY;
 
-          // Cell center position - use consistent Y coordinate system
+          // Cell center position
           const cellCenterX = center + dx;
-          const cellCenterY = center + dy;  // Use positive dy for consistent Y direction
+          const cellCenterY = center + dy;
 
           // Cell corners
           const cellLeft = cellCenterX - scaledW / 2;
@@ -511,7 +500,7 @@ class GridRenderer extends BaseRenderer {
               Math.hypot(corner.x - center, corner.y - center) > radius
             ).length;
 
-            // Check against the allowCut parameter
+            // Check against the allowCut parameter (match exactly with gridGenRenderer.js)
             if (cornersOutside <= allowCut && cornersOutside < 4) {
               includeCell = true;
             }
@@ -559,10 +548,25 @@ class GridRenderer extends BaseRenderer {
       // Classify cells
       this.classifyCells(rectangles, allowCut);
 
-      // Filter out 'outside' cells immediately after classification
+      // Log pre-filter cell counts for debugging
+      const preFilterTotal = rectangles.length;
+      const preFilterInside = rectangles.filter(r => r.cellType === 'inside').length;
+      const preFilterBoundary = rectangles.filter(r => r.cellType === 'boundary').length;
+      const preFilterOutside = rectangles.filter(r => r.cellType === 'outside').length;
+
+      // CRITICAL CHANGE: Filter out 'outside' cells immediately after classification
       const filteredRectangles = rectangles.filter(rect =>
         rect.cellType === 'inside' || rect.cellType === 'boundary'
       );
+
+      // Log post-filter cell counts for debugging
+      console.log("Grid cell filtering:", {
+        preFilter: { total: preFilterTotal, inside: preFilterInside, boundary: preFilterBoundary, outside: preFilterOutside },
+        postFilter: {
+          total: filteredRectangles.length, inside: filteredRectangles.filter(r => r.cellType === 'inside').length,
+          boundary: filteredRectangles.filter(r => r.cellType === 'boundary').length
+        }
+      });
 
       if (filteredRectangles.length >= this.gridParams.target) {
         this.gridParams.cols = cols;

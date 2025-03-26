@@ -117,8 +117,14 @@ export class GridUi extends BaseUi {
         .onChange(() => gridRenderer.updateGrid());
 
       this.blurAmountController = shadowFolder
-        .add(gridRenderer.gridParams, "blurAmount", 0, 5, 0.01)
+        .add(gridRenderer.gridParams, "blurAmount", 0, 1, 0.01)
         .name("Blur")
+        .onChange(() => gridRenderer.updateGrid());
+
+      // Shadow color control
+      this.shadowColorController = shadowFolder
+        .addColor(gridRenderer.gridParams, "shadowColor")
+        .name("Color")
         .onChange(() => gridRenderer.updateGrid());
 
       // Add tooltips for shadow controls
@@ -133,6 +139,9 @@ export class GridUi extends BaseUi {
 
       this.blurAmountController.domElement.parentElement.setAttribute('title',
         'Controls how soft the shadow edge is (0 = sharp, 1 = soft)');
+
+      this.shadowColorController.domElement.parentElement.setAttribute('title',
+        'Color tint applied to the shadow (default is black)');
 
       // Grid Stats
       const stats = gridParamFolder.addFolder("Stats");
@@ -215,5 +224,6 @@ export class GridUi extends BaseUi {
     safeUpdateDisplay(this.shadowThresholdController);
     safeUpdateDisplay(this.shadowSpreadController);
     safeUpdateDisplay(this.blurAmountController);
+    safeUpdateDisplay(this.shadowColorController);
   }
 }

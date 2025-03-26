@@ -170,6 +170,7 @@ class ShaderManager {
           uniform float blurAmount;
           uniform float shadowThreshold;
           uniform float shadowSpread;
+          uniform vec4 shadowColor;
           varying vec2 vUv;
           
           void main() {
@@ -186,9 +187,9 @@ class ShaderManager {
                   distFromEdge
               );
               
-              // Apply black shadow independently of base color
+              // Apply shadow independently of base color
               vec4 finalColor = color;
-              finalColor.rgb = mix(finalColor.rgb, vec3(0.0), shadow * shadowIntensity);
+              finalColor.rgb = mix(finalColor.rgb, shadowColor.rgb, shadow * shadowIntensity);
               
               gl_FragColor = finalColor;
           }
