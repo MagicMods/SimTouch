@@ -152,6 +152,48 @@ class ShaderManager {
           }
         `,
     },
+    gridCell: {
+      vert: `
+          attribute vec2 position;
+          uniform mat4 uTransform;
+          varying vec2 vUv;
+          
+          void main() {
+              gl_Position = uTransform * vec4(position, 0.0, 1.0);
+              vUv = position;
+          }
+        `,
+      frag: `
+          precision mediump float;
+          uniform vec4 color;
+          uniform float shadowIntensity;
+          uniform float blurAmount;
+          uniform float shadowThreshold;
+          uniform float shadowSpread;
+          varying vec2 vUv;
+          
+          void main() {
+              // Calculate distance from edges with configurable threshold
+              float distFromEdge = min(
+                  min(vUv.x, 1.0 - vUv.x),
+                  min(vUv.y, 1.0 - vUv.y)
+              );
+              
+              // Create shadow effect with threshold and spread
+              float shadow = 1.0 - smoothstep(
+                  shadowThreshold, 
+                  shadowThreshold + (blurAmount * shadowSpread), 
+                  distFromEdge
+              );
+              
+              // Apply black shadow independently of base color
+              vec4 finalColor = color;
+              finalColor.rgb = mix(finalColor.rgb, vec3(0.0), shadow * shadowIntensity);
+              
+              gl_FragColor = finalColor;
+          }
+        `,
+    },
     particles: {
       vert: `
           attribute vec2 position;

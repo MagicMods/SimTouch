@@ -7,6 +7,9 @@ class GridRenderer extends BaseRenderer {
   constructor(gl, shaderManager) {
     super(gl, shaderManager);
 
+    //240x240
+    //360x360
+    //480x480
     // Fixed target resolution
     this.TARGET_WIDTH = 240;
     this.TARGET_HEIGHT = 240;
@@ -14,9 +17,9 @@ class GridRenderer extends BaseRenderer {
     // Grid parameters (all in pixels)
     this.gridParams = {
       target: 341,
-      gap: 1,
+      gap: 0,
       aspectRatio: 1,
-      scale: 1.05,      // Scale controls the classification radius (120 * scale)
+      scale: 0.98,      // Scale controls the classification radius (120 * scale)
       width: 10,
       height: 10,
       cols: 23,
@@ -24,6 +27,10 @@ class GridRenderer extends BaseRenderer {
       allowCut: 3,      // Controls how many corners can be outside the circle (0-3)
       showCellCenters: false, // Whether to display cell centers
       showIndices: false,     // Whether to display cell indices
+      shadowIntensity: 0.3,   // Shadow intensity (0-1)
+      blurAmount: 0.2,        // Base blur amount (0-1)
+      shadowThreshold: 0.1,   // Distance from edge where shadow starts (0-1)
+      shadowSpread: 1.0       // How far the shadow spreads (0.1-5)
     };
 
     // Fixed masking radius - always 120 pixels regardless of scale
@@ -319,7 +326,7 @@ class GridRenderer extends BaseRenderer {
   }
 
   drawRectangle(x, y, width, height, color, clipPath) {
-    const program = this.shaderManager.use("basic");
+    const program = this.shaderManager.use("gridCell");
     if (!program) return;
 
     // If we have a clip path, draw as a clipped polygon
@@ -327,7 +334,6 @@ class GridRenderer extends BaseRenderer {
       return this.drawClippedCell(clipPath, color);
     }
 
-    // Regular rectangle drawing (existing code)
     // Convert positions from pixel to clip space
     const pos = this.pixelToClipSpace(x, y);
     const size = {
@@ -341,14 +347,23 @@ class GridRenderer extends BaseRenderer {
     const x2 = pos.x + size.width;
     const y2 = pos.y - size.height; // Subtract height since Y is flipped
 
+    // Create vertices in normalized space (0-1)
     const vertices = [
-      x1, y1, // Top-left
-      x2, y1, // Top-right
-      x1, y2, // Bottom-left
-      x1, y2, // Bottom-left
-      x2, y1, // Top-right
-      x2, y2, // Bottom-right
+      0, 0,  // Top-left
+      1, 0,  // Top-right
+      0, 1,  // Bottom-left
+      0, 1,  // Bottom-left
+      1, 0,  // Top-right
+      1, 1,  // Bottom-right
     ];
+
+    // Create transformation matrix
+    const transform = new Float32Array([
+      size.width, 0, 0, 0,
+      0, -size.height, 0, 0,
+      0, 0, 1, 0,
+      x1, y1, 0, 1
+    ]);
 
     // Use temporary buffer for this single rectangle
     const buffer = this.gl.createBuffer();
@@ -370,6 +385,11 @@ class GridRenderer extends BaseRenderer {
     );
     this.gl.enableVertexAttribArray(program.attributes.position);
     this.gl.uniform4fv(program.uniforms.color, color);
+    this.gl.uniformMatrix4fv(program.uniforms.uTransform, false, transform);
+    this.gl.uniform1f(program.uniforms.shadowIntensity, this.gridParams.shadowIntensity);
+    this.gl.uniform1f(program.uniforms.blurAmount, this.gridParams.blurAmount);
+    this.gl.uniform1f(program.uniforms.shadowThreshold, this.gridParams.shadowThreshold);
+    this.gl.uniform1f(program.uniforms.shadowSpread, this.gridParams.shadowSpread);
 
     // Draw and cleanup
     this.gl.drawArrays(this.gl.TRIANGLES, 0, 6);

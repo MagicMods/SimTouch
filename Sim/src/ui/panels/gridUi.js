@@ -97,6 +97,43 @@ export class GridUi extends BaseUi {
         .name("Show Cell Indices")
         .onChange(() => gridRenderer.updateGrid());
 
+      // Add shadow controls
+      const shadowFolder = gridParamFolder.addFolder("Shadow");
+
+      // Basic shadow controls
+      this.shadowIntensityController = shadowFolder
+        .add(gridRenderer.gridParams, "shadowIntensity", 0, 1, 0.01)
+        .name("Intensity")
+        .onChange(() => gridRenderer.updateGrid());
+
+      this.shadowThresholdController = shadowFolder
+        .add(gridRenderer.gridParams, "shadowThreshold", 0, 0.5, 0.01)
+        .name("Threshold")
+        .onChange(() => gridRenderer.updateGrid());
+
+      this.shadowSpreadController = shadowFolder
+        .add(gridRenderer.gridParams, "shadowSpread", 0.1, 5, 0.1)
+        .name("Spread")
+        .onChange(() => gridRenderer.updateGrid());
+
+      this.blurAmountController = shadowFolder
+        .add(gridRenderer.gridParams, "blurAmount", 0, 5, 0.01)
+        .name("Blur")
+        .onChange(() => gridRenderer.updateGrid());
+
+      // Add tooltips for shadow controls
+      this.shadowIntensityController.domElement.parentElement.setAttribute('title',
+        'Controls the overall strength of the shadow effect');
+
+      this.shadowThresholdController.domElement.parentElement.setAttribute('title',
+        'Distance from the edge where the shadow begins (0 = edge, 0.5 = center)');
+
+      this.shadowSpreadController.domElement.parentElement.setAttribute('title',
+        'How far the shadow spreads from the edge (higher values = wider shadow)');
+
+      this.blurAmountController.domElement.parentElement.setAttribute('title',
+        'Controls how soft the shadow edge is (0 = sharp, 1 = soft)');
+
       // Grid Stats
       const stats = gridParamFolder.addFolder("Stats");
       stats.add(gridRenderer.gridParams, "cols").name("Columns").listen();
@@ -172,5 +209,11 @@ export class GridUi extends BaseUi {
     safeUpdateDisplay(this.gridAllowCutController);
     safeUpdateDisplay(this.gridShowCellCentersController);
     safeUpdateDisplay(this.gridShowIndicesController);
+
+    // Update shadow controllers
+    safeUpdateDisplay(this.shadowIntensityController);
+    safeUpdateDisplay(this.shadowThresholdController);
+    safeUpdateDisplay(this.shadowSpreadController);
+    safeUpdateDisplay(this.blurAmountController);
   }
 }
