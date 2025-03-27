@@ -115,7 +115,7 @@ export class TurbulenceUi extends BaseUi {
 
     // Create scale button
     const scaleButton = document.createElement("button");
-    scaleButton.textContent = "Scale";
+    scaleButton.textContent = "Size";
     scaleButton.className = "toggle-button";
     if (turbulence.affectScale) scaleButton.classList.add("active");
     scaleButton.addEventListener("click", () => {
@@ -146,7 +146,7 @@ export class TurbulenceUi extends BaseUi {
     this.scaleButton = scaleButton;
 
     this.turbulenceStrengthController = this.gui.add(turbulence, "strength", 0, 10).name("T-Strength");
-    this.turbulenceScaleController = this.gui.add(turbulence, "scale", 0.01, 10, 0.01).name("T-Scale");
+    this.turbulenceScaleController = this.gui.add(turbulence, "scale", 0.1, 10, 0.01).name("T-Scale");
     this.turbulenceSpeedController = this.gui.add(turbulence, "speed", 0, 2).name("T-Speed");
 
     // COMBINED: Replace both controls with a single pullFactor slider from -1 to 1
@@ -191,7 +191,7 @@ export class TurbulenceUi extends BaseUi {
         }
       });
 
-    const scaleRangeFolder = this.gui.addFolder("Scale Range");
+    const scaleRangeFolder = this.gui.addFolder("Particle Size Range");
     this.scaleRangeFolder = scaleRangeFolder; // Store reference
 
     // Initial state of folder based on affectScale
@@ -201,9 +201,8 @@ export class TurbulenceUi extends BaseUi {
       scaleRangeFolder.close();
     }
 
-    this.turbulenceScaleStrengthController = scaleRangeFolder.add(turbulence, "scaleStrength", 0, 1).name("T-ScaleS");
-    this.turbulenceMinScaleController = scaleRangeFolder.add(turbulence, "minScale", 0.1, 1.0).name("T-MinScale");
-    this.turbulenceMaxScaleController = scaleRangeFolder.add(turbulence, "maxScale", 1.0, 4.0).name("T-MaxScale");
+    this.turbulenceMinScaleController = scaleRangeFolder.add(turbulence, "minScale", 0.005, 0.015, 0.001).name("T-Min Size");
+    this.turbulenceMaxScaleController = scaleRangeFolder.add(turbulence, "maxScale", 0.015, 0.03, 0.001).name("T-Max Size");
 
     // Add geometric pattern controls folder
     const noiseFolder = this.gui.addFolder("Noise");
@@ -695,7 +694,6 @@ export class TurbulenceUi extends BaseUi {
         }
       };
 
-      // Scale Field toggle wrapper
       targets["T-AfScaleF"] = {
         getValue: () => turbulence.scaleField,
         setValue: (value) => {
@@ -730,9 +728,8 @@ export class TurbulenceUi extends BaseUi {
     if (this.turbulenceStrengthController) targets["T-Strength"] = this.turbulenceStrengthController;
     if (this.turbulenceScaleController) targets["T-Scale"] = this.turbulenceScaleController;
     if (this.turbulenceSpeedController) targets["T-Speed"] = this.turbulenceSpeedController;
-    if (this.turbulenceScaleStrengthController) targets["T-ScaleS"] = this.turbulenceScaleStrengthController;
-    if (this.turbulenceMinScaleController) targets["T-MinScale"] = this.turbulenceMinScaleController;
-    if (this.turbulenceMaxScaleController) targets["T-MaxScale"] = this.turbulenceMaxScaleController;
+    if (this.turbulenceMinScaleController) targets["T-Min Size"] = this.turbulenceMinScaleController;
+    if (this.turbulenceMaxScaleController) targets["T-Max Size"] = this.turbulenceMaxScaleController;
 
     if (this.turbulenceRotationController) targets["T-Rot"] = this.turbulenceRotationController;
     if (this.turbulenceRotationSpeedController) targets["T-RotSpd"] = this.turbulenceRotationSpeedController;
@@ -783,7 +780,6 @@ export class TurbulenceUi extends BaseUi {
     safeUpdateDisplay(this.turbulenceStrengthController);
     safeUpdateDisplay(this.turbulenceScaleController);
     safeUpdateDisplay(this.turbulenceSpeedController);
-    safeUpdateDisplay(this.turbulenceScaleStrengthController);
     safeUpdateDisplay(this.turbulenceMinScaleController);
     safeUpdateDisplay(this.turbulenceMaxScaleController);
     safeUpdateDisplay(this.turbulenceRotationController);
@@ -828,7 +824,6 @@ export class TurbulenceUi extends BaseUi {
 
       // Reset all numerical values
       if (targets["T-Strength"]) targets["T-Strength"].setValue(0);
-      if (targets["T-ScaleS"]) targets["T-ScaleS"].setValue(0);
       if (targets["T-DirX"]) targets["T-DirX"].setValue(0);
       if (targets["T-DirY"]) targets["T-DirY"].setValue(0);
 

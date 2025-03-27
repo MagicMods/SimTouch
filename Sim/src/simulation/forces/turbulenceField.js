@@ -72,10 +72,10 @@ class TurbulenceField {
     this.scaleField = false;
     this.affectPosition = true;
     this.affectScale = true;
-    this.scaleStrength = 0;
+    this.scaleStrength = 1.0;
 
-    this.minScale = 0.5;
-    this.maxScale = 2.0;
+    this.minScale = 0.008;
+    this.maxScale = 0.03;
 
     this.timeOffset = timeOffset;
     this.noiseSeed = noiseSeed;
@@ -942,12 +942,10 @@ class TurbulenceField {
       // Apply particle radius scaling if enabled - works the same in either mode
       if (this.affectScale && system?.particleRadii) {
         const n1 = this.noise2D(x, y, this.time, true); // Now uses normalized coordinate processing
-        const noiseValue = n1 * this.scaleStrength;
-        // Map noise [0,1] to [minScale,maxScale]
-        const scalePartFactor =
-          this.minScale + noiseValue * (this.maxScale - this.minScale);
-        system.particleRadii[particleIndex] =
-          system.particleRadius * scalePartFactor;
+        // Use minScale and maxScale as direct size values, not scaling factors
+        // Ensure the size is at least minScale and at most maxScale
+        const particleSize = this.minScale + n1 * (this.maxScale - this.minScale);
+        system.particleRadii[particleIndex] = Math.max(this.minScale, Math.min(this.maxScale, particleSize));
       }
     } catch (err) {
       console.error("Error in turbulenceField.applyTurbulence:", err);
