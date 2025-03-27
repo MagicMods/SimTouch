@@ -122,6 +122,11 @@ export class TurbulenceUi extends BaseUi {
       turbulence.affectScale = !turbulence.affectScale;
       scaleButton.classList.toggle("active", turbulence.affectScale);
 
+      // Reset particle sizes when toggling off
+      if (!turbulence.affectScale && this.main?.particleSystem) {
+        turbulence.resetParticleSizes(this.main.particleSystem);
+      }
+
       // Toggle Scale Range folder visibility
       if (this.scaleRangeFolder) {
         if (turbulence.affectScale) {

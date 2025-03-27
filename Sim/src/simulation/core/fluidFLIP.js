@@ -6,7 +6,7 @@ class FluidFLIP {
     iterations = 20,
     overRelaxation = 1.5,
     boundary = null,
-    restDensity = 1.0,
+    restDensity = 2.0,
     particleSystem = null,
     ...params
   } = {}) {

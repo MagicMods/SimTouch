@@ -16,7 +16,7 @@ class GridRenderer extends BaseRenderer {
       target: 341,
       gap: 1,
       aspectRatio: 1,
-      scale: 0.98,      // Scale controls the classification radius (120 * scale)
+      scale: 0.974,      // Scale controls the classification radius (120 * scale)
       width: 10,
       height: 10,
       cols: 23,

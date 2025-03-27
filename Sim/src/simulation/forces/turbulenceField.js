@@ -954,6 +954,14 @@ class TurbulenceField {
     return [newVx, newVy];
   }
 
+  // Add method to reset particle sizes
+  resetParticleSizes(system) {
+    if (system?.particleRadii) {
+      // Reset all particle sizes to the base particle radius
+      system.particleRadii.fill(system.particleRadius);
+    }
+  }
+
   /**
    * Update the simulation for the current frame
    * @param {number} dt - Delta time since last frame in seconds

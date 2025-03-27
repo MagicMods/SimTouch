@@ -19,7 +19,7 @@ class ParticleSystem {
     this.numParticles = particleCount;
     this.timeStep = timeStep;
     this.gravity = new GravityForces(gravity);
-    this.particleRadius = 0.015;
+    this.particleRadius = 0.01;
     this.renderScale = 2000;
 
     // Add radius array to track individual particle sizes
@@ -35,7 +35,7 @@ class ParticleSystem {
     this.maxVelocity = 1; // Maximum particle velocity cap
 
     // Add rest state properties for fluid simulation
-    this.restDensity = 1.0;
+    this.restDensity = 2.0;
     this.gasConstant = 2.0;
 
     // Animation control

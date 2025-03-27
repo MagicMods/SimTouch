@@ -21,7 +21,7 @@ export class BoundaryUi extends BaseUi {
 
     if (boundary.radius !== undefined) {
       this.boundarySizeController = this.gui
-        .add(boundary, "radius", 0.1, 0.4, 0.001)
+        .add(boundary, "radius", 0.1, 0.55, 0.001)
         .name("B-Size")
         .onChange((value) => {
           if (boundary.update) boundary.update({ radius: value });
