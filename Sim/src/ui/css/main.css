@@ -165,6 +165,10 @@ canvas#glCanvas {
     background: #4a4a4a;
 }
 
+/* .preset-buttons button:hover:active {
+    background: #ff7300;
+} */
+
 .preset-select {
     width: calc(100% - 10px) !important; 
     padding: 3px !important; 
@@ -337,6 +341,11 @@ canvas#glCanvas {
 }
 
 .toggle-button.active {
+    background-color: #ebac00;
+    color: #000000;
+}
+
+.toggle-button.active:hover {
     background-color: #ebac00;
     color: #000000;
 }
