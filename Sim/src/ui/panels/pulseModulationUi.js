@@ -25,7 +25,6 @@ export class PulseModulationUi extends BaseUi {
     // Backwards compatibility properties - these will be populated dynamically
     // based on the active modulator during target selection
     this.targetSelectionButton = null;
-    this.targetSelectionIndicator = null;
 
     // Change the GUI title
     this.gui.title("Pulse Modulation");
@@ -242,18 +241,6 @@ export class PulseModulationUi extends BaseUi {
   }
 
   addPulseModulator() {
-    if (!this.modulatorManager) {
-      console.error("ModulatorManager not initialized in PulseModulationUi");
-      return null;
-    }
-
-    const targetNames = this.modulatorManager.getTargetNames();
-    if (targetNames.length === 0) {
-      console.warn("No targets available for modulation");
-      alert("No modulatable targets found. Please check console for details.");
-      return null;
-    }
-
     const modulator = this.modulatorManager.createPulseModulator();
 
     // Add BPM property that maps to frequency
@@ -271,60 +258,59 @@ export class PulseModulationUi extends BaseUi {
 
     // Create button group container for Enable and Sync
     const buttonContainer = document.createElement("div");
-    buttonContainer.className = "modulator-toggle-buttons";
-    buttonContainer.style.cssText = `
-      display: flex;
-      gap: 5px;
-      // margin-bottom: 10px;
-      width: 100%;
-    `;
+    buttonContainer.style.display = "flex";
+    buttonContainer.style.justifyContent = "space-between";
+    buttonContainer.style.margin = "0px 10px";
 
     // Create Enable button
     const enableButton = document.createElement("button");
-    enableButton.textContent = "Enable";
+    enableButton.textContent = "Enabled";
     enableButton.className = "toggle-button";
-    if (modulator.enabled) enableButton.classList.add("active");
+
+    enableButton.style.backgroundColor = modulator.enabled ? "#ffbb00" : "#333";
+    enableButton.style.color = modulator.enabled ? "#000" : "#ccc";
 
     enableButton.addEventListener("click", () => {
       modulator.enabled = !modulator.enabled;
-      enableButton.classList.toggle("active", modulator.enabled);
-
-      // When enabling, reinitialize the modulator
-      if (modulator.enabled) {
-        if (typeof modulator.reinitialize === "function") {
-          modulator.reinitialize();
-        }
-      } else {
-        // When disabling, reset to original value
-        if (typeof modulator.resetToOriginal === "function") {
-          modulator.resetToOriginal();
-        }
-      }
+      enableButton.style.backgroundColor = modulator.enabled ? "#ffbb00" : "#333";
+      enableButton.style.color = modulator.enabled ? "#000" : "#ccc";
     });
 
     // Create Sync button
     const syncButton = document.createElement("button");
     syncButton.textContent = "Sync";
     syncButton.className = "toggle-button";
-    if (modulator.sync) syncButton.classList.add("active");
+    syncButton.style.backgroundColor = modulator.sync ? "#ffbb00" : "#333";
+    syncButton.style.color = modulator.sync ? "#000" : "#ccc";
+
     syncButton.addEventListener("click", () => {
       modulator.sync = !modulator.sync;
-      syncButton.classList.toggle("active", modulator.sync);
+      syncButton.style.backgroundColor = modulator.sync ? "#ffbb00" : "#333";
+      syncButton.style.color = modulator.sync ? "#000" : "#ccc";
 
-      // Show/hide the frequency control based on sync state
-      if (frequencyController) {
-        frequencyController.domElement.style.display = modulator.sync ? "none" : "";
-      }
-
-      // When enabling sync, update frequency to match master
+      // If sync is enabled, update frequency from master
       if (modulator.sync) {
         modulator.frequency = this.masterFrequency;
-        modulator.frequencyBpm = this.hzToBpm(this.masterFrequency);
-        modulator.currentPhase = 0;
-        frequencyController.updateDisplay();
+        modulator.frequencyBpm = this.masterBpm;
+
+        // Update BPM slider if it exists
+        if (modulator._uiElements && modulator._uiElements.bpmController) {
+          modulator._uiElements.bpmController.setValue(modulator.frequencyBpm);
+          // Hide BPM controller when synced
+          modulator._uiElements.bpmController.domElement.style.display = "none";
+        }
+
+        // Update frequency slider if it exists
+        if (modulator._uiElements && modulator._uiElements.frequencyController) {
+          modulator._uiElements.frequencyController.setValue(modulator.frequency);
+        }
+      } else {
+        // Show BPM controller when not synced
+        if (modulator._uiElements && modulator._uiElements.bpmController) {
+          modulator._uiElements.bpmController.domElement.style.display = "";
+        }
       }
     });
-
 
     // Add buttons to container
     buttonContainer.appendChild(enableButton);
@@ -341,9 +327,12 @@ export class PulseModulationUi extends BaseUi {
     modulator._uiElements.enableButton = enableButton;
     modulator._uiElements.syncButton = syncButton;
 
+    // Get available targets from ModulatorManager
+    const targetNames = ["None"].concat(this.modulatorManager.getTargetNames());
+
     // Add target selector
     const targetController = folder
-      .add(modulator, "targetName", ["None", ...targetNames])
+      .add(modulator, "targetName", targetNames)
       .name("Target")
       .onChange((value) => {
         // Skip "None" option
@@ -361,6 +350,9 @@ export class PulseModulationUi extends BaseUi {
 
         // Check if this is a selector-type target
         const isSelector = modulator.isSelector || false;
+
+        // Update the wave type controller options based on target type
+        this.updateWaveTypeOptions(modulator, waveTypeController);
 
         // Update min/max controllers with the target's range
         const target = this.modulatorManager.getTargetInfo(value);
@@ -428,141 +420,198 @@ export class PulseModulationUi extends BaseUi {
 
     targetController.domElement.classList.add("full-width");
 
-    // Add modulation type
-    folder
-      .add(modulator, "type", [
-        "sine",
-        "square",
-        "triangle",
-        "sawtooth",
-        "pulse",
-        "random",
-        "increment",
-      ])
-      .name("Wave Type")
-      .domElement.classList.add("full-width");
-
-    const beatDivisionController = folder
-      .add(modulator, "beatDivision", [
-        "1",    // Whole note (1 per beat)
-        "1/2",  // Half note (2 per beat)
-        "1/4",  // Quarter note (4 per beat)
-        "1/8",  // Eighth note (8 per beat)
-        "1/16", // Sixteenth note (16 per beat)
-        "1/32", // Thirty-second note (32 per beat)
-        "2",    // Half time (twice as slow)
-        "4"     // Quarter time (4 times as slow)
-      ])
-      .name("Beat Division")
-      .onChange(() => {
-        if (modulator.sync) {
-          modulator.currentPhase = 0;
-        }
-      });
-
-    beatDivisionController.domElement.classList.add("full-width");
-    beatDivisionController.domElement.style.marginTop = "10px";
-
-    // Add frequency control (now as BPM)
-    const frequencyController = folder
-      .add(modulator, "frequencyBpm", 1, 180, 1)
-      .name("BPM")
-      .onChange((value) => {
-        // Convert BPM to Hz for internal use
-        modulator.frequency = this.bpmToHz(value);
-      });
-
-    if (modulator.sync) {
-      frequencyController.domElement.style.display = "none";
-    }
-
-    const phaseController = folder
-      .add(modulator, "phase", 0, Math.PI)
-      .name("Phase")
-    phaseController.domElement.style.marginBottom = "10px";
-
-
-    const minController = folder
-      .add(modulator, "min", -10, 10)
-      .name("Min Value");
-
-    const maxController = folder
-      .add(modulator, "max", -10, 10)
-      .name("Max Value");
-
-    maxController.domElement.style.marginBottom = "10px";
-
-
-    const removeButton = {
-      remove: () => {
-        console.log(`Removing modulator with target ${modulator.targetName}`);
-
-        // Reset to original value using the modulator's built-in method
-        // This is the simplest approach - the modulator already knows its original value!
-        if (modulator && typeof modulator.resetToOriginal === "function") {
-          modulator.resetToOriginal();
-        }
-
-        // Disable the modulator (this also calls resetToOriginal internally)
-        if (modulator && typeof modulator.disable === "function") {
-          modulator.disable();
-        } else if (modulator) {
-          modulator.enabled = false;
-        }
-
-        // Remove from the manager
-        const index = this.modulatorManager.modulators.indexOf(modulator);
-        if (index !== -1) {
-          this.modulatorManager.modulators.splice(index, 1);
-        }
-        folder.destroy();
-
-        // Remove from our tracking array
-        const folderIndex = this.modulatorFolders.indexOf(folder);
-        if (folderIndex > -1) {
-          this.modulatorFolders.splice(folderIndex, 1);
-        }
-      },
-    };
-
-    folder.add(removeButton, "remove").name("Remove");
-    folder.open();
-
     // Add target selection function to the modulator folder
     const addTargetSelectionUI = () => {
-      // Create indicator
-      const targetSelectionIndicator = document.createElement('div');
-      targetSelectionIndicator.className = 'target-selection-indicator';
+      // Create controller wrapper
+      const controllerWrapper = document.createElement('div');
+      controllerWrapper.className = 'controller';
 
       // Create button
       const targetSelectionButton = document.createElement('button');
       targetSelectionButton.textContent = 'Select Target';
-      targetSelectionButton.className = 'preset-control-button';
-      // targetSelectionButton.style.width = '100%';
-      targetSelectionButton.style.margin = '5px 0';
+      targetSelectionButton.className = 'target-selection-button';
 
       targetSelectionButton.addEventListener('click', () => {
         this.toggleTargetSelectionMode(modulator);
       });
 
+      // Add button to controller wrapper
+      controllerWrapper.appendChild(targetSelectionButton);
+
       // Add elements to folder
       const folderChildren = folder.domElement.querySelector('.children');
       const targetControllerElement = targetController.domElement;
       if (folderChildren && targetControllerElement) {
-        folderChildren.insertBefore(targetSelectionIndicator, targetControllerElement);
-        folderChildren.insertBefore(targetSelectionButton, targetControllerElement);
+        folderChildren.insertBefore(controllerWrapper, targetControllerElement);
       }
 
       // Store references on modulator
       modulator._uiElements = modulator._uiElements || {};
       modulator._uiElements.targetSelectionButton = targetSelectionButton;
-      modulator._uiElements.targetSelectionIndicator = targetSelectionIndicator;
     };
 
     // Add the target selection UI
     addTargetSelectionUI();
 
+    // Add modulation type
+    const waveTypeController = folder
+      .add(modulator, "type", ["sine", "square", "triangle", "sawtooth", "pulse", "random", "increment"])
+      .name("Wave Type")
+      .onChange((value) => {
+        // Update the modulator's wave type
+        modulator.type = value;
+      });
+
+    // Store reference to the wave type controller
+    modulator._uiElements.waveTypeController = waveTypeController;
+    waveTypeController.domElement.classList.add("full-width");
+
+    // Add special selector loop type controller (hidden by default)
+    const loopTypeController = folder
+      .add(modulator, "type", ["forward", "backward", "loop"])
+      .name("Loop Type")
+      .onChange((value) => {
+        // Reset direction for loop mode
+        if (value === "loop") {
+          modulator.direction = 1;
+        }
+      });
+
+    // Store reference and hide by default
+    modulator._uiElements.loopTypeController = loopTypeController;
+    loopTypeController.domElement.style.display = "none";
+    loopTypeController.domElement.classList.add("full-width");
+
+    // // Add frequency controls (both Hz and BPM)
+    // const frequencyController = folder
+    //   .add(modulator, "frequency", 0.01, 5)
+    //   .name("Frequency (Hz)")
+    //   .onChange((value) => {
+    //     // Update BPM based on Hz
+    //     modulator.frequencyBpm = this.hzToBpm(value);
+
+    //     // Update BPM slider if it exists
+    //     if (modulator._uiElements.bpmController) {
+    //       modulator._uiElements.bpmController.setValue(modulator.frequencyBpm);
+    //     }
+    //   });
+
+    // // Store reference to the frequency controller
+    // modulator._uiElements.frequencyController = frequencyController;
+
+    // Add BPM controller
+    const bpmController = folder
+      .add(modulator, "frequencyBpm", 0.5, 300)
+      .name("BPM")
+      .onChange((value) => {
+        // Update Hz frequency based on BPM
+        modulator.frequency = this.bpmToHz(value);
+
+        // Update frequency slider
+        frequencyController.setValue(modulator.frequency);
+      });
+
+    // Store reference to the BPM controller
+    modulator._uiElements.bpmController = bpmController;
+
+    // Initially hide BPM controller if sync is enabled
+    if (modulator.sync) {
+      bpmController.domElement.style.display = "none";
+    }
+
+    // Add beat division options
+    const beatDivisionController = folder
+      .add(modulator, "beatDivision", [
+        "1",
+        "2",
+        "4",
+        "8",
+        "1/2",
+        "1/4",
+        "1/8",
+        "1/16",
+      ])
+      .name("Beat Division");
+
+    beatDivisionController.domElement.classList.add("full-width");
+
+    // Add phase control
+    folder.add(modulator, "phase", 0, 1).name("Phase");
+
+    // Add min/max controls
+    const minController = folder
+      .add(modulator, "min", 0, 1)
+      .name("Min Value")
+      .onChange((value) => {
+        if (value > modulator.max) {
+          modulator.min = modulator.max;
+          minController.updateDisplay();
+        }
+      });
+
+    const maxController = folder
+      .add(modulator, "max", 0, 1)
+      .name("Max Value")
+      .onChange((value) => {
+        if (value < modulator.min) {
+          modulator.max = modulator.min;
+          maxController.updateDisplay();
+        }
+      });
+
+    // Create Remove button to delete the modulator
+    const removeButton = { remove: () => this.removeModulator(index) };
+    folder.add(removeButton, "remove").name("Remove");
+    folder.open();
+
     return modulator;
+  }
+
+  // Modified method to update wave types based on target type
+  updateWaveTypeOptions(modulator, waveTypeController) {
+    if (!modulator || !waveTypeController) return;
+
+    // Get reference to the loop type controller
+    const loopTypeController = modulator._uiElements?.loopTypeController;
+    if (!loopTypeController) return;
+
+    if (modulator.isSelector) {
+      // For selectors: hide wave type controller, show loop type controller
+      waveTypeController.domElement.style.display = "none";
+      loopTypeController.domElement.style.display = "";
+
+      // Set appropriate type if needed
+      if (!["forward", "backward", "loop"].includes(modulator.type)) {
+        // First set the type directly on the modulator
+        modulator.type = "forward"; // Default for selectors
+
+        // Then force-update the Loop Type controller to show the correct value
+        loopTypeController.setValue("forward");
+        loopTypeController.updateDisplay();
+      } else {
+        // Make sure the Loop Type controller shows the current wave type
+        loopTypeController.setValue(modulator.type);
+        loopTypeController.updateDisplay();
+      }
+    } else {
+      // For continuous values: show wave type controller, hide loop type controller
+      waveTypeController.domElement.style.display = "";
+      loopTypeController.domElement.style.display = "none";
+
+      // Set appropriate type if needed
+      if (!["sine", "square", "triangle", "sawtooth", "pulse", "random", "increment"].includes(modulator.type)) {
+        // First set the type directly on the modulator
+        modulator.type = "sine"; // Default for continuous
+
+        // Then force-update the Wave Type controller to show the correct value
+        waveTypeController.setValue("sine");
+        waveTypeController.updateDisplay();
+      } else {
+        // Make sure the Wave Type controller shows the current wave type
+        waveTypeController.setValue(modulator.type);
+        waveTypeController.updateDisplay();
+      }
+    }
   }
 
   getModulatorsData() {
@@ -1090,15 +1139,14 @@ export class PulseModulationUi extends BaseUi {
       // Remove highlighting
       this.toggleTargetControlsHighlight(false);
 
-      // Update button and indicator
+      // Update button 
       this.updateTargetButtonIndicator(modulator, false);
 
-      // Remove click listener
-      document.removeEventListener('click', this.handleTargetSelection);
+      // Remove click listener with capture phase to match how it was added
+      document.removeEventListener('click', this.handleTargetSelection, true);
 
       // Clear backwards compatibility references
       this.targetSelectionButton = null;
-      this.targetSelectionIndicator = null;
     }
     // Entering selection mode
     else if (modulator) {
@@ -1112,20 +1160,19 @@ export class PulseModulationUi extends BaseUi {
       this.targetSelectionMode = true;
       this.activeModulator = modulator;
 
-      // Update button and indicator
+      // Update button
       this.updateTargetButtonIndicator(modulator, true);
 
       // Enable highlighting
       this.toggleTargetControlsHighlight(true);
 
-      // Add click listener
-      document.removeEventListener('click', this.handleTargetSelection); // Remove first to prevent duplicates
-      document.addEventListener('click', this.handleTargetSelection);
+      // Add click listener with capture phase to ensure it fires before other handlers
+      document.removeEventListener('click', this.handleTargetSelection, true); // Remove first to prevent duplicates
+      document.addEventListener('click', this.handleTargetSelection, true);
 
       // Backwards compatibility
       if (modulator._uiElements) {
         this.targetSelectionButton = modulator._uiElements.targetSelectionButton;
-        this.targetSelectionIndicator = modulator._uiElements.targetSelectionIndicator;
       }
     }
     // Called from elsewhere (e.g., handleTargetSelection) - just exit mode
@@ -1136,19 +1183,18 @@ export class PulseModulationUi extends BaseUi {
         // Remove highlighting
         this.toggleTargetControlsHighlight(false);
 
-        // Update button and indicator of active modulator
+        // Update button of active modulator
         if (this.activeModulator) {
           this.updateTargetButtonIndicator(this.activeModulator, false);
         }
 
-        // Remove click listener
-        document.removeEventListener('click', this.handleTargetSelection);
+        // Remove click listener with capture phase to match how it was added
+        document.removeEventListener('click', this.handleTargetSelection, true);
 
         // Clear state
         this.targetSelectionMode = false;
         this.activeModulator = null;
         this.targetSelectionButton = null;
-        this.targetSelectionIndicator = null;
       }
     }
   }
@@ -1164,6 +1210,12 @@ export class PulseModulationUi extends BaseUi {
 
     // Find the clicked element
     let element = e.target;
+
+    // Check if the click is on the selection button itself - ignore it
+    if (element === this.activeModulator._uiElements.targetSelectionButton) {
+      console.log('Clicked on the target selection button - ignoring');
+      return;
+    }
 
     while (element && !element.classList.contains('controller')) {
       element = element.parentElement;
@@ -1205,36 +1257,76 @@ export class PulseModulationUi extends BaseUi {
       return;
     }
 
+    // Exit target selection mode before changing the target to prevent duplicate wave type controllers
+    this.toggleTargetSelectionMode(null);
+
     // Set the value of the dropdown controller
     targetController.setValue(targetName);
 
-    // Trigger onChange if available
-    if (typeof targetController._onChange === 'function') {
-      targetController._onChange(targetName);
-    } else {
-      targetController.updateDisplay();
+    // Update folder title to include target name
+    const index = this.modulatorFolders.indexOf(folder);
+    if (index !== -1) {
+      folder.title(`Modulator ${index + 1}  |  ${targetName}`);
     }
-
-    // Exit target selection mode
-    this.toggleTargetSelectionMode(null);
   }
 
   updateTargetButtonIndicator(modulator, isActive) {
     if (!modulator || !modulator._uiElements) {
-      console.warn('Cannot update button/indicator: modulator or UI elements not available');
+      console.warn('Cannot update button: modulator or UI elements not available');
       return;
     }
 
     const button = modulator._uiElements.targetSelectionButton;
-    const indicator = modulator._uiElements.targetSelectionIndicator;
 
     if (button) {
       button.style.backgroundColor = isActive ? '#ff4444' : '';
       button.textContent = isActive ? 'Cancel Selection' : 'Select Target';
     }
+  }
 
-    if (indicator) {
-      indicator.style.display = isActive ? 'block' : 'none';
+  // Method to remove a modulator
+  removeModulator(index) {
+    // Find the modulator folder
+    const folder = this.modulatorFolders[index];
+    if (!folder) {
+      console.error(`No folder found at index ${index}`);
+      return;
     }
+
+    // Get the modulator from the manager
+    const modulator = this.modulatorManager.modulators.find(
+      (mod) => mod.folder === folder
+    );
+
+    if (!modulator) {
+      console.error(`No modulator found for folder at index ${index}`);
+      return;
+    }
+
+    console.log(`Removing modulator with target ${modulator.targetName}`);
+
+    // Reset to original value
+    if (typeof modulator.resetToOriginal === "function") {
+      modulator.resetToOriginal();
+    }
+
+    // Disable the modulator
+    if (typeof modulator.disable === "function") {
+      modulator.disable();
+    } else {
+      modulator.enabled = false;
+    }
+
+    // Remove from the manager
+    const modulatorIndex = this.modulatorManager.modulators.indexOf(modulator);
+    if (modulatorIndex !== -1) {
+      this.modulatorManager.modulators.splice(modulatorIndex, 1);
+    }
+
+    // Destroy the folder in the UI
+    folder.destroy();
+
+    // Remove from our tracking array
+    this.modulatorFolders.splice(index, 1);
   }
 }

@@ -227,6 +227,7 @@ canvas#glCanvas {
 
 /* Common UI component styles */
 .preset-control-button {
+    width: 100%;
     background: #3a3a3a;
     border: 1px solid #242424;
     color: white;
@@ -482,4 +483,25 @@ canvas#glCanvas {
   height: 1px;
   margin: 8px 0;
   background: #555;
+}
+
+/* Target selection button */
+.target-selection-button {
+  width: 100%;
+  background: #3a3a3a;
+  border: 1px solid #242424;
+  color: white;
+  cursor: pointer;
+  white-space: nowrap;
+  margin: 0 4px;
+}
+
+.target-selection-button:hover {
+  background: #4a4a4a;
+}
+
+/* Make the controller wrapper for target selection button full width */
+.controller .target-selection-button {
+  width: 100%;
+  margin: 0 8px;
 }

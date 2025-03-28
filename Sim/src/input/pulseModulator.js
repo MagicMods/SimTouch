@@ -18,6 +18,14 @@ class PulseModulator {
     this.selectorOptions = []; // Array to store available options for selectors
     this.beatDivision = "1"; // Beat division multiplier (1, 1/2, 1/4, 1/8, etc.)
     this.currentIndex = 0; // Track current pattern index for selectors
+    this.direction = 1; // For selector loop mode: 1 = forward, -1 = backward
+    this.previousWaveType = null; // Store previous wave type when switching to/from selector
+
+    // Standard wave types for continuous values
+    this.continuousWaveTypes = ["sine", "square", "triangle", "sawtooth", "pulse", "random", "increment"];
+
+    // Wave types for selector targets
+    this.selectorWaveTypes = ["forward", "backward", "loop"];
 
     // For special wave types
     this._lastBeatTime = 0;  // Track when the last beat occurred
@@ -72,6 +80,10 @@ class PulseModulator {
     } else if (this.type === "increment") {
       this._incrementValue = 0; // Reset to starting value
       this._incrementDirection = 1; // Reset to moving upward
+    } else if (this.isSelector) {
+      // For selectors, reset to min index and forward direction
+      this.currentIndex = Math.floor(this.min);
+      this.direction = 1;
     }
 
     console.log(`Reinitialized modulator for ${this.targetName}`);
@@ -98,7 +110,11 @@ class PulseModulator {
     }
 
     // Check if target is a selector/dropdown (like Boundary or Mode)
+    const wasSelector = this.isSelector;
     this.isSelector = this._detectIfSelector(targetName, target);
+
+    // Handle wave type changes based on target type
+    this._handleWaveTypeChange(wasSelector);
 
     // If it's a selector, get the available options
     if (this.isSelector) {
@@ -108,6 +124,7 @@ class PulseModulator {
       this.max = this.selectorOptions.length - 1;
       // Initialize current index to min
       this.currentIndex = Math.floor(this.min);
+      this.direction = 1; // Default to forward direction
       console.log(`Initialized selector ${targetName} with ${this.selectorOptions.length} options, current index: ${this.currentIndex}`);
     }
     // Only update min and max if we're NOT loading from preset and it's not a selector
@@ -122,6 +139,31 @@ class PulseModulator {
     }
   }
 
+  _handleWaveTypeChange(wasSelector) {
+    // Target type has changed (from selector to continuous or vice versa)
+    if (this.isSelector !== wasSelector) {
+      if (this.isSelector) {
+        // Switching from continuous to selector
+        // Store the current wave type before switching
+        this.previousWaveType = this.type;
+
+        // Set a default selector wave type
+        this.type = "forward";
+
+        console.log(`Target is now a selector. Changed wave type to ${this.type}, stored previous: ${this.previousWaveType}`);
+      } else {
+        // Switching from selector to continuous
+        // Restore previous wave type if available, or use default
+        if (this.previousWaveType && this.continuousWaveTypes.includes(this.previousWaveType)) {
+          this.type = this.previousWaveType;
+        } else {
+          this.type = "sine"; // Default
+        }
+
+        console.log(`Target is now continuous. Restored wave type to ${this.type}`);
+      }
+    }
+  }
 
   _detectIfSelector(targetName, controller) {
     // Check specific target names known to be selectors
@@ -286,45 +328,6 @@ class PulseModulator {
         }
       }
 
-      // Calculate a normalized oscillation value (0-1)
-      let normalizedValue;
-      switch (waveType) {
-        case "sine":
-          normalizedValue = (Math.sin(oscillationPhase * Math.PI * 2) + 1) / 2;
-          break;
-        case "square":
-          normalizedValue = oscillationPhase < 0.5 ? 1 : 0;
-          break;
-        case "triangle":
-          normalizedValue = oscillationPhase < 0.5
-            ? oscillationPhase * 2
-            : 2 - (oscillationPhase * 2);
-          break;
-        case "sawtooth":
-          normalizedValue = oscillationPhase;
-          break;
-        case "pulse":
-          // Inversed sawtooth with sharp decay then smooth ease out
-          normalizedValue = oscillationPhase < 0.2 ? 1.0 - oscillationPhase * 5 : 0;
-          break;
-        case "random":
-          // Use the current random value
-          normalizedValue = this._randomValue;
-          break;
-        case "increment":
-          // Use the current increment value
-          normalizedValue = this._incrementValue;
-          break;
-        default:
-          normalizedValue = (Math.sin(oscillationPhase * Math.PI * 2) + 1) / 2;
-      }
-
-      // Safety check for NaN
-      if (isNaN(normalizedValue)) {
-        console.log(`Wave calculation produced NaN for ${this.targetName}. Using default value.`);
-        normalizedValue = 0.5;
-      }
-
       // Special handling for selector/dropdown type targets
       if (this.isSelector && this.selectorOptions.length > 0) {
         // Get indices from min/max values
@@ -341,12 +344,40 @@ class PulseModulator {
           if (currentTime - this._lastBeatTime >= tickInterval) {
             this._lastBeatTime = currentTime;
 
-            // Increment current index
-            this.currentIndex++;
+            // Update index based on wave type
+            if (waveType === "forward") {
+              // Forward: increment index, wrap from max to min
+              this.currentIndex++;
+              if (this.currentIndex > maxIndex) {
+                this.currentIndex = minIndex;
+              }
+            }
+            else if (waveType === "backward") {
+              // Backward: decrement index, wrap from min to max
+              this.currentIndex--;
+              if (this.currentIndex < minIndex) {
+                this.currentIndex = maxIndex;
+              }
+            }
+            else if (waveType === "loop") {
+              // Loop/Bounce: increment or decrement based on direction, reverse at boundaries
+              this.currentIndex += this.direction;
 
-            // Wrap around if we hit max
-            if (this.currentIndex > maxIndex) {
-              this.currentIndex = minIndex;
+              // Check boundaries and reverse direction if needed
+              if (this.currentIndex > maxIndex) {
+                this.currentIndex = maxIndex - 1; // Go back one step
+                this.direction = -1; // Reverse direction
+              } else if (this.currentIndex < minIndex) {
+                this.currentIndex = minIndex + 1; // Go forward one step
+                this.direction = 1; // Reverse direction
+              }
+            }
+            else {
+              // Default behavior (same as forward)
+              this.currentIndex++;
+              if (this.currentIndex > maxIndex) {
+                this.currentIndex = minIndex;
+              }
             }
 
             // Apply the current pattern
@@ -356,6 +387,45 @@ class PulseModulator {
           }
         }
       } else {
+        // Calculate a normalized oscillation value (0-1)
+        let normalizedValue;
+        switch (waveType) {
+          case "sine":
+            normalizedValue = (Math.sin(oscillationPhase * Math.PI * 2) + 1) / 2;
+            break;
+          case "square":
+            normalizedValue = oscillationPhase < 0.5 ? 1 : 0;
+            break;
+          case "triangle":
+            normalizedValue = oscillationPhase < 0.5
+              ? oscillationPhase * 2
+              : 2 - (oscillationPhase * 2);
+            break;
+          case "sawtooth":
+            normalizedValue = oscillationPhase;
+            break;
+          case "pulse":
+            // Inversed sawtooth with sharp decay then smooth ease out
+            normalizedValue = oscillationPhase < 0.2 ? 1.0 - oscillationPhase * 5 : 0;
+            break;
+          case "random":
+            // Use the current random value
+            normalizedValue = this._randomValue;
+            break;
+          case "increment":
+            // Use the current increment value
+            normalizedValue = this._incrementValue;
+            break;
+          default:
+            normalizedValue = (Math.sin(oscillationPhase * Math.PI * 2) + 1) / 2;
+        }
+
+        // Safety check for NaN
+        if (isNaN(normalizedValue)) {
+          console.log(`Wave calculation produced NaN for ${this.targetName}. Using default value.`);
+          normalizedValue = 0.5;
+        }
+
         // For numeric values, directly map to the target range
         const targetValue = this.min + normalizedValue * (this.max - this.min);
         this.targetController.setValue(targetValue);
