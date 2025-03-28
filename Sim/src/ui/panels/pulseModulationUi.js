@@ -275,7 +275,7 @@ export class PulseModulationUi extends BaseUi {
     buttonContainer.style.cssText = `
       display: flex;
       gap: 5px;
-      margin-bottom: 10px;
+      // margin-bottom: 10px;
       width: 100%;
     `;
 
@@ -533,13 +533,12 @@ export class PulseModulationUi extends BaseUi {
       // Create indicator
       const targetSelectionIndicator = document.createElement('div');
       targetSelectionIndicator.className = 'target-selection-indicator';
-      targetSelectionIndicator.textContent = 'Click any UI control to select it as target';
 
       // Create button
       const targetSelectionButton = document.createElement('button');
       targetSelectionButton.textContent = 'Select Target';
       targetSelectionButton.className = 'preset-control-button';
-      targetSelectionButton.style.width = '100%';
+      // targetSelectionButton.style.width = '100%';
       targetSelectionButton.style.margin = '5px 0';
 
       targetSelectionButton.addEventListener('click', () => {
@@ -1046,12 +1045,37 @@ export class PulseModulationUi extends BaseUi {
     if (highlight) {
       // First make sure modulator controls are marked
       this.markModulatorControls();
-      // Add the class to body
+
+      // Add the selection class to body (will apply general styling)
       document.body.classList.add('target-selection-mode');
-      console.log('Enabled target selection highlighting');
+
+      // Get all registered target names
+      const validTargetNames = this.modulatorManager ? this.modulatorManager.getTargetNames() : [];
+
+      // For each controller, add highlight only if it's a valid target
+      const controllers = document.querySelectorAll('.controller:not(.pulse-modulator-control)');
+      controllers.forEach(controller => {
+        const nameElement = controller.querySelector('.name');
+        if (nameElement) {
+          const controllerName = nameElement.textContent.trim();
+          const isValidTarget = validTargetNames.includes(controllerName);
+
+          // Add a custom attribute for targeting CSS
+          controller.setAttribute('data-is-target', isValidTarget ? 'true' : 'false');
+        }
+      });
+
+      console.log(`Enabled target selection highlighting (${validTargetNames.length} valid targets available)`);
     } else {
       // Remove the class from body
       document.body.classList.remove('target-selection-mode');
+
+      // Clean up any data attributes we added
+      const controllers = document.querySelectorAll('[data-is-target]');
+      controllers.forEach(controller => {
+        controller.removeAttribute('data-is-target');
+      });
+
       console.log('Disabled target selection highlighting');
     }
   }
@@ -1132,97 +1156,63 @@ export class PulseModulationUi extends BaseUi {
   //#endregion
 
   handleTargetSelection = (e) => {
-    console.log('Target selection click event:', {
-      target: e.target,
-      targetClasses: e.target.className,
-      targetTagName: e.target.tagName,
-      targetAttributes: Array.from(e.target.attributes).map(attr => `${attr.name}=${attr.value}`).join(', ')
-    });
+    console.log('Target selection click event');
 
     if (!this.targetSelectionMode || !this.activeModulator) {
-      console.log('Target selection not active:', {
-        selectionMode: this.targetSelectionMode,
-        activeModulator: this.activeModulator ? this.activeModulator.targetName : 'none'
-      });
       return;
     }
 
     // Find the clicked element
     let element = e.target;
-    console.log('Starting element search:', {
-      initialElement: element.tagName,
-      initialClasses: element.className
-    });
 
     while (element && !element.classList.contains('controller')) {
       element = element.parentElement;
-      if (element) {
-        console.log('Checking parent element:', {
-          tagName: element.tagName,
-          classes: element.className,
-          hasControllerClass: element.classList.contains('controller')
-        });
-      }
     }
 
     if (!element) {
-      console.log('No controller element found in parent chain');
       return;
     }
 
-    console.log('Found controller element:', {
-      tagName: element.tagName,
-      classes: element.className,
-      attributes: Array.from(element.attributes).map(attr => `${attr.name}=${attr.value}`).join(', ')
-    });
+    // Check if this is actually a valid target (has our data attribute)
+    if (element.getAttribute('data-is-target') !== 'true') {
+      console.log('Clicked on non-target controller - ignoring');
+      return;
+    }
 
     // Find the target name from the controller's label
     const labelElement = element.querySelector('.name');
     if (!labelElement) {
-      console.log('No label element found in controller');
       return;
     }
 
     const targetName = labelElement.textContent.trim();
     if (!targetName) {
-      console.log('No text content found in label element');
       return;
     }
 
-    console.log('Found target name from label:', targetName);
+    console.log('Selected target:', targetName);
 
     // Find the target selector controller in the active modulator's folder
     const folder = this.activeModulator.folder;
     if (!folder || !folder.controllers) {
-      console.error('Could not find folder or controllers for the active modulator');
-      this.toggleTargetSelectionMode(null); // Exit mode anyway
+      this.toggleTargetSelectionMode(null);
       return;
     }
 
     const targetController = folder.controllers.find(c => c.property === 'targetName');
     if (!targetController) {
-      console.error('Could not find the target selector controller in the folder');
-      this.toggleTargetSelectionMode(null); // Exit mode anyway
+      this.toggleTargetSelectionMode(null);
       return;
     }
 
     // Set the value of the dropdown controller
     targetController.setValue(targetName);
-    console.log(`Set target controller dropdown value to: ${targetName}`);
 
-    // Manually trigger the onChange logic associated with the dropdown
-    // lil-gui controllers often have an internal _onChange method or similar
-    // or we might need to dispatch an event. Let's try calling its internal logic if possible.
-    // Note: This relies on lil-gui internal structure which might change.
-    // A safer alternative might be dispatching a 'change' event if setValue doesn't trigger it.
+    // Trigger onChange if available
     if (typeof targetController._onChange === 'function') {
       targetController._onChange(targetName);
-      console.log('Manually triggered _onChange for target controller');
     } else {
-      // Fallback: If setValue triggers the change event, this might be redundant
-      // or we might need a different way to trigger the update
-      targetController.updateDisplay(); // Ensure UI reflects the change
-      console.warn('_onChange method not found on target controller, relying on setValue/updateDisplay');
+      targetController.updateDisplay();
     }
 
     // Exit target selection mode

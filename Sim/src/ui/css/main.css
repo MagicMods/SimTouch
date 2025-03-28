@@ -464,23 +464,22 @@ canvas#glCanvas {
 }
 
 /* Target selection styles */
-.target-selection-mode .controller:not(.pulse-modulator-control) {
+.target-selection-mode .controller[data-is-target='true'] {
   outline: 1px solid #ffaa00;
   cursor: pointer;
 }
 
-.target-selection-mode .controller:not(.pulse-modulator-control):hover {
+.target-selection-mode .controller[data-is-target='true']:hover {
   background-color: rgba(255, 170, 0, 0.15) !important;
+}
+
+.target-selection-mode .controller[data-is-target='false'] {
+  opacity: 0.7;
 }
 
 .target-selection-indicator {
   display: none;
-  padding: 8px;
-  margin: 5px 0;
-  background: #333;
-  color: #ffaa00;
-  border: 1px solid #ffaa00;
-  border-radius: 4px;
-  font-size: 12px;
-  text-align: center;
+  height: 1px;
+  margin: 8px 0;
+  background: #555;
 }
