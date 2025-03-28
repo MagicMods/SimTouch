@@ -493,7 +493,7 @@ canvas#glCanvas {
   color: white;
   cursor: pointer;
   white-space: nowrap;
-  margin: 0 4px;
+  margin: 0;
 }
 
 .target-selection-button:hover {
@@ -503,5 +503,5 @@ canvas#glCanvas {
 /* Make the controller wrapper for target selection button full width */
 .controller .target-selection-button {
   width: 100%;
-  margin: 0 8px;
+  /* margin: 0 8px; */
 }

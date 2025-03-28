@@ -15,6 +15,11 @@ export class InputModulationUi extends BaseUi {
     this.presetManager = null;
     this.presetSelect = null;
 
+    // Add target selection state properties
+    this.targetSelectionMode = false;
+    this.activeModulator = null;
+    this.targetSelectionButton = null;
+
     this.bandVisualizationInterval = setInterval(() => {
       this.updateAllBandVisualizations();
     }, 50);
@@ -254,6 +259,39 @@ export class InputModulationUi extends BaseUi {
     controllers.targetName.domElement.classList.add("full-width");
     controllers.targetName.domElement.style.paddingBottom = "5px";
 
+    // Add target selection function to the modulator folder
+    const addTargetSelectionUI = () => {
+      // Create controller wrapper
+      const controllerWrapper = document.createElement('div');
+      controllerWrapper.className = 'controller';
+
+      // Create button
+      const targetSelectionButton = document.createElement('button');
+      targetSelectionButton.textContent = 'Select Target';
+      targetSelectionButton.className = 'target-selection-button';
+
+      targetSelectionButton.addEventListener('click', () => {
+        this.toggleTargetSelectionMode(modulator);
+      });
+
+      // Add button to controller wrapper
+      controllerWrapper.appendChild(targetSelectionButton);
+
+      // Add elements to folder
+      const folderChildren = folder.domElement.querySelector('.children');
+      const targetControllerElement = controllers.targetName.domElement;
+      if (folderChildren && targetControllerElement) {
+        folderChildren.insertBefore(controllerWrapper, targetControllerElement);
+      }
+
+      // Store references on modulator
+      modulator._uiElements = modulator._uiElements || {};
+      modulator._uiElements.targetSelectionButton = targetSelectionButton;
+    };
+
+    // Add the target selection UI
+    addTargetSelectionUI();
+
     controllers.sensitivity = folder
       .add(modulator, "sensitivity", 0, 1, 0.01)
       .name("Sensitivity")
@@ -345,11 +383,14 @@ export class InputModulationUi extends BaseUi {
       .name("Remove");
     modulator.controllers = controllers;
 
+    // Store a reference to the folder in the modulator for easier access
+    modulator.folder = folder;
+
     try {
       this.addVisualizationToModulator(modulator, folder);
       console.log(`Added visualization to modulator ${index + 1}`);
     } catch (error) {
-      console.error("Failed to add visualization:", error);
+      console.error("Failed to add visualization to modulator:", error);
     }
 
     return modulator;
@@ -1020,5 +1061,207 @@ export class InputModulationUi extends BaseUi {
           }
         });
       });
+  }
+
+  // Add target selection mode handling methods
+  toggleTargetSelectionMode(modulator) {
+    // Exiting selection mode
+    if (this.targetSelectionMode && this.activeModulator === modulator) {
+      console.log('Cancelling target selection mode');
+      this.targetSelectionMode = false;
+      this.activeModulator = null;
+
+      // Remove highlighting
+      this.toggleTargetControlsHighlight(false);
+
+      // Update button 
+      this.updateTargetButtonIndicator(modulator, false);
+
+      // Remove click listener with capture phase to match how it was added
+      document.removeEventListener('click', this.handleTargetSelection, true);
+
+      // Clear backwards compatibility reference
+      this.targetSelectionButton = null;
+    }
+    // Entering selection mode
+    else if (modulator) {
+      console.log(`Entering target selection mode for modulator: ${modulator.targetName || 'New Modulator'}`);
+
+      // If already in selection mode for another modulator, cancel that first
+      if (this.targetSelectionMode && this.activeModulator) {
+        this.updateTargetButtonIndicator(this.activeModulator, false);
+      }
+
+      this.targetSelectionMode = true;
+      this.activeModulator = modulator;
+
+      // Update button
+      this.updateTargetButtonIndicator(modulator, true);
+
+      // Enable highlighting
+      this.toggleTargetControlsHighlight(true);
+
+      // Add click listener with capture phase to ensure it fires before other handlers
+      document.removeEventListener('click', this.handleTargetSelection, true); // Remove first to prevent duplicates
+      document.addEventListener('click', this.handleTargetSelection, true);
+
+      // Backwards compatibility
+      if (modulator._uiElements) {
+        this.targetSelectionButton = modulator._uiElements.targetSelectionButton;
+      }
+    }
+    // Called from elsewhere (e.g., handleTargetSelection) - just exit mode
+    else {
+      if (this.targetSelectionMode) {
+        console.log('Exiting target selection mode');
+
+        // Remove highlighting
+        this.toggleTargetControlsHighlight(false);
+
+        // Update button of active modulator
+        if (this.activeModulator) {
+          this.updateTargetButtonIndicator(this.activeModulator, false);
+        }
+
+        // Remove click listener with capture phase to match how it was added
+        document.removeEventListener('click', this.handleTargetSelection, true);
+
+        // Clear state
+        this.targetSelectionMode = false;
+        this.activeModulator = null;
+        this.targetSelectionButton = null;
+      }
+    }
+  }
+
+  handleTargetSelection = (e) => {
+    console.log('Target selection click event');
+
+    if (!this.targetSelectionMode || !this.activeModulator) {
+      return;
+    }
+
+    // Find the clicked element
+    let element = e.target;
+
+    // Check if the click is on the selection button itself - ignore it
+    if (element === this.activeModulator._uiElements.targetSelectionButton) {
+      console.log('Clicked on the target selection button - ignoring');
+      return;
+    }
+
+    while (element && !element.classList.contains('controller')) {
+      element = element.parentElement;
+    }
+
+    if (!element) {
+      return;
+    }
+
+    // Check if this is actually a valid target (has our data attribute)
+    if (element.getAttribute('data-is-target') !== 'true') {
+      console.log('Clicked on non-target controller - ignoring');
+      return;
+    }
+
+    // Find the target name from the controller's label
+    const labelElement = element.querySelector('.name');
+    if (!labelElement) {
+      return;
+    }
+
+    const targetName = labelElement.textContent.trim();
+    if (!targetName) {
+      return;
+    }
+
+    console.log('Selected target:', targetName);
+
+    // Get the controllers from the activeModulator
+    const controllers = this.activeModulator.controllers;
+    if (!controllers || !controllers.targetName) {
+      console.log('Could not find target controller in modulator');
+      this.toggleTargetSelectionMode(null);
+      return;
+    }
+
+    // Exit target selection mode before changing the target
+    this.toggleTargetSelectionMode(null);
+
+    // Update the target dropdown controller directly
+    controllers.targetName.setValue(targetName);
+
+    // The controller's onChange event will handle setting the target on the modulator,
+    // updating the folder title, and auto-ranging
+  }
+
+  updateTargetButtonIndicator(modulator, isActive) {
+    if (!modulator || !modulator._uiElements) {
+      console.warn('Cannot update button: modulator or UI elements not available');
+      return;
+    }
+
+    const button = modulator._uiElements.targetSelectionButton;
+
+    if (button) {
+      button.style.backgroundColor = isActive ? '#ff4444' : '';
+      button.textContent = isActive ? 'Cancel Selection' : 'Select Target';
+    }
+  }
+
+  toggleTargetControlsHighlight(highlight) {
+    if (highlight) {
+      // First make sure modulator controls are marked
+      this.markModulatorControls();
+
+      // Add the selection class to body (will apply general styling)
+      document.body.classList.add('target-selection-mode');
+
+      // Get all registered target names
+      const validTargetNames = this.modulatorManager ? this.modulatorManager.getTargetNames() : [];
+
+      // For each controller, add highlight only if it's a valid target
+      const controllers = document.querySelectorAll('.controller:not(.input-modulator-control)');
+      controllers.forEach(controller => {
+        const nameElement = controller.querySelector('.name');
+        if (nameElement) {
+          const controllerName = nameElement.textContent.trim();
+          const isValidTarget = validTargetNames.includes(controllerName);
+
+          // Add a custom attribute for targeting CSS
+          controller.setAttribute('data-is-target', isValidTarget ? 'true' : 'false');
+        }
+      });
+
+      console.log(`Enabled target selection highlighting (${validTargetNames.length} valid targets available)`);
+    } else {
+      // Remove the class from body
+      document.body.classList.remove('target-selection-mode');
+
+      // Clean up any data attributes we added
+      const controllers = document.querySelectorAll('[data-is-target]');
+      controllers.forEach(controller => {
+        controller.removeAttribute('data-is-target');
+      });
+
+      console.log('Disabled target selection highlighting');
+    }
+  }
+
+  markModulatorControls() {
+    // First, get all folder elements for audio modulators
+    const modulatorFolders = Array.from(document.querySelectorAll('.lil-gui .title'))
+      .filter(el => el.textContent.includes('Audio Modulator'));
+
+    // For each folder, mark all controllers inside as modulator controls
+    modulatorFolders.forEach(folderTitle => {
+      const folderElement = folderTitle.parentElement;
+      if (folderElement) {
+        const controllers = folderElement.querySelectorAll('.controller');
+        controllers.forEach(controller => {
+          controller.classList.add('input-modulator-control');
+        });
+      }
+    });
   }
 }
