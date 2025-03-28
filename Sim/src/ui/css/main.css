@@ -265,7 +265,7 @@ canvas#glCanvas {
 }
 
 .bpm-button:active {
-    background-color: #ffbb00 !important;
+    background-color: #ff5555;
 }
 
 
@@ -461,4 +461,26 @@ canvas#glCanvas {
 
 .bpm-button:active {
     background-color: #ff5555;
+}
+
+/* Target selection styles */
+.target-selection-mode .controller:not(.pulse-modulator-control) {
+  outline: 1px solid #ffaa00;
+  cursor: pointer;
+}
+
+.target-selection-mode .controller:not(.pulse-modulator-control):hover {
+  background-color: rgba(255, 170, 0, 0.15) !important;
+}
+
+.target-selection-indicator {
+  display: none;
+  padding: 8px;
+  margin: 5px 0;
+  background: #333;
+  color: #ffaa00;
+  border: 1px solid #ffaa00;
+  border-radius: 4px;
+  font-size: 12px;
+  text-align: center;
 }

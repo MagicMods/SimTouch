@@ -12,12 +12,20 @@ export class PulseModulationUi extends BaseUi {
     this.modulatorFolders = [];
     this.presets = [];
 
-    // For tap tempo functionality
-    this.beatTimes = [];
-    this.maxTapHistory = 5; // Number of taps to remember
-    this.tapTempoTimeout = null;
+    // Tap tempo state
+    this.tapTempoTimes = [];
+    this.tapTempoTimeoutId = null;
     this.tapTempoTimeoutDuration = 2000; // Reset after 2 seconds of inactivity
     this.beatButtonElement = null; // Store reference to beat button element
+
+    this.modulators = [];
+    this.targetSelectionMode = false;
+    this.activeModulator = null;
+
+    // Backwards compatibility properties - these will be populated dynamically
+    // based on the active modulator during target selection
+    this.targetSelectionButton = null;
+    this.targetSelectionIndicator = null;
 
     // Change the GUI title
     this.gui.title("Pulse Modulation");
@@ -255,7 +263,10 @@ export class PulseModulationUi extends BaseUi {
     const index = this.modulatorFolders.length;
     const folder = this.gui.addFolder(`Modulator ${index + 1}`);
 
-    // Store the folder reference
+    // Store folder reference on the modulator object
+    modulator.folder = folder;
+
+    // Store the folder reference in the UI class array (optional, but maybe useful)
     this.modulatorFolders.push(folder);
 
     // Create button group container for Enable and Sync
@@ -320,9 +331,9 @@ export class PulseModulationUi extends BaseUi {
     buttonContainer.appendChild(syncButton);
 
     // Add button container to the folder
-    const folderContent = folder.domElement.querySelector(".children");
-    if (folderContent) {
-      folderContent.insertBefore(buttonContainer, folderContent.firstChild);
+    const buttonContainerChildren = folder.domElement.querySelector('.children');
+    if (buttonContainerChildren) {
+      buttonContainerChildren.insertBefore(buttonContainer, buttonContainerChildren.firstChild);
     }
 
     // Store buttons with the modulator for easier updates later
@@ -516,6 +527,41 @@ export class PulseModulationUi extends BaseUi {
 
     folder.add(removeButton, "remove").name("Remove");
     folder.open();
+
+    // Add target selection function to the modulator folder
+    const addTargetSelectionUI = () => {
+      // Create indicator
+      const targetSelectionIndicator = document.createElement('div');
+      targetSelectionIndicator.className = 'target-selection-indicator';
+      targetSelectionIndicator.textContent = 'Click any UI control to select it as target';
+
+      // Create button
+      const targetSelectionButton = document.createElement('button');
+      targetSelectionButton.textContent = 'Select Target';
+      targetSelectionButton.className = 'preset-control-button';
+      targetSelectionButton.style.width = '100%';
+      targetSelectionButton.style.margin = '5px 0';
+
+      targetSelectionButton.addEventListener('click', () => {
+        this.toggleTargetSelectionMode(modulator);
+      });
+
+      // Add elements to folder
+      const folderChildren = folder.domElement.querySelector('.children');
+      const targetControllerElement = targetController.domElement;
+      if (folderChildren && targetControllerElement) {
+        folderChildren.insertBefore(targetSelectionIndicator, targetControllerElement);
+        folderChildren.insertBefore(targetSelectionButton, targetControllerElement);
+      }
+
+      // Store references on modulator
+      modulator._uiElements = modulator._uiElements || {};
+      modulator._uiElements.targetSelectionButton = targetSelectionButton;
+      modulator._uiElements.targetSelectionIndicator = targetSelectionIndicator;
+    };
+
+    // Add the target selection UI
+    addTargetSelectionUI();
 
     return modulator;
   }
@@ -905,29 +951,29 @@ export class PulseModulationUi extends BaseUi {
   calculateTapTempo() {
     const now = performance.now();
 
-    if (this.tapTempoTimeout) {
-      clearTimeout(this.tapTempoTimeout);
+    if (this.tapTempoTimeoutId) {
+      clearTimeout(this.tapTempoTimeoutId);
     }
 
     // Set timeout to reset tap tempo counter after inactivity
-    this.tapTempoTimeout = setTimeout(() => {
-      this.beatTimes = [];
+    this.tapTempoTimeoutId = setTimeout(() => {
+      this.tapTempoTimes = [];
       console.log("Tap tempo reset due to inactivity");
     }, this.tapTempoTimeoutDuration);
 
-    this.beatTimes.push(now);
+    this.tapTempoTimes.push(now);
 
     // Keep only the most recent taps
-    if (this.beatTimes.length > this.maxTapHistory) {
-      this.beatTimes.shift();
+    if (this.tapTempoTimes.length > this.maxTapHistory) {
+      this.tapTempoTimes.shift();
     }
 
     // Need at least 2 taps to calculate a tempo
-    if (this.beatTimes.length >= 2) {
+    if (this.tapTempoTimes.length >= 2) {
       // Calculate intervals between taps
       const intervals = [];
-      for (let i = 1; i < this.beatTimes.length; i++) {
-        intervals.push(this.beatTimes[i] - this.beatTimes[i - 1]);
+      for (let i = 1; i < this.tapTempoTimes.length; i++) {
+        intervals.push(this.tapTempoTimes[i] - this.tapTempoTimes[i - 1]);
       }
 
       // Calculate average interval
@@ -977,5 +1023,228 @@ export class PulseModulationUi extends BaseUi {
     }, 100);
   }
 
+  // Mark modulator controls to exclude them from selection
+  markModulatorControls() {
+    // First, get all folder elements for pulse modulators
+    const modulatorFolders = Array.from(document.querySelectorAll('.lil-gui .title'))
+      .filter(el => el.textContent.includes('Modulator'));
+
+    // For each folder, mark all controllers inside as modulator controls
+    modulatorFolders.forEach(folderTitle => {
+      const folderElement = folderTitle.parentElement;
+      if (folderElement) {
+        const controllers = folderElement.querySelectorAll('.controller');
+        controllers.forEach(controller => {
+          controller.classList.add('pulse-modulator-control');
+        });
+      }
+    });
+  }
+
+  // Toggle highlight on all potential target controls by adding/removing a class to body
+  toggleTargetControlsHighlight(highlight) {
+    if (highlight) {
+      // First make sure modulator controls are marked
+      this.markModulatorControls();
+      // Add the class to body
+      document.body.classList.add('target-selection-mode');
+      console.log('Enabled target selection highlighting');
+    } else {
+      // Remove the class from body
+      document.body.classList.remove('target-selection-mode');
+      console.log('Disabled target selection highlighting');
+    }
+  }
+
+  toggleTargetSelectionMode(modulator) {
+    // Exiting selection mode
+    if (this.targetSelectionMode && this.activeModulator === modulator) {
+      console.log('Cancelling target selection mode');
+      this.targetSelectionMode = false;
+      this.activeModulator = null;
+
+      // Remove highlighting
+      this.toggleTargetControlsHighlight(false);
+
+      // Update button and indicator
+      this.updateTargetButtonIndicator(modulator, false);
+
+      // Remove click listener
+      document.removeEventListener('click', this.handleTargetSelection);
+
+      // Clear backwards compatibility references
+      this.targetSelectionButton = null;
+      this.targetSelectionIndicator = null;
+    }
+    // Entering selection mode
+    else if (modulator) {
+      console.log(`Entering target selection mode for modulator: ${modulator.targetName || 'New Modulator'}`);
+
+      // If already in selection mode for another modulator, cancel that first
+      if (this.targetSelectionMode && this.activeModulator) {
+        this.updateTargetButtonIndicator(this.activeModulator, false);
+      }
+
+      this.targetSelectionMode = true;
+      this.activeModulator = modulator;
+
+      // Update button and indicator
+      this.updateTargetButtonIndicator(modulator, true);
+
+      // Enable highlighting
+      this.toggleTargetControlsHighlight(true);
+
+      // Add click listener
+      document.removeEventListener('click', this.handleTargetSelection); // Remove first to prevent duplicates
+      document.addEventListener('click', this.handleTargetSelection);
+
+      // Backwards compatibility
+      if (modulator._uiElements) {
+        this.targetSelectionButton = modulator._uiElements.targetSelectionButton;
+        this.targetSelectionIndicator = modulator._uiElements.targetSelectionIndicator;
+      }
+    }
+    // Called from elsewhere (e.g., handleTargetSelection) - just exit mode
+    else {
+      if (this.targetSelectionMode) {
+        console.log('Exiting target selection mode');
+
+        // Remove highlighting
+        this.toggleTargetControlsHighlight(false);
+
+        // Update button and indicator of active modulator
+        if (this.activeModulator) {
+          this.updateTargetButtonIndicator(this.activeModulator, false);
+        }
+
+        // Remove click listener
+        document.removeEventListener('click', this.handleTargetSelection);
+
+        // Clear state
+        this.targetSelectionMode = false;
+        this.activeModulator = null;
+        this.targetSelectionButton = null;
+        this.targetSelectionIndicator = null;
+      }
+    }
+  }
+
   //#endregion
+
+  handleTargetSelection = (e) => {
+    console.log('Target selection click event:', {
+      target: e.target,
+      targetClasses: e.target.className,
+      targetTagName: e.target.tagName,
+      targetAttributes: Array.from(e.target.attributes).map(attr => `${attr.name}=${attr.value}`).join(', ')
+    });
+
+    if (!this.targetSelectionMode || !this.activeModulator) {
+      console.log('Target selection not active:', {
+        selectionMode: this.targetSelectionMode,
+        activeModulator: this.activeModulator ? this.activeModulator.targetName : 'none'
+      });
+      return;
+    }
+
+    // Find the clicked element
+    let element = e.target;
+    console.log('Starting element search:', {
+      initialElement: element.tagName,
+      initialClasses: element.className
+    });
+
+    while (element && !element.classList.contains('controller')) {
+      element = element.parentElement;
+      if (element) {
+        console.log('Checking parent element:', {
+          tagName: element.tagName,
+          classes: element.className,
+          hasControllerClass: element.classList.contains('controller')
+        });
+      }
+    }
+
+    if (!element) {
+      console.log('No controller element found in parent chain');
+      return;
+    }
+
+    console.log('Found controller element:', {
+      tagName: element.tagName,
+      classes: element.className,
+      attributes: Array.from(element.attributes).map(attr => `${attr.name}=${attr.value}`).join(', ')
+    });
+
+    // Find the target name from the controller's label
+    const labelElement = element.querySelector('.name');
+    if (!labelElement) {
+      console.log('No label element found in controller');
+      return;
+    }
+
+    const targetName = labelElement.textContent.trim();
+    if (!targetName) {
+      console.log('No text content found in label element');
+      return;
+    }
+
+    console.log('Found target name from label:', targetName);
+
+    // Find the target selector controller in the active modulator's folder
+    const folder = this.activeModulator.folder;
+    if (!folder || !folder.controllers) {
+      console.error('Could not find folder or controllers for the active modulator');
+      this.toggleTargetSelectionMode(null); // Exit mode anyway
+      return;
+    }
+
+    const targetController = folder.controllers.find(c => c.property === 'targetName');
+    if (!targetController) {
+      console.error('Could not find the target selector controller in the folder');
+      this.toggleTargetSelectionMode(null); // Exit mode anyway
+      return;
+    }
+
+    // Set the value of the dropdown controller
+    targetController.setValue(targetName);
+    console.log(`Set target controller dropdown value to: ${targetName}`);
+
+    // Manually trigger the onChange logic associated with the dropdown
+    // lil-gui controllers often have an internal _onChange method or similar
+    // or we might need to dispatch an event. Let's try calling its internal logic if possible.
+    // Note: This relies on lil-gui internal structure which might change.
+    // A safer alternative might be dispatching a 'change' event if setValue doesn't trigger it.
+    if (typeof targetController._onChange === 'function') {
+      targetController._onChange(targetName);
+      console.log('Manually triggered _onChange for target controller');
+    } else {
+      // Fallback: If setValue triggers the change event, this might be redundant
+      // or we might need a different way to trigger the update
+      targetController.updateDisplay(); // Ensure UI reflects the change
+      console.warn('_onChange method not found on target controller, relying on setValue/updateDisplay');
+    }
+
+    // Exit target selection mode
+    this.toggleTargetSelectionMode(null);
+  }
+
+  updateTargetButtonIndicator(modulator, isActive) {
+    if (!modulator || !modulator._uiElements) {
+      console.warn('Cannot update button/indicator: modulator or UI elements not available');
+      return;
+    }
+
+    const button = modulator._uiElements.targetSelectionButton;
+    const indicator = modulator._uiElements.targetSelectionIndicator;
+
+    if (button) {
+      button.style.backgroundColor = isActive ? '#ff4444' : '';
+      button.textContent = isActive ? 'Cancel Selection' : 'Select Target';
+    }
+
+    if (indicator) {
+      indicator.style.display = isActive ? 'block' : 'none';
+    }
+  }
 }

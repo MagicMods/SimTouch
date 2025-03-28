@@ -17,6 +17,7 @@ class PulseModulator {
     this.isSelector = false; // Flag to indicate if target is a selector/dropdown
     this.selectorOptions = []; // Array to store available options for selectors
     this.beatDivision = "1"; // Beat division multiplier (1, 1/2, 1/4, 1/8, etc.)
+    this.currentIndex = 0; // Track current pattern index for selectors
 
     // For special wave types
     this._lastBeatTime = 0;  // Track when the last beat occurred
@@ -105,17 +106,15 @@ class PulseModulator {
       // Update min and max based on number of options
       this.min = 0;
       this.max = this.selectorOptions.length - 1;
-      console.log(`Target ${targetName} detected as selector with ${this.selectorOptions.length} options:`, this.selectorOptions);
+      // Initialize current index to min
+      this.currentIndex = Math.floor(this.min);
+      console.log(`Initialized selector ${targetName} with ${this.selectorOptions.length} options, current index: ${this.currentIndex}`);
     }
     // Only update min and max if we're NOT loading from preset and it's not a selector
     else if (!this._loadingFromPreset) {
       // Update min and max to match target's range with NaN protection
       this.min = !isNaN(target.min) ? target.min : 0;
       this.max = !isNaN(target.max) ? target.max : 1;
-
-      // console.log(
-      //   `Set target ${targetName} with range: ${this.min} - ${this.max}`
-      // );
     } else {
       console.log(
         `Set target ${targetName} keeping preset range: ${this.min} - ${this.max}`
@@ -207,7 +206,6 @@ class PulseModulator {
       }
     }
   }
-
 
   update(deltaTime, globalTime) {
     // Check if we're transitioning from disabled to enabled
@@ -329,23 +327,33 @@ class PulseModulator {
 
       // Special handling for selector/dropdown type targets
       if (this.isSelector && this.selectorOptions.length > 0) {
-        // For selectors, we need to map to a valid option index
-        const minIndex = Math.max(0, Math.min(this.selectorOptions.length - 1, Math.floor(this.min)));
-        const maxIndex = Math.max(0, Math.min(this.selectorOptions.length - 1, Math.floor(this.max)));
+        // Get indices from min/max values
+        const minIndex = Math.floor(this.min);
+        const maxIndex = Math.floor(this.max);
 
         if (minIndex === maxIndex) {
           // Just use the single allowed value
           const optionValue = this.selectorOptions[minIndex];
           this.targetController.setValue(optionValue);
         } else {
-          // Map the normalized value to an index
-          const indexRange = maxIndex - minIndex;
-          const optionIndex = minIndex + Math.floor(normalizedValue * (indexRange + 1));
-          const safeIndex = Math.min(maxIndex, Math.max(minIndex, optionIndex));
+          // Simple timing based on frequency
+          const tickInterval = 1.0 / effectiveFrequency;
+          if (currentTime - this._lastBeatTime >= tickInterval) {
+            this._lastBeatTime = currentTime;
 
-          // Get and apply the option value
-          const optionValue = this.selectorOptions[safeIndex];
-          this.targetController.setValue(optionValue);
+            // Increment current index
+            this.currentIndex++;
+
+            // Wrap around if we hit max
+            if (this.currentIndex > maxIndex) {
+              this.currentIndex = minIndex;
+            }
+
+            // Apply the current pattern
+            const optionValue = this.selectorOptions[this.currentIndex];
+            this.targetController.setValue(optionValue);
+            console.log(`Pattern changed to: ${optionValue} (index: ${this.currentIndex})`);
+          }
         }
       } else {
         // For numeric values, directly map to the target range

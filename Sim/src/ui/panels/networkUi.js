@@ -154,6 +154,6 @@ export class NetworkUi extends BaseUi {
     }, 1000);
 
     configFolder.open(false);
-    this.gui.open(true);
+    this.gui.open(false);
   }
 }
