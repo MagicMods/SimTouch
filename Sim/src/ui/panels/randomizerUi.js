@@ -185,7 +185,7 @@ export class RandomizerUi extends BaseUi {
       if (/^J-(X|Y|G-Strength|T-BiasStrength|SpringStrength)$/i.test(targetName)) return "Joystick";
       if (/^C-(Repulse|Bounce|Damping|RestState)$/i.test(targetName)) return "Collision";
       if (/^B-(Repulse|Friction|Size|Bounce)$/i.test(targetName)) return "Boundary";
-      if (/^T-(AfPosition|AfScaleF|AfScale|Strength|Scale|Speed|Octaves|Persist|Rot|RotSpd|Pull|PullMMode|Pull Mode|Decay|ScaleS|MinScale|MaxScale|X|Y|DomWarp|DomWarpSp|PatternStyle|Freq|PhaseSp|Phase|Sym|Blur|BiasX|BiasY|DirX|DirY|OffsetX|OffsetY|Bias Friction)$/i.test(targetName)) return "Turbulence";
+      if (/^T-(AfPosition|AfScaleF|AfScale|Strength|Scale|Speed|Octaves|Persist|Rot|RotSpd|Pull|PullMMode|Pull Mode|Decay|ScaleS|Min Size|Max Size|X|Y|DomWarp|DomWarpSp|PatternStyle|Freq|PhaseSp|Phase|Symmetry|Blur|BiasX|BiasY|DirX|DirY|OffsetX|OffsetY|Bias Friction)$/i.test(targetName)) return "Turbulence";
       if (/^V-(Strength|EdgeWidth|Attract|PullMode|Pull Mode|Cell(Count|Speed)|Decay|ForceBlend)$/i.test(targetName)) return "Voronoi";
       if (/^F-(Radius|SurfaceT|Visco|Damp)$/i.test(targetName)) return "Organic Fluid";
       if (/^S-(Radius|Cohesion|Align|Separation|MaxSpeed)$/i.test(targetName)) return "Organic Swarm";

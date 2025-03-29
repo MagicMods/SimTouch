@@ -383,7 +383,7 @@ class PulseModulator {
             // Apply the current pattern
             const optionValue = this.selectorOptions[this.currentIndex];
             this.targetController.setValue(optionValue);
-            console.log(`Pattern changed to: ${optionValue} (index: ${this.currentIndex})`);
+            // console.log(`Pattern changed to: ${optionValue} (index: ${this.currentIndex})`);
           }
         }
       } else {

@@ -556,7 +556,7 @@ export class TurbulenceUi extends BaseUi {
 
     // Add symmetry amount control
     this.turbulenceSymmetryController = patternControlsFolder.add(turbulence, "symmetryAmount", 0, 1, 0.01)
-      .name("T-Sym");
+      .name("T-Symetry");
 
     // Pattern frequency control (always visible)
     this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulence, "patternFrequency", 0.01, 4, 0.01)
@@ -750,7 +750,7 @@ export class TurbulenceUi extends BaseUi {
     if (this.turbulencePatternFrequencyController) targets["T-Freq"] = this.turbulencePatternFrequencyController;
     if (this.turbulencePhaseController) targets["T-PhaseSp"] = this.turbulencePhaseController;
     if (this.turbulenceStaticPhaseController) targets["T-Phase"] = this.turbulenceStaticPhaseController;
-    if (this.turbulenceSymmetryController) targets["T-Sym"] = this.turbulenceSymmetryController;
+    if (this.turbulenceSymmetryController) targets["T-Symetry"] = this.turbulenceSymmetryController;
     if (this.turbulenceBlurController) targets["T-Blur"] = this.turbulenceBlurController;
 
     if (this.turbulenceOffsetXController) targets["T-OffsetX"] = this.turbulenceOffsetXController;

@@ -68,7 +68,7 @@ export class ParamUi extends BaseUi {
 
 
       this.maxDensityController = this.gui
-        .add(this.main.gridRenderer, "maxDensity", 0.1, 10, 0.1)
+        .add(this.main.gridRenderer, "maxDensity", 0.1, 12, 0.1)
         .name("Density");
 
 

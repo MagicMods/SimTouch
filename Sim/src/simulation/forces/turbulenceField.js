@@ -13,38 +13,35 @@ class TurbulenceField {
     noiseSeed = Math.random() * 10000,
     domainWarp = 0,
     domainWarpSpeed = 0,
-    // New geometric pattern controls
+
     patternFrequency = 2.0,
     patternStyle = "Checkerboard",
-    // Time influence controls
+
     phaseEnabled = false,
     amplitudeEnabled = false,
     phaseSpeed = -1,
     amplitudeSpeed = 0.0,
     phase = 0.0,
     amplitude = 1.0,
-    symmetryAmount = 0.0,  // 0 = no symmetry, 1 = full symmetry
-    // New pattern offset controls
+    symmetryAmount = 0.0,
+
     patternOffsetX = 0.0,
     patternOffsetY = 0.0,
-    // New bias speed controls - these are now ignored and used only as initial acceleration
-    biasSpeedX = 0.0,
-    biasSpeedY = 0.0,
-    biasStrength = 0.3,  // Bias strength parameter
-    // New contrast and separation controls
-    contrast = 0.5,        // 0 = no contrast, 1 = max contrast
+
+    contrast = 0.5,
     separation = 0,      // 0 = smooth, 1 = sharp transitions
-    // Bandpass contrast parameters
     contrastShadowPoint = 0.1,     // Where dark enhancement begins (0-0.5)
     contrastMidPoint = 0.35,       // Center of enhancement curve
     contrastHighlightPoint = 0.7,  // Where enhancement tapers off
     contrastDarkBoost = 1.5,       // How much to enhance shadows
-    // New bias smoothing parameter
-    biasSmoothing = 0.8,   // 0 = no smoothing, 1 = max smoothing
-    // New blur parameter
+
     blurAmount = .8,      // 0 = no blur, 1 = max blur
-    // Physics parameters for bias movement
+
+    biasSpeedX = 0.0,
+    biasSpeedY = 0.0,
+    biasStrength = 0.3,  // Bias strength parameter
     biasFriction = 0.05,   // Friction coefficient for bias movement (0-1)
+    biasSmoothing = 0.8,   // 0 = no smoothing, 1 = max smoothing
     biasTune = 1,       // Fine tuning of bias responsiveness
   } = {}) {
     if (
@@ -70,8 +67,8 @@ class TurbulenceField {
     this.decayRate = decayRate;
 
     this.scaleField = false;
-    this.affectPosition = true;
-    this.affectScale = true;
+    this.affectPosition = false;
+    this.affectScale = false;
     this.scaleStrength = 1.0;
 
     this.minScale = 0.008;
