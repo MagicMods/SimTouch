@@ -6,7 +6,7 @@ import { RandomizerPresetHandler } from "./randomizerPresetHandler.js";
 export class PresetManager {
   static TYPES = {
     MASTER: "master",
-    TURBULENCE: "turb",
+    TURBULENCE: "turbulence",
     VORONOI: "voronoi",
     ORGANIC: "organic",
     PULSE: "pulse",
@@ -21,7 +21,7 @@ export class PresetManager {
 
     this.handlers = {
       [PresetManager.TYPES.TURBULENCE]: new SimplePresetHandler(
-        "savedTurbPresets",
+        "savedTurbulencePresets",
         {
           Default: { controllers: {} },
         },
@@ -94,6 +94,8 @@ export class PresetManager {
       return null;
     }
 
+    console.log(`Creating preset controls for type: ${presetType}`, this.handlers[presetType]);
+
     const controlId = `${presetType}-${Date.now()}`;
 
     const container = document.createElement("div");
@@ -110,9 +112,13 @@ export class PresetManager {
     presetSelect.style.margin = "0 4px";
     presetSelect.style.padding = "3px";
 
-    const saveButton = this._createButton("Save", () =>
-      this._handleSave(presetType)
-    );
+    // Capture presetType in a closure to ensure it's preserved
+    const boundHandleSave = () => {
+      this._handleSave(presetType);
+    };
+
+    const saveButton = this._createButton("Save", boundHandleSave);
+
     const deleteButton = this._createButton("Delete", () =>
       this._handleDelete(presetType, presetSelect)
     );
@@ -175,20 +181,25 @@ export class PresetManager {
   }
 
   _handleSave(presetType) {
-    console.log(`Save requested for ${presetType}`);
+    console.log(`Save requested for presetType: "${presetType}"`,
+      `Handler:`, this.handlers[presetType] ? "exists" : "missing");
 
     // Get current preset name to pre-populate the prompt
     const currentPreset = this.getSelectedPreset(presetType);
-    const presetName = prompt(`Enter ${presetType} preset name:`, currentPreset);
+    console.log(`Current preset for ${presetType}:`, currentPreset);
 
-    console.log(`User entered name: ${presetName}`);
+    // Only use the current preset name as default if it's not "Default"
+    const defaultValue = (currentPreset && currentPreset !== "Default") ? currentPreset : "";
+    const presetName = prompt(`Enter ${presetType} preset name:`, defaultValue);
+
+    console.log(`User entered name: "${presetName}"`);
     if (!presetName) return;
 
     const uiComponent = this.getUIComponent(presetType);
-    console.log(`UI component found:`, uiComponent ? "yes" : "no");
+    console.log(`UI component for ${presetType}:`, uiComponent ? "found" : "missing");
 
     const success = this.savePreset(presetType, presetName);
-    console.log(`Save result: ${success}`);
+    console.log(`Save result for ${presetType} "${presetName}": ${success}`);
 
     if (success) {
       this._updateAllPresetDropdowns(presetType);

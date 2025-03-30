@@ -57,7 +57,13 @@ export class PresetUi extends BaseUi {
     actionsContainer.style.margin = "8px 4px";
 
     const saveButton = this._createButton("Save", () => {
-      const name = prompt("Enter preset name:");
+      // Get current preset name
+      const currentPreset = this.presetManager.getSelectedPreset(PresetManager.TYPES.MASTER);
+
+      // Only use the current preset name as default if it's not "Default"
+      const defaultValue = (currentPreset && currentPreset !== "Default") ? currentPreset : "";
+      const name = prompt("Enter preset name:", defaultValue);
+
       if (name) {
         this.presetManager.savePreset(PresetManager.TYPES.MASTER, name);
         this.updatePresetDropdown(this.presetControls.selector);
