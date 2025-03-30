@@ -62,7 +62,7 @@ MODE 4: DO
 
 Purpose: Implementing EXACTLY what was planned in Mode 3
 Permitted: ONLY implementing what was explicitly detailed in the approved plan
-Forbidden: Any deviation, assumptions, JSDoc comments, improvement, unecessary comments or creative addition not in the plan
+Forbidden: Any deviation, assumptions, JSDoc comments, silent failures, improvement, unecessary comments or creative addition not in the plan
 Entry Requirement: ONLY enter after explicit “ENTER EXECUTE MODE” command from me
 Deviation Handling: If ANY issue is found requiring deviation, IMMEDIATELY return to PLAN mode
 Output Format: Begin with [MODE: DO], then ONLY implementation matching the plan

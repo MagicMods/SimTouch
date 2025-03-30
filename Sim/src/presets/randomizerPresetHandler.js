@@ -6,8 +6,17 @@ export class RandomizerPresetHandler extends PresetBaseHandler {
   }
 
   applyPreset(presetName, uiComponent) {
+    console.log(`RandomizerPresetHandler: Applying preset "${presetName}"`);
+
+    if (!uiComponent) {
+      console.error("RandomizerPresetHandler: UI component not provided");
+      return false;
+    }
+
+    // Special case handling for None/All
     if (presetName === "None" || presetName === "All") {
-      if (uiComponent && typeof uiComponent.setData === "function") {
+      if (typeof uiComponent.setData === "function") {
+        console.log(`RandomizerPresetHandler: Applying special preset "${presetName}"`);
         const success = uiComponent.setData(presetName);
         if (success) this.selectedPreset = presetName;
         return success;
@@ -15,46 +24,46 @@ export class RandomizerPresetHandler extends PresetBaseHandler {
       return false;
     }
 
-    if (!uiComponent) {
-      console.warn("UI component not provided");
-      return false;
-    }
-
     const preset = this.getPreset(presetName);
     if (!preset) {
-      console.warn(`Preset not found: ${presetName}`);
+      console.error(`RandomizerPresetHandler: Preset not found: ${presetName}`);
       return false;
     }
 
     if (typeof uiComponent.setData === "function") {
+      console.log(`RandomizerPresetHandler: Applying preset data for "${presetName}"`, preset);
       const success = uiComponent.setData(preset);
       if (success) this.selectedPreset = presetName;
       return success;
     }
 
-    console.warn("UI component doesn't implement setData()");
+    console.error("RandomizerPresetHandler: UI component doesn't implement setData()");
     return false;
   }
 
   savePresetFromUI(presetName, uiComponent) {
+    console.log(`RandomizerPresetHandler: Saving preset "${presetName}" from UI`);
+
     if (!uiComponent || typeof uiComponent.getData !== "function") {
-      console.warn("UI component doesn't implement getData()");
+      console.error("RandomizerPresetHandler: UI component doesn't implement getData()");
       return false;
     }
 
     const data = uiComponent.getData();
+    console.log(`RandomizerPresetHandler: Got data for preset "${presetName}"`, data);
+
     this.selectedPreset = presetName;
     return this.savePreset(presetName, data);
   }
 
   deletePreset(presetName) {
     if (this.protectedPresets.includes(presetName)) {
-      console.warn(`Cannot delete protected preset: ${presetName}`);
+      console.warn(`RandomizerPresetHandler: Cannot delete protected preset: ${presetName}`);
       return false;
     }
 
     if (!this.presets[presetName]) {
-      console.warn(`Preset not found: ${presetName}`);
+      console.warn(`RandomizerPresetHandler: Preset not found: ${presetName}`);
       return false;
     }
 

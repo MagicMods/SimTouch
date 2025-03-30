@@ -20,7 +20,7 @@ export class CollisionUi extends BaseUi {
     const collisionSystem = particles.collisionSystem;
 
     this.collisionRepulsionController = this.gui
-      .add(collisionSystem, "repulsion", 0, 5, 0.01)
+      .add(collisionSystem, "repulsion", 0, 4, 0.01)
       .name("C-Repulse");
 
     // Check if properties exist before adding them

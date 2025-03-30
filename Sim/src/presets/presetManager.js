@@ -17,6 +17,7 @@ export class PresetManager {
   constructor(uiComponents) {
     this.uiComponents = uiComponents;
     this.presetControls = {};
+    this.eventListeners = {};
 
     this.handlers = {
       [PresetManager.TYPES.TURBULENCE]: new SimplePresetHandler(
@@ -71,6 +72,20 @@ export class PresetManager {
     };
 
     this.handlers[PresetManager.TYPES.MASTER].setComponents(uiComponents);
+  }
+
+  // Event system
+  on(eventName, callback) {
+    if (!this.eventListeners[eventName]) {
+      this.eventListeners[eventName] = [];
+    }
+    this.eventListeners[eventName].push(callback);
+  }
+
+  emit(eventName, ...args) {
+    if (this.eventListeners[eventName]) {
+      this.eventListeners[eventName].forEach(callback => callback(...args));
+    }
   }
 
   createPresetControls(presetType, parentElement, options = {}) {
@@ -277,18 +292,25 @@ export class PresetManager {
   }
 
   loadPreset(type, presetName) {
-    const handler = this.handlers[type];
-    if (!handler) return false;
-
-    if (type === PresetManager.TYPES.MASTER) {
-      return handler.applyPreset(presetName);
-    } else {
-      const uiComponent = this.getUIComponent(type);
-      if (uiComponent) {
-        return handler.applyPreset(presetName, uiComponent);
-      }
+    console.log(`Loading ${type} preset: ${presetName}`);
+    const handler = this.getHandler(type);
+    if (!handler) {
+      console.warn(`No handler found for preset type ${type}`);
+      return false;
     }
-    return false;
+
+    // Emit presetSelected event before applying
+    this.emit('presetSelected', presetName);
+
+    const component = this.getUIComponent(type);
+    const success = handler.applyPreset(presetName, component);
+
+    if (success) {
+      // Emit presetLoaded event after successful loading
+      this.emit('presetLoaded', type, presetName);
+    }
+
+    return success;
   }
 
   extractMasterPresetData() {

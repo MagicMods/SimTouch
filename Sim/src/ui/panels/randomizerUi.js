@@ -40,6 +40,14 @@ export class RandomizerUi extends BaseUi {
       this.paramFolder.domElement,
       { insertFirst: true }
     );
+
+    // Ensure we don't try to load presets before controllers are initialized
+    this.presetManager.on('presetSelected', (presetName) => {
+      if (Object.keys(this.controllers).length === 0 && this.modulatorManager) {
+        console.log(`RandomizerUI: Initializing controllers before loading preset "${presetName}"`);
+        this.initParameterTargets();
+      }
+    });
   }
 
   setModulatorManager(modulatorManager) {
@@ -119,6 +127,10 @@ export class RandomizerUi extends BaseUi {
   updateParameterAvailability() {
     for (const targetName in this.controllers) {
       const controller = this.findControllerByName(targetName);
+      if (!controller) {
+        console.warn(`RandomizerUI: Controller not found for parameter "${targetName}"`);
+        continue;
+      }
       controller.updateDisplay();
     }
   }
@@ -131,6 +143,7 @@ export class RandomizerUi extends BaseUi {
         }
       }
     }
+    console.warn(`RandomizerUI: Controller not found with name "${name}"`);
     return null;
   }
 
@@ -532,11 +545,18 @@ export class RandomizerUi extends BaseUi {
   }
 
   setData(data) {
-    console.warn("RandomizerUI: Setting data", data);
+    console.log("RandomizerUI: Setting data", data);
+
+    // Initialize controllers if they don't exist yet
+    if (Object.keys(this.controllers).length === 0 && this.modulatorManager) {
+      console.log("RandomizerUI: Controllers not initialized yet, initializing now");
+      this.initParameterTargets();
+    }
+
     if (!data || data === "None") {
+      // console.log("RandomizerUI: Setting all controllers to false");
       for (const key in this.controllers) {
         this.controllers[key] = false;
-        console.log(`Setting ${key} to false`);
       }
       this.updateParameterAvailability();
       setTimeout(() => this.applyFlexLayoutToParameters(), 0);
@@ -544,11 +564,9 @@ export class RandomizerUi extends BaseUi {
     }
 
     if (data === "All") {
-      // Set all parameters to true
-      console.warn("Setting all parameters to true");
+      // console.log("RandomizerUI: Setting all controllers to true");
       for (const key in this.controllers) {
         this.controllers[key] = true;
-        console.log(`Setting ${key} to true`);
       }
       this.updateParameterAvailability();
       setTimeout(() => this.applyFlexLayoutToParameters(), 0);
@@ -557,16 +575,33 @@ export class RandomizerUi extends BaseUi {
 
     // Normal case handling with object containing controllers
     try {
-      if (data.controllers) {
-        // Reset all to false first
-        for (const key in this.controllers) {
-          this.controllers[key] = false;
-        }
-        // Apply the ones from the preset
-        Object.assign(this.controllers, data.controllers);
-      } else {
-        console.warn("RandomizerUI: No controllers found in preset data");
+      if (!data.controllers) {
+        console.error("RandomizerUI: No controllers found in preset data", data);
+        return false;
       }
+
+      // Reset all to false first
+      for (const key in this.controllers) {
+        this.controllers[key] = false;
+      }
+
+      // Track what we're applying
+      let appliedCount = 0;
+      let missingCount = 0;
+
+      // Apply the ones from the preset
+      for (const key in data.controllers) {
+        if (this.controllers.hasOwnProperty(key)) {
+          this.controllers[key] = data.controllers[key];
+          // console.log(`RandomizerUI: Applied preset value for "${key}": ${data.controllers[key]}`);
+          appliedCount++;
+        } else {
+          // console.warn(`RandomizerUI: Preset contains controller "${key}" that doesn't exist in current setup`);
+          missingCount++;
+        }
+      }
+
+      console.log(`RandomizerUI: Applied ${appliedCount} controller values, ${missingCount} were missing`);
 
       this.updateParameterAvailability();
       setTimeout(() => this.applyFlexLayoutToParameters(), 0);
@@ -578,9 +613,20 @@ export class RandomizerUi extends BaseUi {
   }
 
   getData() {
-    return {
-      controllers: this.controllers
+    console.log("RandomizerUI: Getting data from controllers");
+
+    // Make sure we're capturing the actual state
+    const controllerState = {};
+
+    // Loop through all our controller references
+    for (const targetName in this.controllers) {
+      controllerState[targetName] = this.controllers[targetName];
+      // console.log(`RandomizerUI: Saving state for "${targetName}": ${this.controllers[targetName]}`);
     }
+
+    return {
+      controllers: controllerState
+    };
   }
 
   updateControllerDisplays() {
