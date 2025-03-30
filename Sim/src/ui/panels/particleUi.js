@@ -6,6 +6,9 @@ export class ParticleUi extends BaseUi {
     this.controls = {};
     this.gui.title("Particles");
     this.initParticleControls();
+
+    // Track the last regenerated particle count
+    this.lastRegeneratedCount = this.main.particleSystem?.numParticles || 0;
   }
 
   //#region Particle
@@ -18,7 +21,16 @@ export class ParticleUi extends BaseUi {
       .add(particles, "numParticles", 0, 1500, 1)
       .name("P-Count")
       .onFinishChange((value) => {
+        // Whenever slider is released, track this as the last regenerated count
+        this.lastRegeneratedCount = value;
         particles.reinitializeParticles(value);
+      })
+      .onChange((value) => {
+        // If new value is higher than last regenerated, reinitialize immediately
+        if (value > this.lastRegeneratedCount) {
+          this.lastRegeneratedCount = value;
+          particles.reinitializeParticles(value);
+        }
       });
 
     this.particleSizeController = this.gui
@@ -73,6 +85,18 @@ export class ParticleUi extends BaseUi {
 
     try {
       const targets = this.getControlTargets();
+      const particles = this.main.particleSystem;
+
+      // Check if preset has a higher particle count than current
+      let needsReinitialize = false;
+      const newCount = data.controllers["P-Count"];
+
+      if (newCount !== undefined && particles) {
+        if (newCount > this.lastRegeneratedCount) {
+          this.lastRegeneratedCount = newCount;
+          needsReinitialize = true;
+        }
+      }
 
       // Apply values from preset to controllers
       for (const [key, value] of Object.entries(data.controllers)) {
@@ -80,6 +104,12 @@ export class ParticleUi extends BaseUi {
           targets[key].setValue(value);
         }
       }
+
+      // Reinitialize particles if needed (higher count in preset)
+      if (needsReinitialize && particles) {
+        particles.reinitializeParticles(newCount);
+      }
+
       this.updateControllerDisplays();
       return true;
     } catch (error) {
