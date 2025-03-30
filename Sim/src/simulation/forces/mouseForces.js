@@ -671,10 +671,8 @@ class MouseForces {
       turbulenceField.scale = newScale;
     }
 
-    // Update UI if available
-    if (this.main?.turbulenceUi && typeof this.main.turbulenceUi.updateScaleControllers === 'function') {
-      this.main.turbulenceUi.updateScaleControllers();
-    }
+    // Update UI directly
+    this.main.ui.turbulenceUi.updateControllerDisplays();
   }
 }
 
