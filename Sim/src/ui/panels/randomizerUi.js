@@ -8,6 +8,7 @@ export class RandomizerUi extends BaseUi {
     this.intensity = 0.1;
     this.includeCheckboxes = true;
     this.useExclusions = true;
+    this.targetSelectionMode = false;
 
     this.exclusions = [
       "Time Step",
@@ -22,6 +23,7 @@ export class RandomizerUi extends BaseUi {
     titleElement.style.textAlign = "center";
 
     this.createRandomizeButton();
+    this.createTargetSelectionButton();
 
     this.intensityController = this.gui
       .add(this, "intensity", 0, 1)
@@ -118,6 +120,104 @@ export class RandomizerUi extends BaseUi {
         }
         .randomizer-flash {
           animation: randomizer-flash 0.3s;
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }
+
+  createTargetSelectionButton() {
+    // Create a container for the button
+    const buttonContainer = document.createElement("div");
+    buttonContainer.style.width = "100%";
+    buttonContainer.style.padding = "5px 0";
+    buttonContainer.style.textAlign = "center";
+
+    // Create the button
+    const targetSelectionButton = document.createElement("button");
+    targetSelectionButton.textContent = "Select Targets";
+    targetSelectionButton.id = "target-selection-button";
+    targetSelectionButton.style.width = "100%";
+    targetSelectionButton.style.fontSize = "12px";
+    targetSelectionButton.style.backgroundColor = "#555";
+    targetSelectionButton.style.color = "white";
+    targetSelectionButton.style.border = "none";
+    targetSelectionButton.style.borderRadius = "4px";
+    targetSelectionButton.style.cursor = "pointer";
+    targetSelectionButton.style.transition = "background-color 0.3s";
+    targetSelectionButton.style.marginBottom = "10px";
+
+    // Add hover effects
+    targetSelectionButton.addEventListener("mouseenter", () => {
+      targetSelectionButton.style.backgroundColor = "#777";
+    });
+
+    targetSelectionButton.addEventListener("mouseleave", () => {
+      targetSelectionButton.style.backgroundColor = this.targetSelectionMode ? "#ff4444" : "#555";
+    });
+
+    // Add click handler
+    targetSelectionButton.addEventListener("click", () => {
+      this.toggleTargetSelectionMode();
+    });
+
+    // Add to container
+    buttonContainer.appendChild(targetSelectionButton);
+
+    // Add container to the GUI
+    const guiContainer = this.gui.domElement.querySelector(".children");
+    if (guiContainer) {
+      // Insert after the randomize button
+      const randomizeButton = guiContainer.querySelector("#randomize-all-button");
+      if (randomizeButton) {
+        const randomizeContainer = randomizeButton.closest("div");
+        if (randomizeContainer) {
+          guiContainer.insertBefore(buttonContainer, randomizeContainer.nextSibling);
+        } else {
+          guiContainer.insertBefore(buttonContainer, guiContainer.firstChild.nextSibling);
+        }
+      } else {
+        guiContainer.insertBefore(buttonContainer, guiContainer.firstChild);
+      }
+    }
+
+    // Store reference
+    this.targetSelectionButton = targetSelectionButton;
+
+    // Add CSS for target selection mode if not already present
+    if (!document.getElementById("randomizer-target-selection-styles")) {
+      const style = document.createElement("style");
+      style.id = "randomizer-target-selection-styles";
+      style.textContent = `
+        /* General styles for target selection mode */
+        body.randomizer-target-selection-mode .controller {
+          opacity: 0.5;
+          pointer-events: none;
+        }
+        
+        /* Style for selectable targets */
+        body.randomizer-target-selection-mode [data-is-target="true"] {
+          opacity: 1;
+          pointer-events: auto;
+          position: relative;
+          transition: background-color 0.2s, transform 0.1s;
+        }
+        
+        /* Hover effect for selectable targets */
+        body.randomizer-target-selection-mode [data-is-target="true"]:hover {
+          background-color: rgba(255, 255, 100, 0.2);
+          transform: scale(1.02);
+        }
+        
+        /* Style for already selected targets */
+        body.randomizer-target-selection-mode [data-is-selected="true"] {
+          background-color: rgba(100, 255, 100, 0.2);
+        }
+        
+        /* Prevent selection mode affecting randomizer UI itself */
+        body.randomizer-target-selection-mode .randomizer-ui .controller {
+          opacity: 1;
+          pointer-events: auto;
         }
       `;
       document.head.appendChild(style);
@@ -672,5 +772,140 @@ export class RandomizerUi extends BaseUi {
       });
       // console.log(`Applied flex layout to folder ${folder.title}, found ${controllerEls.length} controllers`);
     });
+  }
+
+  toggleTargetSelectionMode() {
+    this.targetSelectionMode = !this.targetSelectionMode;
+
+    // Update button appearance
+    const button = this.targetSelectionButton;
+    if (button) {
+      button.textContent = this.targetSelectionMode ? "Confirm Selection" : "Select Targets";
+      button.style.backgroundColor = this.targetSelectionMode ? "#ff4444" : "#555";
+    }
+
+    // Toggle the body class for styling
+    if (this.targetSelectionMode) {
+      console.log("Entering target selection mode");
+      this.markRandomizerControls();
+      document.body.classList.add('randomizer-target-selection-mode');
+      this.highlightValidTargets();
+
+      // Add click listener with capture phase
+      document.removeEventListener('click', this.handleTargetSelection, true);
+      document.addEventListener('click', this.handleTargetSelection, true);
+    } else {
+      console.log("Exiting target selection mode");
+      document.body.classList.remove('randomizer-target-selection-mode');
+      this.clearTargetHighlights();
+
+      // Remove click listener
+      document.removeEventListener('click', this.handleTargetSelection, true);
+    }
+  }
+
+  markRandomizerControls() {
+    // Mark the randomizer UI to prevent it from being affected by selection mode
+    const randomizerElements = document.querySelectorAll('.lil-gui');
+    randomizerElements.forEach(element => {
+      if (element.contains(this.gui.domElement)) {
+        element.classList.add('randomizer-ui');
+      }
+    });
+  }
+
+  highlightValidTargets() {
+    // Get all registered target names
+    const validTargetNames = this.modulatorManager ? this.modulatorManager.getTargetNames() : [];
+
+    // Skip excluded parameters
+    const effectiveTargetNames = validTargetNames.filter(name => !this.exclusions.includes(name));
+
+    // For each controller, add highlight only if it's a valid target
+    const controllers = document.querySelectorAll('.controller:not(.randomizer-ui .controller)');
+    controllers.forEach(controller => {
+      const nameElement = controller.querySelector('.name');
+      if (nameElement) {
+        const controllerName = nameElement.textContent.trim();
+        const isValidTarget = effectiveTargetNames.includes(controllerName);
+
+        // Add data attributes for targeting CSS
+        controller.setAttribute('data-is-target', isValidTarget ? 'true' : 'false');
+
+        // Mark already selected parameters
+        if (isValidTarget && this.controllers[controllerName]) {
+          controller.setAttribute('data-is-selected', 'true');
+        } else {
+          controller.setAttribute('data-is-selected', 'false');
+        }
+      }
+    });
+
+    console.log(`Highlighted ${effectiveTargetNames.length} valid targets for selection`);
+  }
+
+  clearTargetHighlights() {
+    // Remove all data attributes we added
+    const controllers = document.querySelectorAll('[data-is-target], [data-is-selected]');
+    controllers.forEach(controller => {
+      controller.removeAttribute('data-is-target');
+      controller.removeAttribute('data-is-selected');
+    });
+  }
+
+  handleTargetSelection = (e) => {
+    if (!this.targetSelectionMode) return;
+
+    // Find the clicked element
+    let element = e.target;
+
+    // Ignore clicks on the selection button itself
+    if (element === this.targetSelectionButton) {
+      return;
+    }
+
+    // Find the controller element
+    while (element && !element.classList.contains('controller')) {
+      element = element.parentElement;
+    }
+
+    if (!element) return;
+
+    // Check if this is a valid target
+    if (element.getAttribute('data-is-target') !== 'true') {
+      return;
+    }
+
+    // Find the target name
+    const nameElement = element.querySelector('.name');
+    if (!nameElement) return;
+
+    const targetName = nameElement.textContent.trim();
+    if (!targetName) return;
+
+    // Toggle selection state
+    const isCurrentlySelected = element.getAttribute('data-is-selected') === 'true';
+    const newState = !isCurrentlySelected;
+
+    console.log(`${newState ? 'Selected' : 'Deselected'} target: ${targetName}`);
+
+    // Update visual state
+    element.setAttribute('data-is-selected', newState ? 'true' : 'false');
+
+    // Update internal state
+    this.controllers[targetName] = newState;
+
+    // Find and update the checkbox in the parameters folder
+    for (const folder of this.paramFolder.folders) {
+      for (const controller of folder.controllers) {
+        if (controller.property === targetName) {
+          controller.setValue(newState);
+          break;
+        }
+      }
+    }
+
+    // Stop event propagation to prevent other click handlers
+    e.stopPropagation();
   }
 }
