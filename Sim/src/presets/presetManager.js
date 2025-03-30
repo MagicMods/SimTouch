@@ -176,7 +176,11 @@ export class PresetManager {
 
   _handleSave(presetType) {
     console.log(`Save requested for ${presetType}`);
-    const presetName = prompt(`Enter ${presetType} preset name:`);
+
+    // Get current preset name to pre-populate the prompt
+    const currentPreset = this.getSelectedPreset(presetType);
+    const presetName = prompt(`Enter ${presetType} preset name:`, currentPreset);
+
     console.log(`User entered name: ${presetName}`);
     if (!presetName) return;
 
