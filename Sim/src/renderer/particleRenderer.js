@@ -17,15 +17,17 @@ class ParticleRenderer extends BaseRenderer {
   }
 
   draw(particles) {
-    if (!particles || !Array.isArray(particles) || particles.length === 0) {
-      // console.warn("No valid particles to draw");
-      return;
+    if (!particles || !Array.isArray(particles)) {
+      throw new Error("Invalid particles array provided to ParticleRenderer");
+    }
+
+    if (particles.length === 0) {
+      return; // Nothing to draw, but not an error
     }
 
     const program = this.shaderManager.use(this.shaderType);
     if (!program) {
-      console.error("Failed to setup particle shader");
-      return;
+      throw new Error(`Failed to use shader "${this.shaderType}" for particle rendering`);
     }
 
     // Default size as fallback

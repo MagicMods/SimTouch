@@ -14,38 +14,42 @@ export class ModulatorManager {
 
   //#region Target
   addTarget(name, controller) {
+    // Validate controller has the necessary interface
+    if (!controller) {
+      throw new Error(`Cannot add null controller for target "${name}"`);
+    }
+
+    // Check for required methods or properties
+    const hasGetValue = typeof controller.getValue === "function";
+    const hasSetValue = typeof controller.setValue === "function";
+    const hasValueProperty = controller.value !== undefined;
+
+    if (!hasGetValue && !hasValueProperty) {
+      throw new Error(`Controller for "${name}" must have getValue() method or value property`);
+    }
+
+    if (!hasSetValue && !hasValueProperty) {
+      throw new Error(`Controller for "${name}" must have setValue() method or value property`);
+    }
+
     this.targets[name] = {
       controller: controller,
       min: 0,
       max: 1,
       getValue: () => {
-        if (typeof controller.getValue === "function") {
+        if (hasGetValue) {
           return controller.getValue();
-        } else if (controller.value !== undefined) {
-          return controller.value;
-        } else {
-          console.warn(
-            `No getValue method or value property for target "${name}"`
-          );
-          return 0;
         }
+        return controller.value;
       },
       setValue: (value) => {
-        try {
-          if (typeof controller.setValue === "function") {
-            controller.setValue(value);
-            if (typeof controller.updateDisplay === "function") {
-              controller.updateDisplay();
-            }
-          } else if (controller.value !== undefined) {
-            controller.value = value;
-          } else {
-            console.warn(
-              `No setValue method or value property for target "${name}"`
-            );
+        if (hasSetValue) {
+          controller.setValue(value);
+          if (typeof controller.updateDisplay === "function") {
+            controller.updateDisplay();
           }
-        } catch (e) {
-          console.warn(`Error setting value for target "${name}":`, e);
+        } else {
+          controller.value = value;
         }
       },
     };
@@ -53,21 +57,15 @@ export class ModulatorManager {
 
   addTargetWithRangeFull(name, controller, min = 0, max = 1, step = 0.01) {
     this.addTarget(name, controller);
-    if (this.targets[name]) {
-      this.targets[name].min = min;
-      this.targets[name].max = max;
-      this.targets[name].step = step;
-      // console.log(
-      //   `Added target ${name} with range: ${min} - ${max}, step: ${step}`
-      // );
-    }
+    this.targets[name].min = min;
+    this.targets[name].max = max;
+    this.targets[name].step = step;
   }
 
   getTargetInfo(targetName) {
     const target = this.targets[targetName];
     if (!target) {
-      console.warn(`Target "${targetName}" not found in ModulatorManager`);
-      return null;
+      throw new Error(`Target "${targetName}" not found in ModulatorManager`);
     }
 
     // Return a properly structured target info object
@@ -86,7 +84,6 @@ export class ModulatorManager {
       Object.keys(this.targets).length === 0 &&
       Object.keys(this.uiComponents).length > 0
     ) {
-      // console.log("ModulatorManager: No targets found, auto-registering");
       this.registerTargetsFromUi();
     }
 
@@ -94,85 +91,71 @@ export class ModulatorManager {
   }
 
   registerUiComponents(components = {}) {
-    this.uiComponents = components;
-    // console.log(
-    //   `ModulatorManager: Registered ${
-    //     Object.keys(components).length
-    //   } UI components`
-    // );
+    if (!components || Object.keys(components).length === 0) {
+      throw new Error("Cannot register empty UI components");
+    }
 
-    // Register targets from all components
+    this.uiComponents = components;
     this.registerTargetsFromUi();
   }
 
   registerTargetsFromUi() {
-    // console.log("ModulatorManager: Registering targets from UI components");
+    // Clear existing targets to avoid duplicates
+    this.targets = {};
 
-    try {
-      // Clear existing targets to avoid duplicates
-      this.targets = {};
+    if (!this.uiComponents || Object.keys(this.uiComponents).length === 0) {
+      throw new Error("No UI components to register targets from");
+    }
 
-      if (!this.uiComponents || Object.keys(this.uiComponents).length === 0) {
-        console.warn(
-          "ModulatorManager: No UI components to register targets from"
-        );
-        return;
+    // Register targets from all components
+    Object.entries(this.uiComponents).forEach(([name, component]) => {
+      if (!component) {
+        throw new Error(`Component "${name}" is null or undefined`);
       }
 
-      // Register targets from all components
-      Object.entries(this.uiComponents).forEach(([name, component]) => {
-        if (component && typeof component.getControlTargets === "function") {
-          // console.log(`Registering targets from ${name}`);
-          const targets = component.getControlTargets();
-          this.registerTargetsFromObject(targets);
-        } else {
-          console.log(`Component ${name} has no getControlTargets method`);
-        }
-      });
-
-      const targetCount = Object.keys(this.targets).length;
-      // console.log(`ModulatorManager: Registered ${targetCount} targets`);
-      if (targetCount > 0) {
-        // console.log("Available targets:", Object.keys(this.targets));
-      } else {
-        console.warn("No targets were registered!");
+      if (typeof component.getControlTargets !== "function") {
+        throw new Error(`Component "${name}" must have getControlTargets() method`);
       }
-    } catch (e) {
-      console.error("Error registering targets in ModulatorManager:", e);
+
+      const targets = component.getControlTargets();
+      this.registerTargetsFromObject(targets);
+    });
+
+    const targetCount = Object.keys(this.targets).length;
+    if (targetCount === 0) {
+      throw new Error("No targets were registered from UI components");
     }
   }
 
   autoRangeTarget(modulator, minController, maxController) {
-    if (!modulator || !modulator.targetName) return;
+    if (!modulator || !modulator.targetName) {
+      throw new Error("Cannot auto-range target: modulator or targetName is missing");
+    }
 
     const targetInfo = this.getTargetInfo(modulator.targetName);
-    if (!targetInfo) return;
-
     const min = targetInfo.min;
     const max = targetInfo.max;
     const step = targetInfo.step || 0.01;
 
-    if (min !== undefined && max !== undefined && !isNaN(min) && !isNaN(max)) {
-      // Update modulator's range
-      modulator.min = min;
-      modulator.max = max;
+    // Update modulator's range
+    modulator.min = min;
+    modulator.max = max;
 
-      // Update UI controllers if provided
-      if (minController) {
-        minController.min(min);
-        minController.max(max);
-        minController.step(step);
-        minController.setValue(min);
-        minController.updateDisplay();
-      }
+    // Update UI controllers if provided
+    if (minController) {
+      minController.min(min);
+      minController.max(max);
+      minController.step(step);
+      minController.setValue(min);
+      minController.updateDisplay();
+    }
 
-      if (maxController) {
-        maxController.min(min);
-        maxController.max(max);
-        maxController.step(step);
-        maxController.setValue(max);
-        maxController.updateDisplay();
-      }
+    if (maxController) {
+      maxController.min(min);
+      maxController.max(max);
+      maxController.step(step);
+      maxController.setValue(max);
+      maxController.updateDisplay();
     }
   }
 
@@ -194,21 +177,22 @@ export class ModulatorManager {
   }
 
   removeModulator(index) {
-    if (index >= 0 && index < this.modulators.length) {
-      const modulator = this.modulators[index];
-
-      // Make sure modulator is disabled
-      if (modulator.disable) {
-        modulator.disable();
-      } else {
-        modulator.enabled = false;
-      }
-
-      // Remove it from the array
-      this.modulators.splice(index, 1);
-      return true;
+    if (index < 0 || index >= this.modulators.length) {
+      throw new Error(`Invalid modulator index: ${index}`);
     }
-    return false;
+
+    const modulator = this.modulators[index];
+
+    // Make sure modulator is disabled
+    if (modulator.disable) {
+      modulator.disable();
+    } else {
+      modulator.enabled = false;
+    }
+
+    // Remove it from the array
+    this.modulators.splice(index, 1);
+    return true;
   }
 
   getModulatorsByType(type) {

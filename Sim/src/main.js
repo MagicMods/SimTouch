@@ -33,7 +33,6 @@ class Main {
       voronoi: this.voronoiField,
     });
 
-    // Create ModulatorManager - ADD THIS
     this.modulatorManager = new ModulatorManager();
 
     this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager);
@@ -45,7 +44,7 @@ class Main {
     this.mouseForces.setupMouseInteraction(this.canvas, this.particleSystem);
     this.micForces = new MicInputForces();
 
-    // IMPORTANT: Attach it to particleSystem so render() can find it
+    // Attach mouseForces to particleSystem
     this.particleSystem.mouseForces = this.mouseForces;
 
     // Create EmuForces instance with correct reference to gravity
@@ -70,33 +69,27 @@ class Main {
     socketManager.enable = true;
     socketManager.connect();
 
-    // this.setupMouseDebug();
+    // Connect components directly without null checks
+    console.log("Directly connecting turbulenceField to emuRenderer and emuForces");
+    // Add direct reference to turbulenceField in emuForces
+    this.externalInput.emuForces.turbulenceField = this.turbulenceField;
 
-    if (this.emuRenderer && this.turbulenceField && this.externalInput?.emuForces) {
-      console.log("Directly connecting turbulenceField to emuRenderer and emuForces");
-      // Add direct reference to turbulenceField in emuForces
-      this.externalInput.emuForces.turbulenceField = this.turbulenceField;
-
-      // Add direct reference to main in simulation
-      if (this.externalInput.emuForces.simulation) {
-        this.externalInput.emuForces.simulation.main = this;
-      }
-      // Also store main reference in emuRenderer
-      this.emuRenderer.main = this;
+    // Add direct reference to main in simulation
+    if (this.externalInput.emuForces.simulation) {
+      this.externalInput.emuForces.simulation.main = this;
     }
+    // Also store main reference in emuRenderer
+    this.emuRenderer.main = this;
   }
 
   async init() {
     try {
       await this.shaderManager.init();
 
-      // Initialize audio analyzer if needed
-      if (this.micForces && this.micForces.analyzer) {
-        this.audioAnalyzer = this.micForces.analyzer;
-        // console.log("Audio analyzer referenced from micForces");
-      }
+      // Get audio analyzer directly without null checks
+      this.audioAnalyzer = this.micForces.analyzer;
 
-      this.ui = new UiManager(this); // Use UiManager instead of UI
+      this.ui = new UiManager(this);
       this.animate();
       return true;
     } catch (error) {
@@ -115,35 +108,23 @@ class Main {
   render() {
     this.frame++;
 
+    // Apply forces in sequence
     this.particleSystem.mouseForces.update(this.particleSystem);
-
-    // Apply EMU forces if enabled
-    if (this.emuForces) {
-      this.emuForces.apply(this.particleSystem.timeStep);
-    }
-
+    this.emuForces.apply(this.particleSystem.timeStep);
     this.turbulenceField.update(this.particleSystem.timeStep);
     this.voronoiField.update(this.particleSystem.timeStep);
 
+    // Step the particle system
     this.particleSystem.step();
+
+    // Draw all visual elements
     this.gridRenderer.draw(this.particleSystem);
-
-    // Draw particles
     this.particleRenderer.draw(this.particleSystem.getParticles());
-
-    // Draw debug visualizations (if enabled)
     this.debugRenderer.draw(this.particleSystem, this.turbulenceField, this.voronoiField);
 
-    // Update UI components to process audio input
-    if (this.ui) {
-      this.ui.update(this.particleSystem.timeStep);
-    }
-
-    if (this.modulatorManager) {
-      this.modulatorManager.update(this.particleSystem.timeStep);
-    }
-
-    this.ui.stats.update();
+    // Update UI and modulators
+    this.ui.update(this.particleSystem.timeStep);
+    this.modulatorManager.update(this.particleSystem.timeStep);
   }
 
   static async create() {
@@ -172,17 +153,6 @@ class Main {
           y: Math.round(e.clientY - rect.top),
         },
       });
-
-      // // Log boundary info from ParticleSystem, if available
-      // if (this.particleSystem.centerX && this.particleSystem.centerY) {
-      //   console.log("Boundary:", {
-      //     center: {
-      //       x: this.particleSystem.centerX.toFixed(3),
-      //       y: this.particleSystem.centerY.toFixed(3),
-      //     },
-      //     radius: this.particleSystem.radius.toFixed(3),
-      //   });
-      // }
     });
   }
 }

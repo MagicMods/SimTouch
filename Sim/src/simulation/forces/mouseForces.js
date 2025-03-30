@@ -45,6 +45,9 @@ class MouseForces {
 
   // Set main instance reference
   setMainReference(main) {
+    if (!main) {
+      throw new Error("Main reference cannot be null");
+    }
     this.main = main;
     return this;
   }
@@ -109,6 +112,14 @@ class MouseForces {
   }
 
   setupMouseInteraction(canvas, particleSystem) {
+    if (!canvas) {
+      throw new Error("Canvas reference cannot be null");
+    }
+
+    if (!particleSystem) {
+      throw new Error("ParticleSystem reference cannot be null");
+    }
+
     canvas.addEventListener("contextmenu", (e) => e.preventDefault());
 
     // Store reference to particle system
@@ -275,24 +286,16 @@ class MouseForces {
   }
 
   isInNoiseMode() {
-    // First try with direct main reference
-    if (this.main &&
-      this.main.gridRenderer &&
-      this.main.gridRenderer.renderModes) {
-      const currentMode = this.main.gridRenderer.renderModes.currentMode;
-      return currentMode === "--- NOISE ---";
+    if (!this.main) {
+      throw new Error("Main reference is required for isInNoiseMode");
     }
 
-    // Fallback to looking through particleSystem
-    if (this.particleSystem &&
-      this.particleSystem.main &&
-      this.particleSystem.main.gridRenderer &&
-      this.particleSystem.main.gridRenderer.renderModes) {
-      const currentMode = this.particleSystem.main.gridRenderer.renderModes.currentMode;
-      return currentMode === "--- NOISE ---";
+    if (!this.main.gridRenderer) {
+      throw new Error("GridRenderer is required in main for isInNoiseMode");
     }
 
-    return false;
+    const currentMode = this.main.gridRenderer.renderModes.currentMode;
+    return currentMode === "--- NOISE ---";
   }
 
   handleJoystick(pos) {
@@ -325,8 +328,8 @@ class MouseForces {
     this.joystickY = normY; // Use direct normY (don't invert)
     this.joystickActive = true;
 
-    // If emuRenderer exists, update it directly
-    if (this.main?.emuRenderer) {
+    // Update the emuRenderer if it exists
+    if (this.main.emuRenderer) {
       // EmuRenderer expects values in -10 to 10 range, so scale up
       this.main.emuRenderer.joystickX = normX * 10;
       this.main.emuRenderer.joystickY = normY * 10; // Use direct normY (don't invert)
@@ -334,37 +337,36 @@ class MouseForces {
 
       // Let emuRenderer update the UI and physics
       this.main.emuRenderer.updateTurbulenceBiasUI();
-
       return; // Let emuRenderer handle updates
     }
 
-    // Fallback to direct turbulence field update if no emuRenderer
+    // Fallback to direct turbulence field update
     this.updateTurbulenceField(this.joystickX, this.joystickY);
   }
 
   updateTurbulenceField(x, y) {
-    // First try with direct main reference
-    if (this.main && this.main.turbulenceField) {
-      const turbulenceField = this.main.turbulenceField;
-      if (typeof turbulenceField.setBiasSpeed === 'function' && turbulenceField.biasStrength > 0) {
-        turbulenceField.setBiasSpeed(x, y);
-        return true;
-      }
+    if (!this.main) {
+      throw new Error("Main reference is required for updateTurbulenceField");
     }
 
-    // Fallback to looking through particleSystem
-    if (this.particleSystem && this.particleSystem.main && this.particleSystem.main.turbulenceField) {
-      const turbulenceField = this.particleSystem.main.turbulenceField;
-      if (typeof turbulenceField.setBiasSpeed === 'function' && turbulenceField.biasStrength > 0) {
-        turbulenceField.setBiasSpeed(x, y);
-        return true;
-      }
+    if (!this.main.turbulenceField) {
+      throw new Error("TurbulenceField is required in main for updateTurbulenceField");
+    }
+
+    const turbulenceField = this.main.turbulenceField;
+    if (turbulenceField.biasStrength > 0) {
+      turbulenceField.setBiasSpeed(x, y);
+      return true;
     }
 
     return false;
   }
 
   update(particleSystem) {
+    if (!particleSystem) {
+      throw new Error("ParticleSystem is required for update");
+    }
+
     // Reset activity flag at the start of each frame
     this.isActive = false;
 
@@ -377,12 +379,9 @@ class MouseForces {
       const pos = this.mouseState.position;
 
       if (inNoiseMode) {
-        // For Noise mode, keep updating joystick if active
-        if (this.joystickActive) {
-          this.handleJoystick(pos);
-        } else {
-          this.handleJoystick(pos); // Start joystick if not active
-        }
+        // Keep updating joystick if active
+        this.handleJoystick(pos);
+        this.joystickActive = true;
       } else {
         // Apply appropriate force based on button for normal modes
         if (this.mouseState.buttons.has(1)) {
@@ -429,8 +428,8 @@ class MouseForces {
 
     // Apply spring return effect for joystick if active but not being held
     if (inNoiseMode && this.joystickActive && !this.mouseState.isPressed && !this.externalMouseState.isPressed) {
-      // If emuRenderer exists, let it handle the spring return
-      if (this.main?.emuRenderer && this.main.emuRenderer.visible) {
+      // If emuRenderer exists and is visible, let it handle the spring return
+      if (this.main.emuRenderer && this.main.emuRenderer.visible) {
         // Don't apply our own spring - let emuRenderer handle it
       } else {
         this.applyJoystickSpring();

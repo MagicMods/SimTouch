@@ -3,6 +3,9 @@ import { BaseRenderer } from "./baseRenderer.js";
 class DebugRenderer extends BaseRenderer {
   constructor(gl, shaderManager) {
     super(gl);
+    if (!shaderManager) {
+      throw new Error("ShaderManager is required for DebugRenderer");
+    }
     this.shaderManager = shaderManager;
     this.arrowLength = 2;
     this.pressureScale = 0.01;
@@ -17,8 +20,20 @@ class DebugRenderer extends BaseRenderer {
   draw(particleSystem, turbulenceField, voronoiField) {
     if (!this.enabled) return;
 
+    if (!particleSystem) {
+      throw new Error("ParticleSystem is required for DebugRenderer.draw");
+    }
+
     if (this.showVelocityField) {
       this.drawVelocityField(particleSystem);
+    }
+
+    if (this.showTurbulenceField && !turbulenceField) {
+      throw new Error("TurbulenceField is required when showTurbulenceField is enabled");
+    }
+
+    if (this.showVoronoiField && !voronoiField) {
+      throw new Error("VoronoiField is required when showVoronoiField is enabled");
     }
 
     if (this.showTurbulenceField || this.showVoronoiField) {
@@ -28,7 +43,10 @@ class DebugRenderer extends BaseRenderer {
 
   drawGrid(gridSize) {
     const program = this.shaderManager.use('lines');
-    if (!program) return;
+    if (!program) {
+      throw new Error("Failed to use 'lines' shader for grid rendering");
+    }
+
     gridSize = 48;
     const vertices = [];
     const gridStep = 2.0 / gridSize;
@@ -60,11 +78,17 @@ class DebugRenderer extends BaseRenderer {
   }
 
   drawVelocityField(particleSystem) {
+    if (!particleSystem) {
+      throw new Error("ParticleSystem is required for drawVelocityField");
+    }
+
     const program = this.shaderManager.use('lines');
-    if (!program) return;
+    if (!program) {
+      throw new Error("Failed to use 'lines' shader for velocity field rendering");
+    }
 
     const particles = particleSystem.getParticles();
-    if (!particles || particles.length === 0) return;
+    if (particles.length === 0) return;
 
     const vertices = [];
     const scale = 0.1; // Scale for velocity vectors
@@ -74,11 +98,8 @@ class DebugRenderer extends BaseRenderer {
 
     for (let i = 0; i < particles.length; i += stride) {
       const p = particles[i];
-      // Convert from [0,1] to [-1,1] coordinate space
-      // const x1 = p.x * 2 - 1;
-      // const y1 = (p.y * 2 - 1); // Y is flipped in WebGL
       const x1 = p.x;
-      const y1 = (p.y);
+      const y1 = p.y;
       const x2 = x1 + p.vx * scale;
       const y2 = y1 - p.vy * scale;
 
@@ -100,10 +121,14 @@ class DebugRenderer extends BaseRenderer {
   }
 
   drawBoundary(boundary) {
-    if (!boundary) return;
+    if (!boundary) {
+      throw new Error("Boundary is required for drawBoundary");
+    }
 
     const program = this.shaderManager.use('circle');
-    if (!program) return;
+    if (!program) {
+      throw new Error("Failed to use 'circle' shader for boundary rendering");
+    }
 
     // Draw a full-screen quad
     const vertices = [
@@ -134,7 +159,9 @@ class DebugRenderer extends BaseRenderer {
 
   drawNoiseField(turbulenceField, voronoiField) {
     const program = this.shaderManager.use('basic');
-    if (!program) return;
+    if (!program) {
+      throw new Error("Failed to use 'basic' shader for noise field rendering");
+    }
 
     // Enable proper blending for transparency
     this.gl.enable(this.gl.BLEND);
@@ -150,28 +177,25 @@ class DebugRenderer extends BaseRenderer {
         const nx = x / (resolution - 1);
         const ny = y / (resolution - 1);
 
-        // Sample turbulence - use noise2D method
+        // Sample turbulence
         let turbValue = 0.5;
-        if (this.showTurbulenceField && turbulenceField && typeof turbulenceField.noise2D === 'function') {
+        if (this.showTurbulenceField) {
           try {
             turbValue = turbulenceField.noise2D(nx * turbulenceField.scale, ny * turbulenceField.scale);
             // Normalize to [0,1] range
             turbValue = (turbValue + 1) * 0.5;
           } catch (e) {
-            // Fallback on error
+            console.error("Error sampling turbulence field:", e);
           }
         }
 
-        // Sample voronoi - use getVoronoiEdgeDistance method
+        // Sample voronoi
         let voroValue = 0;
-        if (this.showVoronoiField && voronoiField && typeof voronoiField.getVoronoiEdgeDistance === 'function') {
+        if (this.showVoronoiField) {
           try {
             const edgeInfo = voronoiField.getVoronoiEdgeDistance(nx, ny);
 
-            // IMPROVED EDGE VISUALIZATION: Use a better formula that maintains contrast
-            // at different edge width values
-
-            // First, apply a hard cutoff based on a fraction of the edge width
+            // Use edge distance for visualization
             const scaledDistance = edgeInfo.distance / (voronoiField.edgeWidth * 0.33);
 
             // Use sharper falloff curve
@@ -183,7 +207,7 @@ class DebugRenderer extends BaseRenderer {
               voroValue = 0;
             }
           } catch (e) {
-            // Fallback on error
+            console.error("Error sampling voronoi field:", e);
           }
         }
 

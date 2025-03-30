@@ -55,9 +55,9 @@ class ParticleSystem {
     this.velocitiesX = new Float32Array(particleCount);
     this.velocitiesY = new Float32Array(particleCount);
 
-    // External forces
-    this.turbulence = turbulence; // Store turbulence reference
-    this.voronoi = voronoi; // Store voronoi reference
+    // External forces - these are required
+    this.turbulence = turbulence || throwError("Turbulence field is required");
+    this.voronoi = voronoi || throwError("Voronoi field is required");
 
     // FLIP system
     this.picFlipRatio = picFlipRatio;
@@ -92,6 +92,11 @@ class ParticleSystem {
     this.organicBehavior = new OrganicBehavior();
 
     this.initializeParticles();
+  }
+
+  // Helper function to throw errors
+  throwError(message) {
+    throw new Error(message);
   }
 
   initializeParticles() {
@@ -165,10 +170,8 @@ class ParticleSystem {
 
     this.initializeParticles();
 
-    // Make sure voronoi field regenerates cells when particle count changes
-    if (this.voronoi) {
-      this.voronoi.regenerateCells();
-    }
+    // Regenerate voronoi cells when particle count changes
+    this.voronoi.regenerateCells();
   }
 
   step() {
@@ -181,9 +184,9 @@ class ParticleSystem {
       this.mouseForces.restoreOtherForces(this);
     }
 
-    // Update field generators
-    if (this.turbulence) this.turbulence.update(dt);
-    if (this.voronoi) this.voronoi.update(dt);
+    // Update field generators - no conditional checks needed
+    this.turbulence.update(dt);
+    this.voronoi.update(dt);
 
     // Apply external forces
     this.applyExternalForces(dt);
@@ -241,7 +244,7 @@ class ParticleSystem {
       );
     }
 
-    // Apply turbulence only if no organic behavior is active
+    // Apply turbulence - no conditional checks needed
     if (
       this.turbulence.affectScale ||
       this.turbulence.affectPosition ||
@@ -255,8 +258,8 @@ class ParticleSystem {
       }
     }
 
-    // Apply voronoi field if enabled
-    if (this.voronoi && this.voronoi.strength > 0) {
+    // Apply voronoi field - strength check is appropriate but no null check needed
+    if (this.voronoi.strength > 0) {
       try {
         for (let i = 0; i < this.numParticles; i++) {
           const pos = [this.particles[i * 2], this.particles[i * 2 + 1]];
@@ -417,6 +420,11 @@ class ParticleSystem {
   setBoundaryMode(mode) {
     this.boundary.setBoundaryMode(mode);
   }
+}
+
+// Helper function to throw errors
+function throwError(message) {
+  throw new Error(message);
 }
 
 export { ParticleSystem };
