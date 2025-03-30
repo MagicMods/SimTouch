@@ -838,6 +838,8 @@ export class TurbulenceUi extends BaseUi {
       if (targets["T-AfScale"]) targets["T-AfScale"].setValue(false);
 
       this.updateControllerDisplays();
+      // Reset bias when loading "None" preset
+      this.resetBias();
       return true;
     }
 
@@ -862,6 +864,9 @@ export class TurbulenceUi extends BaseUi {
       if (this.main && this.main.turbulenceField) {
         this.main.turbulenceField.setParameters(targets);
       }
+
+      // Always reset bias when loading any preset
+      this.resetBias();
 
       return true;
     } catch (error) {
