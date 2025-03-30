@@ -1,5 +1,9 @@
 class PulseModulator {
   constructor(manager) {
+    if (!manager) {
+      throw new Error("ModulatorManager is required for PulseModulator");
+    }
+
     this.manager = manager;
     this.enabled = true;
     this.targetName = "";
@@ -46,7 +50,6 @@ class PulseModulator {
 
 
   getBeatDivisionValue() {
-    // console.log(`Beat division value: ${this.beatDivision}`);
     if (!this.beatDivision || this.beatDivision === "1") {
       return 1.0;
     }
@@ -63,7 +66,6 @@ class PulseModulator {
     // If it's a simple number (like "2" or "4"), use as divisor (slower)
     // This makes "2" half-time (0.5x) and "4" quarter-time (0.25x)
     const value = Number(this.beatDivision);
-    // console.log(`Beat division value: ${value}`);
     return !isNaN(value) ? 1.0 / value : 1.0;
   }
 
@@ -85,15 +87,16 @@ class PulseModulator {
       this.currentIndex = Math.floor(this.min);
       this.direction = 1;
     }
-
-    console.log(`Reinitialized modulator for ${this.targetName}`);
   }
 
   setTarget(targetName) {
+    if (!targetName) {
+      throw new Error("Target name is required for setTarget");
+    }
+
     const target = this.manager.targets[targetName];
     if (!target) {
-      console.warn(`Target "${targetName}" not found`);
-      return;
+      throw new Error(`Target "${targetName}" not found in ModulatorManager`);
     }
 
     // Store target info
@@ -105,8 +108,7 @@ class PulseModulator {
     try {
       this.originalValue = target.getValue();
     } catch (e) {
-      console.warn("Could not get target value:", e);
-      this.originalValue = 0;
+      throw new Error(`Failed to get value for target "${targetName}": ${e.message}`);
     }
 
     // Check if target is a selector/dropdown (like Boundary or Mode)
@@ -125,17 +127,12 @@ class PulseModulator {
       // Initialize current index to min
       this.currentIndex = Math.floor(this.min);
       this.direction = 1; // Default to forward direction
-      console.log(`Initialized selector ${targetName} with ${this.selectorOptions.length} options, current index: ${this.currentIndex}`);
     }
     // Only update min and max if we're NOT loading from preset and it's not a selector
     else if (!this._loadingFromPreset) {
       // Update min and max to match target's range with NaN protection
       this.min = !isNaN(target.min) ? target.min : 0;
       this.max = !isNaN(target.max) ? target.max : 1;
-    } else {
-      console.log(
-        `Set target ${targetName} keeping preset range: ${this.min} - ${this.max}`
-      );
     }
   }
 
@@ -149,8 +146,6 @@ class PulseModulator {
 
         // Set a default selector wave type
         this.type = "forward";
-
-        console.log(`Target is now a selector. Changed wave type to ${this.type}, stored previous: ${this.previousWaveType}`);
       } else {
         // Switching from selector to continuous
         // Restore previous wave type if available, or use default
@@ -159,8 +154,6 @@ class PulseModulator {
         } else {
           this.type = "sine"; // Default
         }
-
-        console.log(`Target is now continuous. Restored wave type to ${this.type}`);
       }
     }
   }
@@ -200,45 +193,45 @@ class PulseModulator {
       ];
     }
 
-    if (targetName === "T-PatternStyle") {
-      return [
-        "checkerboard",
-        "waves",
-        "spiral",
-        "grid",
-        "circles",
-        "diamonds",
-        "ripples",
-        "dots",
-        "voronoi",
-        "cells",
-        "fractal",
-        "vortex",
-        "bubbles",
-        "water",
-        "classicdrop"
-      ];
-    }
-
-    // Try to get options from controller
+    // Attempt to get options from controller properties
     if (controller.options) {
-      return Object.values(controller.options);
+      // If options is an object like {key1: value1, key2: value2}
+      if (typeof controller.options === 'object' && !Array.isArray(controller.options)) {
+        return Object.keys(controller.options);
+      }
+      // If options is already an array
+      else if (Array.isArray(controller.options)) {
+        return controller.options;
+      }
     }
 
+    // Look for options in select element
     if (controller.__select) {
-      return Array.from(controller.__select.options).map(opt => opt.value);
+      const options = [];
+      for (let i = 0; i < controller.__select.options.length; i++) {
+        options.push(controller.__select.options[i].textContent);
+      }
+      if (options.length > 0) {
+        return options;
+      }
     }
 
-    // Default fallback
-    return ["Option 1", "Option 2"];
+    // Fallback: create numeric options from min to max if available
+    if (controller.min !== undefined && controller.max !== undefined) {
+      const options = [];
+      for (let i = controller.min; i <= controller.max; i++) {
+        options.push(i.toString());
+      }
+      return options;
+    }
+
+    // Empty fallback
+    return [];
   }
 
   resetToOriginal() {
     if (this.targetController && this.originalValue !== null) {
       try {
-        // console.log(
-        //   `Resetting target ${this.targetName} to original value ${this.originalValue}`
-        // );
         this.targetController.setValue(this.originalValue);
         if (this.targetController.updateDisplay) {
           this.targetController.updateDisplay();
@@ -383,7 +376,6 @@ class PulseModulator {
             // Apply the current pattern
             const optionValue = this.selectorOptions[this.currentIndex];
             this.targetController.setValue(optionValue);
-            // console.log(`Pattern changed to: ${optionValue} (index: ${this.currentIndex})`);
           }
         }
       } else {
@@ -428,6 +420,24 @@ class PulseModulator {
 
         // For numeric values, directly map to the target range
         const targetValue = this.min + normalizedValue * (this.max - this.min);
+
+        // Special case handling for T-PatternStyle which needs string values
+        if (this.targetName === "T-PatternStyle") {
+          // If this is a pattern style target but we're not using selector modes,
+          // we need to convert the numeric value to a valid pattern style string
+          const turbulenceField = this.manager.main?.turbulenceField;
+          if (turbulenceField && turbulenceField.patternOffsets) {
+            const patternKeys = Object.keys(turbulenceField.patternOffsets);
+            if (patternKeys.length > 0) {
+              // Calculate index from targetValue, ensuring it's within bounds
+              const index = Math.floor(Math.abs(targetValue)) % patternKeys.length;
+              // Set the pattern style to a valid string value
+              this.targetController.setValue(patternKeys[index]);
+              return; // Skip the normal setValue below
+            }
+          }
+        }
+
         this.targetController.setValue(targetValue);
       }
     } catch (e) {

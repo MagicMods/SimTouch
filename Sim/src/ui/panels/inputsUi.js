@@ -3,6 +3,10 @@ import { BaseUi } from "../baseUi.js";
 export class InputsUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
+
+    // Validate required dependencies
+    this.validateDependencies();
+
     this.controls = {};
     this.gui.title("Inputs");
 
@@ -11,6 +15,7 @@ export class InputsUi extends BaseUi {
     this.emuInputFolder = this.gui.addFolder("EMU Input");
     this.externalInputFolder = this.gui.addFolder("Touch Input");
 
+    // Set reference in emuRenderer
     if (this.main.emuRenderer) {
       this.main.emuRenderer.inputsUi = this;
     }
@@ -33,8 +38,24 @@ export class InputsUi extends BaseUi {
     }
   }
 
+  validateDependencies() {
+    if (!this.main.particleSystem) {
+      throw new Error("ParticleSystem is required in main for InputsUi");
+    }
+
+    if (!this.main.particleSystem.mouseForces) {
+      throw new Error("MouseForces is required in particleSystem for InputsUi");
+    }
+
+    if (!this.main.externalInput) {
+      throw new Error("ExternalInput is required in main for InputsUi");
+    }
+  }
+
   registerJoystickAsModulationTargets() {
-    if (!this.main.modulation) return; // Exit if modulation system not available
+    if (!this.main.modulation) {
+      throw new Error("Modulation system is required for registering joystick targets");
+    }
 
     const modulation = this.main.modulation;
 
@@ -134,22 +155,20 @@ export class InputsUi extends BaseUi {
 
   initMouseControls() {
     const particles = this.main.particleSystem;
-    if (!particles?.mouseForces) return;
+    const mouseForces = particles.mouseForces;
 
     this.mouseInputFolder
-      .add(particles.mouseForces, "impulseRadius", 0.5, 2, 0.01)
+      .add(mouseForces, "impulseRadius", 0.5, 2, 0.01)
       .name("Input Radius");
 
     this.mouseInputFolder
-      .add(particles.mouseForces, "impulseMag", 0.01, 0.12, 0.001)
+      .add(mouseForces, "impulseMag", 0.01, 0.12, 0.001)
       .name("Impulse Mag");
   }
 
   initExternalInputControls() {
-    if (!this.main.externalInput) return;
-
     const externalInput = this.main.externalInput;
-    const mouseForces = this.main.mouseForces;
+    const mouseForces = this.main.particleSystem.mouseForces;
 
     // External input enable/disable
     this.externalInputFolder
@@ -185,7 +204,6 @@ export class InputsUi extends BaseUi {
           value,
           mouseForces.externalMouseState.isPressed
         );
-        // console.log("Button type changed to:", value);
       });
 
     externalInput.onButtonTypeChange = (type) => {

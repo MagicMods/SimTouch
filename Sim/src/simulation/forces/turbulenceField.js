@@ -166,7 +166,7 @@ class TurbulenceField {
   // Apply pattern-specific offset based on current pattern style
   applyPatternSpecificOffset() {
     // Get the current pattern style in lowercase for lookup
-    const patternKey = this.patternStyle.toLowerCase();
+    const patternKey = typeof this.patternStyle === 'string' ? this.patternStyle.toLowerCase() : 'checkerboard';
 
     // Get pattern-specific offset or default to [0,0]
     const [offsetX, offsetY] = this.patternOffsets[patternKey] || [0, 0];
@@ -397,9 +397,12 @@ class TurbulenceField {
     // Use pattern frequency consistently in all patterns
     const freq = this.patternFrequency;
 
+    // Ensure patternStyle is a string and convert to lowercase
+    const pattern = typeof patternStyle === 'string' ? patternStyle.toLowerCase() : 'checkerboard';
+
     // For patterns that depend on distance from center, we should adjust calculations
     // since the offset is now applied after rotation, scale, etc.
-    switch (patternStyle) {
+    switch (pattern) {
       case "checkerboard":
         patternValue = Math.sin(x * freq) * Math.sin(y * freq);
         break;
@@ -624,7 +627,9 @@ class TurbulenceField {
       const [processedX, processedY, procCenterX, procCenterY] = this.processCoordinates(x, y, time);
 
       // 2. Calculate base pattern using the processed coordinates
-      let noise = this.calculatePattern(this.patternStyle.toLowerCase(), processedX, processedY, procCenterX, procCenterY);
+      // Add type checking for patternStyle
+      let patternStyleStr = typeof this.patternStyle === 'string' ? this.patternStyle.toLowerCase() : 'checkerboard';
+      let noise = this.calculatePattern(patternStyleStr, processedX, processedY, procCenterX, procCenterY);
 
       // 3. Apply phase offset (time-influenced or static)
       if (this.speed > 0) {
@@ -676,7 +681,9 @@ class TurbulenceField {
     if (this.blurAmount <= 0) return centerValue;
 
     // Check if this is the Classic Drop pattern and reduce samples for better performance
-    const isClassicDrop = this.patternStyle.toLowerCase() === "classicdrop";
+    // Add type checking for patternStyle
+    const patternStyleStr = typeof this.patternStyle === 'string' ? this.patternStyle.toLowerCase() : 'checkerboard';
+    const isClassicDrop = patternStyleStr === "classicdrop";
 
     // Scale blur amount to a more useful range (0 to 0.05)
     const sampleRadius = 0.05 * this.blurAmount;
@@ -717,7 +724,7 @@ class TurbulenceField {
       py = py + this._currentBiasOffsetY;
 
       // Calculate pattern
-      let sampleNoise = this.calculatePattern(this.patternStyle.toLowerCase(), px, py, centerX, centerY);
+      let sampleNoise = this.calculatePattern(patternStyleStr, px, py, centerX, centerY);
 
       // Apply phase and amplitude
       if (this.speed > 0) {
@@ -807,8 +814,8 @@ class TurbulenceField {
     const originalStyle = this.patternStyle;
     const originalTime = this.time;
 
-    // Set the requested pattern style
-    this.patternStyle = patternStyle;
+    // Set the requested pattern style (ensuring it's a string)
+    this.patternStyle = typeof patternStyle === 'string' ? patternStyle : 'checkerboard';
 
     let animationFrame;
     let lastTime = performance.now();
@@ -1058,6 +1065,19 @@ class TurbulenceField {
     // Handle pattern style change - always apply pattern-specific offsets
     let patternChanged = false;
     if (patternStyle !== undefined && patternStyle !== this.patternStyle) {
+      // Convert to string if a numeric value is provided (from modulation)
+      if (typeof patternStyle !== 'string') {
+        // Get available pattern styles as fallback
+        const patternKeys = Object.keys(this.patternOffsets);
+        if (patternKeys.length > 0) {
+          // Use modulo to wrap the numeric value to a valid pattern
+          const index = Math.floor(Math.abs(patternStyle)) % patternKeys.length;
+          patternStyle = patternKeys[index];
+        } else {
+          patternStyle = 'checkerboard'; // Default fallback
+        }
+      }
+
       this.patternStyle = patternStyle;
       patternChanged = true;
     }

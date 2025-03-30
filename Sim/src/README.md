@@ -102,3 +102,69 @@ Components are designed to fail explicitly when required dependencies are missin
 2. **Explicit Failure**: Components throw errors when critical dependencies are missing
 3. **Clear Requirements**: Each component clearly documents its required dependencies
 4. **Initialization Order**: Components are initialized in the correct dependency order
+
+## Code Style Guidelines
+
+### Anti-Patterns to Avoid
+
+1. **Optional Chaining**: Do not use optional chaining (`?.`) to access properties or methods
+   ```javascript
+   // BAD
+   this.main?.turbulenceField?.update();
+   
+   // GOOD
+   this.main.turbulenceField.update();
+   ```
+
+2. **Silent Returns**: Do not use silent returns when dependencies are missing
+   ```javascript
+   // BAD
+   if (!this.turbulence) return;
+   
+   // GOOD
+   if (!this.turbulence) {
+     throw new Error("TurbulenceField is required");
+   }
+   ```
+
+3. **Type Checking**: Do not check types before calling methods
+   ```javascript
+   // BAD
+   if (typeof controller.getValue === "function") {
+     controller.getValue();
+   }
+   
+   // GOOD
+   controller.getValue(); // Validate at initialization time
+   ```
+
+4. **Multiple Fallbacks**: Do not try multiple paths to access the same object
+   ```javascript
+   // BAD
+   const field = this.main?.turbulenceField || 
+                 this.particleSystem?.main?.turbulenceField;
+   
+   // GOOD
+   const field = this.main.turbulenceField; // Documented dependency
+   ```
+
+### Logging
+
+The codebase uses a centralized logging utility (`logger.js`) instead of direct console calls:
+
+```javascript
+// BAD
+console.log("Starting initialization");
+console.error("Failed to load resource", error);
+
+// GOOD
+import { logger } from "../util/logger.js";
+logger.info("Starting initialization");
+logger.error("Failed to load resource", error);
+```
+
+Benefits of the logger:
+- Configurable log levels (ERROR, WARN, INFO, DEBUG, TRACE)
+- Consistent formatting
+- Can be disabled in production
+- Single point of control for all logging

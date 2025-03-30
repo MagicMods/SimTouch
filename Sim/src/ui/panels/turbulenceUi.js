@@ -5,6 +5,12 @@ import { NoisePreviewManager } from "../../util/noisePreviewManager.js";
 export class TurbulenceUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
+
+    // Validate required dependencies
+    if (!main.turbulenceField) {
+      throw new Error("TurbulenceField is required in main for TurbulenceUi");
+    }
+
     this.presetManager = null;
     this.presetControls = null;
     this.gui.title("Turbulence");
@@ -24,42 +30,45 @@ export class TurbulenceUi extends BaseUi {
   }
 
   initWithPresetManager(presetManager) {
+    if (!presetManager) {
+      throw new Error("PresetManager is required for initWithPresetManager");
+    }
+
     this.presetManager = presetManager;
 
     const turbulenceContainer = this.gui.domElement.querySelector(".children");
-    if (turbulenceContainer) {
-      this.presetControls = this.presetManager.createPresetControls(
-        PresetManager.TYPES.TURBULENCE,
-        turbulenceContainer,
-        { insertFirst: true }
-      );
+    if (!turbulenceContainer) {
+      throw new Error("Turbulence container not found in GUI");
+    }
 
-      // Add the button controls after the preset controls
-      if (this.buttonContainer) {
-        const presetElement =
-          turbulenceContainer.querySelector(".preset-controls");
-        if (presetElement && presetElement.nextSibling) {
-          turbulenceContainer.insertBefore(
-            this.buttonContainer,
-            presetElement.nextSibling
-          );
-        } else {
-          turbulenceContainer.insertBefore(
-            this.buttonContainer,
-            turbulenceContainer.firstChild.nextSibling
-          );
-        }
+    this.presetControls = this.presetManager.createPresetControls(
+      PresetManager.TYPES.TURBULENCE,
+      turbulenceContainer,
+      { insertFirst: true }
+    );
+
+    // Add the button controls after the preset controls
+    if (this.buttonContainer) {
+      const presetElement = turbulenceContainer.querySelector(".preset-controls");
+      if (presetElement && presetElement.nextSibling) {
+        turbulenceContainer.insertBefore(
+          this.buttonContainer,
+          presetElement.nextSibling
+        );
+      } else {
+        turbulenceContainer.insertBefore(
+          this.buttonContainer,
+          turbulenceContainer.firstChild.nextSibling
+        );
       }
     }
 
-    if (this.main && this.main.turbulenceField && this.presetManager) {
-      this.presetManager.setTurbulenceField(this.main.turbulenceField);
-    }
+    // Set the turbulence field in the preset manager
+    this.presetManager.setTurbulenceField(this.main.turbulenceField);
   }
 
   initTurbulenceControls() {
     const turbulence = this.main.turbulenceField;
-    if (!turbulence) return;
 
     // Setup display properties for uninverted acceleration values
     // These are used only for UI display purposes
@@ -123,7 +132,7 @@ export class TurbulenceUi extends BaseUi {
       scaleButton.classList.toggle("active", turbulence.affectScale);
 
       // Reset particle sizes when toggling off
-      if (!turbulence.affectScale && this.main?.particleSystem) {
+      if (!turbulence.affectScale) {
         turbulence.resetParticleSizes(this.main.particleSystem);
       }
 
@@ -144,7 +153,11 @@ export class TurbulenceUi extends BaseUi {
 
     // Add the button container to the GUI children
     const guiChildren = this.gui.domElement.querySelector(".children");
-    if (guiChildren) { guiChildren.insertBefore(buttonContainer, guiChildren.firstChild); }
+    if (!guiChildren) {
+      throw new Error("GUI children container not found");
+    }
+
+    guiChildren.insertBefore(buttonContainer, guiChildren.firstChild);
 
     this.positionButton = posButton;
     this.fieldButton = fieldButton;
@@ -180,7 +193,7 @@ export class TurbulenceUi extends BaseUi {
           const controlElement = this.turbulencePullFactorController.domElement;
           const container = controlElement.parentElement;
 
-          if (container && !this.modeIndicator) {
+          if (container) {
             this.modeIndicator = document.createElement('div');
             this.modeIndicator.className = 'mode-indicator';
             this.modeIndicator.style.cssText = `
