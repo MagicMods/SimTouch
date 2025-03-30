@@ -31,7 +31,7 @@ class SocketManager {
     this.ws = null;
     this.isConnected = false;
     this.callbacks = new Set();
-    this.mouseCallbacks = new Set(); // New: specific callbacks for mouse data
+    this.mouseCallbacks = new Set();
     this.enable = false;
     this.debugSend = false;
     this.debugReceive = false;
@@ -53,6 +53,7 @@ class SocketManager {
   connect(port = 5501) {
     if (this.retryTimeout) {
       clearTimeout(this.retryTimeout);
+      this.retryTimeout = null;
     }
 
     if (!this.enable) {
@@ -67,22 +68,31 @@ class SocketManager {
       this.setupHandlers();
     } catch (err) {
       console.error("WebSocket creation failed:", err);
+      this.isConnected = false;
     }
   }
 
   send(data) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      if (this.debugSend) {
-        console.log("Sending message:", data);
-      }
-      this.ws.send(data);
-      return true;
+    if (!this.ws) {
+      return false;
     }
-    return false;
+
+    if (this.ws.readyState !== WebSocket.OPEN) {
+      return false;
+    }
+
+    if (this.debugSend) {
+      console.log("Sending message:", data);
+    }
+
+    this.ws.send(data);
+    return true;
   }
 
   setupHandlers() {
-    if (!this.ws) return;
+    if (!this.ws) {
+      throw new Error("Cannot setup handlers: WebSocket not initialized");
+    }
 
     this.ws.onopen = () => {
       console.log("WebSocket connection established");
@@ -147,22 +157,35 @@ class SocketManager {
   }
 
   addMessageHandler(callback) {
+    if (typeof callback !== 'function') {
+      throw new Error("Message handler must be a function");
+    }
     this.callbacks.add(callback);
+    return this;
   }
 
   removeMessageHandler(callback) {
     this.callbacks.delete(callback);
+    return this;
   }
 
   addMouseHandler(callback) {
+    if (typeof callback !== 'function') {
+      throw new Error("Mouse handler must be a function");
+    }
     this.mouseCallbacks.add(callback);
+    return this;
   }
 
   removeMouseHandler(callback) {
     this.mouseCallbacks.delete(callback);
+    return this;
   }
 
   addEmuHandler(callback) {
+    if (typeof callback !== 'function') {
+      throw new Error("EMU handler must be a function");
+    }
     this.emuHandlers.push(callback);
     return this;
   }
@@ -173,9 +196,15 @@ class SocketManager {
   }
 
   handleEmuData(data) {
-    if (this.emuHandlers && this.emuHandlers.length > 0) {
-      this.emuHandlers.forEach((handler) => handler(data));
+    if (!data) {
+      return;
     }
+
+    if (this.emuHandlers.length === 0) {
+      return;
+    }
+
+    this.emuHandlers.forEach((handler) => handler(data));
   }
 
   reconnect() {
@@ -186,8 +215,13 @@ class SocketManager {
   }
 
   disconnect() {
+    if (!this.ws) {
+      return;
+    }
+
     console.log("Closing WebSocket connection");
     this.ws.close();
+    this.ws = null;
   }
 
   processMessage(data) {
@@ -278,15 +312,15 @@ class SocketManager {
 
   // Convenience methods for specific commands
   sendColor(value) {
-    return this.sendCommand('COLOR', value);
+    return this.sendCommand(SocketManager.COMMANDS.COLOR, value);
   }
 
   sendBrightness(value) {
-    return this.sendCommand('BRIGHTNESS', value);
+    return this.sendCommand(SocketManager.COMMANDS.BRIGHTNESS, value);
   }
 
   sendPower(value) {
-    return this.sendCommand('POWER', value);
+    return this.sendCommand(SocketManager.COMMANDS.POWER, value);
   }
 }
 

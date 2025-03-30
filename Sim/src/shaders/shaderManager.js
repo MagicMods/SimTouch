@@ -1,5 +1,8 @@
 class ShaderManager {
   constructor(gl) {
+    if (!gl) {
+      throw new Error("WebGL context is required for ShaderManager");
+    }
     this.gl = gl;
     this.programs = new Map();
     this.currentProgram = null;
@@ -7,33 +10,36 @@ class ShaderManager {
   }
 
   async init() {
-    try {
-      // Create all shader programs
-      for (const [name, shaders] of Object.entries(ShaderManager.SHADERS)) {
-        await this.createProgram(
-          name,
-          shaders.vert || shaders.vertex,
-          shaders.frag || shaders.fragment
-        );
+    // Create all shader programs
+    for (const [name, shaders] of Object.entries(ShaderManager.SHADERS)) {
+      const vertexSource = shaders.vert || shaders.vertex;
+      const fragmentSource = shaders.frag || shaders.fragment;
+
+      if (!vertexSource) {
+        throw new Error(`Vertex shader source not provided for "${name}"`);
       }
-      return true;
-    } catch (error) {
-      console.error("Shader initialization failed:", error);
-      throw error;
+
+      if (!fragmentSource) {
+        throw new Error(`Fragment shader source not provided for "${name}"`);
+      }
+
+      await this.createProgram(name, vertexSource, fragmentSource);
     }
+    return true;
   }
 
   use(name) {
     const program = this.programs.get(name);
     if (!program) {
-      console.error(`Shader program '${name}' not found`);
-      return null;
+      throw new Error(`Shader program '${name}' not found`);
     }
+
     if (this.currentProgram !== program.program) {
       this.gl.useProgram(program.program);
       this.currentProgram = program.program;
       // console.log(`Using shader program: ${name}`);
     }
+
     return program;
   }
 
@@ -43,10 +49,12 @@ class ShaderManager {
       program,
       this.gl.ACTIVE_ATTRIBUTES
     );
+
     for (let i = 0; i < numAttributes; i++) {
       const info = this.gl.getActiveAttrib(program, i);
       attributes[info.name] = this.gl.getAttribLocation(program, info.name);
     }
+
     return attributes;
   }
 
@@ -56,48 +64,46 @@ class ShaderManager {
       program,
       this.gl.ACTIVE_UNIFORMS
     );
+
     for (let i = 0; i < numUniforms; i++) {
       const info = this.gl.getActiveUniform(program, i);
       uniforms[info.name] = this.gl.getUniformLocation(program, info.name);
     }
+
     return uniforms;
   }
 
   createProgram(name, vertexSource, fragmentSource) {
-    try {
-      const vertexShader = this.compileShader(
-        this.gl.VERTEX_SHADER,
-        vertexSource
+    const vertexShader = this.compileShader(
+      this.gl.VERTEX_SHADER,
+      vertexSource
+    );
+
+    const fragmentShader = this.compileShader(
+      this.gl.FRAGMENT_SHADER,
+      fragmentSource
+    );
+
+    const program = this.gl.createProgram();
+    this.gl.attachShader(program, vertexShader);
+    this.gl.attachShader(program, fragmentShader);
+    this.gl.linkProgram(program);
+
+    if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
+      throw new Error(
+        `Failed to link program "${name}": ${this.gl.getProgramInfoLog(program)}`
       );
-      const fragmentShader = this.compileShader(
-        this.gl.FRAGMENT_SHADER,
-        fragmentSource
-      );
-
-      const program = this.gl.createProgram();
-      this.gl.attachShader(program, vertexShader);
-      this.gl.attachShader(program, fragmentShader);
-      this.gl.linkProgram(program);
-
-      if (!this.gl.getProgramParameter(program, this.gl.LINK_STATUS)) {
-        throw new Error(
-          `Failed to link program: ${this.gl.getProgramInfoLog(program)}`
-        );
-      }
-
-      // Store program info
-      this.programs.set(name, {
-        program,
-        attributes: this.getAttributes(program),
-        uniforms: this.getUniforms(program),
-      });
-
-      // console.log(`Created shader program: ${name}`);
-      return this.programs.get(name);
-    } catch (error) {
-      console.error(`Failed to create shader program ${name}:`, error);
-      throw error;
     }
+
+    // Store program info
+    this.programs.set(name, {
+      program,
+      attributes: this.getAttributes(program),
+      uniforms: this.getUniforms(program),
+    });
+
+    // console.log(`Created shader program: ${name}`);
+    return this.programs.get(name);
   }
 
   compileShader(type, source) {
@@ -106,8 +112,9 @@ class ShaderManager {
     this.gl.compileShader(shader);
 
     if (!this.gl.getShaderParameter(shader, this.gl.COMPILE_STATUS)) {
+      const shaderType = type === this.gl.VERTEX_SHADER ? "vertex" : "fragment";
       throw new Error(
-        `Failed to compile shader: ${this.gl.getShaderInfoLog(shader)}`
+        `Failed to compile ${shaderType} shader: ${this.gl.getShaderInfoLog(shader)}`
       );
     }
 
@@ -129,10 +136,11 @@ class ShaderManager {
   }
 
   dispose() {
-    this.programs.forEach((programInfo, name) => {
+    this.programs.forEach((programInfo) => {
       this.gl.deleteProgram(programInfo.program);
     });
     this.programs.clear();
+    this.currentProgram = null;
   }
 
   static SHADERS = {
