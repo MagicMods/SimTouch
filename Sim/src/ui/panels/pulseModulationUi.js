@@ -34,6 +34,40 @@ export class PulseModulationUi extends BaseUi {
 
     this.presetManager = null;
     this.presetSelect = null; // Reference to the HTML select element
+
+    // Add CSS for target selection mode if not already present
+    if (!document.getElementById("pulse-target-selection-styles")) {
+      const style = document.createElement("style");
+      style.id = "pulse-target-selection-styles";
+      style.textContent = `
+        /* General styles for target selection mode */
+        body.pulse-target-selection-mode .controller {
+          opacity: 0.5;
+          pointer-events: none;
+        }
+        
+        /* Style for selectable targets */
+        body.pulse-target-selection-mode [data-is-target="true"] {
+          opacity: 1;
+          pointer-events: auto;
+          position: relative;
+          transition: background-color 0.2s, transform 0.1s;
+        }
+        
+        /* Hover effect for selectable targets */
+        body.pulse-target-selection-mode [data-is-target="true"]:hover {
+          background-color: rgba(255, 255, 100, 0.2);
+          transform: scale(1.02);
+        }
+        
+        /* Prevent selection mode affecting pulse modulation UI itself */
+        body.pulse-target-selection-mode .pulse-ui .controller {
+          opacity: 1;
+          pointer-events: auto;
+        }
+      `;
+      document.head.appendChild(style);
+    }
   }
 
   //#region Ui Setup
@@ -1073,6 +1107,14 @@ export class PulseModulationUi extends BaseUi {
 
   // Mark modulator controls to exclude them from selection
   markModulatorControls() {
+    // Mark the pulse modulation UI to prevent it from being affected by selection mode
+    const pulseElements = document.querySelectorAll('.lil-gui');
+    pulseElements.forEach(element => {
+      if (element.contains(this.gui.domElement)) {
+        element.classList.add('pulse-ui');
+      }
+    });
+
     // First, get all folder elements for pulse modulators
     const modulatorFolders = Array.from(document.querySelectorAll('.lil-gui .title'))
       .filter(el => el.textContent.includes('Modulator'));
@@ -1096,7 +1138,7 @@ export class PulseModulationUi extends BaseUi {
       this.markModulatorControls();
 
       // Add the selection class to body (will apply general styling)
-      document.body.classList.add('target-selection-mode');
+      document.body.classList.add('pulse-target-selection-mode');
 
       // Get all registered target names
       const validTargetNames = this.modulatorManager ? this.modulatorManager.getTargetNames() : [];
@@ -1117,7 +1159,7 @@ export class PulseModulationUi extends BaseUi {
       console.log(`Enabled target selection highlighting (${validTargetNames.length} valid targets available)`);
     } else {
       // Remove the class from body
-      document.body.classList.remove('target-selection-mode');
+      document.body.classList.remove('pulse-target-selection-mode');
 
       // Clean up any data attributes we added
       const controllers = document.querySelectorAll('[data-is-target]');

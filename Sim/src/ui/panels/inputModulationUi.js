@@ -25,6 +25,40 @@ export class InputModulationUi extends BaseUi {
     }, 50);
 
     this.gui.open();
+
+    // Add CSS for target selection mode if not already present
+    if (!document.getElementById("input-modulation-target-selection-styles")) {
+      const style = document.createElement("style");
+      style.id = "input-modulation-target-selection-styles";
+      style.textContent = `
+        /* General styles for target selection mode */
+        body.input-modulation-target-selection-mode .controller {
+          opacity: 0.5;
+          pointer-events: none;
+        }
+        
+        /* Style for selectable targets */
+        body.input-modulation-target-selection-mode [data-is-target="true"] {
+          opacity: 1;
+          pointer-events: auto;
+          position: relative;
+          transition: background-color 0.2s, transform 0.1s;
+        }
+        
+        /* Hover effect for selectable targets */
+        body.input-modulation-target-selection-mode [data-is-target="true"]:hover {
+          background-color: rgba(255, 255, 100, 0.2);
+          transform: scale(1.02);
+        }
+        
+        /* Prevent selection mode affecting input modulation UI itself */
+        body.input-modulation-target-selection-mode .input-modulation-ui .controller {
+          opacity: 1;
+          pointer-events: auto;
+        }
+      `;
+      document.head.appendChild(style);
+    }
   }
 
   //#region Ui Setup
@@ -1215,7 +1249,7 @@ export class InputModulationUi extends BaseUi {
       this.markModulatorControls();
 
       // Add the selection class to body (will apply general styling)
-      document.body.classList.add('target-selection-mode');
+      document.body.classList.add('input-modulation-target-selection-mode');
 
       // Get all registered target names
       const validTargetNames = this.modulatorManager ? this.modulatorManager.getTargetNames() : [];
@@ -1236,7 +1270,7 @@ export class InputModulationUi extends BaseUi {
       console.log(`Enabled target selection highlighting (${validTargetNames.length} valid targets available)`);
     } else {
       // Remove the class from body
-      document.body.classList.remove('target-selection-mode');
+      document.body.classList.remove('input-modulation-target-selection-mode');
 
       // Clean up any data attributes we added
       const controllers = document.querySelectorAll('[data-is-target]');
@@ -1249,6 +1283,14 @@ export class InputModulationUi extends BaseUi {
   }
 
   markModulatorControls() {
+    // Mark the input modulation UI to prevent it from being affected by selection mode
+    const inputModulationElements = document.querySelectorAll('.lil-gui');
+    inputModulationElements.forEach(element => {
+      if (element.contains(this.gui.domElement)) {
+        element.classList.add('input-modulation-ui');
+      }
+    });
+
     // First, get all folder elements for audio modulators
     const modulatorFolders = Array.from(document.querySelectorAll('.lil-gui .title'))
       .filter(el => el.textContent.includes('Audio Modulator'));
