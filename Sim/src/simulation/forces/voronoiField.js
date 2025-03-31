@@ -378,9 +378,23 @@ class VoronoiField {
       }
 
       // Move Voronoi cells
-      const radius = this.boundary?.getRadius ? this.boundary.getRadius() : 0.5;
-      const centerX = this.boundary?.centerX ?? 0.5;
-      const centerY = this.boundary?.centerY ?? 0.5;
+      let radius = 0.5;
+      let centerX = 0.5;
+      let centerY = 0.5;
+
+      // Get boundary parameters if available
+      if (this.boundary) {
+        try {
+          // Try to get radius from boundary
+          radius = this.boundary.getRadius();
+        } catch (e) {
+          radius = 0.5; // Fallback if getRadius fails
+        }
+
+        // Get center coordinates with fallbacks
+        centerX = this.boundary.centerX !== undefined ? this.boundary.centerX : 0.5;
+        centerY = this.boundary.centerY !== undefined ? this.boundary.centerY : 0.5;
+      }
 
       for (let i = 0; i < this.voronoiCenters.length; i++) {
         if (

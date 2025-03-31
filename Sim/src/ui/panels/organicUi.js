@@ -45,7 +45,10 @@ export class OrganicUi extends BaseUi {
 
   initOrganicControls() {
     const particles = this.main.particleSystem;
-    if (!particles?.organicBehavior) return;
+    if (!particles || !particles.organicBehavior) {
+      console.warn("OrganicBehavior not found in ParticleSystem");
+      return;
+    }
 
     const behaviorControl = {
       behavior: particles.organicBehavior.currentBehavior,
@@ -80,15 +83,23 @@ export class OrganicUi extends BaseUi {
   }
 
   addGlobalForceControl() {
-    const behavior = this.main.particleSystem?.organicBehavior;
-    if (!behavior?.forceScales) return;
+    if (!this.main.particleSystem || !this.main.particleSystem.organicBehavior ||
+      !this.main.particleSystem.organicBehavior.forceScales) {
+      console.warn("ForceScales not found in OrganicBehavior");
+      return;
+    }
 
+    const behavior = this.main.particleSystem.organicBehavior;
     const forceTypes = ["Fluid", "Swarm", "Automata", "Chain"];
     const defaultForce = 5.0;
 
     this.globalForceControl = { force: defaultForce };
 
-    forceTypes.forEach((type) => { if (behavior.forceScales[type]) { behavior.forceScales[type].base = defaultForce; } });
+    forceTypes.forEach((type) => {
+      if (behavior.forceScales[type]) {
+        behavior.forceScales[type].base = defaultForce;
+      }
+    });
 
     this.globalForceController = this.gui.add(this.globalForceControl, "force", 0, 5).name("O-Force")
       .onChange((value) => {
@@ -122,7 +133,12 @@ export class OrganicUi extends BaseUi {
 
   initFluidControls() {
     const particles = this.main.particleSystem;
-    if (!particles?.organicBehavior?.params?.Fluid) return;
+    if (!particles || !particles.organicBehavior ||
+      !particles.organicBehavior.params ||
+      !particles.organicBehavior.params.Fluid) {
+      console.warn("Fluid parameters not found in OrganicBehavior");
+      return;
+    }
 
     const fluid = particles.organicBehavior.params.Fluid;
     this.fluidSurfaceTensionController = this.fluidFolder.add(fluid, "surfaceTension", 0, 1).name("F-SurfaceT");
@@ -132,7 +148,12 @@ export class OrganicUi extends BaseUi {
 
   initSwarmControls() {
     const particles = this.main.particleSystem;
-    if (!particles?.organicBehavior?.params?.Swarm) return;
+    if (!particles || !particles.organicBehavior ||
+      !particles.organicBehavior.params ||
+      !particles.organicBehavior.params.Swarm) {
+      console.warn("Swarm parameters not found in OrganicBehavior");
+      return;
+    }
 
     const swarm = particles.organicBehavior.params.Swarm;
     this.swarmCohesionController = this.swarmFolder.add(swarm, "cohesion", 0, 2).name("S-Cohesion");
@@ -143,7 +164,12 @@ export class OrganicUi extends BaseUi {
 
   initAutomataControls() {
     const particles = this.main.particleSystem;
-    if (!particles?.organicBehavior?.params?.Automata) return;
+    if (!particles || !particles.organicBehavior ||
+      !particles.organicBehavior.params ||
+      !particles.organicBehavior.params.Automata) {
+      console.warn("Automata parameters not found in OrganicBehavior");
+      return;
+    }
 
     const automata = particles.organicBehavior.params.Automata;
     this.automataRepulsionController = this.automataFolder.add(automata, "repulsion", 0, 2).name("A-Repulse");
@@ -154,20 +180,28 @@ export class OrganicUi extends BaseUi {
   initChainControls() {
     console.log("Initializing Chain controls");
     const particles = this.main.particleSystem;
-    if (!particles?.organicBehavior?.params?.Chain) {
+
+    // Check if Chain parameters exist
+    if (!particles || !particles.organicBehavior ||
+      !particles.organicBehavior.params ||
+      !particles.organicBehavior.params.Chain) {
+
       console.log("Chain params not found, initializing");
+
       // Initialize Chain parameters if they don't exist yet
-      if (particles?.organicBehavior?.params) {
+      if (particles && particles.organicBehavior && particles.organicBehavior.params) {
         particles.organicBehavior.params.Chain = {
           linkDistance: 0,
           linkStrength: 10,
           alignment: 1,      // Straight (1) vs curly (0) chains 
-          branchProb: 10,       // Max branches per particle
-          maxLinks: 20,        // Max links per chain
+          branchProb: 10,    // Max branches per particle
+          maxLinks: 20,      // Max links per chain
           mode: "Chain"
         };
+      } else {
+        console.warn("Cannot initialize Chain parameters - missing organicBehavior or params");
+        return;
       }
-      return;
     }
 
     const chain = particles.organicBehavior.params.Chain;
@@ -182,36 +216,36 @@ export class OrganicUi extends BaseUi {
     const fluidEnabled = mode === "Fluid";
     const swarmEnabled = mode === "Swarm";
     const automataEnabled = mode === "Automata";
-    const chainEnabled = mode === "Chain";  // Add this
+    const chainEnabled = mode === "Chain";
     console.log(`Updating organic folders for mode: ${mode}`);
 
     const enableControllers = (folder, enabled) => {
-      if (!folder?.controllers) return;
+      if (!folder || !folder.controllers) {
+        return;
+      }
+
       folder.controllers.forEach((controller) => {
         if (controller.enable) controller.enable(enabled);
       });
     };
 
-    // enableControllers(this.fluidFolder, fluidEnabled);
-    // enableControllers(this.swarmFolder, swarmEnabled);
-    // enableControllers(this.automataFolder, automataEnabled);
-
+    // Set folder visibility based on active mode
     if (fluidEnabled) {
       this.fluidFolder.open();
       this.swarmFolder.close();
       this.automataFolder.close();
-      this.chainFolder.close();  // Add this
+      this.chainFolder.close();
     } else if (swarmEnabled) {
       this.fluidFolder.close();
       this.swarmFolder.open();
       this.automataFolder.close();
-      this.chainFolder.close();  // Add this
+      this.chainFolder.close();
     } else if (automataEnabled) {
       this.fluidFolder.close();
       this.swarmFolder.close();
       this.automataFolder.open();
-      this.chainFolder.close();  // Add this
-    } else if (chainEnabled) {  // Add this block
+      this.chainFolder.close();
+    } else if (chainEnabled) {
       this.fluidFolder.close();
       this.swarmFolder.close();
       this.automataFolder.close();
@@ -220,11 +254,11 @@ export class OrganicUi extends BaseUi {
       this.fluidFolder.open();
       this.swarmFolder.open();
       this.automataFolder.open();
-      this.chainFolder.open();  // Add this
+      this.chainFolder.open();
     }
 
     // Update the organic behavior mode
-    if (this.main.particleSystem?.organicBehavior) {
+    if (this.main.particleSystem && this.main.particleSystem.organicBehavior) {
       this.main.particleSystem.organicBehavior.currentBehavior = mode;
     }
   }

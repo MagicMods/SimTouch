@@ -108,6 +108,7 @@ Components are designed to fail explicitly when required dependencies are missin
 ### Anti-Patterns to Avoid
 
 1. **Optional Chaining**: Do not use optional chaining (`?.`) to access properties or methods
+
    ```javascript
    // BAD
    this.main?.turbulenceField?.update();
@@ -117,6 +118,7 @@ Components are designed to fail explicitly when required dependencies are missin
    ```
 
 2. **Silent Returns**: Do not use silent returns when dependencies are missing
+
    ```javascript
    // BAD
    if (!this.turbulence) return;
@@ -128,6 +130,7 @@ Components are designed to fail explicitly when required dependencies are missin
    ```
 
 3. **Type Checking**: Do not check types before calling methods
+
    ```javascript
    // BAD
    if (typeof controller.getValue === "function") {
@@ -139,6 +142,7 @@ Components are designed to fail explicitly when required dependencies are missin
    ```
 
 4. **Multiple Fallbacks**: Do not try multiple paths to access the same object
+
    ```javascript
    // BAD
    const field = this.main?.turbulenceField || 
@@ -164,6 +168,7 @@ logger.error("Failed to load resource", error);
 ```
 
 Benefits of the logger:
+
 - Configurable log levels (ERROR, WARN, INFO, DEBUG, TRACE)
 - Consistent formatting
 - Can be disabled in production

@@ -547,31 +547,38 @@ export class InputModulationUi extends BaseUi {
 
     try {
       // IMPORTANT FIX: Reset to original values FIRST
-      if (this.modulatorManager?.modulators) {
+      if (this.modulatorManager && this.modulatorManager.modulators) {
         this.modulatorManager.modulators
           .filter((m) => m.type === "input" && m.inputSource === "mic")
           .forEach((m) => {
             // Reset to original value before disabling
-            if (typeof m.resetToOriginal === "function") {
-              console.log(
-                `Resetting ${m.targetName || "unnamed"} to original value`
-              );
+            try {
+              // Try to reset to original value
               m.resetToOriginal();
+              console.log(`Resetting ${m.targetName || "unnamed"} to original value`);
+            } catch (e) {
+              // If resetToOriginal isn't available, just continue
+              console.warn(`Failed to reset ${m.targetName || "unnamed"}:`, e);
             }
             // Then disable
             m.enabled = false;
           });
       }
 
-      // Rest of existing implementation...
       // Remove from manager
-      if (this.modulatorManager?.removeModulatorsByInput) {
+      if (this.modulatorManager && this.modulatorManager.removeModulatorsByInput) {
         this.modulatorManager.removeModulatorsByInput("mic");
       }
 
       // Remove UI folders
       this.modulatorFolders.forEach((folder) => {
-        if (folder?.destroy) folder.destroy();
+        if (folder) {
+          try {
+            folder.destroy();
+          } catch (e) {
+            console.warn("Failed to destroy folder:", e);
+          }
+        }
       });
       this.modulatorFolders = [];
 
@@ -597,10 +604,13 @@ export class InputModulationUi extends BaseUi {
     }
 
     // Only process if enabled
-    if (
-      !this.audioInputEnabled ||
-      !this.main.externalInput?.micForces?.enabled
-    ) {
+    if (!this.audioInputEnabled) {
+      return;
+    }
+
+    // Check if mic forces are enabled
+    if (!this.main.externalInput || !this.main.externalInput.micForces ||
+      !this.main.externalInput.micForces.enabled) {
       return;
     }
 
@@ -622,9 +632,11 @@ export class InputModulationUi extends BaseUi {
         const bandLevels = analyzer.calculateBandLevels();
         const globalVolume = analyzer.smoothedVolume || 0;
 
-        // Get global sensitivity
-        const globalSensitivity =
-          this.main.externalInput?.micForces?.sensitivity || 1.0;
+        // Get global sensitivity with fallback
+        let globalSensitivity = 1.0;
+        if (this.main.externalInput && this.main.externalInput.micForces) {
+          globalSensitivity = this.main.externalInput.micForces.sensitivity || 1.0;
+        }
 
         // Update each modulator with its appropriate audio data
         audioModulators.forEach((modulator) => {

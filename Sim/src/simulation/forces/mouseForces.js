@@ -670,12 +670,21 @@ class MouseForces {
     const delta = Math.sign(e.deltaY) * -1; // -1 for scroll down, 1 for scroll up
 
     // Find turbulence field
-    let turbulenceField = this.main?.turbulenceField;
-    if (!turbulenceField && this.particleSystem?.main?.turbulenceField) {
+    let turbulenceField = null;
+
+    // First try direct reference
+    if (this.main && this.main.turbulenceField) {
+      turbulenceField = this.main.turbulenceField;
+    }
+    // Fallback to particleSystem's main reference
+    else if (this.particleSystem && this.particleSystem.main &&
+      this.particleSystem.main.turbulenceField) {
       turbulenceField = this.particleSystem.main.turbulenceField;
     }
 
-    if (!turbulenceField) return;
+    if (!turbulenceField) {
+      return; // No turbulence field found
+    }
 
     // Get current scale value
     let currentScale = turbulenceField.scale || 1.0;
@@ -685,15 +694,17 @@ class MouseForces {
     const newScale = Math.max(0.1, Math.min(10, currentScale + delta * 0.2));
 
     // Update turbulence scale
-    if (typeof turbulenceField.setScale === 'function') {
+    try {
       turbulenceField.setScale(newScale);
-    } else {
+    } catch (e) {
       // Direct property assignment fallback
       turbulenceField.scale = newScale;
     }
 
     // Update UI directly
-    this.main.ui.turbulenceUi.updateControllerDisplays();
+    if (this.main && this.main.ui && this.main.ui.turbulenceUi) {
+      this.main.ui.turbulenceUi.updateControllerDisplays();
+    }
   }
 }
 

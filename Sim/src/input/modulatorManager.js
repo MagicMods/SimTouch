@@ -20,9 +20,28 @@ export class ModulatorManager {
     }
 
     // Check for required methods or properties
-    const hasGetValue = typeof controller.getValue === "function";
-    const hasSetValue = typeof controller.setValue === "function";
-    const hasValueProperty = controller.value !== undefined;
+    let hasGetValue = false;
+    let hasSetValue = false;
+    let hasValueProperty = false;
+
+    try {
+      // Try to call getValue to see if it exists
+      controller.getValue();
+      hasGetValue = true;
+    } catch (e) {
+      // getValue method doesn't exist, check for value property
+      hasValueProperty = controller.value !== undefined;
+    }
+
+    try {
+      // Test setValue with the current value (or 0 if we can't get it)
+      const currentValue = hasGetValue ? controller.getValue() : (hasValueProperty ? controller.value : 0);
+      controller.setValue(currentValue);
+      hasSetValue = true;
+    } catch (e) {
+      // setValue method doesn't exist, check for value property
+      hasValueProperty = controller.value !== undefined;
+    }
 
     if (!hasGetValue && !hasValueProperty) {
       throw new Error(`Controller for "${name}" must have getValue() method or value property`);
@@ -45,8 +64,10 @@ export class ModulatorManager {
       setValue: (value) => {
         if (hasSetValue) {
           controller.setValue(value);
-          if (typeof controller.updateDisplay === "function") {
+          try {
             controller.updateDisplay();
+          } catch (e) {
+            // updateDisplay is optional, silently ignore if it doesn't exist
           }
         } else {
           controller.value = value;
@@ -184,9 +205,10 @@ export class ModulatorManager {
     const modulator = this.modulators[index];
 
     // Make sure modulator is disabled
-    if (modulator.disable) {
+    try {
       modulator.disable();
-    } else {
+    } catch (e) {
+      // Fallback to directly setting enabled flag
       modulator.enabled = false;
     }
 
