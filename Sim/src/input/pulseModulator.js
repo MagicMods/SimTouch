@@ -193,6 +193,25 @@ class PulseModulator {
       ];
     }
 
+    if (targetName === "T-PatternStyle") {
+      return [
+        "checkerboard",
+        "waves",
+        "spiral",
+        "grid",
+        "circles",
+        "diamonds",
+        "ripples",
+        "dots",
+        "voronoi",
+        "cells",
+        "fractal",
+        "vortex",
+        "bubbles",
+        "water",
+        "classicdrop"
+      ];
+    }
     // Attempt to get options from controller properties
     if (controller.options) {
       // If options is an object like {key1: value1, key2: value2}
