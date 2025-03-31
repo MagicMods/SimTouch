@@ -1,5 +1,7 @@
 import GUI from "lil-gui";
 import { GridGenRenderer } from "./renderer/gridGenRenderer.js";
+import { CircularBoundary } from "./boundary/circularBoundary.js";
+import { RectangularBoundary } from "./boundary/rectangularBoundary.js";
 
 // Initialize WebGL context with stencil buffer
 const canvas = document.getElementById("myCanvas");
@@ -17,7 +19,7 @@ const params = {
     target: 341,
     gap: 1,
     aspectRatio: 1,
-    scale: 1.05,
+    scale: 0.985,
     cols: 0,
     rows: 0,
     width: 0,
@@ -27,6 +29,11 @@ const params = {
     showIndices: false,     // Show cell indices
     showCellCenters: false, // Show cell centers
     showCellCounts: false,   // Enable cell counts by default
+    boundaryType: 'circular', // Default to circular boundary
+    boundaryParams: {
+        width: 240,         // Width for rectangular boundary
+        height: 240,        // Height for rectangular boundary
+    },
     cellCount: {
         total: 0,
         inside: 0,
@@ -47,6 +54,65 @@ const params = {
 
 // Enhanced UI controls
 const gui = new GUI();
+
+// Boundary type selection
+const boundaryFolder = gui.addFolder('Boundary Settings');
+boundaryFolder
+    .add(params, "boundaryType", ['circular', 'rectangular'])
+    .name("Boundary Type")
+    .onChange(() => {
+        const centerX = 120;
+        const centerY = 120;
+        const radius = 120;
+
+        if (params.boundaryType === 'circular') {
+            renderer.boundary = new CircularBoundary(centerX, centerY, radius, params.scale);
+        } else {
+            renderer.boundary = new RectangularBoundary(
+                centerX,
+                centerY,
+                params.boundaryParams.width,
+                params.boundaryParams.height,
+                params.scale
+            );
+        }
+        renderer.updateGrid(params);
+    });
+
+// Boundary parameters (only shown for rectangular boundary)
+const boundaryParamsFolder = boundaryFolder.addFolder('Boundary Parameters');
+boundaryParamsFolder
+    .add(params.boundaryParams, "width", 100, 300, 1)
+    .name("Width")
+    .onChange(() => {
+        if (params.boundaryType === 'rectangular') {
+            renderer.boundary = new RectangularBoundary(
+                120,
+                120,
+                params.boundaryParams.width,
+                params.boundaryParams.height,
+                params.scale
+            );
+            renderer.updateGrid(params);
+        }
+    });
+boundaryParamsFolder
+    .add(params.boundaryParams, "height", 100, 300, 1)
+    .name("Height")
+    .onChange(() => {
+        if (params.boundaryType === 'rectangular') {
+            renderer.boundary = new RectangularBoundary(
+                120,
+                120,
+                params.boundaryParams.width,
+                params.boundaryParams.height,
+                params.scale
+            );
+            renderer.updateGrid(params);
+        }
+    });
+
+// Grid parameters
 const gridFolder = gui.addFolder('Grid Parameters');
 gridFolder
     .add(params, "target", 1, 500, 1)
@@ -63,7 +129,10 @@ gridFolder
 gridFolder
     .add(params, "scale", 0.8, 1.1, 0.001)
     .name("Grid Scale")
-    .onChange(() => renderer.updateGrid(params));
+    .onChange(() => {
+        renderer.boundary.setScale(params.scale);
+        renderer.updateGrid(params);
+    });
 gridFolder
     .add(params, "allowCut", 0, 3, 1)
     .name("Allow Cut")

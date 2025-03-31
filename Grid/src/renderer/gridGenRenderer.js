@@ -1,4 +1,6 @@
 import { BaseRenderer } from "./baseRenderer.js";
+import { CircularBoundary } from "../boundary/circularBoundary.js";
+import { RectangularBoundary } from "../boundary/rectangularBoundary.js";
 
 export class GridGenRenderer extends BaseRenderer {
     constructor(gl) {
@@ -82,6 +84,9 @@ export class GridGenRenderer extends BaseRenderer {
         gl.bindTexture(gl.TEXTURE_2D, null);
         gl.bindRenderbuffer(gl.RENDERBUFFER, null);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+        // Initialize boundary (default to circular)
+        this.boundary = new CircularBoundary(120, 120, 120);
     }
 
     updateGrid(params) {
@@ -104,27 +109,39 @@ export class GridGenRenderer extends BaseRenderer {
             this.TARGET_HEIGHT
         );
 
-        // Get colors from params for circles
-        const outerCircleColor = params.colors && params.colors.outerCircle
+        // Get colors from params for reference shapes
+        const outerColor = params.colors && params.colors.outerCircle
             ? [...params.colors.outerCircle, 1] // Add alpha=1
             : [0.9, 0.9, 0.9, 1];
 
-        const innerCircleColor = params.colors && params.colors.innerCircle
+        const innerColor = params.colors && params.colors.innerCircle
             ? [...params.colors.innerCircle, 1] // Add alpha=1
             : [0.1, 0.1, 0.1, 1];
 
-        const maskCircleColor = params.colors && params.colors.maskCircle
+        const maskColor = params.colors && params.colors.maskCircle
             ? [...params.colors.maskCircle, 1] // Add alpha=1
             : [0.15, 0.15, 0.15, 1];
 
-        // Draw reference circles
-        this.drawCircle(120, 120, 120, outerCircleColor); // Outer circle
-        this.drawCircle(120, 120, 120 * params.scale, innerCircleColor); // Inner circle
+        // Draw reference shapes based on boundary type
+        if (this.boundary instanceof CircularBoundary) {
+            this.drawCircle(120, 120, 120, outerColor); // Outer circle
+            this.drawCircle(120, 120, 120 * params.scale, innerColor); // Inner circle
+        } else {
+            // Draw rectangular reference
+            const halfWidth = (this.boundary.width * params.scale) / 2;
+            const halfHeight = (this.boundary.height * params.scale) / 2;
+            this.drawRectangle(
+                120 - halfWidth, 120 - halfHeight,
+                this.boundary.width * params.scale,
+                this.boundary.height * params.scale,
+                outerColor
+            );
+        }
 
         // Generate grid
         const rectangles = this.generateRectangles(params);
 
-        // Classify cells as inside or boundary
+        // Classify cells using the boundary system
         this.classifyCells(rectangles, params.allowCut);
 
         // Store color parameters to be used in rendering
@@ -134,7 +151,7 @@ export class GridGenRenderer extends BaseRenderer {
                 boundary: [...params.colors.boundaryCells, 1.0],
                 outside: [...params.colors.outsideCells, 1.0],
                 background: bgColor,
-                maskCircle: maskCircleColor
+                maskCircle: maskColor
             };
         } else {
             // Default colors if not specified
@@ -174,74 +191,8 @@ export class GridGenRenderer extends BaseRenderer {
     }
 
     classifyCells(rectangles, allowCut = 1) {
-        const CENTER_X = 120;
-        const CENTER_Y = 120;
-        const RADIUS = 120;
-
         rectangles.forEach(rect => {
-            // Cell corners
-            const corners = [
-                { x: rect.x, y: rect.y }, // Top-left
-                { x: rect.x + rect.width, y: rect.y }, // Top-right
-                { x: rect.x, y: rect.y + rect.height }, // Bottom-left
-                { x: rect.x + rect.width, y: rect.y + rect.height } // Bottom-right
-            ];
-
-            // Cell center
-            const centerX = rect.x + rect.width / 2;
-            const centerY = rect.y + rect.height / 2;
-            const centerDist = Math.hypot(centerX - CENTER_X, centerY - CENTER_Y);
-
-            // Count corners outside circle
-            const cornersOutside = corners.filter(corner =>
-                Math.hypot(corner.x - CENTER_X, corner.y - CENTER_Y) > RADIUS
-            ).length;
-
-            // Count corners inside circle (for display)
-            const cornersInside = 4 - cornersOutside;
-
-            // Check if any edge intersects the circle (for edge case with allowCut=0)
-            let edgeIntersectsCircle = false;
-
-            if (cornersInside === 0 && allowCut > 0) {
-                const edges = [
-                    // Horizontal edges
-                    { x1: rect.x, y1: rect.y, x2: rect.x + rect.width, y2: rect.y },
-                    { x1: rect.x, y1: rect.y + rect.height, x2: rect.x + rect.width, y2: rect.y + rect.height },
-                    // Vertical edges
-                    { x1: rect.x, y1: rect.y, x2: rect.x, y2: rect.y + rect.height },
-                    { x1: rect.x + rect.width, y1: rect.y, x2: rect.x + rect.width, y2: rect.y + rect.height }
-                ];
-
-                edgeIntersectsCircle = edges.some(edge =>
-                    this.lineIntersectsCircle(
-                        edge.x1, edge.y1, edge.x2, edge.y2,
-                        CENTER_X, CENTER_Y, RADIUS
-                    )
-                );
-            }
-
-            // Classify the cell based on corners outside and allowCut
-            if (cornersOutside === 0) {
-                // Cell is fully inside the circle (all 4 corners inside)
-                rect.cellType = 'inside';
-            } else if (
-                // Allow cell if it has center inside OR
-                // if the number of corners outside is <= allowCut
-                (centerDist <= RADIUS) ||
-                (cornersOutside <= allowCut && allowCut > 0) ||
-                (allowCut > 0 && edgeIntersectsCircle)
-            ) {
-                // Cell is on the boundary based on corner count criteria
-                rect.cellType = 'boundary';
-            } else {
-                // Cell is outside or has too many corners outside
-                rect.cellType = 'outside';
-            }
-
-            // Store the corner counts for debugging
-            rect.cornersInside = cornersInside;
-            rect.cornersOutside = cornersOutside;
+            rect.cellType = this.boundary.classifyCell(rect, allowCut);
         });
     }
 
@@ -293,16 +244,25 @@ export class GridGenRenderer extends BaseRenderer {
 
     renderMaskedCells(rectangles, colors) {
         const gl = this.gl;
-        const CENTER_X = 120;
-        const CENTER_Y = 120;
-        const RADIUS = 120;
+        const center = this.boundary.getCenter();
 
         // Clear with background color
         gl.clearColor(colors.background[0], colors.background[1], colors.background[2], colors.background[3]);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
 
-        // Draw the mask circle (this is visible outside the stencil)
-        this.drawCircle(CENTER_X, CENTER_Y, RADIUS, colors.maskCircle);
+        // Draw the mask shape (this is visible outside the stencil)
+        if (this.boundary instanceof CircularBoundary) {
+            this.drawCircle(center.x, center.y, this.boundary.getRadius(), colors.maskCircle);
+        } else {
+            const halfWidth = (this.boundary.width * this.boundary.getScale()) / 2;
+            const halfHeight = (this.boundary.height * this.boundary.getScale()) / 2;
+            this.drawRectangle(
+                center.x - halfWidth, center.y - halfHeight,
+                this.boundary.width * this.boundary.getScale(),
+                this.boundary.height * this.boundary.getScale(),
+                colors.maskCircle
+            );
+        }
 
         // Enable stencil test
         gl.enable(gl.STENCIL_TEST);
@@ -310,11 +270,22 @@ export class GridGenRenderer extends BaseRenderer {
         gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
         gl.stencilMask(0xFF);
 
-        // First pass: Draw the circle into the stencil buffer (but don't show it)
+        // First pass: Draw the boundary shape into the stencil buffer (but don't show it)
         gl.colorMask(false, false, false, false); // Don't draw to color buffer
-        this.drawCircle(CENTER_X, CENTER_Y, RADIUS, [1, 1, 1, 1]);
+        if (this.boundary instanceof CircularBoundary) {
+            this.drawCircle(center.x, center.y, this.boundary.getRadius(), [1, 1, 1, 1]);
+        } else {
+            const halfWidth = (this.boundary.width * this.boundary.getScale()) / 2;
+            const halfHeight = (this.boundary.height * this.boundary.getScale()) / 2;
+            this.drawRectangle(
+                center.x - halfWidth, center.y - halfHeight,
+                this.boundary.width * this.boundary.getScale(),
+                this.boundary.height * this.boundary.getScale(),
+                [1, 1, 1, 1]
+            );
+        }
 
-        // Second pass: Only draw where the stencil is 1 (inside circle)
+        // Second pass: Only draw where the stencil is 1 (inside boundary)
         gl.colorMask(true, true, true, true); // Re-enable drawing to color buffer
         gl.stencilFunc(gl.EQUAL, 1, 0xFF);    // Draw only where stencil is 1
         gl.stencilMask(0x00);                 // Don't modify stencil buffer
@@ -490,7 +461,7 @@ export class GridGenRenderer extends BaseRenderer {
     generateRectangles(params) {
         let bestRects = [];
         const center = 120;
-        const radius = 120 * params.scale;
+        const radius = this.boundary.getRadius();
         const allowCut = params.allowCut !== undefined ? params.allowCut : 1;
         const boundaryMode = allowCut > 0 ? 'partial' : 'center';
 
@@ -503,11 +474,19 @@ export class GridGenRenderer extends BaseRenderer {
 
             let maxCols = 0,
                 maxRows = 0;
-            while (Math.hypot(maxCols * stepX, 0) <= radius) maxCols++;
-            while (Math.hypot(0, maxRows * stepY) <= radius) maxRows++;
+
+            // Calculate grid size based on boundary type
+            if (this.boundary instanceof CircularBoundary) {
+                while (Math.hypot(maxCols * stepX, 0) <= radius) maxCols++;
+                while (Math.hypot(0, maxRows * stepY) <= radius) maxRows++;
+            } else {
+                const halfWidth = (this.boundary.width * params.scale) / 2;
+                const halfHeight = (this.boundary.height * params.scale) / 2;
+                while (Math.abs(maxCols * stepX) <= halfWidth) maxCols++;
+                while (Math.abs(maxRows * stepY) <= halfHeight) maxRows++;
+            }
 
             // Add extra columns and rows to catch partial cells at the boundary
-            // Only if we're allowing cut cells (allowCut > 0)
             if (boundaryMode === 'partial') {
                 maxCols += 1;
                 maxRows += 1;
@@ -532,9 +511,8 @@ export class GridGenRenderer extends BaseRenderer {
                     const top = cellCenterY - scaledH / 2;
                     const bottom = cellCenterY + scaledH / 2;
 
-                    // Check if cell center is inside the circle
-                    const centerDist = Math.hypot(dx, dy);
-                    const centerInside = centerDist <= radius;
+                    // Check if cell center is inside the boundary
+                    const centerInside = this.boundary.isPointInside(cellCenterX, cellCenterY);
 
                     // Check corners for partial cells if allowing cuts
                     let includeCell = centerInside;
@@ -548,9 +526,9 @@ export class GridGenRenderer extends BaseRenderer {
                             { x: right, y: bottom }
                         ];
 
-                        // Count corners outside the circle
+                        // Count corners outside the boundary
                         cornersOutside = corners.filter(corner =>
-                            Math.hypot(corner.x - center, corner.y - center) > radius
+                            !this.boundary.isPointInside(corner.x, corner.y)
                         ).length;
 
                         // Check against the allowCut parameter
@@ -569,11 +547,10 @@ export class GridGenRenderer extends BaseRenderer {
                                 { x1: right, y1: top, x2: right, y2: bottom }
                             ];
 
-                            // Check if any edge actually intersects the circle
+                            // Check if any edge intersects the boundary
                             const edgeIntersects = edges.some(edge =>
-                                this.lineIntersectsCircle(
-                                    edge.x1, edge.y1, edge.x2, edge.y2,
-                                    center, center, radius
+                                this.boundary.lineIntersectsBoundary(
+                                    edge.x1, edge.y1, edge.x2, edge.y2
                                 )
                             );
 
