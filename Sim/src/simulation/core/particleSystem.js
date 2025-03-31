@@ -1,6 +1,7 @@
 import { FluidFLIP } from "./fluidFLIP.js";
 import { MouseForces } from "../forces/mouseForces.js";
 import { CircularBoundary } from "../boundary/circularBoundary.js";
+import { RectangularBoundary } from "../boundary/rectangularBoundary.js";
 import { CollisionSystem } from "../forces/collisionSystem.js";
 import { OrganicBehavior } from "../behaviors/organicBehavior.js";
 import { GravityForces } from "../forces/gravityForces.js";
@@ -14,6 +15,8 @@ class ParticleSystem {
     turbulence = null, // Keep turbulence as optional parameter
     voronoi = null, // Add voronoi as optional parameter
     boundaryMode = "WARP", // Add boundary mode parameter
+    boundaryType = "CIRCULAR", // Add boundary type parameter
+    boundaryParams = {}, // Add boundary parameters
   } = {}) {
     // Particle properties
     this.numParticles = particleCount;
@@ -69,10 +72,18 @@ class ParticleSystem {
     // Store reference to collision system in particle system
     this.collisionSystem.particleSystem = this;
 
-    // Create boundary with specified mode
-    this.boundary = new CircularBoundary({
+    // Create appropriate boundary based on type
+    const defaultBoundaryParams = {
       mode: boundaryMode,
-    });
+      ...boundaryParams
+    };
+
+    if (boundaryType === "RECTANGULAR") {
+      this.boundary = new RectangularBoundary(defaultBoundaryParams);
+    } else {
+      // Default to circular boundary
+      this.boundary = new CircularBoundary(defaultBoundaryParams);
+    }
 
     // Then create FLIP system with boundary reference
     this.fluid = new FluidFLIP({
@@ -100,55 +111,95 @@ class ParticleSystem {
   }
 
   initializeParticles() {
-    // Calculate rings based on particle count
-    const rings = Math.ceil(Math.sqrt(this.numParticles));
-    const particlesPerRing = Math.ceil(this.numParticles / rings);
+    // Get boundary details to determine distribution
+    const boundary = this.boundary;
+    const boundaryType = boundary.getBoundaryType();
 
-    // Safe spawn radius (80% of container radius to avoid immediate boundary collision)
-    const spawnRadius = this.boundary.radius * 0.95;
-    const centerX = this.boundary.centerX;
-    const centerY = this.boundary.centerY;
+    // Calculate center point
+    const centerX = boundary.centerX;
+    const centerY = boundary.centerY;
 
-    let particleIndex = 0;
+    if (boundaryType === "CIRCULAR") {
+      // Calculate rings based on particle count for circular distribution
+      const rings = Math.ceil(Math.sqrt(this.numParticles));
+      const particlesPerRing = Math.ceil(this.numParticles / rings);
 
-    // Create concentric rings of particles
-    for (
-      let ring = 0;
-      ring < rings && particleIndex < this.numParticles;
-      ring++
-    ) {
-      // Current ring radius
-      const ringRadius = (spawnRadius * (ring + 1)) / rings;
+      // Safe spawn radius (80% of container radius to avoid immediate boundary collision)
+      const spawnRadius = boundary.radius * 0.95;
 
-      // Particles in this ring (adjusted for outer rings)
-      const ringParticles = Math.min(
-        Math.floor((particlesPerRing * (ring + 1)) / 2),
-        this.numParticles - particleIndex
-      );
+      let particleIndex = 0;
 
-      // Distribute particles around the ring
+      // Create concentric rings of particles
       for (
-        let i = 0;
-        i < ringParticles && particleIndex < this.numParticles;
-        i++
+        let ring = 0;
+        ring < rings && particleIndex < this.numParticles;
+        ring++
       ) {
-        const angle = (i / ringParticles) * Math.PI * 2;
+        // Current ring radius
+        const ringRadius = (spawnRadius * (ring + 1)) / rings;
 
-        // Calculate position relative to center
-        this.particles[particleIndex * 2] =
-          centerX + Math.cos(angle) * ringRadius;
-        this.particles[particleIndex * 2 + 1] =
-          centerY + Math.sin(angle) * ringRadius;
+        // Particles in this ring (adjusted for outer rings)
+        const ringParticles = Math.min(
+          Math.floor((particlesPerRing * (ring + 1)) / 2),
+          this.numParticles - particleIndex
+        );
 
-        // Initialize with zero velocity
-        this.velocitiesX[particleIndex] = 0;
-        this.velocitiesY[particleIndex] = 0;
+        // Distribute particles around the ring
+        for (
+          let i = 0;
+          i < ringParticles && particleIndex < this.numParticles;
+          i++
+        ) {
+          const angle = (i / ringParticles) * Math.PI * 2;
 
-        particleIndex++;
+          // Calculate position relative to center
+          this.particles[particleIndex * 2] =
+            centerX + Math.cos(angle) * ringRadius;
+          this.particles[particleIndex * 2 + 1] =
+            centerY + Math.sin(angle) * ringRadius;
+
+          // Initialize with zero velocity
+          this.velocitiesX[particleIndex] = 0;
+          this.velocitiesY[particleIndex] = 0;
+
+          particleIndex++;
+        }
+      }
+    } else {
+      // Rectangular distribution
+      // Get boundary dimensions
+      const width = boundary.width * 0.95; // 95% of width to avoid immediate collision
+      const height = boundary.height * 0.95; // 95% of height to avoid immediate collision
+      const halfWidth = width / 2;
+      const halfHeight = height / 2;
+
+      // Calculate grid dimensions based on particle count
+      const particlesPerSide = Math.ceil(Math.sqrt(this.numParticles));
+      const cellWidth = width / particlesPerSide;
+      const cellHeight = height / particlesPerSide;
+
+      let particleIndex = 0;
+
+      // Distribute particles in a grid pattern
+      for (let row = 0; row < particlesPerSide && particleIndex < this.numParticles; row++) {
+        for (let col = 0; col < particlesPerSide && particleIndex < this.numParticles; col++) {
+          // Calculate position within the grid cell (with slight randomization)
+          const jitter = 0.2; // Small random offset
+          const cellX = (col + 0.5 + (Math.random() - 0.5) * jitter) * cellWidth;
+          const cellY = (row + 0.5 + (Math.random() - 0.5) * jitter) * cellHeight;
+
+          // Position relative to center
+          this.particles[particleIndex * 2] = centerX - halfWidth + cellX;
+          this.particles[particleIndex * 2 + 1] = centerY - halfHeight + cellY;
+
+          // Initialize with zero velocity
+          this.velocitiesX[particleIndex] = 0;
+          this.velocitiesY[particleIndex] = 0;
+
+          particleIndex++;
+        }
       }
     }
-
-    // console.log(`Initialized ${particleIndex} particles in spherical pattern`);
   }
 
   reinitializeParticles(newCount = null) {

@@ -1,22 +1,28 @@
-class CircularBoundary {
+import { BaseBoundary } from "./baseBoundary.js";
+
+class CircularBoundary extends BaseBoundary {
   constructor({
     centerX = 0.5,
     centerY = 0.5,
     radius = 0.5,
-    cBoundaryRestitution = 0.8, // Renamed to be specific
+    cBoundaryRestitution = 0.8,
     damping = 0.95,
     boundaryRepulsion = 0.1,
-    segments = 64, // Higher segment count for smoother circle
-    mode = "BOUNCE", // Add boundary mode
+    segments = 64,
+    mode = "BOUNCE",
   } = {}) {
-    // Core parameters
+    // Call the parent constructor with shared parameters
+    super({
+      cBoundaryRestitution,
+      damping,
+      boundaryRepulsion,
+      mode,
+    });
+
+    // Core parameters specific to circular boundary
     this.centerX = centerX;
     this.centerY = centerY;
     this.radius = radius;
-    this.boundaryRepulsion = boundaryRepulsion;
-    // Physics parameters
-    this.cBoundaryRestitution = cBoundaryRestitution; // Renamed
-    this.damping = damping;
     this.segments = segments;
 
     // Visual properties
@@ -37,7 +43,8 @@ class CircularBoundary {
     this.mode = mode;
   }
 
-  drawCircularBoundary(gl, shaderManager) {
+  // Drawing method - renamed from drawCircularBoundary to drawBoundary for consistency
+  drawBoundary(gl, shaderManager) {
     const program = shaderManager.use("circle");
     if (!program) return;
 
@@ -194,7 +201,7 @@ class CircularBoundary {
     return { vx, vy };
   }
 
-  // Update boundary parameters and notify dependents
+  // Update boundary parameters and notify dependents - override parent method
   update(params) {
     let changed = false;
     if (params.radius !== undefined && params.radius !== this.radius) {
@@ -206,6 +213,32 @@ class CircularBoundary {
     if (changed) {
       this.updateCallbacks.forEach((callback) => callback(this));
     }
+    return changed;
+  }
+
+  // Keep for backward compatibility
+  getRadius() {
+    return this.radius;
+  }
+
+  // New methods required by the boundary interface
+  getBoundaryType() {
+    return "CIRCULAR";
+  }
+
+  // Return details needed for calculations
+  getBoundaryDetails() {
+    return {
+      type: "CIRCULAR",
+      centerX: this.centerX,
+      centerY: this.centerY,
+      radius: this.radius,
+    };
+  }
+
+  // For backward compatibility
+  drawCircularBoundary(gl, shaderManager) {
+    return this.drawBoundary(gl, shaderManager);
   }
 
   addUpdateCallback(callback) {
@@ -214,10 +247,6 @@ class CircularBoundary {
 
   removeUpdateCallback(callback) {
     this.updateCallbacks.delete(callback);
-  }
-
-  getRadius() {
-    return this.radius;
   }
 
   // Add method to change boundary mode

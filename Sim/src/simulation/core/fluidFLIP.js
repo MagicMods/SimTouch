@@ -50,21 +50,53 @@ class FluidFLIP {
     const n = this.gridSize;
     const h = this.h;
 
-    const centerX = this.boundary.centerX;
-    const centerY = this.boundary.centerY;
-    const radius = this.boundary.getRadius();
+    if (!this.boundary) {
+      console.warn("No boundary provided for FluidFLIP initialization");
+      return;
+    }
 
-    // Mark solid cells
-    for (let i = 0; i < n; i++) {
-      for (let j = 0; j < n; j++) {
-        const x = (j + 0.5) * h;
-        const y = (i + 0.5) * h;
-        const dx = x - centerX;
-        const dy = y - centerY;
-        const distSq = dx * dx + dy * dy;
+    // Get boundary type
+    const boundaryType = this.boundary.getBoundaryType();
 
-        this.solid[i * n + j] = distSq > radius * radius ? 1 : 0;
+    // Mark solid cells based on boundary type
+    if (boundaryType === "CIRCULAR") {
+      const centerX = this.boundary.centerX;
+      const centerY = this.boundary.centerY;
+      const radius = this.boundary.getRadius();
+
+      // Mark solid cells outside circle
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          const x = (j + 0.5) * h;
+          const y = (i + 0.5) * h;
+          const dx = x - centerX;
+          const dy = y - centerY;
+          const distSq = dx * dx + dy * dy;
+
+          this.solid[i * n + j] = distSq > radius * radius ? 1 : 0;
+        }
       }
+    } else if (boundaryType === "RECTANGULAR") {
+      // Get rectangle parameters
+      const details = this.boundary.getBoundaryDetails();
+      const minX = details.minX;
+      const maxX = details.maxX;
+      const minY = details.minY;
+      const maxY = details.maxY;
+
+      // Mark solid cells outside rectangle
+      for (let i = 0; i < n; i++) {
+        for (let j = 0; j < n; j++) {
+          const x = (j + 0.5) * h;
+          const y = (i + 0.5) * h;
+
+          // Cell is solid if outside the boundary
+          const isOutside = x < minX || x > maxX || y < minY || y > maxY;
+          this.solid[i * n + j] = isOutside ? 1 : 0;
+        }
+      }
+    } else {
+      console.warn(`Unknown boundary type: ${boundaryType}`);
     }
   }
 

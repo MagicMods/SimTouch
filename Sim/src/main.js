@@ -7,6 +7,7 @@ import { DebugRenderer } from "./renderer/debugRenderer.js";
 import { TurbulenceField } from "./simulation/forces/turbulenceField.js";
 import { VoronoiField } from "./simulation/forces/voronoiField.js";
 import { CircularBoundary } from "./simulation/boundary/circularBoundary.js";
+import { RectangularBoundary } from "./simulation/boundary/rectangularBoundary.js";
 import { socketManager } from "./network/socketManager.js";
 import { MouseForces } from "./simulation/forces/mouseForces.js";
 import { ExternalInputConnector } from "./input/externalInputConnector.js";
@@ -25,12 +26,23 @@ class Main {
     if (!this.gl) throw new Error("WebGL2 not supported");
 
     this.shaderManager = new ShaderManager(this.gl);
-    this.boundary = new CircularBoundary();
+
+    // Set default boundary type
+    const boundaryType = "CIRCULAR"; // Can be "CIRCULAR" or "RECTANGULAR"
+
+    // Create appropriate boundary
+    if (boundaryType === "RECTANGULAR") {
+      this.boundary = new RectangularBoundary();
+    } else {
+      this.boundary = new CircularBoundary();
+    }
+
     this.turbulenceField = new TurbulenceField({ boundary: this.boundary });
     this.voronoiField = new VoronoiField({ boundary: this.boundary });
     this.particleSystem = new ParticleSystem({
       turbulence: this.turbulenceField,
       voronoi: this.voronoiField,
+      boundaryType: boundaryType
     });
 
     this.modulatorManager = new ModulatorManager();
