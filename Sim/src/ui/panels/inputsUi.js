@@ -249,7 +249,10 @@ export class InputsUi extends BaseUi {
 
   initEmuInputControls() {
     // Make sure EMU forces exist before adding controls
-    if (!this.main.externalInput?.emuForces) return;
+    if (!this.main.externalInput || !this.main.externalInput.emuForces) {
+      console.warn("EMU forces not available for InputsUi");
+      return;
+    }
 
     const externalInput = this.main.externalInput;
     const emuForces = externalInput.emuForces;
@@ -310,7 +313,10 @@ export class InputsUi extends BaseUi {
 
   initJoystickControls() {
     // Make sure EMU renderer exists before adding joystick controls
-    if (!this.main.emuRenderer) return;
+    if (!this.main.emuRenderer) {
+      console.warn("EMU renderer not available for joystick controls");
+      return;
+    }
 
     // Add reset button for joystick
     const resetJoystickButton = {
@@ -393,7 +399,7 @@ export class InputsUi extends BaseUi {
     }
 
     const springControl = {
-      strength: this.main.emuRenderer?.springStrength ?? 0.05
+      strength: this.main.emuRenderer.springStrength || 0.05
     };
 
     // Add spring strength slider
@@ -408,7 +414,7 @@ export class InputsUi extends BaseUi {
       });
 
     // Add gravity strength control to joystick folder
-    if (this.main.externalInput?.emuForces) {
+    if (this.main.externalInput && this.main.externalInput.emuForces) {
       const emuForces = this.main.externalInput.emuForces;
       this.joystickGravityStrengthController = this.joystickInputFolder
         .add(
@@ -426,7 +432,7 @@ export class InputsUi extends BaseUi {
     }
 
     // Add turbulence bias strength control to joystick folder
-    if (this.main?.turbulenceField) {
+    if (this.main && this.main.turbulenceField) {
       const turbulenceField = this.main.turbulenceField;
 
       this.joystickBiasStrengthController = this.joystickInputFolder
@@ -504,21 +510,27 @@ export class InputsUi extends BaseUi {
 
   updateTurbulenceBiasUI() {
     // First try using the direct controller update method if available
-    if (this.main.turbulenceUi && typeof this.main.turbulenceUi.updateBiasControllers === 'function') {
-      this.main.turbulenceUi.updateBiasControllers();
-      console.log("Updated turbulence bias UI via updateBiasControllers");
-      return;
+    if (this.main.turbulenceUi) {
+      try {
+        this.main.turbulenceUi.updateBiasControllers();
+        return;
+      } catch (e) {
+        console.warn("Failed to update turbulence bias UI via updateBiasControllers:", e);
+        // Fall through to manual method
+      }
     }
 
-    console.log("Falling back to manual DOM updates for turbulence bias UI");
+    console.warn("Falling back to manual DOM updates for turbulence bias UI");
     // Find the T-BiasX and T-BiasY controllers in the turbulence UI
     const targets = document.querySelectorAll('.dg .c input[type="text"]');
 
     targets.forEach(input => {
-      const label = input.parentElement?.parentElement?.querySelector('.property-name');
-      if (!label) return;
+      if (!input.parentElement || !input.parentElement.parentElement) return;
 
-      const name = label.textContent?.trim();
+      const label = input.parentElement.parentElement.querySelector('.property-name');
+      if (!label || !label.textContent) return;
+
+      const name = label.textContent.trim();
 
       // Only update these if they exist
       if (name === 'T-BiasX' && this.main.turbulenceField) {

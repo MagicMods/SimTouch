@@ -786,12 +786,12 @@ export class TurbulenceUi extends BaseUi {
     }
 
     const safeUpdateDisplay = (controller) => {
-      if (controller && typeof controller.updateDisplay === "function") {
-        try {
-          controller.updateDisplay();
-        } catch (e) {
-          console.warn("Error updating controller display:", e);
-        }
+      if (!controller) return;
+
+      try {
+        controller.updateDisplay();
+      } catch (e) {
+        console.warn("Error updating controller display:", e);
       }
     };
 
@@ -827,8 +827,12 @@ export class TurbulenceUi extends BaseUi {
 
     // Extract values from controllers to create a serializable object
     for (const [key, controller] of Object.entries(targets)) {
-      if (controller && typeof controller.getValue === "function") {
+      if (!controller) continue;
+
+      try {
         controllers[key] = controller.getValue();
+      } catch (e) {
+        console.warn(`Error getting value from controller ${key}:`, e);
       }
     }
 
@@ -867,8 +871,12 @@ export class TurbulenceUi extends BaseUi {
 
       // Apply values from preset to controllers
       for (const [key, value] of Object.entries(data.controllers)) {
-        if (targets[key] && typeof targets[key].setValue === "function") {
+        if (!targets[key]) continue;
+
+        try {
           targets[key].setValue(value);
+        } catch (e) {
+          console.warn(`Error setting value for controller ${key}:`, e);
         }
       }
 
@@ -909,8 +917,11 @@ export class TurbulenceUi extends BaseUi {
   }
 
   updateFromTurbulenceField() {
-    const turbulence = this.main?.turbulenceField;
-    if (!turbulence) return;
+    if (!this.main || !this.main.turbulenceField) {
+      throw new Error("TurbulenceField is required for updateFromTurbulenceField");
+    }
+
+    const turbulence = this.main.turbulenceField;
 
     // Update the bias controllers regardless of joystick state
     // This ensures sliders refresh even with small changes
@@ -937,8 +948,11 @@ export class TurbulenceUi extends BaseUi {
 
 
   resetBias() {
-    const turbulence = this.main?.turbulenceField;
-    if (!turbulence) return;
+    if (!this.main || !this.main.turbulenceField) {
+      throw new Error("TurbulenceField is required for resetBias");
+    }
+
+    const turbulence = this.main.turbulenceField;
 
     // Reset the bias position, velocity and acceleration
     turbulence.resetBias();

@@ -16,6 +16,9 @@ export class EmuForces {
 
     // Force multiplier
     this.accelGravityMultiplier = 0.5;
+
+    // Added for debugging
+    this.debug = false;
   }
 
   enable() {
@@ -71,39 +74,34 @@ export class EmuForces {
   }
 
   apply(dt) {
-    if (!this.enabled) return;
+    if (!this.enabled || !this.emuData) return;
 
-    // When manually controlling EMU through the visualization,
-    // set mouseForces.isActive to true to reduce other forces
-    if (this.manualOverride && this.gravity?.particleSystem?.mouseForces) {
-      this.gravity.particleSystem.mouseForces.isActive = true;
+    // For manual override mode, we let the joystick control the gravity
+    if (this.manualOverride && this.gravity) {
+      if (this.gravity.particleSystem && this.gravity.particleSystem.mouseForces) {
+        // Manual override is handled separately via mouse forces
+        return;
+      }
     }
 
-    // Apply accelerometer data to gravity using raw values (not normalized)
-    if (this.gravity && this.gravity.setRawDirection) {
-      // We're using accelY for X and accelX for Y (after 90° rotation)
-      const gravityX = this.emuData.accelY * this.accelGravityMultiplier;
-      const gravityY = this.emuData.accelX * this.accelGravityMultiplier;
-      const gravityZ = -this.emuData.accelZ * this.accelGravityMultiplier;
+    // Apply acceleration to gravity if available
+    if (this.gravity) {
+      // Apply accelerometer data as gravity direction
+      // Swap X/Y for more intuitive control and apply sensitivity
+      const accelX = this.emuData.accelY * this.sensitivity * this.accelGravityMultiplier;
+      const accelY = -this.emuData.accelX * this.sensitivity * this.accelGravityMultiplier;
+      const accelZ = -1; // Keep Z pointing downward for stability
 
-      // Use setRawDirection to control both direction and magnitude
-      this.gravity.setRawDirection(gravityX, gravityY, gravityZ);
-    }
-
-    // DEBUG: Print object structure to find turbulence field
-    if (this.enabled && !this._debuggedObjectStructure) {
-      this._debuggedObjectStructure = true;
-
-      console.log('DEBUG: EmuForces object structure:');
-      console.log('this.simulation:', this.simulation);
-      console.log('this.gravity:', this.gravity);
+      // Set the gravity direction (normalized internally)
+      this.gravity.setRawDirection(accelX, accelY, accelZ);
+    } else if (this.debug) {
       console.log('Direct turbulenceField reference:', this.turbulenceField);
 
-      if (this.gravity?.particleSystem) {
+      if (this.gravity && this.gravity.particleSystem) {
         console.log('this.gravity.particleSystem:', this.gravity.particleSystem);
       }
 
-      if (this.gravity?.particleSystem?.main) {
+      if (this.gravity && this.gravity.particleSystem && this.gravity.particleSystem.main) {
         console.log('this.gravity.particleSystem.main:', this.gravity.particleSystem.main);
         console.log('Has turbulenceField?', !!this.gravity.particleSystem.main.turbulenceField);
         console.log('Has turbulenceUi?', !!this.gravity.particleSystem.main.turbulenceUi);
@@ -113,63 +111,72 @@ export class EmuForces {
     // Also apply accelerometer data to turbulence bias if available
     // First check for the direct reference that might be set during enableEmu()
     let turbulenceField = this.turbulenceField;
+    let main = null;
 
     // If not found, check other paths
     if (!turbulenceField) {
       // Check first if we can directly access turbulenceField from the simulation object
-      turbulenceField = this.simulation?.turbulenceField;
+      if (this.simulation && this.simulation.turbulenceField) {
+        turbulenceField = this.simulation.turbulenceField;
+      }
 
       // If not found through simulation, try to access it through gravity's particleSystem
-      if (!turbulenceField && this.gravity?.particleSystem?.main) {
-        turbulenceField = this.gravity.particleSystem.main.turbulenceField;
+      if (!turbulenceField && this.gravity && this.gravity.particleSystem &&
+        this.gravity.particleSystem.main &&
+        this.gravity.particleSystem.main.turbulenceField) {
+        main = this.gravity.particleSystem.main;
+        turbulenceField = main.turbulenceField;
       }
 
       // If still not found, try other potential paths
       if (!turbulenceField) {
         // Try particleSystem directly (different structure than expected)
-        turbulenceField = this.gravity?.particleSystem?.turbulenceField;
+        if (this.gravity && this.gravity.particleSystem &&
+          this.gravity.particleSystem.turbulenceField) {
+          turbulenceField = this.gravity.particleSystem.turbulenceField;
+        }
 
         // Try simulation.main if it exists
-        if (!turbulenceField && this.simulation?.main) {
-          turbulenceField = this.simulation.main.turbulenceField;
+        if (!turbulenceField && this.simulation && this.simulation.main &&
+          this.simulation.main.turbulenceField) {
+          main = this.simulation.main;
+          turbulenceField = main.turbulenceField;
         }
       }
     }
 
-    if (turbulenceField && typeof turbulenceField.setBiasSpeed === 'function') {
-      // Use the same accelerometer values as gravity, but normalize to -1 to 1 range for bias
-      // Divide by 10 since our accelerometer values are typically in the -10 to 10 range
-      // Apply the same axis swapping as gravity (Y → X, X → Y)
-      const biasX = Math.max(-1, Math.min(1, this.emuData.accelY / 10));
-      const biasY = Math.max(-1, Math.min(1, -this.emuData.accelX / 10));  // Invert Y for correct direction
+    if (turbulenceField) {
+      try {
+        // Use the same accelerometer values as gravity, but normalize to -1 to 1 range for bias
+        // Divide by 10 since our accelerometer values are typically in the -10 to 10 range
+        // Apply the same axis swapping as gravity (Y → X, X → Y)
+        const biasX = Math.max(-1, Math.min(1, this.emuData.accelY / 10));
+        const biasY = Math.max(-1, Math.min(1, -this.emuData.accelX / 10));  // Invert Y for correct direction
 
-      // Use the physics-based setBiasSpeed method which takes values in -1 to 1 range
-      // and applies them as acceleration rather than direct position offsets
-      turbulenceField.setBiasSpeed(biasX, biasY);
+        // Use the physics-based setBiasSpeed method which takes values in -1 to 1 range
+        // and applies them as acceleration rather than direct position offsets
+        turbulenceField.setBiasSpeed(biasX, biasY);
 
-      // Try to find and update the turbulence UI if available
-      let main = this.simulation?.main;
-      if (!main && this.gravity?.particleSystem?.main) {
-        main = this.gravity.particleSystem.main;
+        // Try to find and update the turbulence UI if available
+        if (!main) {
+          if (this.simulation && this.simulation.main) {
+            main = this.simulation.main;
+          } else if (this.gravity && this.gravity.particleSystem &&
+            this.gravity.particleSystem.main) {
+            main = this.gravity.particleSystem.main;
+          }
+        }
+
+        if (main && main.turbulenceUi) {
+          try {
+            main.turbulenceUi.updateBiasControllers();
+          } catch (e) {
+            // Fail silently - the UI update is not critical
+          }
+        }
+      } catch (e) {
+        console.warn("Error applying EMU forces to turbulence field:", e);
       }
-
-      if (main?.turbulenceUi && typeof main.turbulenceUi.updateBiasControllers === 'function') {
-        main.turbulenceUi.updateBiasControllers();
-      }
-    } else {
-      // Log once to help diagnose the issue
-      // if (this.enabled && !this._loggedMissingTurbulence) {
-      //   console.warn("Turbulence field not found for EMU control. Check application structure.");
-      //   this._loggedMissingTurbulence = true;
-
-      //   // Print some additional debug info about where we looked
-      //   console.log('Looked for turbulenceField in:');
-      //   console.log('- this.turbulenceField (direct):', this.turbulenceField);
-      //   console.log('- this.simulation?.turbulenceField:', this.simulation?.turbulenceField);
-      //   console.log('- this.gravity?.particleSystem?.main?.turbulenceField:', this.gravity?.particleSystem?.main?.turbulenceField);
-      //   console.log('- this.gravity?.particleSystem?.turbulenceField:', this.gravity?.particleSystem?.turbulenceField);
-      //   console.log('- this.simulation?.main?.turbulenceField:', this.simulation?.main?.turbulenceField);
-      // }
     }
   }
 }

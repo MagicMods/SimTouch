@@ -237,27 +237,31 @@ export class EmuRenderer {
   }
 
   updateTurbulenceBiasUI() {
-    // Try to find the turbulenceField through various paths
-    // First try the direct main reference if available
-    let turbulenceField = this.main?.turbulenceField;
+    // First try using Main
+    let turbulenceField = null;
     let main = this.main;
 
-    // If not found, try the direct reference from emuForces
-    if (!turbulenceField && this.emuForces) {
-      turbulenceField = this.emuForces.turbulenceField;
+    // Look for turbulence field in the main object
+    if (this.main && this.main.turbulenceField) {
+      turbulenceField = this.main.turbulenceField;
     }
 
     // If still not found, check other paths
     if (!turbulenceField && this.emuForces) {
-      turbulenceField = this.emuForces.simulation?.turbulenceField;
+      if (this.emuForces.simulation && this.emuForces.simulation.turbulenceField) {
+        turbulenceField = this.emuForces.simulation.turbulenceField;
+      }
 
-      if (!turbulenceField && this.emuForces.gravity?.particleSystem?.main) {
+      if (!turbulenceField && this.emuForces.gravity &&
+        this.emuForces.gravity.particleSystem &&
+        this.emuForces.gravity.particleSystem.main) {
         main = this.emuForces.gravity.particleSystem.main;
         turbulenceField = main.turbulenceField;
       }
 
       // Try simulation.main if it exists
-      if (!turbulenceField && this.emuForces.simulation?.main) {
+      if (!turbulenceField && this.emuForces.simulation &&
+        this.emuForces.simulation.main) {
         main = this.emuForces.simulation.main;
         turbulenceField = main.turbulenceField;
       }
@@ -273,7 +277,7 @@ export class EmuRenderer {
 
     // Apply joystick input directly to turbulence bias if EMU is not enabled
     // This makes the joystick controller work independently
-    if (this.joystickActive && typeof turbulenceField.setBiasSpeed === 'function') {
+    if (this.joystickActive) {
       // Only apply if biasStrength > 0
       if (turbulenceField.biasStrength > 0) {
         // Use the physics model's acceleration setter - this will handle the implementation details
@@ -282,9 +286,14 @@ export class EmuRenderer {
     }
 
     // If turbulenceUi is available with the updateBiasControllers method, use it
-    if (main?.turbulenceUi && typeof main.turbulenceUi.updateBiasControllers === 'function') {
-      main.turbulenceUi.updateBiasControllers();
-      return; // We're done, no need to manually update DOM elements
+    if (main && main.turbulenceUi) {
+      try {
+        main.turbulenceUi.updateBiasControllers();
+        return; // We're done, no need to manually update DOM elements
+      } catch (e) {
+        console.warn("Error updating bias controllers:", e);
+        // Continue with fallback method
+      }
     }
 
     // Otherwise fall back to direct DOM manipulation
@@ -292,36 +301,38 @@ export class EmuRenderer {
 
     // Loop through them to find T-BiasX and T-BiasY controllers
     biasControllers.forEach(input => {
-      const label = input.parentElement?.parentElement?.querySelector('.property-name');
-      if (label) {
-        const name = label.textContent?.trim();
+      if (!input.parentElement || !input.parentElement.parentElement) return;
 
-        if (name === 'T-BiasX') {
-          // Check if display property exists
-          if (typeof turbulenceField._displayBiasAccelX !== 'undefined') {
-            input.value = turbulenceField._displayBiasAccelX.toFixed(2);
-          } else {
-            // Fallback for older versions without display properties
-            input.value = (-turbulenceField._biasAccelX / turbulenceField.biasStrength * 5).toFixed(2);
-          }
+      const label = input.parentElement.parentElement.querySelector('.property-name');
+      if (!label || !label.textContent) return;
 
-          // Trigger change event to update internal state
-          const event = new Event('change', { bubbles: true });
-          input.dispatchEvent(event);
+      const name = label.textContent.trim();
+
+      if (name === 'T-BiasX') {
+        // Check if display property exists
+        if (typeof turbulenceField._displayBiasAccelX !== 'undefined') {
+          input.value = turbulenceField._displayBiasAccelX.toFixed(2);
+        } else {
+          // Fallback for older versions without display properties
+          input.value = (-turbulenceField._biasAccelX / turbulenceField.biasStrength * 5).toFixed(2);
         }
-        else if (name === 'T-BiasY') {
-          // Check if display property exists
-          if (typeof turbulenceField._displayBiasAccelY !== 'undefined') {
-            input.value = turbulenceField._displayBiasAccelY.toFixed(2);
-          } else {
-            // Fallback for older versions without display properties
-            input.value = (turbulenceField._biasAccelY / turbulenceField.biasStrength * 5).toFixed(2);
-          }
 
-          // Trigger change event to update internal state
-          const event = new Event('change', { bubbles: true });
-          input.dispatchEvent(event);
+        // Trigger change event to update internal state
+        const event = new Event('change', { bubbles: true });
+        input.dispatchEvent(event);
+      }
+      else if (name === 'T-BiasY') {
+        // Check if display property exists
+        if (typeof turbulenceField._displayBiasAccelY !== 'undefined') {
+          input.value = turbulenceField._displayBiasAccelY.toFixed(2);
+        } else {
+          // Fallback for older versions without display properties
+          input.value = (turbulenceField._biasAccelY / turbulenceField.biasStrength * 5).toFixed(2);
         }
+
+        // Trigger change event to update internal state
+        const event = new Event('change', { bubbles: true });
+        input.dispatchEvent(event);
       }
     });
   }
@@ -364,27 +375,29 @@ export class EmuRenderer {
 
     // Reset actual gravity if EMU is not enabled
     let gravity = null;
-    if (this.main?.particleSystem?.gravity) {
+    if (this.main && this.main.particleSystem && this.main.particleSystem.gravity) {
       gravity = this.main.particleSystem.gravity;
-    } else if (this.emuForces?.gravity) {
+    } else if (this.emuForces && this.emuForces.gravity) {
       gravity = this.emuForces.gravity;
     }
 
-    if (gravity && !this.emuForces?.enabled) {
+    if (gravity && (!this.emuForces || !this.emuForces.enabled)) {
       gravity.setRawDirection(0, 0, gravity.directionZ || -1);
     }
 
     // Reset turbulence bias if EMU is not enabled
-    let turbulenceField = this.main?.turbulenceField;
-    if (!turbulenceField && this.emuForces) {
+    let turbulenceField = null;
+    if (this.main && this.main.turbulenceField) {
+      turbulenceField = this.main.turbulenceField;
+    } else if (this.emuForces && this.emuForces.turbulenceField) {
       turbulenceField = this.emuForces.turbulenceField;
     }
 
-    if (turbulenceField && !this.emuForces?.enabled) {
-      // Call the resetBias method which fully resets the physics model
-      if (typeof turbulenceField.resetBias === 'function') {
+    if (turbulenceField && (!this.emuForces || !this.emuForces.enabled)) {
+      try {
+        // Call the resetBias method which fully resets the physics model
         turbulenceField.resetBias();
-      } else {
+      } catch (e) {
         // Fallback if resetBias isn't available
         turbulenceField.setBiasSpeed(0, 0);
       }

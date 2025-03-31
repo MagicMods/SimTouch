@@ -345,21 +345,41 @@ class MouseForces {
   }
 
   updateTurbulenceField(x, y) {
-    if (!this.main) {
-      throw new Error("Main reference is required for updateTurbulenceField");
+    let turbulenceField = null;
+
+    // First try direct main reference
+    if (this.main && this.main.turbulenceField) {
+      turbulenceField = this.main.turbulenceField;
+    }
+    // Fallback to particle system's main
+    else if (this.particleSystem && this.particleSystem.main &&
+      this.particleSystem.main.turbulenceField) {
+      turbulenceField = this.particleSystem.main.turbulenceField;
     }
 
-    if (!this.main.turbulenceField) {
-      throw new Error("TurbulenceField is required in main for updateTurbulenceField");
+    if (!turbulenceField) {
+      return; // No turbulence field found
     }
 
-    const turbulenceField = this.main.turbulenceField;
-    if (turbulenceField.biasStrength > 0) {
-      turbulenceField.setBiasSpeed(x, y);
-      return true;
+    // Apply the bias based on joystick position - invert Y to match expected control
+    const biasX = x * turbulenceField.biasStrength;
+    const biasY = -y * turbulenceField.biasStrength; // Invert Y axis for natural control feel
+
+    try {
+      // Set the bias directly in the turbulence field
+      turbulenceField.setBiasSpeed(biasX, biasY);
+    } catch (e) {
+      console.warn("Failed to set turbulence bias speed:", e);
     }
 
-    return false;
+    // If turbulence UI component exists, update its display
+    if (this.main && this.main.turbulenceUi) {
+      try {
+        this.main.turbulenceUi.updateBiasControllers();
+      } catch (e) {
+        console.warn("Failed to update turbulence UI controllers:", e);
+      }
+    }
   }
 
   update(particleSystem) {
@@ -455,7 +475,7 @@ class MouseForces {
       this.joystickY = 0;
 
       // If emuRenderer is available, update it too
-      if (this.main?.emuRenderer) {
+      if (this.main && this.main.emuRenderer) {
         this.main.emuRenderer.joystickX = 0;
         this.main.emuRenderer.joystickY = 0;
         this.main.emuRenderer.joystickActive = false;
@@ -465,18 +485,20 @@ class MouseForces {
       let turbulenceField = null;
 
       // First try direct main reference
-      if (this.main?.turbulenceField) {
+      if (this.main && this.main.turbulenceField) {
         turbulenceField = this.main.turbulenceField;
       }
       // Fallback to particle system
-      else if (this.particleSystem?.main?.turbulenceField) {
+      else if (this.particleSystem && this.particleSystem.main &&
+        this.particleSystem.main.turbulenceField) {
         turbulenceField = this.particleSystem.main.turbulenceField;
       }
 
       if (turbulenceField) {
-        if (typeof turbulenceField.resetBias === 'function') {
+        try {
           turbulenceField.resetBias();
-        } else if (typeof turbulenceField.setBiasSpeed === 'function') {
+        } catch (e) {
+          // If resetBias is not available, try setBiasSpeed
           turbulenceField.setBiasSpeed(0, 0);
         }
 
@@ -484,7 +506,7 @@ class MouseForces {
       }
     } else {
       // Update emuRenderer if available
-      if (this.main?.emuRenderer) {
+      if (this.main && this.main.emuRenderer) {
         this.main.emuRenderer.joystickX = this.joystickX * 10; // Scale to expected range
         this.main.emuRenderer.joystickY = this.joystickY * 10; // Don't invert Y anymore
         this.main.emuRenderer.updateTurbulenceBiasUI(); // Let it update the UI and turbulence field
