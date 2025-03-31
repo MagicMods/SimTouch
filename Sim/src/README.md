@@ -117,19 +117,7 @@ Components are designed to fail explicitly when required dependencies are missin
    this.main.turbulenceField.update();
    ```
 
-2. **Silent Returns**: Do not use silent returns when dependencies are missing
-
-   ```javascript
-   // BAD
-   if (!this.turbulence) return;
-   
-   // GOOD
-   if (!this.turbulence) {
-     throw new Error("TurbulenceField is required");
-   }
-   ```
-
-3. **Type Checking**: Do not check types before calling methods
+2. **Type Checking**: Do not check types before calling methods
 
    ```javascript
    // BAD
@@ -141,7 +129,7 @@ Components are designed to fail explicitly when required dependencies are missin
    controller.getValue(); // Validate at initialization time
    ```
 
-4. **Multiple Fallbacks**: Do not try multiple paths to access the same object
+3. **Multiple Fallbacks**: Do not try multiple paths to access the same object
 
    ```javascript
    // BAD

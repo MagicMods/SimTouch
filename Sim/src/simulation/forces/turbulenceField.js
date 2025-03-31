@@ -43,6 +43,7 @@ class TurbulenceField {
     biasFriction = 0.05,   // Friction coefficient for bias movement (0-1)
     biasSmoothing = 0.8,   // 0 = no smoothing, 1 = max smoothing
     biasTune = 1,       // Fine tuning of bias responsiveness
+    biasSensitivity = 0.25, // Global sensitivity multiplier (0-1)
   } = {}) {
     if (
       !boundary ||
@@ -144,6 +145,9 @@ class TurbulenceField {
 
     // Add new blur parameter
     this.blurAmount = blurAmount;
+
+    // Add sensitivity control
+    this.biasSensitivity = biasSensitivity;
 
     // Add internal bias state tracking for physics model
     this._currentBiasOffsetX = 0;
@@ -865,9 +869,24 @@ class TurbulenceField {
     };
   }
 
+  // Ensure the turbulence field is properly configured to affect particles
+  ensureAffectPosition() {
+    if (!this.affectPosition && Math.abs(this.strength) > 0.001 && this.pullFactor !== 0) {
+      console.warn('TurbulenceField: Auto-enabling affectPosition since strength and pullFactor are non-zero');
+      this.affectPosition = true;
+      return true;
+    }
+    return false;
+  }
+
   applyTurbulence(position, velocity, dt, particleIndex, system) {
     const [x, y] = position;
     const [vx, vy] = velocity;
+
+    // Debug: log to console if the field is inactive due to affectPosition being false
+    if (this.debug && !this.affectPosition && Math.abs(this.strength) > 0.001) {
+      console.log('TurbulenceField has strength but affectPosition is false - no forces will be applied');
+    }
 
     // Initialize with current velocities
     let newVx = vx * this.decayRate;
@@ -879,6 +898,9 @@ class TurbulenceField {
     }
 
     try {
+      // Auto-enable affectPosition if needed (for better user experience)
+      this.ensureAffectPosition();
+
       // APPLY DIRECTION BIAS FIRST - this should work in either mode
       // Scale direction bias by strength and apply it consistently
       if ((this.directionBias[0] !== 0 || this.directionBias[1] !== 0) && this.affectPosition) {
@@ -892,10 +914,9 @@ class TurbulenceField {
       // - When pullFactor < 0: Pattern gradually inverts (black areas become active)
       // This is applied in the applyContrast method during noise generation
 
-      // Calculate noise values for particle position
+      // Calculate noise value for particle position
       // Always apply blur for simulation
       const n1 = this.noise2D(x, y, this.time, true);
-      const n2 = this.noise2D(y + 1.234, x + 5.678, this.time, true);
 
       if (this.affectPosition) {
         if (this.pullFactor > 0) {
@@ -923,12 +944,40 @@ class TurbulenceField {
           }
         } else if (this.pullFactor < 0) {
           // PUSH MODE: Particles are pushed by the noise field values
-          // Scale push strength based on pullFactor magnitude
-          const pushStrength = Math.abs(this.pullFactor) * this.strength;
-          const forceX = (n1 - 0.5) * pushStrength;
-          const forceY = (n2 - 0.5) * pushStrength;
-          newVx += forceX * dt;
-          newVy += forceY * dt;
+          // Calculate gradient like in PULL MODE
+          const epsilon = 0.01;  // Small sampling distance
+          const nx = this.noise2D(x + epsilon, y, this.time, true);
+          const ny = this.noise2D(x, y + epsilon, this.time, true);
+
+          // Calculate approximate gradient (direction toward higher values)
+          const gradX = (nx - n1) / epsilon;
+          const gradY = (ny - n1) / epsilon;
+
+          // Calculate gradient magnitude and normalize
+          const gradMag = Math.sqrt(gradX * gradX + gradY * gradY);
+          if (gradMag > 0.001) {
+            // For consistency with visualization:
+            // - For mild negative values (-0.01 to -0.5): push AWAY from white (higher values)
+            // - For stronger negative values (< -0.5): pull TOWARD white
+            // This matches how the visualization works with the applyContrast inversion
+            let normalizedGradX, normalizedGradY;
+
+            if (this.pullFactor > -0.5) {
+              // Push away from white (original behavior)
+              normalizedGradX = -gradX / gradMag;
+              normalizedGradY = -gradY / gradMag;
+            } else {
+              // Pull toward white when pullFactor gets more negative
+              // This behavior change matches what's happening in the visualization
+              normalizedGradX = gradX / gradMag;
+              normalizedGradY = gradY / gradMag;
+            }
+
+            // Scale force by pull factor (0 to 1 range)
+            const pushStrength = Math.abs(this.pullFactor) * this.strength;
+            newVx += normalizedGradX * pushStrength * dt;
+            newVy += normalizedGradY * pushStrength * dt;
+          }
         }
         // At pullFactor = 0, no additional forces are applied
       }
@@ -966,10 +1015,7 @@ class TurbulenceField {
     }
   }
 
-  /**
-   * Update the simulation for the current frame
-   * @param {number} dt - Delta time since last frame in seconds
-   */
+
   update(dt) {
     // Update time variable with delta time
     this.time += dt * this.speed;
@@ -988,13 +1034,12 @@ class TurbulenceField {
       const frictionFactor = Math.pow(1 - this.biasFriction, dt * 60);
 
       // Apply acceleration to velocity
-      // Use a more moderate acceleration multiplier (3.0)
-      // Scale by dt^2 for frame-rate independence and proper physics
-      this._biasVelocityX += this._biasAccelX * 3.0 * dt * dt * 60;
-      this._biasVelocityY += this._biasAccelY * 3.0 * dt * dt * 60;
+      // Increase multiplier from 3.0 to 4.0 to compensate for lower input sensitivity
+      // while maintaining responsiveness
+      this._biasVelocityX += this._biasAccelX * 4.0 * dt * dt * 60;
+      this._biasVelocityY += this._biasAccelY * 4.0 * dt * dt * 60;
 
       // Apply friction using linear interpolation towards zero
-      // This provides more predictable behavior than straight multiplication
       this._biasVelocityX = this._biasVelocityX * frictionFactor;
       this._biasVelocityY = this._biasVelocityY * frictionFactor;
 
@@ -1194,6 +1239,23 @@ class TurbulenceField {
   }
 
   /**
+   * Adjust the sensitivity of the bias controls
+   * @param {number} sensitivity - Value from 0 to 1 where 1 is max sensitivity
+   */
+  setBiasSensitivity(sensitivity) {
+    // Clamp sensitivity to valid range
+    const value = Math.max(0, Math.min(1, sensitivity || 0.25));
+    this.biasSensitivity = value;
+
+    // Log the sensitivity change if in debug mode
+    if (this.debug) {
+      console.log(`Bias sensitivity set to ${(this.biasSensitivity * 100).toFixed(0)}%`);
+    }
+
+    return this.biasSensitivity;
+  }
+
+  /**
    * Set bias acceleration based on joystick input
    * The joystick values x and y are in the range -1 to 1
    * We'll use these as acceleration values instead of direct speed
@@ -1204,15 +1266,14 @@ class TurbulenceField {
     const clampedY = Math.max(-1, Math.min(1, y || 0));
 
     // Scale down the acceleration for smoother response
-    // Using a much smaller multiplier (0.2) for gentler acceleration
-    // Invert X axis to fix direction
-    this._biasAccelX = -clampedX * this.biasStrength * 0.2 * this.biasTune;
-    this._biasAccelY = clampedY * this.biasStrength * 0.2 * this.biasTune;
+    // Reduce multiplier from 0.2 to 0.05 for significantly lower sensitivity
+    this._biasAccelX = -clampedX * this.biasStrength * 0.05 * this.biasTune;
+    this._biasAccelY = clampedY * this.biasStrength * 0.05 * this.biasTune;
 
-    // Also update direction bias to match joystick direction
-    // Scale it down a bit to make it less intense
-    this.directionBias[0] = clampedX * 0.5 * this.biasTune;
-    this.directionBias[1] = clampedY * 0.5 * this.biasTune;
+    // Also reduce direction bias sensitivity to match the reduced acceleration
+    // Reduce from 0.5 to 0.15 for better balance
+    this.directionBias[0] = clampedX * 0.15 * this.biasTune;
+    this.directionBias[1] = clampedY * 0.15 * this.biasTune;
 
     // Always keep the old bias speed properties at zero
     // to ensure they don't interfere with the physics model
@@ -1225,6 +1286,45 @@ class TurbulenceField {
     this.debug = !!enabled;
     console.log(`Turbulence debug mode: ${this.debug ? 'ON' : 'OFF'}`);
     return this.debug;
+  }
+
+  // Debug function to analyze pullFactor behavior
+  debugPullFactor() {
+    console.log("=== Turbulence Pull Factor Analysis ===");
+    console.log(`Current pullFactor: ${this.pullFactor.toFixed(3)}`);
+
+    // Sample a test point at the center
+    const centerX = this.boundary.centerX;
+    const centerY = this.boundary.centerY;
+
+    // Get noise value at center
+    const n = this.noise2D(centerX, centerY, this.time, true);
+
+    // Calculate gradient
+    const epsilon = 0.01;
+    const nx = this.noise2D(centerX + epsilon, centerY, this.time, true);
+    const ny = this.noise2D(centerX, centerY + epsilon, this.time, true);
+    const gradX = (nx - n) / epsilon;
+    const gradY = (ny - n) / epsilon;
+
+    // Get visualization color (0-255)
+    const visualColor = Math.floor(((n + 1) * 0.5) * 255);
+
+    console.log(`Noise at center: ${n.toFixed(3)} (display: RGB ${visualColor},${visualColor},${visualColor})`);
+    console.log(`Gradient direction: X=${gradX.toFixed(3)}, Y=${gradY.toFixed(3)}`);
+
+    // Show what direction particles would move
+    let moveDir;
+    if (this.pullFactor > 0) {
+      moveDir = "TOWARD white (gradient direction)";
+    } else if (this.pullFactor > -0.5) {
+      moveDir = "AWAY from white (opposite gradient)";
+    } else {
+      moveDir = "TOWARD white (gradient direction)";
+    }
+
+    console.log(`Particle movement: ${moveDir}`);
+    console.log("=== End Analysis ===");
   }
 }
 
