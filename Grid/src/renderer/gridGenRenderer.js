@@ -87,12 +87,35 @@ export class GridGenRenderer extends BaseRenderer {
 
         // Initialize boundary (default to circular)
         this.boundary = new CircularBoundary(120, 120, 120);
+
+        // Store gridParams for stats
+        this.gridParams = {
+            cols: 0,
+            rows: 0,
+            width: 0,
+            height: 0
+        };
     }
 
-    updateGrid(params) {
+    updateGrid(grid) {
+        this.grid = grid;
+        this.gridW = grid.cols;
+        this.gridH = grid.rows;
+        this.gridParams = {
+            cols: grid.cols,
+            rows: grid.rows,
+            width: grid.width,
+            height: grid.height
+        };
+
+        // Update renderables
+        this.updateRenderables();
+    }
+
+    updateRenderables() {
         // Get background color from params or default to black
-        const bgColor = params.colors && params.colors.background
-            ? [...params.colors.background, 1.0] // Add alpha=1
+        const bgColor = this.grid.colors && this.grid.colors.background
+            ? [...this.grid.colors.background, 1.0] // Add alpha=1
             : [0, 0, 0, 1.0];
 
         // Clear canvas and overlays
@@ -110,46 +133,47 @@ export class GridGenRenderer extends BaseRenderer {
         );
 
         // Get colors from params for reference shapes
-        const outerColor = params.colors && params.colors.outerCircle
-            ? [...params.colors.outerCircle, 1] // Add alpha=1
+        const outerColor = this.grid.colors && this.grid.colors.outerCircle
+            ? [...this.grid.colors.outerCircle, 1] // Add alpha=1
             : [0.9, 0.9, 0.9, 1];
 
-        const innerColor = params.colors && params.colors.innerCircle
-            ? [...params.colors.innerCircle, 1] // Add alpha=1
+        const innerColor = this.grid.colors && this.grid.colors.innerCircle
+            ? [...this.grid.colors.innerCircle, 1] // Add alpha=1
             : [0.1, 0.1, 0.1, 1];
 
-        const maskColor = params.colors && params.colors.maskCircle
-            ? [...params.colors.maskCircle, 1] // Add alpha=1
+        const maskColor = this.grid.colors && this.grid.colors.maskCircle
+            ? [...this.grid.colors.maskCircle, 1] // Add alpha=1
             : [0.15, 0.15, 0.15, 1];
 
         // Draw reference shapes based on boundary type
         if (this.boundary instanceof CircularBoundary) {
+            // Draw circular reference
             this.drawCircle(120, 120, 120, outerColor); // Outer circle
-            this.drawCircle(120, 120, 120 * params.scale, innerColor); // Inner circle
-        } else {
+            this.drawCircle(120, 120, 120 * this.grid.scale, innerColor); // Inner circle
+        } else if (this.boundary instanceof RectangularBoundary) {
             // Draw rectangular reference
-            const halfWidth = (this.boundary.width * params.scale) / 2;
-            const halfHeight = (this.boundary.height * params.scale) / 2;
+            const halfWidth = (this.boundary.width * this.grid.scale) / 2;
+            const halfHeight = (this.boundary.height * this.grid.scale) / 2;
             this.drawRectangle(
                 120 - halfWidth, 120 - halfHeight,
-                this.boundary.width * params.scale,
-                this.boundary.height * params.scale,
+                this.boundary.width * this.grid.scale,
+                this.boundary.height * this.grid.scale,
                 outerColor
             );
         }
 
         // Generate grid
-        const rectangles = this.generateRectangles(params);
+        const rectangles = this.generateRectangles(this.grid);
 
         // Classify cells using the boundary system
-        this.classifyCells(rectangles, params.allowCut);
+        this.classifyCells(rectangles, this.grid.allowCut);
 
         // Store color parameters to be used in rendering
-        if (params.colors) {
+        if (this.grid.colors) {
             this.cellColors = {
-                inside: [...params.colors.insideCells, 1.0], // Add alpha=1 
-                boundary: [...params.colors.boundaryCells, 1.0],
-                outside: [...params.colors.outsideCells, 1.0],
+                inside: [...this.grid.colors.insideCells, 1.0], // Add alpha=1 
+                boundary: [...this.grid.colors.boundaryCells, 1.0],
+                outside: [...this.grid.colors.outsideCells, 1.0],
                 background: bgColor,
                 maskCircle: maskColor
             };
@@ -165,29 +189,29 @@ export class GridGenRenderer extends BaseRenderer {
         }
 
         // Draw cells based on display mode
-        this.renderCells(rectangles, params.displayMode);
+        this.renderCells(rectangles, this.grid.displayMode);
 
         // Draw indices if enabled
-        if (params.showIndices) {
-            this.updateCellIndices(rectangles, params.displayMode, params.colors?.indexText);
+        if (this.grid.showIndices) {
+            this.updateCellIndices(rectangles, this.grid.displayMode, this.grid.colors?.indexText);
         }
 
         // Draw cell centers if enabled
-        if (params.showCellCenters) {
-            this.updateCellCenters(rectangles, params.displayMode);
+        if (this.grid.showCellCenters) {
+            this.updateCellCenters(rectangles, this.grid.displayMode);
         }
 
         // Update cell count display
-        this.updateCellCountDisplay(rectangles, params.showCellCounts);
+        this.updateCellCountDisplay(rectangles, this.grid.showCellCounts);
 
         // Update params with actual values
-        params.cols = this.gridParams.cols;
-        params.rows = this.gridParams.rows;
-        params.width = this.gridParams.width;
-        params.height = this.gridParams.height;
-        params.cellCount.total = rectangles.length;
-        params.cellCount.inside = rectangles.filter(r => r.cellType === 'inside').length;
-        params.cellCount.boundary = rectangles.filter(r => r.cellType === 'boundary').length;
+        this.grid.cols = this.gridParams.cols;
+        this.grid.rows = this.gridParams.rows;
+        this.grid.width = this.gridParams.width;
+        this.grid.height = this.gridParams.height;
+        this.grid.cellCount.total = rectangles.length;
+        this.grid.cellCount.inside = rectangles.filter(r => r.cellType === 'inside').length;
+        this.grid.cellCount.boundary = rectangles.filter(r => r.cellType === 'boundary').length;
     }
 
     classifyCells(rectangles, allowCut = 1) {
@@ -252,8 +276,10 @@ export class GridGenRenderer extends BaseRenderer {
 
         // Draw the mask shape (this is visible outside the stencil)
         if (this.boundary instanceof CircularBoundary) {
+            // For circular boundary, draw a circle
             this.drawCircle(center.x, center.y, this.boundary.getRadius(), colors.maskCircle);
-        } else {
+        } else if (this.boundary instanceof RectangularBoundary) {
+            // For rectangular boundary, draw a rectangle
             const halfWidth = (this.boundary.width * this.boundary.getScale()) / 2;
             const halfHeight = (this.boundary.height * this.boundary.getScale()) / 2;
             this.drawRectangle(
@@ -273,8 +299,10 @@ export class GridGenRenderer extends BaseRenderer {
         // First pass: Draw the boundary shape into the stencil buffer (but don't show it)
         gl.colorMask(false, false, false, false); // Don't draw to color buffer
         if (this.boundary instanceof CircularBoundary) {
+            // For circular boundary, use a circle stencil
             this.drawCircle(center.x, center.y, this.boundary.getRadius(), [1, 1, 1, 1]);
-        } else {
+        } else if (this.boundary instanceof RectangularBoundary) {
+            // For rectangular boundary, use a rectangle stencil
             const halfWidth = (this.boundary.width * this.boundary.getScale()) / 2;
             const halfHeight = (this.boundary.height * this.boundary.getScale()) / 2;
             this.drawRectangle(
@@ -479,7 +507,7 @@ export class GridGenRenderer extends BaseRenderer {
             if (this.boundary instanceof CircularBoundary) {
                 while (Math.hypot(maxCols * stepX, 0) <= radius) maxCols++;
                 while (Math.hypot(0, maxRows * stepY) <= radius) maxRows++;
-            } else {
+            } else if (this.boundary instanceof RectangularBoundary) {
                 const halfWidth = (this.boundary.width * params.scale) / 2;
                 const halfHeight = (this.boundary.height * params.scale) / 2;
                 while (Math.abs(maxCols * stepX) <= halfWidth) maxCols++;

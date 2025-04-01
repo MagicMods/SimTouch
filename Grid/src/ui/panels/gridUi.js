@@ -73,16 +73,21 @@ export class GridUi extends BaseUi {
         const centerX = 120;
         const centerY = 120;
 
-        // Update boundary based on type
+        // Update canvas border-radius based on boundary type
+        const canvas = document.getElementById("glCanvas");
         if (value === 'circular') {
+          // Set circular visual style
+          canvas.style.borderRadius = '50%';
+
+          // Create circular boundary
           const radius = 120;
-          // Create a new circular boundary
-          const CircularBoundary = this.main.CircularBoundary;
-          renderer.boundary = new CircularBoundary(centerX, centerY, radius, params.scale);
+          renderer.boundary = new this.main.CircularBoundary(centerX, centerY, radius, params.scale);
         } else {
-          // Create a new rectangular boundary
-          const RectangularBoundary = this.main.RectangularBoundary;
-          renderer.boundary = new RectangularBoundary(
+          // Set rectangular visual style
+          canvas.style.borderRadius = '1%';
+
+          // Create rectangular boundary
+          renderer.boundary = new this.main.RectangularBoundary(
             centerX,
             centerY,
             params.boundaryParams.width,
@@ -104,8 +109,11 @@ export class GridUi extends BaseUi {
       .name("Width")
       .onChange(() => {
         if (params.boundaryType === 'rectangular') {
-          const RectangularBoundary = this.main.RectangularBoundary;
-          renderer.boundary = new RectangularBoundary(
+          // Set rectangular visual style
+          document.getElementById("glCanvas").style.borderRadius = '1%';
+
+          // Create rectangular boundary
+          renderer.boundary = new this.main.RectangularBoundary(
             120,
             120,
             params.boundaryParams.width,
@@ -122,8 +130,11 @@ export class GridUi extends BaseUi {
       .name("Height")
       .onChange(() => {
         if (params.boundaryType === 'rectangular') {
-          const RectangularBoundary = this.main.RectangularBoundary;
-          renderer.boundary = new RectangularBoundary(
+          // Set rectangular visual style
+          document.getElementById("glCanvas").style.borderRadius = '1%';
+
+          // Create rectangular boundary
+          renderer.boundary = new this.main.RectangularBoundary(
             120,
             120,
             params.boundaryParams.width,

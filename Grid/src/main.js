@@ -18,6 +18,14 @@ class Main {
         this.CircularBoundary = CircularBoundary;
         this.RectangularBoundary = RectangularBoundary;
 
+        // Debug log to verify boundary classes are correctly imported
+        console.log("Main.js - Boundary classes check:", {
+            CircularBoundary: typeof CircularBoundary,
+            RectangularBoundary: typeof RectangularBoundary,
+            CircularPrototype: CircularBoundary.prototype,
+            RectangularPrototype: RectangularBoundary.prototype
+        });
+
         // Initialize parameters
         this.params = {
             target: 341,
