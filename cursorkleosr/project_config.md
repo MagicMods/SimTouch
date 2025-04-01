@@ -14,8 +14,15 @@ Create a particle-based physics simulation system with WebGL rendering, focusing
 - Real-time user interaction
 - Modular behavior system
 - High-performance WebGL rendering
+- Code ready for C# refactoring
 
 ---
+
+## Key Concept
+
+- Sim/ is the main project.
+- Grid/ is a standalone grid generator development project streamlined with Sim/ project to enable direct migration.
+- Whenever working on Grid, modifications to Sim/ is FORBIDDEN.
 
 ## Tech Stack
 
@@ -44,6 +51,7 @@ Create a particle-based physics simulation system with WebGL rendering, focusing
   - Clear dependency documentation
   - Single source of truth for resources
   - Proper dependency injection
+  - A Top-Down Topology using main to orchestrate classes and initializations
 
 ### Component Architecture
 
@@ -51,6 +59,15 @@ Create a particle-based physics simulation system with WebGL rendering, focusing
   - Extend BaseUi class
   - Require main reference and container
   - Follow established folder/control patterns
+  - Maintain consistent visibility control using flex (not display)
+
+- **UI Pattern Recognition:**
+  - Always search for similar UI components before making changes
+  - Learn from past failures in UI structure modifications
+  - Maintain consistency with existing UI patterns
+  - Never modify established patterns without explicit request
+  - Document identified patterns for future reference
+  - Stop and request guidance after multiple failed attempts
 
 - **Simulation Components:**
   - Clear dependency hierarchy

@@ -28,11 +28,11 @@ Instead of many complex rule files, this system uses just two core Markdown file
 2. **`workflow_state.md` (Short-Term Memory + Rules + Log - STM):**
     * **Purpose:** The dynamic heart of the system. Tracks the current work session.
     * **Content:**
-        * `## State`: Current phase (Analyze, Blueprint, etc.), status (Ready, Blocked, etc.).
-        * `## Plan`: The step-by-step plan for the current task (created in Blueprint phase).
-        * `## Rules`: **All the operational rules** defining the workflow phases, memory updates, tool use, and error handling.
-        * `## Log`: A running log of actions, tool outputs, and decisions made during the session.
-    * **Usage:** The AI reads this file **constantly** before acting and updates it **immediately** after acting. This is how it maintains context and follows the process.
+        * `## State`: Current phase and status
+        * `## Plan`: The step-by-step plan for the current task
+        * `## Rules`: All operational rules defining the workflow
+        * `## Log`: A running log of actions and decisions
+    * **Usage:** The AI reads this file **constantly** before acting and updates it **immediately** after acting.
 
 ## The Autonomous Loop
 
@@ -54,24 +54,46 @@ flowchart TD
     UserInput --> UpdateState;
 ```
 
-**In simple terms:**
+## The Workflow Phases
 
-1. The AI reads the current situation and rules from `workflow_state.md`.
-2. It decides what to do next based on the rules and the plan.
-3. It performs the action using Cursor's features (editing code, running terminal commands).
-4. It records what happened and updates the situation in `workflow_state.md`.
-5. Repeat.
+The system defines a structured workflow with explicit creativity control:
 
-## The Workflow Phases (Defined in `workflow_state.md`)
+### Pure Phases (No Creativity)
 
-The `## Rules` section defines a simple, structured workflow:
+1. **[PHASE: ANALYZE]:** Pure information gathering and understanding
+   * Reading files
+   * Asking clarifying questions
+   * Understanding code structure
+   * NO creativity or planning
 
-1. **[PHASE: ANALYZE]:** Understand the task and context. No coding or planning solutions yet.
-2. **[PHASE: BLUEPRINT]:** Create a detailed, step-by-step plan for implementation. No coding yet.
-3. **[PHASE: CONSTRUCT]:** Execute the plan precisely, using Cursor tools. Handle errors based on rules.
-4. **[PHASE: VALIDATE]:** Run tests and checks to ensure the implementation matches the plan and requirements.
+2. **[PHASE: BLUEPRINT]:** Creating technical specification from requirements
+   * Converting requirements to concrete steps
+   * Creating detailed plans
+   * NO creativity or innovation
 
-The AI follows the constraints of the current phase, guided by the rules in `workflow_state.md`.
+3. **[PHASE: CONSTRUCT]:** Implementing exactly as planned
+   * Zero deviation from plan
+   * NO creative additions
+   * Strict adherence to specification
+
+4. **[PHASE: VALIDATE]:** Verifying implementation against plan
+   * Zero tolerance for deviation
+   * Clear pass/fail criteria
+   * NO modifications
+
+### Creative Phases (Innovation Allowed)
+
+1. **[PHASE: ANALYZE+]:**
+   * Information gathering with creative problem-solving
+   * Brainstorming possibilities
+   * Innovation in understanding
+   * NO implementation planning
+
+2. **[PHASE: BLUEPRINT+]:**
+   * Technical specification with creative design
+   * Innovative approaches
+   * Alternative strategies
+   * NO implementation
 
 ## Getting Started
 
@@ -80,6 +102,14 @@ The AI follows the constraints of the current phase, guided by the rules in `wor
 3. **Instruct the AI:** Start your Cursor chat with a clear system prompt instructing the AI to operate *exclusively* based on these two files and the autonomous loop described above. (A good system prompt is crucial for enforcement!).
     * *Example Snippet for System Prompt:* "You are an autonomous AI developer. Operate solely based on `project_config.md` and `workflow_state.md`. Before every action, read `workflow_state.md`, determine state, consult `## Rules`, act accordingly, then immediately update `workflow_state.md`."
 4. **Give the First Task:** The AI will initialize based on `RULE_INIT_01` and ask for the first task.
+
+## Using the Workflow
+
+* **Phase Control:** Use commands like `@analyze`, `@analyze+`, `@blueprint`, `@blueprint+`, `@construct`, `@validate` to control the workflow phase.
+* **Creativity Control:** The "+" phases explicitly allow creativity and innovation, while pure phases enforce strict adherence to rules.
+* **Monitoring:** You can observe the AI's progress and reasoning by looking at the `## Log` and `## State` sections in `workflow_state.md`.
+* **Intervention:** If the AI gets blocked (e.g., `State.Status` is `BLOCKED_*` or `NEEDS_*`), it should report the issue based on the rules.
+* **Memory Updates:** The AI should handle updates to `workflow_state.md` automatically. Updates to `project_config.md` are typically proposed by the AI and require your approval.
 
 ## What about `.cursorrules`?
 
