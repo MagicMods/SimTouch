@@ -14,6 +14,9 @@ class Main {
             return;
         }
 
+        // Set max canvas dimension
+        this.MAX_CANVAS_SIZE = 960;
+
         // Make boundary classes available for UI
         this.CircularBoundary = CircularBoundary;
         this.RectangularBoundary = RectangularBoundary;
@@ -31,11 +34,13 @@ class Main {
             target: 341,
             gap: 1,
             aspectRatio: 1,
-            scale: 0.985,
+            scale: 0.982,
             cols: 0,
             rows: 0,
             width: 0,
             height: 0,
+            centerOffsetX: 0,    // Offset for the grid center X position
+            centerOffsetY: 0,    // Offset for the grid center Y position
             allowCut: 3,            // 0-3: Controls how many corners can be outside the boundary
             displayMode: 'masked',  // Default to masked view
             showIndices: false,     // Show cell indices
@@ -64,6 +69,9 @@ class Main {
             }
         };
 
+        // Initialize canvas dimensions based on boundary type
+        this.updateCanvasDimensions();
+
         // Initialize renderer
         this.renderer = new GridGenRenderer(this.gl);
 
@@ -75,6 +83,42 @@ class Main {
 
         // Initial render
         this.renderer.updateGrid(this.params);
+    }
+
+    // Update canvas dimensions based on boundary aspect ratio
+    updateCanvasDimensions() {
+        const boundaryType = this.params.boundaryType;
+        let width, height, ratio;
+
+        if (boundaryType === 'circular') {
+            // Circular boundary has 1:1 aspect ratio
+            width = this.MAX_CANVAS_SIZE;
+            height = this.MAX_CANVAS_SIZE;
+        } else {
+            // Rectangular boundary - use the specified width/height ratio
+            const boundaryWidth = this.params.boundaryParams.width;
+            const boundaryHeight = this.params.boundaryParams.height;
+            ratio = boundaryWidth / boundaryHeight;
+
+            if (ratio >= 1) {
+                // Width is greater than or equal to height
+                width = this.MAX_CANVAS_SIZE;
+                height = Math.round(width / ratio);
+            } else {
+                // Height is greater than width
+                height = this.MAX_CANVAS_SIZE;
+                width = Math.round(height * ratio);
+            }
+        }
+
+        // Update canvas dimensions
+        if (this.canvas) {
+            this.canvas.width = width;
+            this.canvas.height = height;
+
+            // Log the new dimensions
+            console.log(`Canvas dimensions updated: ${width}x${height}`);
+        }
     }
 
     // Animation loop (for future animation support)

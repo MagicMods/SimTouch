@@ -28,11 +28,39 @@ export class CircularBoundary extends BaseBoundary {
         const centerY = cell.y + cell.height / 2;
         const centerDist = Math.hypot(centerX - this.centerX, centerY - this.centerY);
 
+        // Count corners outside and inside the boundary
         const cornersOutside = this.getCornersOutside(cell);
         const cornersInside = 4 - cornersOutside;
 
-        let edgeIntersectsCircle = false;
-        if (cornersInside === 0 && allowCut > 0) {
+        // Store corner count in the cell for UI display and debugging
+        cell.cornersOutside = cornersOutside;
+        cell.cornersInside = cornersInside;
+
+        // Get detailed information about which corners are outside
+        const cornerStatuses = corners.map(corner =>
+            this.isPointInside(corner.x, corner.y) ? 'in' : 'out'
+        );
+
+        // Store detailed corner information for debugging
+        cell.cornerInfo = {
+            topLeft: cornerStatuses[0],
+            topRight: cornerStatuses[1],
+            bottomLeft: cornerStatuses[2],
+            bottomRight: cornerStatuses[3]
+        };
+
+        // Always include cells that are fully inside the boundary
+        if (cornersOutside === 0) {
+            return 'inside';
+        }
+
+        // Center is inside or we allow the specific number of corners to be outside
+        if ((centerDist <= this.getRadius()) || (cornersOutside <= allowCut)) {
+            return 'boundary';
+        }
+
+        // Special case: Check edge intersections for cells with all corners outside
+        if (cornersOutside === 4 && allowCut > 0) {
             const edges = [
                 // Horizontal edges
                 { x1: cell.x, y1: cell.y, x2: cell.x + cell.width, y2: cell.y },
@@ -42,24 +70,20 @@ export class CircularBoundary extends BaseBoundary {
                 { x1: cell.x + cell.width, y1: cell.y, x2: cell.x + cell.width, y2: cell.y + cell.height }
             ];
 
-            edgeIntersectsCircle = edges.some(edge =>
+            // If any edge intersects the boundary, include this cell
+            const edgeIntersectsCircle = edges.some(edge =>
                 this.lineIntersectsBoundary(
                     edge.x1, edge.y1, edge.x2, edge.y2
                 )
             );
+
+            if (edgeIntersectsCircle) {
+                return 'boundary';
+            }
         }
 
-        if (cornersOutside === 0) {
-            return 'inside';
-        } else if (
-            (centerDist <= this.getRadius()) ||
-            (cornersOutside <= allowCut && allowCut > 0) ||
-            (allowCut > 0 && edgeIntersectsCircle)
-        ) {
-            return 'boundary';
-        } else {
-            return 'outside';
-        }
+        // By default, the cell is outside
+        return 'outside';
     }
 
     getCornersOutside(cell) {

@@ -145,17 +145,22 @@ export class GridGenRenderer extends BaseRenderer {
             ? [...this.grid.colors.maskCircle, 1] // Add alpha=1
             : [0.15, 0.15, 0.15, 1];
 
+        // Calculate the base center position and apply offset
+        const baseCenter = 120;
+        const centerX = baseCenter + (this.grid.centerOffsetX || 0);
+        const centerY = baseCenter + (this.grid.centerOffsetY || 0);
+
         // Draw reference shapes based on boundary type
         if (this.boundary instanceof CircularBoundary) {
             // Draw circular reference
-            this.drawCircle(120, 120, 120, outerColor); // Outer circle
-            this.drawCircle(120, 120, 120 * this.grid.scale, innerColor); // Inner circle
+            this.drawCircle(centerX, centerY, 120, outerColor); // Outer circle
+            this.drawCircle(centerX, centerY, 120 * this.grid.scale, innerColor); // Inner circle
         } else if (this.boundary instanceof RectangularBoundary) {
             // Draw rectangular reference
             const halfWidth = (this.boundary.width * this.grid.scale) / 2;
             const halfHeight = (this.boundary.height * this.grid.scale) / 2;
             this.drawRectangle(
-                120 - halfWidth, 120 - halfHeight,
+                centerX - halfWidth, centerY - halfHeight,
                 this.boundary.width * this.grid.scale,
                 this.boundary.height * this.grid.scale,
                 outerColor
@@ -239,22 +244,30 @@ export class GridGenRenderer extends BaseRenderer {
             let shouldDraw = false;
             let customColor = null;
 
-            switch (displayMode) {
-                case 'all':
-                    // Draw all cells with their regular color
-                    shouldDraw = true;
-                    customColor = colors[rect.cellType];
-                    break;
-                case 'inside':
-                    // Only draw cells fully inside the circle
-                    shouldDraw = rect.cellType === 'inside';
-                    customColor = colors.inside;
-                    break;
-                case 'boundary':
-                    // Only draw boundary cells, with highlighted color
-                    shouldDraw = rect.cellType === 'boundary';
-                    customColor = colors.boundary;
-                    break;
+            // Special case: When allowCut is 0, show all cells
+            if (this.grid.allowCut === 0) {
+                shouldDraw = true;
+                customColor = rect.cellType === 'inside' ? colors.inside :
+                    (rect.cellType === 'boundary' ? colors.boundary : colors.outside);
+            } else {
+                // Standard display modes
+                switch (displayMode) {
+                    case 'all':
+                        // Draw all cells with their regular color
+                        shouldDraw = true;
+                        customColor = colors[rect.cellType];
+                        break;
+                    case 'inside':
+                        // Only draw cells fully inside the circle
+                        shouldDraw = rect.cellType === 'inside';
+                        customColor = colors.inside;
+                        break;
+                    case 'boundary':
+                        // Only draw boundary cells, with highlighted color
+                        shouldDraw = rect.cellType === 'boundary';
+                        customColor = colors.boundary;
+                        break;
+                }
             }
 
             if (shouldDraw) {
@@ -268,22 +281,67 @@ export class GridGenRenderer extends BaseRenderer {
 
     renderMaskedCells(rectangles, colors) {
         const gl = this.gl;
-        const center = this.boundary.getCenter();
+        const boundary = this.boundary;
+        const center = boundary.getCenter();
+
+        // Apply offset to center coordinates
+        const baseCenter = 120;
+        const centerOffsetX = this.grid.centerOffsetX || 0;
+        const centerOffsetY = this.grid.centerOffsetY || 0;
+        const centerX = baseCenter + centerOffsetX;
+        const centerY = baseCenter + centerOffsetY;
 
         // Clear with background color
         gl.clearColor(colors.background[0], colors.background[1], colors.background[2], colors.background[3]);
         gl.clear(gl.COLOR_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
 
+        // Special case: When allowCut is 0, show all cells with appropriate colors, no masking
+        if (this.grid.allowCut === 0) {
+            rectangles.forEach(rect => {
+                let cellColor;
+                if (rect.cellType === 'inside') {
+                    cellColor = colors.inside;
+                } else if (rect.cellType === 'boundary') {
+                    cellColor = colors.boundary;
+                } else {
+                    cellColor = colors.outside;
+                }
+
+                this.drawRectangle(
+                    rect.x, rect.y, rect.width, rect.height,
+                    cellColor
+                );
+            });
+
+            // Draw the mask shape outline (for visual reference)
+            if (this.boundary instanceof CircularBoundary) {
+                // For circular boundary, draw a circle outline
+                this.drawCircleOutline(centerX, centerY, this.boundary.getRadius(), colors.maskCircle);
+            } else if (this.boundary instanceof RectangularBoundary) {
+                // For rectangular boundary, draw a rectangle outline
+                const halfWidth = (this.boundary.width * this.boundary.getScale()) / 2;
+                const halfHeight = (this.boundary.height * this.boundary.getScale()) / 2;
+                this.drawRectangleOutline(
+                    centerX - halfWidth, centerY - halfHeight,
+                    this.boundary.width * this.boundary.getScale(),
+                    this.boundary.height * this.boundary.getScale(),
+                    colors.maskCircle
+                );
+            }
+
+            return;
+        }
+
         // Draw the mask shape (this is visible outside the stencil)
         if (this.boundary instanceof CircularBoundary) {
             // For circular boundary, draw a circle
-            this.drawCircle(center.x, center.y, this.boundary.getRadius(), colors.maskCircle);
+            this.drawCircle(centerX, centerY, this.boundary.getRadius(), colors.maskCircle);
         } else if (this.boundary instanceof RectangularBoundary) {
             // For rectangular boundary, draw a rectangle
             const halfWidth = (this.boundary.width * this.boundary.getScale()) / 2;
             const halfHeight = (this.boundary.height * this.boundary.getScale()) / 2;
             this.drawRectangle(
-                center.x - halfWidth, center.y - halfHeight,
+                centerX - halfWidth, centerY - halfHeight,
                 this.boundary.width * this.boundary.getScale(),
                 this.boundary.height * this.boundary.getScale(),
                 colors.maskCircle
@@ -342,6 +400,12 @@ export class GridGenRenderer extends BaseRenderer {
     updateCellIndices(rectangles, displayMode, indexTextColor) {
         // Determine which cells to display indices for
         const filteredRects = rectangles.filter(rect => {
+            // Special case: When allowCut is 0, show indices for all cells
+            if (this.grid.allowCut === 0) {
+                return true;
+            }
+
+            // Otherwise filter based on displayMode
             switch (displayMode) {
                 case 'all': return true;
                 case 'inside': return rect.cellType === 'inside';
@@ -350,6 +414,9 @@ export class GridGenRenderer extends BaseRenderer {
                 default: return true;
             }
         });
+
+        // Clear previous indices
+        this.textOverlay.innerHTML = '';
 
         // Make sure the overlay has the same position as the canvas
         const canvas = this.gl.canvas;
@@ -488,7 +555,11 @@ export class GridGenRenderer extends BaseRenderer {
 
     generateRectangles(params) {
         let bestRects = [];
-        const center = 120;
+        const baseCenter = 120;
+        // Apply the center offset to the grid position
+        const centerX = baseCenter + (params.centerOffsetX || 0);
+        const centerY = baseCenter + (params.centerOffsetY || 0);
+
         const radius = this.boundary.getRadius();
         const allowCut = params.allowCut !== undefined ? params.allowCut : 1;
         const boundaryMode = allowCut > 0 ? 'partial' : 'center';
@@ -505,13 +576,17 @@ export class GridGenRenderer extends BaseRenderer {
 
             // Calculate grid size based on boundary type
             if (this.boundary instanceof CircularBoundary) {
-                while (Math.hypot(maxCols * stepX, 0) <= radius) maxCols++;
-                while (Math.hypot(0, maxRows * stepY) <= radius) maxRows++;
+                // For circular boundary, determine how many cells fit within the radius
+                // Include cells that have any overlap with the boundary (not just 50%)
+                while ((maxCols) * stepX <= radius + (stepX / 2)) maxCols++;
+                while ((maxRows) * stepY <= radius + (stepY / 2)) maxRows++;
             } else if (this.boundary instanceof RectangularBoundary) {
                 const halfWidth = (this.boundary.width * params.scale) / 2;
                 const halfHeight = (this.boundary.height * params.scale) / 2;
-                while (Math.abs(maxCols * stepX) <= halfWidth) maxCols++;
-                while (Math.abs(maxRows * stepY) <= halfHeight) maxRows++;
+
+                // For rectangular boundary, include cells with any overlap
+                while ((maxCols) * stepX <= halfWidth + (stepX / 2)) maxCols++;
+                while ((maxRows) * stepY <= halfHeight + (stepY / 2)) maxRows++;
             }
 
             // Add extra columns and rows to catch partial cells at the boundary
@@ -520,18 +595,37 @@ export class GridGenRenderer extends BaseRenderer {
                 maxRows += 1;
             }
 
-            const cols = maxCols * 2 + 1;
-            const rows = maxRows * 2 + 1;
+            // Determine start and end indices for cell placement
+            let startCol, endCol, startRow, endRow;
 
+            // Handle the special case of a single cell (or very small grid)
+            if (maxCols === 0 && maxRows === 0) {
+                // Place a single cell at the center
+                startCol = 0;
+                endCol = 0;
+                startRow = 0;
+                endRow = 0;
+            } else {
+                // Ensure the grid is symmetric around the center point
+                startCol = -maxCols;
+                endCol = maxCols;
+                startRow = -maxRows;
+                endRow = maxRows;
+            }
+
+            const cols = endCol - startCol + 1;
+            const rows = endRow - startRow + 1;
+
+            // Create cells using original row-by-row indexing
             const rectangles = [];
-            for (let c = -maxCols; c <= maxCols; c++) {
-                for (let r = -maxRows; r <= maxRows; r++) {
+            for (let c = startCol; c <= endCol; c++) {
+                for (let r = startRow; r <= endRow; r++) {
                     const dx = c * stepX;
                     const dy = r * stepY;
 
-                    // Cell center position
-                    const cellCenterX = center + dx;
-                    const cellCenterY = center + dy;
+                    // Cell center position in canvas coordinates
+                    const cellCenterX = centerX + dx;
+                    const cellCenterY = centerY + dy;
 
                     // Cell corners
                     const left = cellCenterX - scaledW / 2;
@@ -597,6 +691,11 @@ export class GridGenRenderer extends BaseRenderer {
                             cornersOutside: cornersOutside, // Store corner count
                             cornersInside: 4 - cornersOutside
                         });
+
+                        // Stop if we've reached the target number of cells
+                        if (rectangles.length >= params.target) {
+                            break;
+                        }
                     }
                 }
             }
@@ -628,6 +727,12 @@ export class GridGenRenderer extends BaseRenderer {
     updateCellCenters(rectangles, displayMode) {
         // Determine which cells to display centers for
         const filteredRects = rectangles.filter(rect => {
+            // Special case: When allowCut is 0, show centers for all cells
+            if (this.grid.allowCut === 0) {
+                return true;
+            }
+
+            // Otherwise filter based on displayMode
             switch (displayMode) {
                 case 'all': return true;
                 case 'inside': return rect.cellType === 'inside';
@@ -636,6 +741,9 @@ export class GridGenRenderer extends BaseRenderer {
                 default: return true;
             }
         });
+
+        // Clear previous centers
+        this.centerOverlay.innerHTML = '';
 
         // Make sure the overlay has the same position as the canvas
         const canvas = this.gl.canvas;
@@ -658,16 +766,19 @@ export class GridGenRenderer extends BaseRenderer {
             const scaledX = centerX * scaleX;
             const scaledY = centerY * scaleY;
 
-            // Create the center dot
+            // Create the center dot with precise positioning
             const dot = document.createElement('div');
             dot.style.position = 'absolute';
             dot.style.left = `${scaledX}px`;
             dot.style.top = `${scaledY}px`;
             dot.style.width = '3px';
             dot.style.height = '3px';
+            dot.style.marginLeft = '-1.5px';  // Center the dot horizontally
+            dot.style.marginTop = '-1.5px';   // Center the dot vertically
             dot.style.backgroundColor = rect.cellType === 'inside' ? 'lime' : 'red';
             dot.style.borderRadius = '50%';
-            dot.style.transform = 'translate(-50%, -50%)';
+            // Remove transform that could cause misalignment
+            // dot.style.transform = 'translate(-50%, -50%)';
             dot.style.pointerEvents = 'none';
             dot.style.boxShadow = '0 0 2px rgba(0,0,0,0.8)';
 
@@ -676,5 +787,86 @@ export class GridGenRenderer extends BaseRenderer {
 
             this.centerOverlay.appendChild(dot);
         });
+    }
+
+    // Draw a circle outline
+    drawCircleOutline(centerX, centerY, radius, color, lineWidth = 1) {
+        const gl = this.gl;
+        const numSegments = 64; // Enough for smooth circle
+        const vertices = [];
+
+        // Calculate vertices for the circle
+        for (let i = 0; i <= numSegments; i++) {
+            const angle = (i / numSegments) * Math.PI * 2;
+            const x = centerX + Math.cos(angle) * radius;
+            const y = centerY + Math.sin(angle) * radius;
+            vertices.push(x, y);
+        }
+
+        // Use the program
+        gl.useProgram(this.programInfo.program);
+
+        // Set uniform for color
+        gl.uniform4fv(this.programInfo.uniformLocations.color, color);
+
+        // Create buffer and bind data
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+        // Set attribute
+        gl.enableVertexAttribArray(this.programInfo.attribLocations.position);
+        gl.vertexAttribPointer(
+            this.programInfo.attribLocations.position,
+            2, gl.FLOAT, false, 0, 0
+        );
+
+        // Draw line loop
+        gl.lineWidth(lineWidth);
+        gl.drawArrays(gl.LINE_LOOP, 0, numSegments + 1);
+
+        // Cleanup
+        gl.disableVertexAttribArray(this.programInfo.attribLocations.position);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        gl.deleteBuffer(buffer);
+    }
+
+    // Draw a rectangle outline
+    drawRectangleOutline(x, y, width, height, color, lineWidth = 1) {
+        const gl = this.gl;
+        const vertices = [
+            x, y,                   // Bottom-left
+            x + width, y,           // Bottom-right
+            x + width, y + height,  // Top-right
+            x, y + height,          // Top-left
+            x, y                    // Back to bottom-left to close the loop
+        ];
+
+        // Use the program
+        gl.useProgram(this.programInfo.program);
+
+        // Set uniform for color
+        gl.uniform4fv(this.programInfo.uniformLocations.color, color);
+
+        // Create buffer and bind data
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+        // Set attribute
+        gl.enableVertexAttribArray(this.programInfo.attribLocations.position);
+        gl.vertexAttribPointer(
+            this.programInfo.attribLocations.position,
+            2, gl.FLOAT, false, 0, 0
+        );
+
+        // Draw line strip
+        gl.lineWidth(lineWidth);
+        gl.drawArrays(gl.LINE_STRIP, 0, 5);
+
+        // Cleanup
+        gl.disableVertexAttribArray(this.programInfo.attribLocations.position);
+        gl.bindBuffer(gl.ARRAY_BUFFER, null);
+        gl.deleteBuffer(buffer);
     }
 } 

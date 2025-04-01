@@ -54,7 +54,7 @@ export class GridUi extends BaseUi {
       .onChange(() => renderer.updateGrid(params));
 
     this.gridScaleController = gridParamFolder
-      .add(params, "scale", 0.1, 1.1, 0.001)
+      .add(params, "scale", 0.8, 1, 0.001)
       .name("Grid Scale")
       .onChange(() => {
         renderer.boundary.setScale(params.scale);
@@ -96,6 +96,9 @@ export class GridUi extends BaseUi {
           );
         }
 
+        // Update canvas dimensions based on the new boundary type
+        this.main.updateCanvasDimensions();
+
         // Update the grid with the new boundary
         renderer.updateGrid(params);
       });
@@ -105,7 +108,7 @@ export class GridUi extends BaseUi {
 
     // Width control
     this.boundaryWidthController = boundaryParamsFolder
-      .add(params.boundaryParams, "width", 100, 300, 1)
+      .add(params.boundaryParams, "width", 120, 480, 1)
       .name("Width")
       .onChange(() => {
         if (params.boundaryType === 'rectangular') {
@@ -120,13 +123,17 @@ export class GridUi extends BaseUi {
             params.boundaryParams.height,
             params.scale
           );
+
+          // Update canvas dimensions based on the new width
+          this.main.updateCanvasDimensions();
+
           renderer.updateGrid(params);
         }
       });
 
     // Height control
     this.boundaryHeightController = boundaryParamsFolder
-      .add(params.boundaryParams, "height", 100, 300, 1)
+      .add(params.boundaryParams, "height", 120, 480, 1)
       .name("Height")
       .onChange(() => {
         if (params.boundaryType === 'rectangular') {
@@ -141,6 +148,10 @@ export class GridUi extends BaseUi {
             params.boundaryParams.height,
             params.scale
           );
+
+          // Update canvas dimensions based on the new height
+          this.main.updateCanvasDimensions();
+
           renderer.updateGrid(params);
         }
       });
@@ -224,6 +235,21 @@ export class GridUi extends BaseUi {
     this.totalCellsController = statsFolder.add(params.cellCount, "total").name("Total Cells").listen();
     this.insideCellsController = statsFolder.add(params.cellCount, "inside").name("Inside Cells").listen();
     this.boundaryCellsController = statsFolder.add(params.cellCount, "boundary").name("Boundary Cells").listen();
+
+    // Add center offset controls
+    const offsetFolder = boundaryFolder.addFolder('Center Offset');
+
+    // X offset control
+    this.centerOffsetXController = offsetFolder
+      .add(params, "centerOffsetX", -60, 60, 1)
+      .name("X Offset")
+      .onChange(() => renderer.updateGrid(params));
+
+    // Y offset control
+    this.centerOffsetYController = offsetFolder
+      .add(params, "centerOffsetY", -60, 60, 1)
+      .name("Y Offset")
+      .onChange(() => renderer.updateGrid(params));
   }
 
   getControlTargets() {

@@ -36,8 +36,31 @@ export class RectangularBoundary extends BaseBoundary {
         const cornersOutside = this.getCornersOutside(cell);
         const cornersInside = 4 - cornersOutside;
 
-        let edgeIntersectsRectangle = false;
-        if (cornersInside === 0 && allowCut > 0) {
+        // Store corner count in the cell for UI display
+        cell.cornersOutside = cornersOutside;
+        cell.cornersInside = cornersInside;
+
+        // Special case for allowCut=0 - only fully inside cells
+        if (allowCut === 0) {
+            return cornersOutside === 0 ? 'inside' : 'outside';
+        }
+
+        // If the cell is fully inside the boundary
+        if (cornersOutside === 0) {
+            return 'inside';
+        }
+
+        // Check if cell center is inside the rectangular boundary
+        const centerInside = Math.abs(centerX - this.centerX) <= halfWidth &&
+            Math.abs(centerY - this.centerY) <= halfHeight;
+
+        // If the cell center is inside or we have allowed number of corners outside
+        if (centerInside || cornersOutside <= allowCut) {
+            return 'boundary';
+        }
+
+        // Edge case: Check if any edge of the cell intersects the boundary
+        if (cornersOutside === 4) {
             const edges = [
                 // Horizontal edges
                 { x1: cell.x, y1: cell.y, x2: cell.x + cell.width, y2: cell.y },
@@ -47,27 +70,16 @@ export class RectangularBoundary extends BaseBoundary {
                 { x1: cell.x + cell.width, y1: cell.y, x2: cell.x + cell.width, y2: cell.y + cell.height }
             ];
 
-            edgeIntersectsRectangle = edges.some(edge =>
-                this.lineIntersectsBoundary(
-                    edge.x1, edge.y1, edge.x2, edge.y2
-                )
-            );
+            // Check all edges for intersection with the boundary
+            for (const edge of edges) {
+                if (this.lineIntersectsBoundary(edge.x1, edge.y1, edge.x2, edge.y2)) {
+                    return 'boundary';
+                }
+            }
         }
 
-        const centerInside = Math.abs(centerX - this.centerX) <= halfWidth &&
-            Math.abs(centerY - this.centerY) <= halfHeight;
-
-        if (cornersOutside === 0) {
-            return 'inside';
-        } else if (
-            centerInside ||
-            (cornersOutside <= allowCut && allowCut > 0) ||
-            (allowCut > 0 && edgeIntersectsRectangle)
-        ) {
-            return 'boundary';
-        } else {
-            return 'outside';
-        }
+        // Default case - cell is outside
+        return 'outside';
     }
 
     getCornersOutside(cell) {

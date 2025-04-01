@@ -249,3 +249,19 @@ Save this as `copilot_formatting.md` for reference.
 
 
 setTimeout(() => {debugger;},3000)
+
+
+
+
+//SCREENS
+
+ROUND
+1.28" 240x240
+1.46" 412x412 // https://thepihut.com/products/esp32-s3-development-board-with-1-46-round-display-412-x-412?variant=53983533465985&country=GB&currency=GBP&utm_medium=product_sync&utm_source=google&utm_content=sag_organic&utm_campaign=sag_organic&gad_source=1&gclid=CjwKCAjw-qi_BhBxEiwAkxvbkBzdUfuxhLJ7PsdxiOnDEzphwt10nCmm81Ls0onnLiBaPOlNcuggWhoCzWcQAvD_BwE
+2.1" 480x480
+
+RECTANGULAR
+1.69" 240x280 // https://thepihut.com/products/esp32-s3-development-board-with-1-69-lcd-display-240-x-280?variant=43857639801027&country=GB&currency=GBP&utm_medium=product_sync&utm_source=google&utm_content=sag_organic&utm_campaign=sag_organic&gad_source=1&gclid=CjwKCAjw-qi_BhBxEiwAkxvbkLoEt9d5nmQ-H2yioMWxy2TfMWgsqTUCntqMLd5soMkwxH-KWkmKhhoCUWYQAvD_BwE
+1.8" 368x448 // https://www.aliexpress.com/item/1005008358659586.html?src=google&pdp_npi=4%40dis!GBP!25.09!25.09!!!!!%40!12000044711723774!ppc!!!&src=google&albch=shopping&acnt=494-037-6276&isdl=y&slnk=&plac=&mtctp=&albbt=Google_7_shopping&aff_platform=google&aff_short_key=UneMJZVf&gclsrc=aw.ds&&albagn=888888&&ds_e_adid=&ds_e_matchtype=&ds_e_device=c&ds_e_network=x&ds_e_product_group_id=&ds_e_product_id=en1005008358659586&ds_e_product_merchant_id=726332499&ds_e_product_country=GB&ds_e_product_language=en&ds_e_product_channel=online&ds_e_product_store_id=&ds_url_v=2&albcp=17859500389&albag=&isSmbAutoCall=false&needSmbHouyi=false&gad_source=1&gclid=CjwKCAjw-qi_BhBxEiwAkxvbkA-bFb6JD7oY0jN2Ey2fm9p4ow3DtX3k3u6M3p5o73vu4zxuoIQ4MhoCMfEQAvD_BwE
+1.9" 170x320
+1.91" 240x536
