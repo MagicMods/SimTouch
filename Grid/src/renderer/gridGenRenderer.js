@@ -85,9 +85,6 @@ export class GridGenRenderer extends BaseRenderer {
         gl.bindRenderbuffer(gl.RENDERBUFFER, null);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
 
-        // Initialize boundary (default to circular)
-        this.boundary = new CircularBoundary(120, 120, 120);
-
         // Store gridParams for stats
         this.gridParams = {
             cols: 0,
@@ -95,18 +92,38 @@ export class GridGenRenderer extends BaseRenderer {
             width: 0,
             height: 0
         };
+
+        // Initialize boundary will be created in updateGrid
+        this.boundary = null;
     }
 
-    updateGrid(grid) {
-        this.grid = grid;
-        this.gridW = grid.cols;
-        this.gridH = grid.rows;
-        this.gridParams = {
-            cols: grid.cols,
-            rows: grid.rows,
-            width: grid.width,
-            height: grid.height
-        };
+    updateGrid(params) {
+        // Store params for reference
+        this.grid = params;
+
+        // Create boundary if not exists or if type changed
+        if (!this.boundary ||
+            (params.boundaryType === 'circular' && !(this.boundary instanceof CircularBoundary)) ||
+            (params.boundaryType === 'rectangular' && !(this.boundary instanceof RectangularBoundary))) {
+
+            const centerX = 120;
+            const centerY = 120;
+
+            if (params.boundaryType === 'circular') {
+                this.boundary = new CircularBoundary(centerX, centerY, 120, params.scale);
+            } else {
+                this.boundary = new RectangularBoundary(
+                    centerX,
+                    centerY,
+                    params.boundaryParams.width,
+                    params.boundaryParams.height,
+                    params.scale
+                );
+            }
+        } else {
+            // Update existing boundary scale
+            this.boundary.setScale(params.scale);
+        }
 
         // Update renderables
         this.updateRenderables();

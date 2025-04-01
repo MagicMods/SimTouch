@@ -15,6 +15,9 @@ export class GridUi extends BaseUi {
 
     this.initGridControls();
 
+    // Load default preset
+    this.presetManager.loadPreset(PresetManager.TYPES.GRID, "Default");
+
     // Open GUI by default
     this.gui.open(true);
 

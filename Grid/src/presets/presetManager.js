@@ -14,7 +14,20 @@ export class PresetManager {
       [PresetManager.TYPES.GRID]: new SimplePresetHandler(
         "savedGridPresets",
         {
-          Default: { controllers: {} },
+          Default: {
+            controllers: {
+              "Target Cells": 341,
+              "Grid Gap": 1,
+              "Cell Ratio": 1,
+              "Grid Scale": 0.982,
+              "Allow Cut": 3,
+              "Show Centers": false,
+              "Show Indices": false,
+              "Boundary Type": "circular",
+              "Center X Offset": 0,
+              "Center Y Offset": 0
+            }
+          },
         },
         ["None"]
       ),
