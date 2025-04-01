@@ -1,6 +1,6 @@
 # Svibe FlipSim JS
 
-A WebGL2-based fluid simulation for the Svibe project, implementing a FLIP (Fluid-Implicit-Particle) method with interactive features.
+A WebGL2-based fluid simulation implementing a FLIP (Fluid-Implicit-Particle) method with interactive features.
 
 ## Features
 
@@ -11,6 +11,11 @@ A WebGL2-based fluid simulation for the Svibe project, implementing a FLIP (Flui
 - Turbulence and Voronoi field effects
 - Socket-based networking capabilities
 - Modular design with separation of rendering, simulation, and UI
+
+## Goals
+
+- Create are a ready to refactor particle simulator for Embedded Micro-controller/TouchScreen devices
+- Develop a creative way to control actuator matrix array, LEDs and other indexed devices
 
 ## Requirements
 
@@ -41,7 +46,7 @@ npm run server  # Starts the WebSocket server
 npm run client  # Starts the live-server for the client
 ```
 
-Then open your browser to http://localhost:8080 to view the simulation.
+Then open your browser to <http://localhost:8080> to view the simulation.
 
 ## Project Structure
 
