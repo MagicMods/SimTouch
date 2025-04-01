@@ -107,3 +107,25 @@ These imperatives apply across all modes when reading, analyzing, or modifying c
    - Responsibilities should be clearly assigned rather than duplicated
    - AVOID multiple fallback attempts to access the same resource
    - PREFER clear, direct dependencies with proper injection
+
+UI STRUCTURE CHANGES PROTOCOL:
+1. Before making ANY UI structure changes:
+   - Search for similar UI components in the codebase
+   - Document how they handle their structure
+   - Identify the established patterns
+   - Show the relevant code to the user
+
+2. If the change involves moving/placing controls:
+   - Check how other components handle similar control placement
+   - Look specifically for container element selection patterns
+   - Document the DOM structure being used
+
+3. If multiple attempts are needed:
+   - STOP
+   - Document the failed attempts
+   - Show the user the relevant code from similar components
+   - Ask for guidance on the established pattern
+
+4. NEVER make multiple attempts at UI structure changes without first:
+   - Showing the user the relevant code from similar components
+   - Getting confirmation on the pattern to follow

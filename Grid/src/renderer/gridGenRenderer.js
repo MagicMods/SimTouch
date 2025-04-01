@@ -1,12 +1,20 @@
 import { BaseRenderer } from "./baseRenderer.js";
 import { CircularBoundary } from "../boundary/circularBoundary.js";
 import { RectangularBoundary } from "../boundary/rectangularBoundary.js";
+import { ScreenConfig } from "../config/screenConfig.js";
+import { ScreenProfiles } from "../presets/screenProfiles.js";
 
 export class GridGenRenderer extends BaseRenderer {
-    constructor(gl) {
+    constructor(gl, screenConfig = null) {
         super(gl);
-        this.TARGET_WIDTH = 240;
-        this.TARGET_HEIGHT = 240;
+
+        // Initialize with provided screen config or default
+        this.screenConfig = screenConfig || ScreenProfiles.getDefaultProfile();
+
+        // Get dimensions from screen config
+        const canvasDims = this.screenConfig.getCanvasDimensions();
+        this.TARGET_WIDTH = canvasDims.width;
+        this.TARGET_HEIGHT = canvasDims.height;
 
         // Make sure we create a WebGL context with stencil buffer
         if (!gl.getContextAttributes().stencil) {
@@ -97,32 +105,115 @@ export class GridGenRenderer extends BaseRenderer {
         this.boundary = null;
     }
 
+    // Update screen configuration (e.g., when user selects a different profile)
+    setScreenConfig(screenConfig) {
+        this.screenConfig = screenConfig;
+
+        // Update canvas dimensions
+        const canvasDims = screenConfig.getCanvasDimensions();
+        this.TARGET_WIDTH = canvasDims.width;
+        this.TARGET_HEIGHT = canvasDims.height;
+
+        // Update overlay dimensions
+        this.textOverlay.style.width = `${this.TARGET_WIDTH}px`;
+        this.textOverlay.style.height = `${this.TARGET_HEIGHT}px`;
+        this.centerOverlay.style.width = `${this.TARGET_WIDTH}px`;
+        this.centerOverlay.style.height = `${this.TARGET_HEIGHT}px`;
+
+        // Update WebGL resources
+        this.updateFramebufferSize(this.TARGET_WIDTH, this.TARGET_HEIGHT);
+
+        // Update GL viewport
+        this.gl.viewport(0, 0, this.TARGET_WIDTH, this.TARGET_HEIGHT);
+
+        // Set canvas size
+        this.gl.canvas.width = this.TARGET_WIDTH;
+        this.gl.canvas.height = this.TARGET_HEIGHT;
+    }
+
+    // Helper method to resize framebuffer
+    updateFramebufferSize(width, height) {
+        const gl = this.gl;
+
+        // Resize texture
+        gl.bindTexture(gl.TEXTURE_2D, this.renderTexture);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, width, height, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+
+        // Resize renderbuffer
+        gl.bindRenderbuffer(gl.RENDERBUFFER, this.depthBuffer);
+        gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT16, width, height);
+
+        // Reset bindings
+        gl.bindTexture(gl.TEXTURE_2D, null);
+        gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+    }
+
     updateGrid(params) {
         // Store params for reference
         this.grid = params;
+
+        // Get canvas dimensions from screen config
+        const canvasDims = this.screenConfig.getCanvasDimensions();
+        const centerX = canvasDims.centerX;
+        const centerY = canvasDims.centerY;
 
         // Create boundary if not exists or if type changed
         if (!this.boundary ||
             (params.boundaryType === 'circular' && !(this.boundary instanceof CircularBoundary)) ||
             (params.boundaryType === 'rectangular' && !(this.boundary instanceof RectangularBoundary))) {
 
-            const centerX = 120;
-            const centerY = 120;
-
             if (params.boundaryType === 'circular') {
-                this.boundary = new CircularBoundary(centerX, centerY, 120, params.scale);
+                // For circular boundary, use a radius based on screen config
+                const scaledRadius = Math.min(canvasDims.width, canvasDims.height) / 2;
+
+                // Update screenConfig to match boundary type
+                this.screenConfig.shape = 'circular';
+
+                // Create circular boundary
+                this.boundary = new CircularBoundary(centerX, centerY, scaledRadius, params.scale);
             } else {
+                // For rectangular boundary, use dimensions from screen config
+                const width = params.boundaryParams.width || this.screenConfig.physicalWidth;
+                const height = params.boundaryParams.height || this.screenConfig.physicalHeight;
+
+                // Calculate the scaled visual dimensions
+                const renderScale = this.screenConfig.getRenderScale();
+                const visualWidth = width * renderScale;
+                const visualHeight = height * renderScale;
+
+                // Update screenConfig to match boundary type
+                this.screenConfig.shape = 'rectangular';
+
+                // Create rectangular boundary
                 this.boundary = new RectangularBoundary(
                     centerX,
                     centerY,
-                    params.boundaryParams.width,
-                    params.boundaryParams.height,
+                    visualWidth,
+                    visualHeight,
                     params.scale
                 );
+
+                // Make sure boundary params are updated to match screen config
+                params.boundaryParams.width = this.screenConfig.physicalWidth;
+                params.boundaryParams.height = this.screenConfig.physicalHeight;
             }
         } else {
             // Update existing boundary scale
             this.boundary.setScale(params.scale);
+
+            // If boundary is rectangular, update dimensions to match screen config
+            if (this.boundary instanceof RectangularBoundary) {
+                const renderScale = this.screenConfig.getRenderScale();
+                const visualWidth = this.screenConfig.physicalWidth * renderScale;
+                const visualHeight = this.screenConfig.physicalHeight * renderScale;
+
+                this.boundary.width = visualWidth;
+                this.boundary.height = visualHeight;
+
+                // Update params to match
+                params.boundaryParams.width = this.screenConfig.physicalWidth;
+                params.boundaryParams.height = this.screenConfig.physicalHeight;
+            }
         }
 
         // Update renderables
@@ -162,16 +253,25 @@ export class GridGenRenderer extends BaseRenderer {
             ? [...this.grid.colors.maskCircle, 1] // Add alpha=1
             : [0.15, 0.15, 0.15, 1];
 
+        // Get canvas dimensions from screen config
+        const canvasDims = this.screenConfig.getCanvasDimensions();
+
         // Calculate the base center position and apply offset
-        const baseCenter = 120;
-        const centerX = baseCenter + (this.grid.centerOffsetX || 0);
-        const centerY = baseCenter + (this.grid.centerOffsetY || 0);
+        const baseCenter = {
+            x: canvasDims.centerX,
+            y: canvasDims.centerY
+        };
+
+        const centerX = baseCenter.x + (this.grid.centerOffsetX || 0);
+        const centerY = baseCenter.y + (this.grid.centerOffsetY || 0);
 
         // Draw reference shapes based on boundary type
         if (this.boundary instanceof CircularBoundary) {
             // Draw circular reference
-            this.drawCircle(centerX, centerY, 120, outerColor); // Outer circle
-            this.drawCircle(centerX, centerY, 120 * this.grid.scale, innerColor); // Inner circle
+            // Use radius based on canvas dimensions
+            const radius = Math.min(canvasDims.width, canvasDims.height) / 2;
+            this.drawCircle(centerX, centerY, radius, outerColor); // Outer circle
+            this.drawCircle(centerX, centerY, radius * this.grid.scale, innerColor); // Inner circle
         } else if (this.boundary instanceof RectangularBoundary) {
             // Draw rectangular reference
             const halfWidth = (this.boundary.width * this.grid.scale) / 2;
@@ -301,12 +401,19 @@ export class GridGenRenderer extends BaseRenderer {
         const boundary = this.boundary;
         const center = boundary.getCenter();
 
+        // Get canvas dimensions from screen config
+        const canvasDims = this.screenConfig.getCanvasDimensions();
+
         // Apply offset to center coordinates
-        const baseCenter = 120;
+        const baseCenter = {
+            x: canvasDims.centerX,
+            y: canvasDims.centerY
+        };
+
         const centerOffsetX = this.grid.centerOffsetX || 0;
         const centerOffsetY = this.grid.centerOffsetY || 0;
-        const centerX = baseCenter + centerOffsetX;
-        const centerY = baseCenter + centerOffsetY;
+        const centerX = baseCenter.x + centerOffsetX;
+        const centerY = baseCenter.y + centerOffsetY;
 
         // Clear with background color
         gl.clearColor(colors.background[0], colors.background[1], colors.background[2], colors.background[3]);
@@ -526,10 +633,31 @@ export class GridGenRenderer extends BaseRenderer {
                 }
             });
 
+            // Add screen config information
+            const screenInfo = `Physical Screen: ${this.screenConfig.physicalWidth}×${this.screenConfig.physicalHeight}`;
+            const aspectRatio = (this.screenConfig.physicalWidth / this.screenConfig.physicalHeight).toFixed(2);
+            const scaleInfo = `Scale: ${this.grid.scale.toFixed(3)} (Ratio: ${aspectRatio})`;
+
+            // Cell sizing information - now with physical and visual sizes
+            const cellSizePhysical = `Cell Size: ${this.gridParams.physicalWidth}×${this.gridParams.physicalHeight} px`;
+
+            // Calculate approximate grid dimensions on physical device
+            const physicalGridWidth = Math.round(this.gridParams.physicalWidth * this.gridParams.cols);
+            const physicalGridHeight = Math.round(this.gridParams.physicalHeight * this.gridParams.rows);
+            const gridSizeInfo = `Grid Size: ~${physicalGridWidth}×${physicalGridHeight} px`;
+
             this.countOverlay.innerHTML = `
-                <div>Total Cells: ${total}</div>
-                <div>Inside Cells: ${inside}</div>
-                <div>Boundary Cells: ${boundary}</div>
+                <div>${screenInfo}</div>
+                <div>${scaleInfo}</div>
+                <div style="margin-top: 8px; border-top: 1px solid #555; padding-top: 8px;">
+                    <div>Total Cells: ${total}</div>
+                    <div>Inside Cells: ${inside}</div>
+                    <div>Boundary Cells: ${boundary}</div>
+                </div>
+                <div style="margin-top: 8px; border-top: 1px solid #555; padding-top: 8px;">
+                    <div>${cellSizePhysical}</div>
+                    <div>${gridSizeInfo}</div>
+                </div>
                 <div style="margin-top: 8px; border-top: 1px solid #555; padding-top: 8px;">
                     <div>Boundary corner cuts:</div>
                     <div>No cut: ${outsideCornerCounts[0]}</div>
@@ -572,21 +700,53 @@ export class GridGenRenderer extends BaseRenderer {
 
     generateRectangles(params) {
         let bestRects = [];
-        const baseCenter = 120;
+
+        // Get canvas dimensions from screen config
+        const canvasDims = this.screenConfig.getCanvasDimensions();
+
+        // Calculate the base center position and apply offset
+        const baseCenter = {
+            x: canvasDims.centerX,
+            y: canvasDims.centerY
+        };
+
         // Apply the center offset to the grid position
-        const centerX = baseCenter + (params.centerOffsetX || 0);
-        const centerY = baseCenter + (params.centerOffsetY || 0);
+        const centerX = baseCenter.x + (params.centerOffsetX || 0);
+        const centerY = baseCenter.y + (params.centerOffsetY || 0);
 
         const radius = this.boundary.getRadius();
         const allowCut = params.allowCut !== undefined ? params.allowCut : 1;
         const boundaryMode = allowCut > 0 ? 'partial' : 'center';
 
-        for (let cellH = 120; cellH >= 1; cellH--) {
-            const scaledH = Math.max(1, Math.round(cellH * params.scale));
+        // Calculate maximum cell height based on physical dimensions
+        // For a 240x240 screen, we want cells around 11-12px high at 341 cells
+        // For a 480x480 screen, we want cells around 22-24px high at the same cell count
+        // So we need to scale cell size proportionally to physical dimensions
+        const baseScreenSize = 240; // Reference screen size
+        const physicalScale = Math.min(this.screenConfig.physicalWidth, this.screenConfig.physicalHeight) / baseScreenSize;
+
+        // Calculate a sensible starting cell height based on physical dimensions
+        // For 240x240, start around 60px, larger screens start proportionally larger
+        const startCellHeight = Math.max(20, Math.round(60 * physicalScale));
+
+        // Scale the maximum cell height to the canvas dimensions for visual consistency
+        const renderScale = this.screenConfig.getRenderScale();
+        const maxVisualCellHeight = startCellHeight * renderScale;
+
+        for (let cellH = maxVisualCellHeight; cellH >= 1; cellH--) {
+            // Convert visual cell height back to physical-relative size for calculations
+            const physicalCellH = cellH / renderScale;
+
+            // Apply user's scale factor to the physical-relative size
+            const scaledH = Math.max(1, Math.round(physicalCellH * params.scale));
             const scaledW = Math.max(1, Math.round(params.aspectRatio * scaledH));
 
-            const stepX = scaledW + params.gap;
-            const stepY = scaledH + params.gap;
+            // Scale back to visual dimensions for rendering
+            const visualScaledH = Math.max(1, Math.round(scaledH * renderScale));
+            const visualScaledW = Math.max(1, Math.round(scaledW * renderScale));
+
+            const stepX = visualScaledW + params.gap;
+            const stepY = visualScaledH + params.gap;
 
             let maxCols = 0,
                 maxRows = 0;
@@ -645,10 +805,10 @@ export class GridGenRenderer extends BaseRenderer {
                     const cellCenterY = centerY + dy;
 
                     // Cell corners
-                    const left = cellCenterX - scaledW / 2;
-                    const right = cellCenterX + scaledW / 2;
-                    const top = cellCenterY - scaledH / 2;
-                    const bottom = cellCenterY + scaledH / 2;
+                    const left = cellCenterX - visualScaledW / 2;
+                    const right = cellCenterX + visualScaledW / 2;
+                    const top = cellCenterY - visualScaledH / 2;
+                    const bottom = cellCenterY + visualScaledH / 2;
 
                     // Check if cell center is inside the boundary
                     const centerInside = this.boundary.isPointInside(cellCenterX, cellCenterY);
@@ -701,8 +861,10 @@ export class GridGenRenderer extends BaseRenderer {
                         rectangles.push({
                             x: Math.round(left),
                             y: Math.round(top),
-                            width: scaledW,
-                            height: scaledH,
+                            width: visualScaledW,
+                            height: visualScaledH,
+                            physicalWidth: scaledW,   // Store the physical dimensions for stats
+                            physicalHeight: scaledH,  // These represent actual pixel size on device
                             color: [0.5, 0.5, 0.5, 1],
                             cellType: 'unknown', // Will be classified later
                             cornersOutside: cornersOutside, // Store corner count
@@ -721,8 +883,10 @@ export class GridGenRenderer extends BaseRenderer {
                 this.gridParams = {
                     cols,
                     rows,
-                    width: scaledW,
-                    height: scaledH,
+                    width: visualScaledW,    // Visual width (for rendering)
+                    height: visualScaledH,    // Visual height (for rendering)
+                    physicalWidth: scaledW,  // Physical width (for stats)
+                    physicalHeight: scaledH  // Physical height (for stats)
                 };
                 return rectangles.slice(0, params.target);
             }
@@ -732,8 +896,10 @@ export class GridGenRenderer extends BaseRenderer {
                 this.gridParams = {
                     cols,
                     rows,
-                    width: scaledW,
-                    height: scaledH,
+                    width: visualScaledW,    // Visual width (for rendering)
+                    height: visualScaledH,    // Visual height (for rendering)
+                    physicalWidth: scaledW,  // Physical width (for stats)
+                    physicalHeight: scaledH  // Physical height (for stats)
                 };
             }
         }
@@ -769,13 +935,13 @@ export class GridGenRenderer extends BaseRenderer {
         this.centerOverlay.style.width = `${canvas.width}px`;
         this.centerOverlay.style.height = `${canvas.height}px`;
 
-        // Calculate the scaling ratio between our fixed target size and actual canvas size
+        // Calculate the scaling ratio between target size and actual canvas size
         const scaleX = canvas.width / this.TARGET_WIDTH;
         const scaleY = canvas.height / this.TARGET_HEIGHT;
 
         // Create a center indicator for each filtered cell
         filteredRects.forEach(rect => {
-            // Calculate center position in target coordinates (240x240)
+            // Calculate center position in target coordinates
             const centerX = rect.x + rect.width / 2;
             const centerY = rect.y + rect.height / 2;
 
@@ -788,14 +954,17 @@ export class GridGenRenderer extends BaseRenderer {
             dot.style.position = 'absolute';
             dot.style.left = `${scaledX}px`;
             dot.style.top = `${scaledY}px`;
-            dot.style.width = '3px';
-            dot.style.height = '3px';
-            dot.style.marginLeft = '-1.5px';  // Center the dot horizontally
-            dot.style.marginTop = '-1.5px';   // Center the dot vertically
+
+            // Scale dot size based on canvas scaling for consistent appearance
+            const dotSize = Math.max(2, Math.min(4, 3 * Math.min(scaleX, scaleY)));
+            const dotOffset = dotSize / 2;
+
+            dot.style.width = `${dotSize}px`;
+            dot.style.height = `${dotSize}px`;
+            dot.style.marginLeft = `-${dotOffset}px`;  // Center the dot horizontally
+            dot.style.marginTop = `-${dotOffset}px`;   // Center the dot vertically
             dot.style.backgroundColor = rect.cellType === 'inside' ? 'lime' : 'red';
             dot.style.borderRadius = '50%';
-            // Remove transform that could cause misalignment
-            // dot.style.transform = 'translate(-50%, -50%)';
             dot.style.pointerEvents = 'none';
             dot.style.boxShadow = '0 0 2px rgba(0,0,0,0.8)';
 

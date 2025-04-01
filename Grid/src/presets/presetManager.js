@@ -19,7 +19,7 @@ export class PresetManager {
               "Target Cells": 341,
               "Grid Gap": 1,
               "Cell Ratio": 1,
-              "Grid Scale": 0.982,
+              "Grid Scale": 1,
               "Allow Cut": 3,
               "Show Centers": false,
               "Show Indices": false,

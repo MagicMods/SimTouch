@@ -2,6 +2,8 @@ import { GridGenRenderer } from "./renderer/gridGenRenderer.js";
 import { CircularBoundary } from "./boundary/circularBoundary.js";
 import { RectangularBoundary } from "./boundary/rectangularBoundary.js";
 import { UiManager } from "./ui/uiManager.js";
+import { ScreenConfig } from "./config/screenConfig.js";
+import { ScreenProfiles } from "./presets/screenProfiles.js";
 
 class Main {
     constructor() {
@@ -29,27 +31,31 @@ class Main {
             RectangularPrototype: RectangularBoundary.prototype
         });
 
+        // Initialize with default screen configuration
+        this.screenConfig = ScreenProfiles.getDefaultProfile();
+        console.log("Using screen configuration:", this.screenConfig);
+
         // Initialize parameters
         this.params = {
-            target: 341,
-            gap: 1,
-            aspectRatio: 1,
-            scale: 0.982,
+            target: this.screenConfig.targetCells,
+            gap: this.screenConfig.gap,
+            aspectRatio: this.screenConfig.aspectRatio,
+            scale: this.screenConfig.scale,
             cols: 0,
             rows: 0,
             width: 0,
             height: 0,
             centerOffsetX: 0,    // Offset for the grid center X position
             centerOffsetY: 0,    // Offset for the grid center Y position
-            allowCut: 3,            // 0-3: Controls how many corners can be outside the boundary
+            allowCut: this.screenConfig.allowCut,
             displayMode: 'masked',  // Default to masked view
             showIndices: false,     // Show cell indices
             showCellCenters: false, // Show cell centers
             showCellCounts: false,  // Enable cell counts by default
-            boundaryType: 'circular', // Default to circular boundary
+            boundaryType: this.screenConfig.shape, // Use shape from screen config
             boundaryParams: {
-                width: 240,         // Width for rectangular boundary
-                height: 240,        // Height for rectangular boundary
+                width: this.screenConfig.physicalWidth,   // Width for rectangular boundary
+                height: this.screenConfig.physicalHeight, // Height for rectangular boundary
             },
             cellCount: {
                 total: 0,
@@ -69,11 +75,11 @@ class Main {
             }
         };
 
-        // Initialize canvas dimensions based on boundary type
+        // Initialize canvas dimensions based on screen config
         this.updateCanvasDimensions();
 
-        // Initialize renderer
-        this.renderer = new GridGenRenderer(this.gl);
+        // Initialize renderer with screen config
+        this.renderer = new GridGenRenderer(this.gl, this.screenConfig);
 
         // Set renderer instance to be accessed by UI
         this.gridParams = this.params;
@@ -85,8 +91,33 @@ class Main {
         this.renderer.updateGrid(this.params);
     }
 
-    // Update canvas dimensions based on boundary aspect ratio
+    // Update canvas dimensions based on screen configuration
     updateCanvasDimensions() {
+        if (!this.canvas) return;
+
+        // Get dimensions from screen config if available
+        if (this.screenConfig) {
+            const canvasDims = this.screenConfig.getCanvasDimensions();
+            this.canvas.width = canvasDims.width;
+            this.canvas.height = canvasDims.height;
+
+            // Update canvas visual style based on boundary type
+            if (this.params.boundaryType === 'circular') {
+                this.canvas.style.borderRadius = '50%';
+            } else {
+                this.canvas.style.borderRadius = '1%';
+            }
+
+            // Update GL viewport if renderer is initialized
+            if (this.renderer && this.renderer.gl) {
+                this.renderer.gl.viewport(0, 0, canvasDims.width, canvasDims.height);
+            }
+
+            console.log(`Canvas dimensions updated: ${canvasDims.width}x${canvasDims.height}`);
+            return;
+        }
+
+        // Legacy fallback if screen config is not available
         const boundaryType = this.params.boundaryType;
         let width, height, ratio;
 
@@ -112,13 +143,11 @@ class Main {
         }
 
         // Update canvas dimensions
-        if (this.canvas) {
-            this.canvas.width = width;
-            this.canvas.height = height;
+        this.canvas.width = width;
+        this.canvas.height = height;
 
-            // Log the new dimensions
-            console.log(`Canvas dimensions updated: ${width}x${height}`);
-        }
+        // Log the new dimensions
+        console.log(`Canvas dimensions updated: ${width}x${height}`);
     }
 
     // Animation loop (for future animation support)
@@ -126,6 +155,27 @@ class Main {
         // Update any animated components
         if (this.ui) {
             this.ui.update(1 / 60); // Use fixed timestep for now
+        }
+
+        // Update stats if renderer has updated them
+        if (this.renderer && this.renderer.gridParams) {
+            // If physical dimensions are available, update those directly
+            if (this.renderer.gridParams.physicalWidth !== undefined) {
+                this.params.physicalWidth = this.renderer.gridParams.physicalWidth;
+                this.params.physicalHeight = this.renderer.gridParams.physicalHeight;
+
+                // Also update the standard width/height for backwards compatibility
+                this.params.width = this.renderer.gridParams.physicalWidth;
+                this.params.height = this.renderer.gridParams.physicalHeight;
+            } else {
+                // Otherwise, use the visual dimensions
+                this.params.width = this.renderer.gridParams.width;
+                this.params.height = this.renderer.gridParams.height;
+            }
+
+            // Update other grid stats
+            this.params.cols = this.renderer.gridParams.cols;
+            this.params.rows = this.renderer.gridParams.rows;
         }
 
         // Request next frame
