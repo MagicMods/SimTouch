@@ -1,4 +1,5 @@
 import { BaseUi } from "../baseUi.js";
+import { PresetManager } from "../../presets/presetManager.js";
 
 export class GridUi extends BaseUi {
   constructor(main, container) {
@@ -6,6 +7,11 @@ export class GridUi extends BaseUi {
 
     // Change the GUI title
     this.gui.title("Grid");
+
+    // Initialize preset manager
+    this.presetManager = new PresetManager({
+      gridUi: this
+    });
 
     this.initGridControls();
 
@@ -28,12 +34,47 @@ export class GridUi extends BaseUi {
     }
   }
 
+  // Add preset interface methods
+  getData() {
+    const controllers = this.getControlTargets();
+    const values = {};
+
+    Object.entries(controllers).forEach(([name, controller]) => {
+      values[name] = controller.getValue();
+    });
+
+    return {
+      controllers: values
+    };
+  }
+
+  setData(data) {
+    if (!data || !data.controllers) return false;
+
+    // Apply each controller value
+    Object.entries(data.controllers).forEach(([name, value]) => {
+      const controller = this.getControlTargets()[name];
+      if (controller) {
+        controller.setValue(value);
+      }
+    });
+
+    return true;
+  }
+
   initGridControls() {
     const renderer = this.main.renderer;
     if (!renderer) return;
 
     // Grid parameters
     const gridParamFolder = this.gui.addFolder("Parameters");
+
+    // Add preset controls at the top of Parameters folder
+    this.presetManager.createPresetControls(
+      PresetManager.TYPES.GRID,
+      gridParamFolder.domElement,
+      { title: "Presets", insertFirst: true }
+    );
 
     // Get current params from renderer
     const params = this.main.params;
@@ -270,8 +311,18 @@ export class GridUi extends BaseUi {
       targets["Show Centers"] = this.gridShowCellCentersController;
     if (this.gridShowIndicesController)
       targets["Show Indices"] = this.gridShowIndicesController;
+
+    // Boundary controls
     if (this.boundaryTypeController)
       targets["Boundary Type"] = this.boundaryTypeController;
+    if (this.boundaryWidthController)
+      targets["Boundary Width"] = this.boundaryWidthController;
+    if (this.boundaryHeightController)
+      targets["Boundary Height"] = this.boundaryHeightController;
+    if (this.centerOffsetXController)
+      targets["Center X Offset"] = this.centerOffsetXController;
+    if (this.centerOffsetYController)
+      targets["Center Y Offset"] = this.centerOffsetYController;
 
     return targets;
   }
