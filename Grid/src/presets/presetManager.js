@@ -14,29 +14,6 @@ export class PresetManager {
       [PresetManager.TYPES.GRID]: new SimplePresetHandler(
         "savedGridPresets",
         {
-          "Default": {
-            controllers: {
-              // Physical dimensions
-              "Screen Shape": "circular",
-              "Width": 240,
-              "Height": 240,
-              "Diameter": 240,
-              "Center X Offset": 0,
-              "Center Y Offset": 0,
-
-              // Grid parameters
-              "Target Cells": 341,
-              "Grid Gap": 1,
-              "Cell Ratio": 1,
-              "Grid Scale": 1,
-              "Allow Cut": 3,
-
-              // Display options
-              "Show Centers": false,
-              "Show Indices": false,
-              "Display Mode": "masked"
-            }
-          },
           "240_Round_341": {
             controllers: {
               "Screen Shape": "circular",
@@ -91,24 +68,23 @@ export class PresetManager {
             }
           }
         },
-        ["None"]
       ),
     };
   }
 
   // Event system
-  on(eventName, callback) {
-    if (!this.eventListeners[eventName]) {
-      this.eventListeners[eventName] = [];
-    }
-    this.eventListeners[eventName].push(callback);
-  }
+  // on(eventName, callback) {
+  //   if (!this.eventListeners[eventName]) {
+  //     this.eventListeners[eventName] = [];
+  //   }
+  //   this.eventListeners[eventName].push(callback);
+  // }
 
-  emit(eventName, ...args) {
-    if (this.eventListeners[eventName]) {
-      this.eventListeners[eventName].forEach(callback => callback(...args));
-    }
-  }
+  // emit(eventName, ...args) {
+  //   if (this.eventListeners[eventName]) {
+  //     this.eventListeners[eventName].forEach(callback => callback(...args));
+  //   }
+  // }
 
   createPresetControls(presetType, parentElement, options = {}) {
     if (!parentElement || !presetType || !this.handlers[presetType]) {

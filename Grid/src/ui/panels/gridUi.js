@@ -25,7 +25,7 @@ export class GridUi extends BaseUi {
         this.presetManager.createPresetControls(
           PresetManager.TYPES.GRID,
           containerElement,
-          { title: "Preset", insertFirst: true }
+          { insertFirst: true }
         );
       }
 
@@ -228,7 +228,7 @@ export class GridUi extends BaseUi {
     const displayFolder = this.gui.addFolder("Display Options");
 
     // Add stats folder at the end
-    const statsFolder = this.gui.addFolder("4. Grid Statistics");
+    const statsFolder = this.gui.addFolder("Grid Statistics");
 
     // --- SCREEN CONFIGURATION ---
 
