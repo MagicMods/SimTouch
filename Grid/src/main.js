@@ -2,8 +2,6 @@ import { GridGenRenderer } from "./renderer/gridGenRenderer.js";
 import { CircularBoundary } from "./boundary/circularBoundary.js";
 import { RectangularBoundary } from "./boundary/rectangularBoundary.js";
 import { UiManager } from "./ui/uiManager.js";
-import { ScreenConfig } from "./config/screenConfig.js";
-import { ScreenProfiles } from "./presets/screenProfiles.js";
 
 class Main {
     constructor() {
@@ -31,37 +29,52 @@ class Main {
             RectangularPrototype: RectangularBoundary.prototype
         });
 
-        // Initialize with default screen configuration
-        this.screenConfig = ScreenProfiles.getDefaultProfile();
-        console.log("Using screen configuration:", this.screenConfig);
-
-        // Initialize parameters
+        // Instead of initializing with ScreenProfiles, set default values directly
+        // Initialize parameters with default 240x240 circular grid (the "sweet spot" configuration)
         this.params = {
-            target: this.screenConfig.targetCells,
-            gap: this.screenConfig.gap,
-            aspectRatio: this.screenConfig.aspectRatio,
-            scale: this.screenConfig.scale,
+            // Physical screen properties (moved from ScreenConfig)
+            physicalWidth: 240,
+            physicalHeight: 240,
+            shape: 'circular', // 'circular' or 'rectangular'
+
+            // Grid generation parameters
+            target: 341,
+            gap: 1,
+            aspectRatio: 1.0,
+            scale: 0.986,
+            allowCut: 3,
+
+            // Grid position parameters
             cols: 0,
             rows: 0,
             width: 0,
             height: 0,
-            centerOffsetX: 0,    // Offset for the grid center X position
-            centerOffsetY: 0,    // Offset for the grid center Y position
-            allowCut: this.screenConfig.allowCut,
-            displayMode: 'masked',  // Default to masked view
-            showIndices: false,     // Show cell indices
-            showCellCenters: false, // Show cell centers
-            showCellCounts: false,  // Enable cell counts by default
-            boundaryType: this.screenConfig.shape, // Use shape from screen config
+            centerOffsetX: 0,
+            centerOffsetY: 0,
+
+            // Display parameters
+            displayMode: 'masked',
+            showIndices: false,
+            showCellCenters: false,
+            showCellCounts: false,
+
+            // Boundary parameters
+            boundaryType: 'circular',
             boundaryParams: {
-                width: this.screenConfig.physicalWidth,   // Width for rectangular boundary
-                height: this.screenConfig.physicalHeight, // Height for rectangular boundary
+                width: 240,   // Width for rectangular boundary
+                height: 240,  // Height for rectangular boundary
             },
+
+            // Cell count tracking
             cellCount: {
                 total: 0,
                 inside: 0,
                 boundary: 0
             },
+
+            // Visual rendering properties
+            maxRenderWidth: 960,
+
             // Color settings - using [r,g,b] normalized format (0-1)
             colors: {
                 background: [0, 0, 0],            // Black background
@@ -75,11 +88,11 @@ class Main {
             }
         };
 
-        // Initialize canvas dimensions based on screen config
+        // Initialize canvas dimensions based on physical dimensions
         this.updateCanvasDimensions();
 
-        // Initialize renderer with screen config
-        this.renderer = new GridGenRenderer(this.gl, this.screenConfig);
+        // Initialize renderer with parameters
+        this.renderer = new GridGenRenderer(this.gl, this.params);
 
         // Set renderer instance to be accessed by UI
         this.gridParams = this.params;
@@ -91,63 +104,58 @@ class Main {
         this.renderer.updateGrid(this.params);
     }
 
-    // Update canvas dimensions based on screen configuration
+    // Calculate canvas dimensions based on physical screen ratio and max width constraint
+    getCanvasDimensions() {
+        const ratio = this.params.physicalWidth / this.params.physicalHeight;
+
+        let renderWidth, renderHeight;
+
+        if (ratio >= 1) {
+            // Width >= Height (landscape or square)
+            renderWidth = Math.min(this.params.maxRenderWidth, 960);
+            renderHeight = renderWidth / ratio;
+        } else {
+            // Height > Width (portrait)
+            renderHeight = Math.min(this.params.maxRenderWidth, 960);
+            renderWidth = renderHeight * ratio;
+        }
+
+        return {
+            width: Math.round(renderWidth),
+            height: Math.round(renderHeight),
+            centerX: Math.round(renderWidth / 2),
+            centerY: Math.round(renderHeight / 2)
+        };
+    }
+
+    // Get scale factor between physical and rendering dimensions
+    getRenderScale() {
+        const renderDims = this.getCanvasDimensions();
+        return renderDims.width / this.params.physicalWidth;
+    }
+
+    // Update canvas dimensions based on physical dimensions
     updateCanvasDimensions() {
         if (!this.canvas) return;
 
-        // Get dimensions from screen config if available
-        if (this.screenConfig) {
-            const canvasDims = this.screenConfig.getCanvasDimensions();
-            this.canvas.width = canvasDims.width;
-            this.canvas.height = canvasDims.height;
+        // Get dimensions from physical parameters
+        const canvasDims = this.getCanvasDimensions();
+        this.canvas.width = canvasDims.width;
+        this.canvas.height = canvasDims.height;
 
-            // Update canvas visual style based on boundary type
-            if (this.params.boundaryType === 'circular') {
-                this.canvas.style.borderRadius = '50%';
-            } else {
-                this.canvas.style.borderRadius = '1%';
-            }
-
-            // Update GL viewport if renderer is initialized
-            if (this.renderer && this.renderer.gl) {
-                this.renderer.gl.viewport(0, 0, canvasDims.width, canvasDims.height);
-            }
-
-            console.log(`Canvas dimensions updated: ${canvasDims.width}x${canvasDims.height}`);
-            return;
-        }
-
-        // Legacy fallback if screen config is not available
-        const boundaryType = this.params.boundaryType;
-        let width, height, ratio;
-
-        if (boundaryType === 'circular') {
-            // Circular boundary has 1:1 aspect ratio
-            width = this.MAX_CANVAS_SIZE;
-            height = this.MAX_CANVAS_SIZE;
+        // Update canvas visual style based on boundary type
+        if (this.params.boundaryType === 'circular') {
+            this.canvas.style.borderRadius = '50%';
         } else {
-            // Rectangular boundary - use the specified width/height ratio
-            const boundaryWidth = this.params.boundaryParams.width;
-            const boundaryHeight = this.params.boundaryParams.height;
-            ratio = boundaryWidth / boundaryHeight;
-
-            if (ratio >= 1) {
-                // Width is greater than or equal to height
-                width = this.MAX_CANVAS_SIZE;
-                height = Math.round(width / ratio);
-            } else {
-                // Height is greater than width
-                height = this.MAX_CANVAS_SIZE;
-                width = Math.round(height * ratio);
-            }
+            this.canvas.style.borderRadius = '1%';
         }
 
-        // Update canvas dimensions
-        this.canvas.width = width;
-        this.canvas.height = height;
+        // Update GL viewport if renderer is initialized
+        if (this.renderer && this.renderer.gl) {
+            this.renderer.gl.viewport(0, 0, canvasDims.width, canvasDims.height);
+        }
 
-        // Log the new dimensions
-        console.log(`Canvas dimensions updated: ${width}x${height}`);
+        console.log(`Canvas dimensions updated: ${canvasDims.width}x${canvasDims.height}`);
     }
 
     // Animation loop (for future animation support)

@@ -1,7 +1,5 @@
 import { BaseUi } from "../baseUi.js";
 import { PresetManager } from "../../presets/presetManager.js";
-import { ScreenConfig } from "../../config/screenConfig.js";
-import { ScreenProfiles } from "../../presets/screenProfiles.js";
 
 export class GridUi extends BaseUi {
   constructor(main, container) {
@@ -15,11 +13,6 @@ export class GridUi extends BaseUi {
       gridUi: this
     });
 
-    // Initialize with default screen configuration if not already set
-    if (!main.screenConfig) {
-      main.screenConfig = ScreenProfiles.getDefaultProfile();
-    }
-
     // Create preset controls in the Grid folder
     const containerElement = this.gui.domElement.querySelector(".children");
     if (containerElement) {
@@ -31,7 +24,7 @@ export class GridUi extends BaseUi {
     }
 
     // Initialize the UI in a single method
-    this.initScreenConfigControls();
+    this.initGridControls();
 
     // Load default preset
     this.presetManager.loadPreset(PresetManager.TYPES.GRID, "Default");
@@ -83,8 +76,8 @@ export class GridUi extends BaseUi {
     return true;
   }
 
-  // Initialize screen configuration controls
-  initScreenConfigControls() {
+  // Initialize grid configuration controls
+  initGridControls() {
     const renderer = this.main.renderer;
     if (!renderer) return;
 
@@ -98,71 +91,16 @@ export class GridUi extends BaseUi {
 
     // --- SCREEN CONFIGURATION ---
 
-    // Get profile keys for dropdown
-    const profileKeys = ScreenProfiles.getProfileKeys();
-
-    // Current profile name (for display)
-    this.currentProfileName = ScreenProfiles.defaultProfileKey;
-
-    // Add profile selector dropdown
-    this.profileSelectorController = screenFolder
-      .add({ profile: this.currentProfileName }, 'profile', profileKeys)
-      .name("Screen Profile")
-      .onChange((key) => {
-        // Get selected profile
-        const profile = ScreenProfiles.getProfile(key);
-        this.currentProfileName = key;
-
-        // Update main app with new screen config
-        this.main.screenConfig = profile;
-
-        // Update renderer with new config
-        renderer.setScreenConfig(profile);
-
-        // Update params based on profile
-        this.main.params.target = profile.targetCells;
-        this.main.params.gap = profile.gap;
-        this.main.params.aspectRatio = profile.aspectRatio;
-        this.main.params.scale = profile.scale;
-        this.main.params.allowCut = profile.allowCut;
-
-        // Update boundary type based on profile
-        this.main.params.boundaryType = profile.shape;
-
-        // Update rectangular boundary dimensions if needed
-        if (profile.shape === 'rectangular') {
-          this.main.params.boundaryParams.width = profile.physicalWidth;
-          this.main.params.boundaryParams.height = profile.physicalHeight;
-        }
-
-        // Update canvas dimensions
-        this.main.updateCanvasDimensions();
-
-        // Update the grid
-        renderer.updateGrid(this.main.params);
-
-        // Update all controllers
-        this.updateControllerDisplays();
-      });
-
     // Add physical dimension controls
     const physicalDimensionsFolder = screenFolder.addFolder("Physical Dimensions");
-
-    // Create screen config object if it doesn't exist
-    if (!this.screenConfig) {
-      this.screenConfig = new ScreenConfig();
-    }
-
-    // Bind to main's screenConfig
-    this.screenConfig = this.main.screenConfig;
 
     // Add boundary type selector to physical dimensions
     this.boundaryTypeController = physicalDimensionsFolder
       .add(this.main.params, "boundaryType", ['circular', 'rectangular'])
       .name("Screen Shape")
       .onChange((value) => {
-        // Update screenConfig shape
-        this.screenConfig.shape = value;
+        // Update shape parameter
+        this.main.params.shape = value;
 
         // Update canvas border-radius based on boundary type
         const canvas = document.getElementById("glCanvas");
@@ -170,21 +108,21 @@ export class GridUi extends BaseUi {
           // Set circular visual style
           canvas.style.borderRadius = '50%';
 
-          // Update center coordinates from screen config
-          const canvasDims = this.screenConfig.getCanvasDimensions();
+          // Get canvas dimensions
+          const canvasDims = this.main.getCanvasDimensions();
           const centerX = canvasDims.centerX;
           const centerY = canvasDims.centerY;
 
           // Create circular boundary
-          const radius = Math.min(this.screenConfig.physicalWidth, this.screenConfig.physicalHeight) / 2;
+          const radius = Math.min(this.main.params.physicalWidth, this.main.params.physicalHeight) / 2;
           const scaledRadius = centerX; // Center point for visual representation
           renderer.boundary = new this.main.CircularBoundary(centerX, centerY, scaledRadius, this.main.params.scale);
         } else {
           // Set rectangular visual style
           canvas.style.borderRadius = '1%';
 
-          // Update center coordinates from screen config
-          const canvasDims = this.screenConfig.getCanvasDimensions();
+          // Get canvas dimensions
+          const canvasDims = this.main.getCanvasDimensions();
           const centerX = canvasDims.centerX;
           const centerY = canvasDims.centerY;
 
@@ -192,8 +130,8 @@ export class GridUi extends BaseUi {
           renderer.boundary = new this.main.RectangularBoundary(
             centerX,
             centerY,
-            this.screenConfig.physicalWidth,
-            this.screenConfig.physicalHeight,
+            this.main.params.physicalWidth,
+            this.main.params.physicalHeight,
             this.main.params.scale
           );
         }
@@ -207,19 +145,16 @@ export class GridUi extends BaseUi {
 
     // Add physical width controller
     this.physicalWidthController = physicalDimensionsFolder
-      .add(this.screenConfig, "physicalWidth", 120, 1000, 1)
+      .add(this.main.params, "physicalWidth", 120, 1000, 1)
       .name("Width (px)")
       .onChange((value) => {
-        // Update screen config
-        this.screenConfig.physicalWidth = value;
+        // Update params
+        this.main.params.physicalWidth = value;
 
         // If rectangular boundary, update boundary params
         if (this.main.params.boundaryType === 'rectangular') {
           this.main.params.boundaryParams.width = value;
         }
-
-        // Update renderer
-        renderer.setScreenConfig(this.screenConfig);
 
         // Update canvas dimensions
         this.main.updateCanvasDimensions();
@@ -230,19 +165,16 @@ export class GridUi extends BaseUi {
 
     // Add physical height controller
     this.physicalHeightController = physicalDimensionsFolder
-      .add(this.screenConfig, "physicalHeight", 120, 1000, 1)
+      .add(this.main.params, "physicalHeight", 120, 1000, 1)
       .name("Height (px)")
       .onChange((value) => {
-        // Update screen config
-        this.screenConfig.physicalHeight = value;
+        // Update params
+        this.main.params.physicalHeight = value;
 
         // If rectangular boundary, update boundary params
         if (this.main.params.boundaryType === 'rectangular') {
           this.main.params.boundaryParams.height = value;
         }
-
-        // Update renderer
-        renderer.setScreenConfig(this.screenConfig);
 
         // Update canvas dimensions
         this.main.updateCanvasDimensions();
@@ -265,42 +197,6 @@ export class GridUi extends BaseUi {
       .add(this.main.params, "centerOffsetY", -60, 60, 1)
       .name("Y Offset")
       .onChange(() => renderer.updateGrid(this.main.params));
-
-    // Add save profile button
-    this.saveProfileButton = screenFolder
-      .add({
-        saveProfile: () => {
-          // Create a new profile key based on dimensions and shape
-          const key = `${this.screenConfig.physicalWidth}x${this.screenConfig.physicalHeight}_${this.main.params.target}_${this.main.params.boundaryType}`;
-
-          // Create a new screen config with current settings
-          const newConfig = new ScreenConfig({
-            name: `${this.screenConfig.physicalWidth}x${this.screenConfig.physicalHeight} (${this.main.params.target} cells)`,
-            physicalWidth: this.screenConfig.physicalWidth,
-            physicalHeight: this.screenConfig.physicalHeight,
-            shape: this.main.params.boundaryType,
-            targetCells: this.main.params.target,
-            scale: this.main.params.scale,
-            gap: this.main.params.gap,
-            aspectRatio: this.main.params.aspectRatio,
-            allowCut: this.main.params.allowCut
-          });
-
-          // Save to profiles
-          ScreenProfiles.saveProfile(key, newConfig);
-
-          // Update profile selector
-          const profileKeys = ScreenProfiles.getProfileKeys();
-          this.profileSelectorController.options(profileKeys);
-
-          // Set current profile to new one
-          this.profileSelectorController.setValue(key);
-          this.currentProfileName = key;
-
-          alert(`Profile saved as "${key}"`);
-        }
-      }, 'saveProfile')
-      .name("Save Current Profile");
 
     // --- GRID PARAMETERS ---
 
@@ -425,8 +321,6 @@ export class GridUi extends BaseUi {
     const targets = {};
 
     // Screen configuration controls
-    if (this.profileSelectorController)
-      targets["Screen Profile"] = this.profileSelectorController;
     if (this.physicalWidthController)
       targets["Screen Width"] = this.physicalWidthController;
     if (this.physicalHeightController)
@@ -472,7 +366,6 @@ export class GridUi extends BaseUi {
     };
 
     // Update screen configuration controllers
-    safeUpdateDisplay(this.profileSelectorController);
     safeUpdateDisplay(this.physicalWidthController);
     safeUpdateDisplay(this.physicalHeightController);
     safeUpdateDisplay(this.boundaryTypeController);

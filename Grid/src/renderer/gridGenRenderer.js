@@ -1,18 +1,16 @@
 import { BaseRenderer } from "./baseRenderer.js";
 import { CircularBoundary } from "../boundary/circularBoundary.js";
 import { RectangularBoundary } from "../boundary/rectangularBoundary.js";
-import { ScreenConfig } from "../config/screenConfig.js";
-import { ScreenProfiles } from "../presets/screenProfiles.js";
 
 export class GridGenRenderer extends BaseRenderer {
-    constructor(gl, screenConfig = null) {
+    constructor(gl, params) {
         super(gl);
 
-        // Initialize with provided screen config or default
-        this.screenConfig = screenConfig || ScreenProfiles.getDefaultProfile();
+        // Store reference to params instead of screenConfig
+        this.params = params;
 
-        // Get dimensions from screen config
-        const canvasDims = this.screenConfig.getCanvasDimensions();
+        // Get dimensions from params
+        const canvasDims = this.getCanvasDimensions();
         this.TARGET_WIDTH = canvasDims.width;
         this.TARGET_HEIGHT = canvasDims.height;
 
@@ -105,12 +103,42 @@ export class GridGenRenderer extends BaseRenderer {
         this.boundary = null;
     }
 
-    // Update screen configuration (e.g., when user selects a different profile)
-    setScreenConfig(screenConfig) {
-        this.screenConfig = screenConfig;
+    // Calculate canvas dimensions based on physical screen ratio and max width constraint
+    getCanvasDimensions() {
+        const ratio = this.params.physicalWidth / this.params.physicalHeight;
+
+        let renderWidth, renderHeight;
+
+        if (ratio >= 1) {
+            // Width >= Height (landscape or square)
+            renderWidth = Math.min(this.params.maxRenderWidth, 960);
+            renderHeight = renderWidth / ratio;
+        } else {
+            // Height > Width (portrait)
+            renderHeight = Math.min(this.params.maxRenderWidth, 960);
+            renderWidth = renderHeight * ratio;
+        }
+
+        return {
+            width: Math.round(renderWidth),
+            height: Math.round(renderHeight),
+            centerX: Math.round(renderWidth / 2),
+            centerY: Math.round(renderHeight / 2)
+        };
+    }
+
+    // Get scale factor between physical and rendering dimensions
+    getRenderScale() {
+        const renderDims = this.getCanvasDimensions();
+        return renderDims.width / this.params.physicalWidth;
+    }
+
+    // Update params (e.g., when user changes settings)
+    setParams(params) {
+        this.params = params;
 
         // Update canvas dimensions
-        const canvasDims = screenConfig.getCanvasDimensions();
+        const canvasDims = this.getCanvasDimensions();
         this.TARGET_WIDTH = canvasDims.width;
         this.TARGET_HEIGHT = canvasDims.height;
 
@@ -150,10 +178,11 @@ export class GridGenRenderer extends BaseRenderer {
 
     updateGrid(params) {
         // Store params for reference
+        this.params = params;
         this.grid = params;
 
-        // Get canvas dimensions from screen config
-        const canvasDims = this.screenConfig.getCanvasDimensions();
+        // Get canvas dimensions from params
+        const canvasDims = this.getCanvasDimensions();
         const centerX = canvasDims.centerX;
         const centerY = canvasDims.centerY;
 
@@ -163,26 +192,26 @@ export class GridGenRenderer extends BaseRenderer {
             (params.boundaryType === 'rectangular' && !(this.boundary instanceof RectangularBoundary))) {
 
             if (params.boundaryType === 'circular') {
-                // For circular boundary, use a radius based on screen config
+                // For circular boundary, use a radius based on canvas dimensions
                 const scaledRadius = Math.min(canvasDims.width, canvasDims.height) / 2;
 
-                // Update screenConfig to match boundary type
-                this.screenConfig.shape = 'circular';
+                // Update shape parameter
+                this.params.shape = 'circular';
 
                 // Create circular boundary
                 this.boundary = new CircularBoundary(centerX, centerY, scaledRadius, params.scale);
             } else {
-                // For rectangular boundary, use dimensions from screen config
-                const width = params.boundaryParams.width || this.screenConfig.physicalWidth;
-                const height = params.boundaryParams.height || this.screenConfig.physicalHeight;
+                // For rectangular boundary, use dimensions from params
+                const width = params.boundaryParams.width || this.params.physicalWidth;
+                const height = params.boundaryParams.height || this.params.physicalHeight;
 
                 // Calculate the scaled visual dimensions
-                const renderScale = this.screenConfig.getRenderScale();
+                const renderScale = this.getRenderScale();
                 const visualWidth = width * renderScale;
                 const visualHeight = height * renderScale;
 
-                // Update screenConfig to match boundary type
-                this.screenConfig.shape = 'rectangular';
+                // Update shape parameter
+                this.params.shape = 'rectangular';
 
                 // Create rectangular boundary
                 this.boundary = new RectangularBoundary(
@@ -193,26 +222,26 @@ export class GridGenRenderer extends BaseRenderer {
                     params.scale
                 );
 
-                // Make sure boundary params are updated to match screen config
-                params.boundaryParams.width = this.screenConfig.physicalWidth;
-                params.boundaryParams.height = this.screenConfig.physicalHeight;
+                // Make sure boundary params are updated to match params
+                params.boundaryParams.width = this.params.physicalWidth;
+                params.boundaryParams.height = this.params.physicalHeight;
             }
         } else {
             // Update existing boundary scale
             this.boundary.setScale(params.scale);
 
-            // If boundary is rectangular, update dimensions to match screen config
+            // If boundary is rectangular, update dimensions to match params
             if (this.boundary instanceof RectangularBoundary) {
-                const renderScale = this.screenConfig.getRenderScale();
-                const visualWidth = this.screenConfig.physicalWidth * renderScale;
-                const visualHeight = this.screenConfig.physicalHeight * renderScale;
+                const renderScale = this.getRenderScale();
+                const visualWidth = this.params.physicalWidth * renderScale;
+                const visualHeight = this.params.physicalHeight * renderScale;
 
                 this.boundary.width = visualWidth;
                 this.boundary.height = visualHeight;
 
                 // Update params to match
-                params.boundaryParams.width = this.screenConfig.physicalWidth;
-                params.boundaryParams.height = this.screenConfig.physicalHeight;
+                params.boundaryParams.width = this.params.physicalWidth;
+                params.boundaryParams.height = this.params.physicalHeight;
             }
         }
 
@@ -253,8 +282,8 @@ export class GridGenRenderer extends BaseRenderer {
             ? [...this.grid.colors.maskCircle, 1] // Add alpha=1
             : [0.15, 0.15, 0.15, 1];
 
-        // Get canvas dimensions from screen config
-        const canvasDims = this.screenConfig.getCanvasDimensions();
+        // Get canvas dimensions from params
+        const canvasDims = this.getCanvasDimensions();
 
         // Calculate the base center position and apply offset
         const baseCenter = {
@@ -401,8 +430,8 @@ export class GridGenRenderer extends BaseRenderer {
         const boundary = this.boundary;
         const center = boundary.getCenter();
 
-        // Get canvas dimensions from screen config
-        const canvasDims = this.screenConfig.getCanvasDimensions();
+        // Get canvas dimensions from params
+        const canvasDims = this.getCanvasDimensions();
 
         // Apply offset to center coordinates
         const baseCenter = {
@@ -634,8 +663,8 @@ export class GridGenRenderer extends BaseRenderer {
             });
 
             // Add screen config information
-            const screenInfo = `Physical Screen: ${this.screenConfig.physicalWidth}×${this.screenConfig.physicalHeight}`;
-            const aspectRatio = (this.screenConfig.physicalWidth / this.screenConfig.physicalHeight).toFixed(2);
+            const screenInfo = `Physical Screen: ${this.params.physicalWidth}×${this.params.physicalHeight}`;
+            const aspectRatio = (this.params.physicalWidth / this.params.physicalHeight).toFixed(2);
             const scaleInfo = `Scale: ${this.grid.scale.toFixed(3)} (Ratio: ${aspectRatio})`;
 
             // Cell sizing information - now with physical and visual sizes
@@ -701,8 +730,8 @@ export class GridGenRenderer extends BaseRenderer {
     generateRectangles(params) {
         let bestRects = [];
 
-        // Get canvas dimensions from screen config
-        const canvasDims = this.screenConfig.getCanvasDimensions();
+        // Get canvas dimensions from params
+        const canvasDims = this.getCanvasDimensions();
 
         // Calculate the base center position and apply offset
         const baseCenter = {
@@ -723,14 +752,14 @@ export class GridGenRenderer extends BaseRenderer {
         // For a 480x480 screen, we want cells around 22-24px high at the same cell count
         // So we need to scale cell size proportionally to physical dimensions
         const baseScreenSize = 240; // Reference screen size
-        const physicalScale = Math.min(this.screenConfig.physicalWidth, this.screenConfig.physicalHeight) / baseScreenSize;
+        const physicalScale = Math.min(this.params.physicalWidth, this.params.physicalHeight) / baseScreenSize;
 
         // Calculate a sensible starting cell height based on physical dimensions
         // For 240x240, start around 60px, larger screens start proportionally larger
         const startCellHeight = Math.max(20, Math.round(60 * physicalScale));
 
         // Scale the maximum cell height to the canvas dimensions for visual consistency
-        const renderScale = this.screenConfig.getRenderScale();
+        const renderScale = this.getRenderScale();
         const maxVisualCellHeight = startCellHeight * renderScale;
 
         for (let cellH = maxVisualCellHeight; cellH >= 1; cellH--) {

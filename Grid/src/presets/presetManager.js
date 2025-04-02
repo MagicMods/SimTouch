@@ -14,20 +14,113 @@ export class PresetManager {
       [PresetManager.TYPES.GRID]: new SimplePresetHandler(
         "savedGridPresets",
         {
-          Default: {
+          "Default": {
             controllers: {
+              // Physical dimensions
+              "Screen Width": 240,
+              "Screen Height": 240,
+              "Screen Shape": "circular",
+              "Center X Offset": 0,
+              "Center Y Offset": 0,
+
+              // Grid parameters
               "Target Cells": 341,
               "Grid Gap": 1,
               "Cell Ratio": 1,
-              "Grid Scale": 1,
+              "Grid Scale": 0.986,
+              "Allow Cut": 3,
+
+              // Display options
+              "Show Centers": false,
+              "Show Indices": false,
+              "Display Mode": "masked"
+            }
+          },
+          "240x240_Circular_341": {
+            controllers: {
+              "Screen Width": 240,
+              "Screen Height": 240,
+              "Screen Shape": "circular",
+              "Center X Offset": 0,
+              "Center Y Offset": 0,
+              "Target Cells": 341,
+              "Grid Gap": 1,
+              "Cell Ratio": 1,
+              "Grid Scale": 0.986,
               "Allow Cut": 3,
               "Show Centers": false,
               "Show Indices": false,
-              "Boundary Type": "circular",
-              "Center X Offset": 0,
-              "Center Y Offset": 0
+              "Display Mode": "masked"
             }
           },
+          "480x480_Circular_341": {
+            controllers: {
+              "Screen Width": 480,
+              "Screen Height": 480,
+              "Screen Shape": "circular",
+              "Center X Offset": 0,
+              "Center Y Offset": 0,
+              "Target Cells": 341,
+              "Grid Gap": 2,
+              "Cell Ratio": 1,
+              "Grid Scale": 0.986,
+              "Allow Cut": 1,
+              "Show Centers": false,
+              "Show Indices": false,
+              "Display Mode": "masked"
+            }
+          },
+          "240x280_Rectangular_300": {
+            controllers: {
+              "Screen Width": 240,
+              "Screen Height": 280,
+              "Screen Shape": "rectangular",
+              "Center X Offset": 0,
+              "Center Y Offset": 0,
+              "Target Cells": 300,
+              "Grid Gap": 1,
+              "Cell Ratio": 1,
+              "Grid Scale": 0.986,
+              "Allow Cut": 1,
+              "Show Centers": false,
+              "Show Indices": false,
+              "Display Mode": "masked"
+            }
+          },
+          "268x448_Rectangular_325": {
+            controllers: {
+              "Screen Width": 268,
+              "Screen Height": 448,
+              "Screen Shape": "rectangular",
+              "Center X Offset": 0,
+              "Center Y Offset": 0,
+              "Target Cells": 325,
+              "Grid Gap": 1,
+              "Cell Ratio": 1,
+              "Grid Scale": 0.986,
+              "Allow Cut": 1,
+              "Show Centers": false,
+              "Show Indices": false,
+              "Display Mode": "masked"
+            }
+          },
+          "170x320_Rectangular_280": {
+            controllers: {
+              "Screen Width": 170,
+              "Screen Height": 320,
+              "Screen Shape": "rectangular",
+              "Center X Offset": 0,
+              "Center Y Offset": 0,
+              "Target Cells": 280,
+              "Grid Gap": 1,
+              "Cell Ratio": 1,
+              "Grid Scale": 0.986,
+              "Allow Cut": 1,
+              "Show Centers": false,
+              "Show Indices": false,
+              "Display Mode": "masked"
+            }
+          }
         },
         ["None"]
       ),
@@ -150,7 +243,18 @@ export class PresetManager {
 
     // Only use the current preset name as default if it's not "Default"
     const defaultValue = (currentPreset && currentPreset !== "Default") ? currentPreset : "";
-    const presetName = prompt(`Enter ${presetType} preset name:`, defaultValue);
+
+    // If it's a grid preset, suggest a name based on physical dimensions and cell count
+    let suggestedName = defaultValue;
+    if (presetType === PresetManager.TYPES.GRID) {
+      const uiComponent = this.getUIComponent(presetType);
+      if (uiComponent && uiComponent.main && uiComponent.main.params) {
+        const params = uiComponent.main.params;
+        suggestedName = `${params.physicalWidth}x${params.physicalHeight}_${params.boundaryType}_${params.target}`;
+      }
+    }
+
+    const presetName = prompt(`Enter ${presetType} preset name:`, suggestedName);
 
     console.log(`User entered name: "${presetName}"`);
     if (!presetName) return;
@@ -252,33 +356,22 @@ export class PresetManager {
   }
 
   loadPreset(type, presetName) {
-    console.log(`Loading ${type} preset: ${presetName}`);
-    const handler = this.getHandler(type);
-    if (!handler) {
-      console.warn(`No handler found for preset type ${type}`);
-      return false;
+    const handler = this.handlers[type];
+    if (!handler) return false;
+
+    const uiComponent = this.getUIComponent(type);
+
+    if (uiComponent) {
+      return handler.applyPreset(presetName, uiComponent);
     }
 
-    // Emit presetSelected event before applying
-    this.emit('presetSelected', presetName);
-
-    const component = this.getUIComponent(type);
-    const success = handler.applyPreset(presetName, component);
-
-    if (success) {
-      // Emit presetLoaded event after successful loading
-      this.emit('presetLoaded', type, presetName);
-    }
-
-    return success;
+    return false;
   }
 
   deletePreset(type, presetName) {
-    const handler = this.getHandler(type);
-    if (!handler) {
-      console.warn(`No handler for preset type: ${type}`);
-      return false;
-    }
+    const handler = this.handlers[type];
+    if (!handler) return false;
+
     return handler.deletePreset(presetName);
   }
 }
