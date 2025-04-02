@@ -17,10 +17,10 @@ export class PresetManager {
           "Default": {
             controllers: {
               // Physical dimensions
-              "Screen Width": 240,
-              "Screen Height": 240,
-              "Screen Diameter": 240,
               "Screen Shape": "circular",
+              "Width": 240,
+              "Height": 240,
+              "Diameter": 240,
               "Center X Offset": 0,
               "Center Y Offset": 0,
 
@@ -28,7 +28,7 @@ export class PresetManager {
               "Target Cells": 341,
               "Grid Gap": 1,
               "Cell Ratio": 1,
-              "Grid Scale": 0.986,
+              "Grid Scale": 1,
               "Allow Cut": 3,
 
               // Display options
@@ -37,88 +37,54 @@ export class PresetManager {
               "Display Mode": "masked"
             }
           },
-          "240x240_Circular_341": {
+          "240_Round_341": {
             controllers: {
-              "Screen Width": 240,
-              "Screen Height": 240,
-              "Screen Diameter": 240,
               "Screen Shape": "circular",
+              "Width": 240,
+              "Height": 240,
+              "Diameter": 240,
               "Center X Offset": 0,
               "Center Y Offset": 0,
               "Target Cells": 341,
               "Grid Gap": 1,
               "Cell Ratio": 1,
-              "Grid Scale": 0.986,
+              "Grid Scale": 1,
               "Allow Cut": 3,
               "Show Centers": false,
               "Show Indices": false,
               "Display Mode": "masked"
             }
           },
-          "480x480_Circular_341": {
+          "480_Round_341": {
             controllers: {
-              "Screen Width": 480,
-              "Screen Height": 480,
-              "Screen Diameter": 480,
               "Screen Shape": "circular",
+              "Width": 480,
+              "Height": 480,
+              "Diameter": 480,
               "Center X Offset": 0,
               "Center Y Offset": 0,
               "Target Cells": 341,
-              "Grid Gap": 2,
+              "Grid Gap": 1,
               "Cell Ratio": 1,
-              "Grid Scale": 0.986,
-              "Allow Cut": 1,
+              "Grid Scale": 1,
+              "Allow Cut": 3,
               "Show Centers": false,
               "Show Indices": false,
               "Display Mode": "masked"
             }
           },
-          "240x280_Rectangular_300": {
+          "170x320_Rectangular_342": {
             controllers: {
-              "Screen Width": 240,
-              "Screen Height": 280,
               "Screen Shape": "rectangular",
-              "Center X Offset": 0,
+              "Width": 170,
+              "Height": 320,
+              "Center X Offset": 26,
               "Center Y Offset": 0,
-              "Target Cells": 300,
+              "Target Cells": 342,
               "Grid Gap": 1,
               "Cell Ratio": 1,
-              "Grid Scale": 0.986,
-              "Allow Cut": 1,
-              "Show Centers": false,
-              "Show Indices": false,
-              "Display Mode": "masked"
-            }
-          },
-          "268x448_Rectangular_325": {
-            controllers: {
-              "Screen Width": 268,
-              "Screen Height": 448,
-              "Screen Shape": "rectangular",
-              "Center X Offset": 0,
-              "Center Y Offset": 0,
-              "Target Cells": 325,
-              "Grid Gap": 1,
-              "Cell Ratio": 1,
-              "Grid Scale": 0.986,
-              "Allow Cut": 1,
-              "Show Centers": false,
-              "Show Indices": false,
-              "Display Mode": "masked"
-            }
-          },
-          "170x320_Rectangular_280": {
-            controllers: {
-              "Screen Width": 170,
-              "Screen Height": 320,
-              "Screen Shape": "rectangular",
-              "Center X Offset": 0,
-              "Center Y Offset": 0,
-              "Target Cells": 280,
-              "Grid Gap": 1,
-              "Cell Ratio": 1,
-              "Grid Scale": 0.986,
-              "Allow Cut": 1,
+              "Grid Scale": 1,
+              "Allow Cut": 2,
               "Show Centers": false,
               "Show Indices": false,
               "Display Mode": "masked"
@@ -253,10 +219,16 @@ export class PresetManager {
       const uiComponent = this.getUIComponent(presetType);
       if (uiComponent && uiComponent.main && uiComponent.main.params) {
         const params = uiComponent.main.params;
-        if (params.boundaryType === 'circular') {
-          suggestedName = `${params.physicalWidth}x${params.physicalWidth}_${params.boundaryType}_${params.target}`;
+
+        // Get the boundary type to determine naming format
+        const boundaryType = params.boundaryType;
+
+        if (boundaryType === 'circular') {
+          // For circular screens, use diameter value
+          suggestedName = `${params.physicalWidth}_Round_${params.target}`;
         } else {
-          suggestedName = `${params.physicalWidth}x${params.physicalHeight}_${params.boundaryType}_${params.target}`;
+          // For rectangular screens, use width x height
+          suggestedName = `${params.physicalWidth}x${params.physicalHeight}_Rectangular_${params.target}`;
         }
       }
     }

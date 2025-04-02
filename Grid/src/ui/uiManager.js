@@ -36,10 +36,10 @@ export class UiManager {
 
     // Update method for UiManager
     update(deltaTime) {
-        // Update the GridUI component
-        if (this.gridUi) {
-            this.gridUi.update(deltaTime);
-        }
+        // // Update the GridUI component
+        // if (this.gridUi) {
+        //     this.gridUi.update(deltaTime);
+        // }
     }
 
     dispose() {

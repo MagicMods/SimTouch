@@ -5,57 +5,52 @@ export class GridUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
 
-    // Change the GUI title
-    this.gui.title("Grid");
+    try {
+      // Change the GUI title
+      this.gui.title("Grid");
 
-    // Simple dimension storage with direct properties
-    this.savedDiameter = this.main.params.physicalWidth || 240;
-    this.savedWidth = this.main.params.physicalWidth || 240;
-    this.savedHeight = this.main.params.physicalHeight || 240;
+      // Simple dimension storage with direct properties
+      this.savedDiameter = this.main.params.physicalWidth || 240;
+      this.savedWidth = this.main.params.physicalWidth || 240;
+      this.savedHeight = this.main.params.physicalHeight || 240;
 
-    // Initialize preset manager
-    this.presetManager = new PresetManager({
-      gridUi: this
-    });
+      // Initialize preset manager
+      this.presetManager = new PresetManager({
+        gridUi: this
+      });
 
-    // Create preset controls in the Grid folder
-    const containerElement = this.gui.domElement.querySelector(".children");
-    if (containerElement) {
-      this.presetManager.createPresetControls(
-        PresetManager.TYPES.GRID,
-        containerElement,
-        { title: "Preset", insertFirst: true }
-      );
-    }
-
-    // Initialize the UI in a single method
-    this.initGridControls();
-
-    // Load default preset
-    this.presetManager.loadPreset(PresetManager.TYPES.GRID, "Default");
-
-    // Open GUI by default
-    this.gui.open(true);
-
-    // Debug state tracking
-    this.debugSettings = { showBoundaryDebug: false };
-  }
-
-  // Add an update method to handle debug visualization state
-  update(deltaTime) {
-    // Check if debug visualization is active and needs to be redrawn
-    if (this.debugSettings && this.debugSettings.showBoundaryDebug) {
-      // We need to keep showing the debug view until user disables it
-      if (this.main && this.main.renderer) {
-        // Call the appropriate debug visualization function
-        // This will depend on the implementation in GridGenRenderer
+      // Create preset controls in the Grid folder
+      const containerElement = this.gui.domElement.querySelector(".children");
+      if (containerElement) {
+        this.presetManager.createPresetControls(
+          PresetManager.TYPES.GRID,
+          containerElement,
+          { title: "Preset", insertFirst: true }
+        );
       }
+
+      // Initialize the UI in a single method
+      this.initGridControls();
+
+      // Load default preset
+      this.presetManager.loadPreset(PresetManager.TYPES.GRID, "Default");
+
+      // Open GUI by default
+      this.gui.open(true);
+
+      // Debug state tracking
+      this.debugSettings = { showBoundaryDebug: false };
+    } catch (error) {
+      console.error("Error initializing GridUi:", error);
+      // Create a simplified UI if initialization fails
+      this.gui.title("Grid (Error Mode)");
+      this.gui.add({ reload: () => window.location.reload() }, "reload").name("Reload App");
     }
   }
 
   // Add preset interface methods
   getData() {
-    const controllers = this.getControlTargets();
+    const controllers = this.getControllers();
     const values = {};
 
     Object.entries(controllers).forEach(([name, controller]) => {
@@ -68,28 +63,158 @@ export class GridUi extends BaseUi {
   }
 
   setData(data) {
+    console.log("GridUi.setData called with data:", data);
     if (!data || !data.controllers) return false;
 
-    // Apply each controller value
-    Object.entries(data.controllers).forEach(([name, value]) => {
-      const controller = this.getControlTargets()[name];
-      if (controller) {
-        controller.setValue(value);
+    try {
+      const renderer = this.main.renderer;
+      if (!renderer) {
+        console.error("Renderer not found when loading preset");
+        return false;
       }
-    });
 
-    // Update saved values directly
-    if (this.main.params.boundaryType === 'circular') {
-      this.savedDiameter = this.main.params.physicalWidth;
-      console.log("Updated saved diameter from preset:", this.savedDiameter);
-    } else {
-      this.savedWidth = this.main.params.physicalWidth;
-      this.savedHeight = this.main.params.physicalHeight;
-      console.log("Updated saved width/height from preset:",
-        this.savedWidth, this.savedHeight);
+      // Store values before applying
+      const controllerValues = { ...data.controllers };
+
+      // First, get the current screen shape and the preset's screen shape
+      const currentShape = this.main.params.boundaryType;
+      const presetShape = controllerValues["Screen Shape"];
+
+      console.log("Preset loading - shapes:", {
+        currentShape: currentShape,
+        presetShape: presetShape
+      });
+
+      // Store the current dimensions for debug purposes
+      const originalDims = {
+        width: this.main.params.physicalWidth,
+        height: this.main.params.physicalHeight,
+        shape: this.main.params.boundaryType
+      };
+      console.log("Original dimensions:", originalDims);
+
+      // Extract preset dimensions based on shape
+      const presetDims = {
+        width: controllerValues["Width"] || this.main.params.physicalWidth,
+        height: controllerValues["Height"] || this.main.params.physicalHeight,
+        diameter: controllerValues["Diameter"] || this.main.params.physicalWidth
+      };
+      console.log("Preset dimensions:", presetDims);
+
+      // Step 1: Handle shape change first if needed
+      if (presetShape && presetShape !== currentShape) {
+        console.log(`Changing screen shape from ${currentShape} to ${presetShape}`);
+
+        // Set the boundary type parameters directly
+        this.main.params.boundaryType = presetShape;
+        this.main.params.shape = presetShape;
+
+        // Update canvas border-radius based on boundary type
+        const canvas = document.getElementById("glCanvas");
+        if (presetShape === 'circular') {
+          canvas.style.borderRadius = '50%';
+
+          // For circular, make sure to use diameter
+          const diameter = presetDims.diameter;
+          this.savedDiameter = diameter;
+          this.main.params.physicalWidth = diameter;
+          this.main.params.physicalHeight = diameter;
+
+          console.log(`Set circular dimensions: diameter=${diameter}`);
+        } else {
+          canvas.style.borderRadius = '1%';
+
+          // For rectangular, use width and height
+          this.savedWidth = presetDims.width;
+          this.savedHeight = presetDims.height;
+          this.main.params.physicalWidth = presetDims.width;
+          this.main.params.physicalHeight = presetDims.height;
+
+          console.log(`Set rectangular dimensions: width=${presetDims.width}, height=${presetDims.height}`);
+        }
+
+        // Update boundary params
+        if (!this.main.params.boundaryParams) {
+          this.main.params.boundaryParams = {};
+        }
+        this.main.params.boundaryParams.width = this.main.params.physicalWidth;
+        this.main.params.boundaryParams.height = this.main.params.physicalHeight;
+
+        // Make sure the controller visibility matches the new shape
+        this.updateControllerVisibility(presetShape);
+
+        // Update the boundary type controller display
+        if (this.boundaryTypeController) {
+          this.boundaryTypeController.setValue(presetShape);
+        }
+
+        // Clear any cached grid data to force recalculation
+        if (renderer._cachedRectangles) {
+          renderer._cachedRectangles = null;
+          console.log("Cleared cached grid due to shape change");
+        }
+      }
+
+      // Step 2: Now apply all other controller values
+      const targets = this.getControllers();
+      if (!targets || Object.keys(targets).length === 0) {
+        console.warn("No valid controllers found in getControllers()");
+      }
+
+      // Get the controller values that were modified directly in step 1
+      const processedControllers = ['Screen Shape'];
+      if (presetShape === 'circular') {
+        processedControllers.push('Diameter');
+      } else {
+        processedControllers.push('Width', 'Height');
+      }
+
+      console.log("Applying remaining controller values...");
+
+      Object.entries(controllerValues).forEach(([name, value]) => {
+        if (!processedControllers.includes(name)) {
+          const controller = targets[name];
+          if (controller && typeof controller.setValue === 'function') {
+            try {
+              console.log(`Setting ${name} = ${value}`);
+              controller.setValue(value);
+            } catch (err) {
+              console.warn(`Error setting ${name} to ${value}:`, err);
+            }
+          } else {
+            console.warn(`Controller not found for preset parameter: ${name}`);
+          }
+        }
+      });
+
+      // Re-verify that our saved values are correct
+      if (this.main.params.boundaryType === 'circular') {
+        this.savedDiameter = this.main.params.physicalWidth;
+        console.log("Verified saved diameter:", this.savedDiameter);
+      } else {
+        this.savedWidth = this.main.params.physicalWidth;
+        this.savedHeight = this.main.params.physicalHeight;
+        console.log("Verified saved width/height:", this.savedWidth, this.savedHeight);
+      }
+
+      // Update controller displays
+      this.updateControllerDisplays();
+
+      // Final step: Update the grid to reflect all changes
+      console.log("Updating grid with final dimensions:", {
+        width: this.main.params.physicalWidth,
+        height: this.main.params.physicalHeight,
+        shape: this.main.params.boundaryType
+      });
+
+      renderer.updateGrid(this.main.params);
+
+      console.log("Preset successfully loaded");
+      return true;
+    } catch (error) {
+      console.error("Error applying preset:", error);
+      return false;
     }
-
-    return true;
   }
 
   // Initialize grid configuration controls
@@ -110,152 +235,112 @@ export class GridUi extends BaseUi {
     // Add physical dimension controls
     const physicalDimensionsFolder = screenFolder.addFolder("Physical Dimensions");
 
-    // Add boundary type selector to physical dimensions
+    // Add boundary type selector
     this.boundaryTypeController = physicalDimensionsFolder
       .add(this.main.params, "boundaryType", { Round: 'circular', Rectangular: 'rectangular' })
       .name("Screen Shape")
       .onChange((value) => {
-        // Store current dimensions before changing
-        if (this.main.params.boundaryType === 'circular') {
-          this.savedDiameter = this.main.params.physicalWidth;
-          console.log("Saving diameter:", this.savedDiameter);
-        } else {
-          this.savedWidth = this.main.params.physicalWidth;
-          this.savedHeight = this.main.params.physicalHeight;
-          console.log("Saving width/height:", this.savedWidth, this.savedHeight);
-        }
+        // Store original dimensions and offsets for debugging
+        const originalState = {
+          width: this.main.params.physicalWidth,
+          height: this.main.params.physicalHeight,
+          centerOffsetX: this.main.params.centerOffsetX || 0,
+          centerOffsetY: this.main.params.centerOffsetY || 0,
+          boundaryType: this.main.params.boundaryType
+        };
 
-        // Clear cached rectangles in renderer to force full recalculation
-        if (renderer._cachedRectangles) {
-          renderer._cachedRectangles = null;
-          console.log("Cleared cached grid due to shape change");
-        }
+        console.log(`Screen shape changed from ${originalState.boundaryType} to ${value}`);
 
-        // Preserve current offsets
-        const centerOffsetX = this.main.params.centerOffsetX || 0;
-        const centerOffsetY = this.main.params.centerOffsetY || 0;
-
-        // Ensure we have valid saved values to work with
-        this.savedDiameter = Math.max(120, this.savedDiameter || 240);
-        this.savedWidth = Math.max(120, this.savedWidth || 240);
-        this.savedHeight = Math.max(120, this.savedHeight || 240);
-
-        // Update shape parameter
-        this.main.params.shape = value;
-        this.main.params.boundaryType = value;
-
-        // Update canvas border-radius based on boundary type
-        const canvas = document.getElementById("glCanvas");
-
-        // Make sure boundary params are initialized
-        if (!this.main.params.boundaryParams) {
-          this.main.params.boundaryParams = {
-            width: this.savedWidth,
-            height: this.savedHeight
-          };
-        }
-
-        console.log("Switching shape from",
-          this.main.params.boundaryType === 'circular' ? 'Round' : 'Rectangular',
-          "to",
-          value === 'circular' ? 'Round' : 'Rectangular',
-          "with offsets:",
-          { x: centerOffsetX, y: centerOffsetY }
-        );
-
+        // Store current dimensions to restore when changing types
         if (value === 'circular') {
-          // Set circular visual style
-          canvas.style.borderRadius = '50%';
-
-          // Get canvas dimensions
-          const canvasDims = this.main.getCanvasDimensions();
-
-          // Apply the current offsets to center
-          const centerX = canvasDims.centerX + centerOffsetX;
-          const centerY = canvasDims.centerY + centerOffsetY;
-
-          // Set dimensions using saved diameter
-          this.main.params.physicalWidth = this.savedDiameter;
-          this.main.params.physicalHeight = this.savedDiameter;
-
-          // Update boundary params to match
-          this.main.params.boundaryParams.width = this.savedDiameter;
-          this.main.params.boundaryParams.height = this.savedDiameter;
-
-          // Update controller value
-          this.diameterController.setValue(this.savedDiameter);
-
-          // Create circular boundary with preserved offset
-          const radius = Math.min(canvasDims.width, canvasDims.height) / 2;
-          const scaledRadius = centerX - centerOffsetX; // Use base center for radius
-          renderer.boundary = new this.main.CircularBoundary(centerX, centerY, scaledRadius, this.main.params.scale);
-
-          // Show/hide appropriate controls
-          this.diameterController.show();
-          this.physicalWidthController.hide();
-          this.physicalHeightController.hide();
-
-          console.log("Changed to Round - Diameter:", this.savedDiameter, "Center:", { x: centerX, y: centerY });
+          // Changing to circular - adopt the width value as diameter
+          if (this.savedDiameter) {
+            // Use saved diameter if we have one
+            this.main.params.physicalWidth = this.savedDiameter;
+            this.main.params.physicalHeight = this.savedDiameter;
+          } else {
+            // Otherwise use current width as the diameter
+            const diameter = this.main.params.physicalWidth;
+            this.main.params.physicalWidth = diameter;
+            this.main.params.physicalHeight = diameter;
+            this.savedDiameter = diameter;
+          }
         } else {
-          // Set rectangular visual style
-          canvas.style.borderRadius = '1%';
-
-          // Get canvas dimensions
-          const canvasDims = this.main.getCanvasDimensions();
-
-          // Apply the current offsets to center
-          const centerX = canvasDims.centerX + centerOffsetX;
-          const centerY = canvasDims.centerY + centerOffsetY;
-
-          // Set dimensions using saved width/height
-          this.main.params.physicalWidth = this.savedWidth;
-          this.main.params.physicalHeight = this.savedHeight;
-
-          // Update boundary params to match
-          this.main.params.boundaryParams.width = this.savedWidth;
-          this.main.params.boundaryParams.height = this.savedHeight;
-
-          // Update controller values
-          this.physicalWidthController.setValue(this.savedWidth);
-          this.physicalHeightController.setValue(this.savedHeight);
-
-          // Create rectangular boundary with properly scaled dimensions and preserved offset
-          const renderScale = this.main.getRenderScale();
-          const visualWidth = this.savedWidth * renderScale;
-          const visualHeight = this.savedHeight * renderScale;
-
-          renderer.boundary = new this.main.RectangularBoundary(
-            centerX,
-            centerY,
-            visualWidth,
-            visualHeight,
-            this.main.params.scale
-          );
-
-          // Show/hide appropriate controls
-          this.diameterController.hide();
-          this.physicalWidthController.show();
-          this.physicalHeightController.show();
-
-          console.log("Changed to Rectangular - Width/Height:", this.savedWidth, this.savedHeight, "Center:", { x: centerX, y: centerY });
+          // Changing to rectangular - restore saved width/height if available
+          if (this.savedWidth && this.savedHeight) {
+            this.main.params.physicalWidth = this.savedWidth;
+            this.main.params.physicalHeight = this.savedHeight;
+          }
         }
 
-        // Update canvas dimensions based on the new boundary type
+        // Update boundary params
+        if (!this.main.params.boundaryParams) {
+          this.main.params.boundaryParams = {};
+        }
+        this.main.params.boundaryParams.width = this.main.params.physicalWidth;
+        this.main.params.boundaryParams.height = this.main.params.physicalHeight;
+
+        // Update controller visibility
+        this.updateControllerVisibility(value);
+
+        // IMPORTANT: Preserve center offsets when changing shape
+        const centerOffsetX = originalState.centerOffsetX;
+        const centerOffsetY = originalState.centerOffsetY;
+        this.main.params.centerOffsetX = centerOffsetX;
+        this.main.params.centerOffsetY = centerOffsetY;
+
+        // Get canvas dimensions for center calculation
+        const canvasDims = this.main.getCanvasDimensions();
+
+        // Update canvas dimensions first so boundary is created with correct size
         this.main.updateCanvasDimensions();
 
-        // Update the grid with the new boundary
+        // Then update the grid - maintain offsets
         renderer.updateGrid(this.main.params);
+
+        console.log("Shape change completed:", {
+          from: originalState,
+          to: {
+            width: this.main.params.physicalWidth,
+            height: this.main.params.physicalHeight,
+            centerOffsetX: this.main.params.centerOffsetX,
+            centerOffsetY: this.main.params.centerOffsetY,
+            type: value
+          }
+        });
       });
+
+    // Dedicated method to update controller visibility based on shape
+    this.updateControllerVisibility = (boundaryType) => {
+      if (boundaryType === 'circular') {
+        // Show diameter, hide width and height
+        if (this.diameterController) this.diameterController.show();
+        if (this.physicalWidthController) this.physicalWidthController.hide();
+        if (this.physicalHeightController) this.physicalHeightController.hide();
+      } else {
+        // Show width and height, hide diameter
+        if (this.diameterController) this.diameterController.hide();
+        if (this.physicalWidthController) this.physicalWidthController.show();
+        if (this.physicalHeightController) this.physicalHeightController.show();
+      }
+    };
+
+    // Initially set controller visibility based on the current shape
+    this.updateControllerVisibility(this.main.params.boundaryType);
 
     // Add diameter controller for round screens
     this.diameterController = physicalDimensionsFolder
       .add(this.main.params, "physicalWidth", 120, 1000, 1)
-      .name("Diameter (px)")
+      .name("Diameter")
       .onFinishChange((value) => { this.savedDiameter = value; })
       .onChange((value) => {
+        // Ensure value is within valid range
+        value = Math.max(120, Math.min(1000, value));
+
         // Update both width and height to the same value
         this.main.params.physicalWidth = value;
         this.main.params.physicalHeight = value;
+        this.savedDiameter = value;
 
         // Clear cached rectangles in renderer to force full recalculation
         if (renderer._cachedRectangles) {
@@ -298,41 +383,14 @@ export class GridUi extends BaseUi {
         renderer.updateGrid(this.main.params);
       });
 
-    // Fix manual entry for diameter
-    const fixManualInput = (inputElement, controller, property, savedProperty) => {
-      inputElement.addEventListener('change', (e) => {
-        const value = parseInt(inputElement.value, 10);
-        if (!isNaN(value) && value >= 120 && value <= 1000) {
-          this.main.params[property] = value;
-          this[savedProperty] = value;
-
-          // For diameter, keep height in sync
-          if (property === "physicalWidth" && this.main.params.boundaryType === 'circular') {
-            this.main.params.physicalHeight = value;
-          }
-
-          // Update the grid
-          this.main.updateCanvasDimensions();
-          renderer.updateGrid(this.main.params);
-        }
-      });
-    };
-
-    // Add direct input handling for diameter
-    const diameterInput = this.diameterController.domElement.querySelector('input');
-    if (diameterInput) {
-      fixManualInput(diameterInput, this.diameterController, "physicalWidth", "savedDiameter");
-    }
-
     // Add width controller for rectangular screens
     this.physicalWidthController = physicalDimensionsFolder
       .add(this.main.params, "physicalWidth", 120, 1000, 1)
-      .name("Width (px)")
+      .name("Width")
       .onFinishChange((value) => { this.savedWidth = value; })
       .onChange((value) => {
-        // Make sure we have a valid value
-        if (value < 120) value = 120;
-        if (value > 1000) value = 1000;
+        // Ensure we have a valid value
+        value = Math.max(120, Math.min(1000, value));
 
         // Keep track of the original values for debugging
         const original = {
@@ -340,8 +398,9 @@ export class GridUi extends BaseUi {
           height: this.main.params.physicalHeight
         };
 
-        // Update params
+        // Update params and saved value
         this.main.params.physicalWidth = value;
+        this.savedWidth = value;
 
         // Clear cached rectangles in renderer to force full recalculation 
         if (renderer._cachedRectangles) {
@@ -395,21 +454,14 @@ export class GridUi extends BaseUi {
         renderer.updateGrid(this.main.params);
       });
 
-    // Add direct input handling for width
-    const widthInput = this.physicalWidthController.domElement.querySelector('input');
-    if (widthInput) {
-      fixManualInput(widthInput, this.physicalWidthController, "physicalWidth", "savedWidth");
-    }
-
     // Add height controller for rectangular screens
     this.physicalHeightController = physicalDimensionsFolder
       .add(this.main.params, "physicalHeight", 120, 1000, 1)
-      .name("Height (px)")
+      .name("Height")
       .onFinishChange((value) => { this.savedHeight = value; })
       .onChange((value) => {
-        // Make sure we have a valid value
-        if (value < 120) value = 120;
-        if (value > 1000) value = 1000;
+        // Ensure we have a valid value
+        value = Math.max(120, Math.min(1000, value));
 
         // Keep track of the original values for debugging
         const original = {
@@ -417,8 +469,9 @@ export class GridUi extends BaseUi {
           height: this.main.params.physicalHeight
         };
 
-        // Update params
+        // Update params and saved value
         this.main.params.physicalHeight = value;
+        this.savedHeight = value;
 
         // Clear cached rectangles in renderer to force full recalculation
         if (renderer._cachedRectangles) {
@@ -472,48 +525,6 @@ export class GridUi extends BaseUi {
         renderer.updateGrid(this.main.params);
       });
 
-    // Add direct input handling for height
-    const heightInput = this.physicalHeightController.domElement.querySelector('input');
-    if (heightInput) {
-      fixManualInput(heightInput, this.physicalHeightController, "physicalHeight", "savedHeight");
-    }
-
-    // Initially show/hide the appropriate controllers based on the current shape
-    if (this.main.params.boundaryType === 'circular') {
-      // Make sure diameter is properly set and cached
-      const diameter = this.main.params.physicalWidth;
-      this.savedDiameter = diameter;
-      this.main.params.physicalHeight = diameter; // Ensure height=width for circular
-
-      // Update the controller
-      this.diameterController.setValue(diameter);
-
-      // Show/hide controllers
-      this.diameterController.show();
-      this.physicalWidthController.hide();
-      this.physicalHeightController.hide();
-
-      console.log("Initialized with circular shape:", { diameter });
-    } else {
-      // Make sure rectangular dimensions are properly cached
-      const width = this.main.params.physicalWidth;
-      const height = this.main.params.physicalHeight;
-
-      this.savedWidth = width;
-      this.savedHeight = height;
-
-      // Update controllers
-      this.physicalWidthController.setValue(width);
-      this.physicalHeightController.setValue(height);
-
-      // Show/hide controllers
-      this.diameterController.hide();
-      this.physicalWidthController.show();
-      this.physicalHeightController.show();
-
-      console.log("Initialized with rectangular shape:", { width, height });
-    }
-
     // Add center offset controls - important to keep!
     const offsetFolder = screenFolder.addFolder('Center Offset');
 
@@ -553,22 +564,22 @@ export class GridUi extends BaseUi {
     const params = this.main.params;
 
     // Remove preset controls from here since they're now at the root level
-    this.gridTargetCellsController = gridParamFolder
+    this.targetCellsController = gridParamFolder
       .add(params, "target", 1, 800, 1)
       .name("Target Cells")
       .onChange(() => renderer.updateGrid(params)); // Full grid recalculation needed
 
-    this.gridGapController = gridParamFolder
+    this.gapController = gridParamFolder
       .add(params, "gap", 0, 20, 1)
-      .name("Gap (px)")
+      .name("Grid Gap")
       .onChange(() => renderer.updateGrid(params)); // Full grid recalculation needed
 
-    this.gridAspectRatioController = gridParamFolder
+    this.aspectRatioController = gridParamFolder
       .add(params, "aspectRatio", 0.5, 4, 0.01)
       .name("Cell Ratio")
       .onChange(() => renderer.updateGrid(params)); // Full grid recalculation needed
 
-    this.gridScaleController = gridParamFolder
+    this.scaleController = gridParamFolder
       .add(params, "scale", 0.8, 1, 0.001)
       .name("Grid Scale")
       .onChange(() => {
@@ -577,13 +588,13 @@ export class GridUi extends BaseUi {
       });
 
     // Add allowCut parameter
-    this.gridAllowCutController = gridParamFolder
+    this.allowCutController = gridParamFolder
       .add(params, "allowCut", 0, 3, 1)
       .name("Allow Cut")
       .onChange(() => renderer.updateGrid(params)); // Full grid recalculation needed
 
     // Add tooltip for Allow Cut parameter
-    this.gridAllowCutController.domElement.parentElement.setAttribute('title',
+    this.allowCutController.domElement.parentElement.setAttribute('title',
       'Controls how many corners of a cell can be outside the boundary. ' +
       '0 = strict (only cells with center inside), ' +
       '1-3 = progressively more cells at the boundary.');
@@ -594,36 +605,60 @@ export class GridUi extends BaseUi {
     this.displayModeController = displayFolder
       .add(params, "displayMode", ['all', 'inside', 'boundary', 'masked'])
       .name("Display Mode")
-      .onChange(() => {
-        // Use updateUIState for display changes
-        renderer.updateUIState(params);
+      .onChange((value) => {
+        console.log("Display mode changed:", value);
+        // Use updateUIState for UI toggles rather than full grid recalculation
+        if (renderer.updateUIState) {
+          renderer.updateUIState(this.main.params);
+        } else {
+          // Fallback to updateGrid if updateUIState not available
+          renderer.updateGrid(this.main.params);
+        }
       });
 
-    // Show cell centers
-    this.gridShowCellCentersController = displayFolder
+    // Show cell centers - use updateUIState to prevent dimension problems
+    this.showCentersController = displayFolder
       .add(params, "showCellCenters")
       .name("Show Centers")
-      .onChange(() => {
-        // Use updateUIState for display changes
-        renderer.updateUIState(params);
+      .onChange((value) => {
+        console.log("Show centers toggled:", value);
+        // Use updateUIState for UI toggles rather than full grid recalculation
+        if (renderer.updateUIState) {
+          renderer.updateUIState(this.main.params);
+        } else {
+          // Fallback to updateGrid if updateUIState not available
+          renderer.updateGrid(this.main.params);
+        }
       });
 
-    // Show cell indices
-    this.gridShowIndicesController = displayFolder
+    // Show cell indices - use updateUIState to prevent dimension problems
+    this.showIndicesController = displayFolder
       .add(params, "showIndices")
       .name("Show Indices")
-      .onChange(() => {
-        // Use updateUIState for display changes
-        renderer.updateUIState(params);
+      .onChange((value) => {
+        console.log("Show indices toggled:", value);
+        // Use updateUIState for UI toggles rather than full grid recalculation
+        if (renderer.updateUIState) {
+          renderer.updateUIState(this.main.params);
+        } else {
+          // Fallback to updateGrid if updateUIState not available
+          renderer.updateGrid(this.main.params);
+        }
       });
 
-    // Show cell counts
+    // Show cell counts - use updateUIState to prevent dimension problems
     this.showCellCountsController = displayFolder
       .add(params, "showCellCounts")
       .name("Show Cell Info")
-      .onChange(() => {
-        // Use updateUIState for display changes
-        renderer.updateUIState(params);
+      .onChange((value) => {
+        console.log("Show cell counts toggled:", value);
+        // Use updateUIState for UI toggles rather than full grid recalculation
+        if (renderer.updateUIState) {
+          renderer.updateUIState(this.main.params);
+        } else {
+          // Fallback to updateGrid if updateUIState not available
+          renderer.updateGrid(this.main.params);
+        }
       });
 
     // Color controls
@@ -696,40 +731,45 @@ export class GridUi extends BaseUi {
     this.boundaryCellsController = statsFolder.add(params.cellCount, "boundary").name("Boundary Cells").listen();
   }
 
-  getControlTargets() {
+  getControllers() {
+    // Create a map of controller display names to controller objects
     const targets = {};
 
     // Screen configuration controls
-    if (this.physicalWidthController)
-      targets["Screen Width"] = this.physicalWidthController;
-    if (this.physicalHeightController)
-      targets["Screen Height"] = this.physicalHeightController;
-    if (this.diameterController)
-      targets["Screen Diameter"] = this.diameterController;
     if (this.boundaryTypeController)
       targets["Screen Shape"] = this.boundaryTypeController;
+    if (this.physicalWidthController)
+      targets["Width"] = this.physicalWidthController;
+    if (this.physicalHeightController)
+      targets["Height"] = this.physicalHeightController;
+    if (this.diameterController)
+      targets["Diameter"] = this.diameterController;
     if (this.centerOffsetXController)
       targets["Center X Offset"] = this.centerOffsetXController;
     if (this.centerOffsetYController)
       targets["Center Y Offset"] = this.centerOffsetYController;
 
-    // Grid controls
-    if (this.gridTargetCellsController)
-      targets["Target Cells"] = this.gridTargetCellsController;
-    if (this.gridGapController)
-      targets["Grid Gap"] = this.gridGapController;
-    if (this.gridAspectRatioController)
-      targets["Cell Ratio"] = this.gridAspectRatioController;
-    if (this.gridScaleController)
-      targets["Grid Scale"] = this.gridScaleController;
-    if (this.gridAllowCutController)
-      targets["Allow Cut"] = this.gridAllowCutController;
-    if (this.gridShowCellCentersController)
-      targets["Show Centers"] = this.gridShowCellCentersController;
-    if (this.gridShowIndicesController)
-      targets["Show Indices"] = this.gridShowIndicesController;
+    // Grid controllers
+    if (this.targetCellsController)
+      targets["Target Cells"] = this.targetCellsController;
+    if (this.gapController)
+      targets["Grid Gap"] = this.gapController;
+    if (this.aspectRatioController)
+      targets["Cell Ratio"] = this.aspectRatioController;
+    if (this.scaleController)
+      targets["Grid Scale"] = this.scaleController;
+    if (this.allowCutController)
+      targets["Allow Cut"] = this.allowCutController;
+
+    // Display options
+    if (this.showCentersController)
+      targets["Show Centers"] = this.showCentersController;
+    if (this.showIndicesController)
+      targets["Show Indices"] = this.showIndicesController;
     if (this.displayModeController)
       targets["Display Mode"] = this.displayModeController;
+    if (this.showCellCountsController)
+      targets["Show Cell Info"] = this.showCellCountsController;
 
     return targets;
   }
@@ -755,13 +795,13 @@ export class GridUi extends BaseUi {
     safeUpdateDisplay(this.centerOffsetYController);
 
     // Update grid controllers
-    safeUpdateDisplay(this.gridTargetCellsController);
-    safeUpdateDisplay(this.gridGapController);
-    safeUpdateDisplay(this.gridAspectRatioController);
-    safeUpdateDisplay(this.gridScaleController);
-    safeUpdateDisplay(this.gridAllowCutController);
-    safeUpdateDisplay(this.gridShowCellCentersController);
-    safeUpdateDisplay(this.gridShowIndicesController);
+    safeUpdateDisplay(this.targetCellsController);
+    safeUpdateDisplay(this.gapController);
+    safeUpdateDisplay(this.aspectRatioController);
+    safeUpdateDisplay(this.scaleController);
+    safeUpdateDisplay(this.allowCutController);
+    safeUpdateDisplay(this.showCentersController);
+    safeUpdateDisplay(this.showIndicesController);
     safeUpdateDisplay(this.displayModeController);
 
     // Update stats
