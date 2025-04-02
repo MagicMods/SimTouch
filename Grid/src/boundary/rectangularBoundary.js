@@ -3,25 +3,60 @@ import { BaseBoundary } from './baseBoundary.js';
 export class RectangularBoundary extends BaseBoundary {
     constructor(centerX, centerY, width, height, scale = 1.0) {
         super(centerX, centerY, scale);
-        this.width = width;
-        this.height = height;
+
+        // Enforce minimum dimensions to prevent canvas collapse
+        const MIN_DIMENSION = 240;
+        this._width = Math.max(MIN_DIMENSION, width);
+        this._height = Math.max(MIN_DIMENSION, height);
+
+        // Log any dimension adjustments
+        if (this._width !== width || this._height !== height) {
+            console.log("RectangularBoundary dimensions adjusted:", {
+                originalWidth: width,
+                originalHeight: height,
+                adjustedWidth: this._width,
+                adjustedHeight: this._height
+            });
+        }
+    }
+
+    // Width getter/setter with validation
+    get width() {
+        return this._width;
+    }
+
+    set width(value) {
+        const MIN_DIMENSION = 240;
+        this._width = Math.max(MIN_DIMENSION, value);
+        console.log(`RectangularBoundary width set to ${this._width} (from ${value})`);
+    }
+
+    // Height getter/setter with validation
+    get height() {
+        return this._height;
+    }
+
+    set height(value) {
+        const MIN_DIMENSION = 240;
+        this._height = Math.max(MIN_DIMENSION, value);
+        console.log(`RectangularBoundary height set to ${this._height} (from ${value})`);
     }
 
     isPointInside(x, y) {
-        const halfWidth = (this.width * this.scale) / 2;
-        const halfHeight = (this.height * this.scale) / 2;
+        const halfWidth = (this._width * this.scale) / 2;
+        const halfHeight = (this._height * this.scale) / 2;
         return Math.abs(x - this.centerX) <= halfWidth &&
             Math.abs(y - this.centerY) <= halfHeight;
     }
 
     getRadius() {
         // For rectangular boundary, return the larger of width/2 or height/2
-        return Math.max(this.width, this.height) * this.scale / 2;
+        return Math.max(this._width, this._height) * this.scale / 2;
     }
 
     classifyCell(cell, allowCut = 1) {
-        const halfWidth = (this.width * this.scale) / 2;
-        const halfHeight = (this.height * this.scale) / 2;
+        const halfWidth = (this._width * this.scale) / 2;
+        const halfHeight = (this._height * this.scale) / 2;
 
         const corners = [
             { x: cell.x, y: cell.y }, // Top-left
@@ -101,8 +136,8 @@ export class RectangularBoundary extends BaseBoundary {
     }
 
     getCornersOutside(cell) {
-        const halfWidth = (this.width * this.scale) / 2;
-        const halfHeight = (this.height * this.scale) / 2;
+        const halfWidth = (this._width * this.scale) / 2;
+        const halfHeight = (this._height * this.scale) / 2;
 
         const corners = [
             { x: cell.x, y: cell.y }, // Top-left
@@ -118,8 +153,8 @@ export class RectangularBoundary extends BaseBoundary {
     }
 
     lineIntersectsBoundary(x1, y1, x2, y2) {
-        const halfWidth = (this.width * this.scale) / 2;
-        const halfHeight = (this.height * this.scale) / 2;
+        const halfWidth = (this._width * this.scale) / 2;
+        const halfHeight = (this._height * this.scale) / 2;
 
         // Check if either endpoint is inside the rectangle
         if (this.isPointInside(x1, y1) || this.isPointInside(x2, y2)) {

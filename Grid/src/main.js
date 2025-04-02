@@ -41,7 +41,7 @@ class Main {
             target: 341,
             gap: 1,
             aspectRatio: 1.0,
-            scale: 0.986,
+            scale: 1.0,
             allowCut: 3,
 
             // Grid position parameters
@@ -138,10 +138,39 @@ class Main {
     updateCanvasDimensions() {
         if (!this.canvas) return;
 
+        // Store current center offsets before updating
+        const centerOffsetX = this.params.centerOffsetX || 0;
+        const centerOffsetY = this.params.centerOffsetY || 0;
+
+        // Validate dimensions before calculating canvas size
+        if (!this.params.physicalWidth || this.params.physicalWidth < 120) {
+            console.warn("Invalid physicalWidth detected in updateCanvasDimensions, setting to default", this.params.physicalWidth);
+            this.params.physicalWidth = 240;
+        }
+
+        if (!this.params.physicalHeight || this.params.physicalHeight < 120) {
+            console.warn("Invalid physicalHeight detected in updateCanvasDimensions, setting to default", this.params.physicalHeight);
+            this.params.physicalHeight = 240;
+        }
+
         // Get dimensions from physical parameters
         const canvasDims = this.getCanvasDimensions();
-        this.canvas.width = canvasDims.width;
-        this.canvas.height = canvasDims.height;
+
+        // Ensure the dimensions are valid
+        const width = Math.max(240, canvasDims.width);
+        const height = Math.max(240, canvasDims.height);
+
+        // Log original vs enforced dimensions
+        if (width !== canvasDims.width || height !== canvasDims.height) {
+            console.warn("Canvas dimensions were adjusted to prevent collapse", {
+                original: { width: canvasDims.width, height: canvasDims.height },
+                adjusted: { width, height }
+            });
+        }
+
+        // Update canvas size
+        this.canvas.width = width;
+        this.canvas.height = height;
 
         // Update canvas visual style based on boundary type
         if (this.params.boundaryType === 'circular') {
@@ -152,10 +181,27 @@ class Main {
 
         // Update GL viewport if renderer is initialized
         if (this.renderer && this.renderer.gl) {
-            this.renderer.gl.viewport(0, 0, canvasDims.width, canvasDims.height);
+            this.renderer.gl.viewport(0, 0, width, height);
+
+            // If boundary exists, update its center with preserved offsets
+            if (this.renderer.boundary) {
+                // Calculate updated center
+                const centerX = canvasDims.centerX + centerOffsetX;
+                const centerY = canvasDims.centerY + centerOffsetY;
+
+                // Update boundary center directly
+                this.renderer.boundary.centerX = centerX;
+                this.renderer.boundary.centerY = centerY;
+
+                console.log("Updated boundary center after canvas resize:", {
+                    baseCenter: { x: canvasDims.centerX, y: canvasDims.centerY },
+                    offsets: { x: centerOffsetX, y: centerOffsetY },
+                    newCenter: { x: centerX, y: centerY }
+                });
+            }
         }
 
-        console.log(`Canvas dimensions updated: ${canvasDims.width}x${canvasDims.height}`);
+        console.log(`Canvas dimensions updated: ${width}x${height}, Physical: ${this.params.physicalWidth}x${this.params.physicalHeight}, Offsets: ${centerOffsetX},${centerOffsetY}`);
     }
 
     // Animation loop (for future animation support)

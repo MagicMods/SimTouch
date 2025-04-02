@@ -105,26 +105,55 @@ export class GridGenRenderer extends BaseRenderer {
 
     // Calculate canvas dimensions based on physical screen ratio and max width constraint
     getCanvasDimensions() {
+        // Make sure we have valid dimensions to prevent canvas collapse
+        if (!this.params.physicalWidth || this.params.physicalWidth < 120) {
+            console.warn("Invalid physicalWidth in getCanvasDimensions, using default", this.params.physicalWidth);
+            this.params.physicalWidth = 240;
+        }
+
+        if (!this.params.physicalHeight || this.params.physicalHeight < 120) {
+            console.warn("Invalid physicalHeight in getCanvasDimensions, using default", this.params.physicalHeight);
+            this.params.physicalHeight = 240;
+        }
+
         const ratio = this.params.physicalWidth / this.params.physicalHeight;
+        const maxRenderWidth = this.params.maxRenderWidth || 960;
 
         let renderWidth, renderHeight;
 
+        // Log the dimensions we're calculating with
+        console.log("Calculating canvas dimensions with:", {
+            physicalWidth: this.params.physicalWidth,
+            physicalHeight: this.params.physicalHeight,
+            ratio: ratio,
+            maxRenderWidth: maxRenderWidth
+        });
+
         if (ratio >= 1) {
             // Width >= Height (landscape or square)
-            renderWidth = Math.min(this.params.maxRenderWidth, 960);
+            renderWidth = Math.min(maxRenderWidth, 960);
             renderHeight = renderWidth / ratio;
         } else {
             // Height > Width (portrait)
-            renderHeight = Math.min(this.params.maxRenderWidth, 960);
+            renderHeight = Math.min(maxRenderWidth, 960);
             renderWidth = renderHeight * ratio;
         }
 
-        return {
+        // Enforce minimum dimensions to prevent canvas collapse
+        renderWidth = Math.max(renderWidth, 240);
+        renderHeight = Math.max(renderHeight, 240);
+
+        const dimensions = {
             width: Math.round(renderWidth),
             height: Math.round(renderHeight),
             centerX: Math.round(renderWidth / 2),
             centerY: Math.round(renderHeight / 2)
         };
+
+        // Log the calculated dimensions
+        console.log("Canvas dimensions calculated:", dimensions);
+
+        return dimensions;
     }
 
     // Get scale factor between physical and rendering dimensions
@@ -178,6 +207,12 @@ export class GridGenRenderer extends BaseRenderer {
 
     // Method to properly initialize physical dimensions if they're corrupted
     ensureValidDimensions() {
+        // Store current cell statistics before validation
+        const cellStats = {
+            calculatedCellWidth: this.params.calculatedCellWidth,
+            calculatedCellHeight: this.params.calculatedCellHeight
+        };
+
         // Check if physical dimensions are valid (sometimes they get corrupted during transitions)
         if (!this.params.physicalWidth || this.params.physicalWidth < 120) {
             console.warn("Invalid physicalWidth detected, resetting to default", this.params.physicalWidth);
@@ -205,6 +240,14 @@ export class GridGenRenderer extends BaseRenderer {
                 height: this.params.physicalHeight
             };
         }
+
+        // Ensure boundary params match the actual physical dimensions
+        this.params.boundaryParams.width = this.params.physicalWidth;
+        this.params.boundaryParams.height = this.params.physicalHeight;
+
+        // Restore cell statistics
+        this.params.calculatedCellWidth = cellStats.calculatedCellWidth;
+        this.params.calculatedCellHeight = cellStats.calculatedCellHeight;
     }
 
     updateGrid(params) {
@@ -212,12 +255,18 @@ export class GridGenRenderer extends BaseRenderer {
         const originalDimensions = {
             width: params.physicalWidth,
             height: params.physicalHeight,
-            boundaryType: params.boundaryType
+            boundaryType: params.boundaryType,
+            centerOffsetX: params.centerOffsetX,
+            centerOffsetY: params.centerOffsetY
         };
 
         // Store params for reference
         this.params = params;
         this.grid = params;
+
+        // Clear cached rectangles when grid parameters change
+        // This ensures a full grid recalculation
+        this._cachedRectangles = null;
 
         // Make sure dimensions are valid
         this.ensureValidDimensions();
@@ -227,14 +276,32 @@ export class GridGenRenderer extends BaseRenderer {
             current: {
                 width: this.params.physicalWidth,
                 height: this.params.physicalHeight,
-                boundaryType: this.params.boundaryType
+                boundaryType: this.params.boundaryType,
+                centerOffsetX: this.params.centerOffsetX,
+                centerOffsetY: this.params.centerOffsetY
             }
         });
 
         // Get canvas dimensions from params
         const canvasDims = this.getCanvasDimensions();
-        const centerX = canvasDims.centerX;
-        const centerY = canvasDims.centerY;
+        const baseCenter = {
+            x: canvasDims.centerX,
+            y: canvasDims.centerY
+        };
+
+        // IMPORTANT: Do NOT apply offsets to the boundary center
+        // We want the boundary to stay fixed while cells are offset
+        const centerX = baseCenter.x;
+        const centerY = baseCenter.y;
+
+        console.log("Center coordinates:", {
+            baseCenter,
+            offsets: {
+                x: this.params.centerOffsetX || 0,
+                y: this.params.centerOffsetY || 0
+            },
+            boundaryCenter: { x: centerX, y: centerY }
+        });
 
         // Create boundary if not exists or if type changed
         if (!this.boundary ||
@@ -255,7 +322,7 @@ export class GridGenRenderer extends BaseRenderer {
                 // Update shape parameter
                 this.params.shape = 'circular';
 
-                // Create circular boundary
+                // Create circular boundary - with no offset
                 this.boundary = new CircularBoundary(centerX, centerY, scaledRadius, params.scale);
 
                 console.log("Created circular boundary", {
@@ -271,7 +338,7 @@ export class GridGenRenderer extends BaseRenderer {
                 const width = params.boundaryParams?.width || this.params.physicalWidth;
                 const height = params.boundaryParams?.height || this.params.physicalHeight;
 
-                // Calculate the scaled visual dimensions
+                // Calculate the scaled visual dimensions for rendering
                 const renderScale = this.getRenderScale();
                 const visualWidth = width * renderScale;
                 const visualHeight = height * renderScale;
@@ -279,12 +346,25 @@ export class GridGenRenderer extends BaseRenderer {
                 // Update shape parameter
                 this.params.shape = 'rectangular';
 
-                // Create rectangular boundary
+                // Make sure the visual dimensions aren't too small
+                const minVisualSize = 240;
+                const safeVisualWidth = Math.max(minVisualSize, visualWidth);
+                const safeVisualHeight = Math.max(minVisualSize, visualHeight);
+
+                // Log if we had to adjust the sizes
+                if (safeVisualWidth !== visualWidth || safeVisualHeight !== visualHeight) {
+                    console.warn("Adjusted visual dimensions to prevent collapse:", {
+                        original: { width: visualWidth, height: visualHeight },
+                        adjusted: { width: safeVisualWidth, height: safeVisualHeight }
+                    });
+                }
+
+                // Create rectangular boundary with safe dimensions - with no offset
                 this.boundary = new RectangularBoundary(
                     centerX,
                     centerY,
-                    visualWidth,
-                    visualHeight,
+                    safeVisualWidth,
+                    safeVisualHeight,
                     params.scale
                 );
 
@@ -298,8 +378,8 @@ export class GridGenRenderer extends BaseRenderer {
                 console.log("Created rectangular boundary", {
                     centerX: centerX,
                     centerY: centerY,
-                    visualWidth: visualWidth,
-                    visualHeight: visualHeight,
+                    visualWidth: safeVisualWidth,
+                    visualHeight: safeVisualHeight,
                     physicalWidth: params.physicalWidth,
                     physicalHeight: params.physicalHeight
                 });
@@ -308,14 +388,42 @@ export class GridGenRenderer extends BaseRenderer {
             // Update existing boundary scale
             this.boundary.setScale(params.scale);
 
+            // Update boundary center - WITHOUT offset
+            // We want the boundary to remain fixed while cells are offset
+            this.boundary.centerX = centerX;
+            this.boundary.centerY = centerY;
+
+            console.log("Updated boundary center:", {
+                centerX,
+                centerY,
+                offsets: {
+                    x: params.centerOffsetX || 0,
+                    y: params.centerOffsetY || 0
+                }
+            });
+
             // If boundary is rectangular, update dimensions to match params
             if (this.boundary instanceof RectangularBoundary) {
                 const renderScale = this.getRenderScale();
                 const visualWidth = this.params.physicalWidth * renderScale;
                 const visualHeight = this.params.physicalHeight * renderScale;
 
-                this.boundary.width = visualWidth;
-                this.boundary.height = visualHeight;
+                // Make sure the visual dimensions aren't too small
+                const minVisualSize = 240;
+                const safeVisualWidth = Math.max(minVisualSize, visualWidth);
+                const safeVisualHeight = Math.max(minVisualSize, visualHeight);
+
+                // Update boundary dimensions
+                this.boundary.width = safeVisualWidth;
+                this.boundary.height = safeVisualHeight;
+
+                console.log("Updated rectangular boundary:", {
+                    visualWidth: safeVisualWidth,
+                    visualHeight: safeVisualHeight,
+                    physicalWidth: this.params.physicalWidth,
+                    physicalHeight: this.params.physicalHeight,
+                    renderScale: renderScale
+                });
 
                 // Update params to match
                 if (!params.boundaryParams) {
@@ -338,6 +446,20 @@ export class GridGenRenderer extends BaseRenderer {
     }
 
     updateRenderables() {
+        // Store original boundary center and parameters
+        const originalState = {
+            center: this.boundary ? {
+                x: this.boundary.centerX,
+                y: this.boundary.centerY
+            } : null,
+            physicalWidth: this.params.physicalWidth,
+            physicalHeight: this.params.physicalHeight,
+            centerOffsetX: this.params.centerOffsetX || 0,
+            centerOffsetY: this.params.centerOffsetY || 0
+        };
+
+        console.log("UpdateRenderables - Original state:", originalState);
+
         // Get background color from params or default to black
         const bgColor = this.grid.colors && this.grid.colors.background
             ? [...this.grid.colors.background, 1.0] // Add alpha=1
@@ -373,14 +495,29 @@ export class GridGenRenderer extends BaseRenderer {
         // Get canvas dimensions from params
         const canvasDims = this.getCanvasDimensions();
 
-        // Calculate the base center position and apply offset
-        const baseCenter = {
-            x: canvasDims.centerX,
-            y: canvasDims.centerY
-        };
+        // Use the center from the boundary directly
+        let centerX, centerY;
+        if (this.boundary && originalState.center) {
+            // Use the original center position stored from the boundary
+            centerX = originalState.center.x;
+            centerY = originalState.center.y;
 
-        const centerX = baseCenter.x + (this.grid.centerOffsetX || 0);
-        const centerY = baseCenter.y + (this.grid.centerOffsetY || 0);
+            // Make sure the boundary center is synchronized
+            this.boundary.centerX = centerX;
+            this.boundary.centerY = centerY;
+        } else {
+            // Calculate center from canvas dimensions and offsets as fallback
+            centerX = canvasDims.centerX + originalState.centerOffsetX;
+            centerY = canvasDims.centerY + originalState.centerOffsetY;
+        }
+
+        // Log current center position for debugging
+        console.log("Rendering with center:", {
+            centerX,
+            centerY,
+            originalState: originalState,
+            canvasDims: canvasDims
+        });
 
         // Draw reference shapes based on boundary type
         if (this.boundary instanceof CircularBoundary) {
@@ -401,11 +538,22 @@ export class GridGenRenderer extends BaseRenderer {
             );
         }
 
-        // Generate grid
-        const rectangles = this.generateRectangles(this.grid);
+        // Recreate rectangles array from cached data if available, otherwise generate new grid
+        let rectangles;
+        if (this._cachedRectangles && this._cachedRectangles.length > 0) {
+            rectangles = this._cachedRectangles;
+            console.log("Using cached grid with", rectangles.length, "cells");
+        } else {
+            // Generate grid
+            rectangles = this.generateRectangles(this.grid);
 
-        // Classify cells using the boundary system
-        this.classifyCells(rectangles, this.grid.allowCut);
+            // Cache the generated rectangles for future UI updates
+            this._cachedRectangles = rectangles;
+            console.log("Generated new grid with", rectangles.length, "cells");
+
+            // Classify cells only for newly generated grid
+            this.classifyCells(rectangles, this.grid.allowCut);
+        }
 
         // Store color parameters to be used in rendering
         if (this.grid.colors) {
@@ -443,35 +591,48 @@ export class GridGenRenderer extends BaseRenderer {
         // Update cell count display
         this.updateCellCountDisplay(rectangles, this.grid.showCellCounts);
 
-        // Check if we have valid gridParams before updating params
-        if (this.gridParams && this.gridParams.physicalWidth > 0 && this.gridParams.physicalHeight > 0) {
-            // Update params with actual grid values
-            this.grid.cols = this.gridParams.cols;
-            this.grid.rows = this.gridParams.rows;
-            this.grid.width = this.gridParams.width;
-            this.grid.height = this.gridParams.height;
+        // Update params with grid values, but don't override the physical dimensions
+        this.grid.cols = this.gridParams?.cols || this.grid.cols;
+        this.grid.rows = this.gridParams?.rows || this.grid.rows;
+        this.grid.width = this.gridParams?.width || this.grid.width;
+        this.grid.height = this.gridParams?.height || this.grid.height;
 
-            // Update calculated cell dimensions for UI 
+        // Update calculated cell dimensions for UI 
+        if (this.gridParams) {
             this.grid.calculatedCellWidth = this.gridParams.physicalWidth;
             this.grid.calculatedCellHeight = this.gridParams.physicalHeight;
-
-            // Log stats for debugging
-            console.log("Grid stats update:", {
-                calculatedCellWidth: this.grid.calculatedCellWidth,
-                calculatedCellHeight: this.grid.calculatedCellHeight,
-                physicalWidth: this.gridParams.physicalWidth,
-                physicalHeight: this.gridParams.physicalHeight,
-                screenPhysicalWidth: this.grid.physicalWidth,
-                screenPhysicalHeight: this.grid.physicalHeight
-            });
-        } else {
-            console.warn("Invalid gridParams detected:", this.gridParams);
         }
 
         // Update cell counts
         this.grid.cellCount.total = rectangles.length;
         this.grid.cellCount.inside = rectangles.filter(r => r.cellType === 'inside').length;
         this.grid.cellCount.boundary = rectangles.filter(r => r.cellType === 'boundary').length;
+
+        // Restore original physical dimensions
+        this.params.physicalWidth = originalState.physicalWidth;
+        this.params.physicalHeight = originalState.physicalHeight;
+
+        // Make sure boundary center is preserved
+        if (this.boundary && originalState.center) {
+            this.boundary.centerX = originalState.center.x;
+            this.boundary.centerY = originalState.center.y;
+        }
+
+        // Log final grid status
+        console.log("Renderables updated with preserved state:", {
+            physicalDimensions: {
+                width: this.params.physicalWidth,
+                height: this.params.physicalHeight
+            },
+            calculatedCellDimensions: {
+                width: this.grid.calculatedCellWidth,
+                height: this.grid.calculatedCellHeight
+            },
+            boundaryCenter: this.boundary ? {
+                x: this.boundary.centerX,
+                y: this.boundary.centerY
+            } : null
+        });
     }
 
     classifyCells(rectangles, allowCut = 1) {
@@ -490,8 +651,24 @@ export class GridGenRenderer extends BaseRenderer {
             // Get the previous cellType for comparison
             const prevType = rect.cellType;
 
-            // Classify the cell
-            rect.cellType = this.boundary.classifyCell(rect, allowCut);
+            // Get offsets stored with the rectangle
+            const xOffset = rect.xOffset || 0;
+            const yOffset = rect.yOffset || 0;
+
+            // Create an offset-adjusted rectangle for boundary classification
+            // This ensures we check position relative to boundary without offset
+            const offsetAdjustedRect = {
+                ...rect,
+                // Adjust the position to remove offset for boundary checks
+                x: rect.x - xOffset,
+                y: rect.y - yOffset,
+                // The physical position needs to be adjusted too
+                centerX: (rect.x + rect.width / 2) - xOffset,
+                centerY: (rect.y + rect.height / 2) - yOffset
+            };
+
+            // Classify the cell using the adjusted coordinates
+            rect.cellType = this.boundary.classifyCell(offsetAdjustedRect, allowCut);
 
             // Count cell types
             if (rect.cellType === 'inside') insideCount++;
@@ -503,7 +680,8 @@ export class GridGenRenderer extends BaseRenderer {
                 console.warn(`Cell type changed from ${prevType} to ${rect.cellType}`,
                     {
                         x: rect.x, y: rect.y, width: rect.width, height: rect.height,
-                        cornersOutside: rect.cornersOutside, cornersInside: rect.cornersInside
+                        cornersOutside: rect.cornersOutside, cornersInside: rect.cornersInside,
+                        offsetX: xOffset, offsetY: yOffset
                     });
             }
         });
@@ -570,19 +748,20 @@ export class GridGenRenderer extends BaseRenderer {
         const boundary = this.boundary;
         const center = boundary.getCenter();
 
-        // Get canvas dimensions from params
-        const canvasDims = this.getCanvasDimensions();
+        // Get the center position directly from the boundary
+        const centerX = center.x;
+        const centerY = center.y;
 
-        // Apply offset to center coordinates
-        const baseCenter = {
-            x: canvasDims.centerX,
-            y: canvasDims.centerY
-        };
-
-        const centerOffsetX = this.grid.centerOffsetX || 0;
-        const centerOffsetY = this.grid.centerOffsetY || 0;
-        const centerX = baseCenter.x + centerOffsetX;
-        const centerY = baseCenter.y + centerOffsetY;
+        // Log center position used for masked rendering
+        console.log("Masked rendering center:", {
+            centerX,
+            centerY,
+            boundaryCenter: center,
+            gridOffsets: {
+                x: this.grid.centerOffsetX || 0,
+                y: this.grid.centerOffsetY || 0
+            }
+        });
 
         // Clear with background color
         gl.clearColor(colors.background[0], colors.background[1], colors.background[2], colors.background[3]);
@@ -651,13 +830,13 @@ export class GridGenRenderer extends BaseRenderer {
         gl.colorMask(false, false, false, false); // Don't draw to color buffer
         if (this.boundary instanceof CircularBoundary) {
             // For circular boundary, use a circle stencil
-            this.drawCircle(center.x, center.y, this.boundary.getRadius(), [1, 1, 1, 1]);
+            this.drawCircle(centerX, centerY, this.boundary.getRadius(), [1, 1, 1, 1]);
         } else if (this.boundary instanceof RectangularBoundary) {
             // For rectangular boundary, use a rectangle stencil
             const halfWidth = (this.boundary.width * this.boundary.getScale()) / 2;
             const halfHeight = (this.boundary.height * this.boundary.getScale()) / 2;
             this.drawRectangle(
-                center.x - halfWidth, center.y - halfHeight,
+                centerX - halfWidth, centerY - halfHeight,
                 this.boundary.width * this.boundary.getScale(),
                 this.boundary.height * this.boundary.getScale(),
                 [1, 1, 1, 1]
@@ -691,6 +870,22 @@ export class GridGenRenderer extends BaseRenderer {
     }
 
     updateCellIndices(rectangles, displayMode, indexTextColor) {
+        // Make sure we don't reset any center offsets when toggling indices
+        console.log("Updating cell indices, current offsets:", {
+            centerOffsetX: this.grid.centerOffsetX || 0,
+            centerOffsetY: this.grid.centerOffsetY || 0,
+            boundary: this.boundary ? {
+                centerX: this.boundary.centerX,
+                centerY: this.boundary.centerY
+            } : null
+        });
+
+        // Preserve current physical dimensions - we should not be modifying these
+        const originalDimensions = {
+            physicalWidth: this.params.physicalWidth,
+            physicalHeight: this.params.physicalHeight
+        };
+
         // Determine which cells to display indices for
         const filteredRects = rectangles.filter(rect => {
             // Special case: When allowCut is 0, show indices for all cells
@@ -768,9 +963,30 @@ export class GridGenRenderer extends BaseRenderer {
 
             this.textOverlay.appendChild(label);
         });
+
+        // Restore original physical dimensions if they've changed
+        if (this.params.physicalWidth !== originalDimensions.physicalWidth ||
+            this.params.physicalHeight !== originalDimensions.physicalHeight) {
+
+            console.log("Restoring original physical dimensions after indices update:", originalDimensions);
+            this.params.physicalWidth = originalDimensions.physicalWidth;
+            this.params.physicalHeight = originalDimensions.physicalHeight;
+
+            // Update boundary params too
+            if (this.params.boundaryParams) {
+                this.params.boundaryParams.width = originalDimensions.physicalWidth;
+                this.params.boundaryParams.height = originalDimensions.physicalHeight;
+            }
+        }
     }
 
     updateCellCountDisplay(rectangles, show) {
+        // Preserve current physical dimensions - we should not be modifying these
+        const originalDimensions = {
+            physicalWidth: this.params.physicalWidth,
+            physicalHeight: this.params.physicalHeight
+        };
+
         // Update cell count overlay
         this.countOverlay.style.display = show ? 'block' : 'none';
 
@@ -837,6 +1053,21 @@ export class GridGenRenderer extends BaseRenderer {
                 </div>
             `;
         }
+
+        // Restore original physical dimensions if they've changed
+        if (this.params.physicalWidth !== originalDimensions.physicalWidth ||
+            this.params.physicalHeight !== originalDimensions.physicalHeight) {
+
+            console.log("Restoring original physical dimensions after cell count display:", originalDimensions);
+            this.params.physicalWidth = originalDimensions.physicalWidth;
+            this.params.physicalHeight = originalDimensions.physicalHeight;
+
+            // Update boundary params too
+            if (this.params.boundaryParams) {
+                this.params.boundaryParams.width = originalDimensions.physicalWidth;
+                this.params.boundaryParams.height = originalDimensions.physicalHeight;
+            }
+        }
     }
 
     lineIntersectsCircle(x1, y1, x2, y2, cx, cy, r) {
@@ -870,18 +1101,22 @@ export class GridGenRenderer extends BaseRenderer {
     generateRectangles(params) {
         let bestRects = [];
 
-        // Get canvas dimensions from params
-        const canvasDims = this.getCanvasDimensions();
+        // Get the center position directly from the boundary for consistent positioning
+        // BUT do not include offsets here - we apply them to individual cells instead
+        const center = this.boundary.getCenter();
+        // Get base center without offsets
+        const centerX = center.x;
+        const centerY = center.y;
 
-        // Calculate the base center position and apply offset
-        const baseCenter = {
-            x: canvasDims.centerX,
-            y: canvasDims.centerY
-        };
+        // Store offsets separately to apply to cell positions only
+        const offsetX = params.centerOffsetX || 0;
+        const offsetY = params.centerOffsetY || 0;
 
-        // Apply the center offset to the grid position
-        const centerX = baseCenter.x + (params.centerOffsetX || 0);
-        const centerY = baseCenter.y + (params.centerOffsetY || 0);
+        // Log center position used for grid generation
+        console.log("Grid generation using:", {
+            boundaryCenter: { x: centerX, y: centerY },
+            offsets: { x: offsetX, y: offsetY }
+        });
 
         const radius = this.boundary.getRadius();
         const allowCut = params.allowCut !== undefined ? params.allowCut : 1;
@@ -988,9 +1223,10 @@ export class GridGenRenderer extends BaseRenderer {
                     const dx = c * stepX;
                     const dy = r * stepY;
 
-                    // Cell center position in canvas coordinates
-                    const cellCenterX = centerX + dx;
-                    const cellCenterY = centerY + dy;
+                    // Apply grid center offset to cell positions only, not to the boundary
+                    // This is the key change: add the offset to the dx/dy position
+                    const cellCenterX = centerX + dx + offsetX;
+                    const cellCenterY = centerY + dy + offsetY;
 
                     // Cell corners
                     const left = cellCenterX - visualScaledW / 2;
@@ -998,8 +1234,12 @@ export class GridGenRenderer extends BaseRenderer {
                     const top = cellCenterY - visualScaledH / 2;
                     const bottom = cellCenterY + visualScaledH / 2;
 
-                    // Check if cell center is inside the boundary
-                    const centerInside = this.boundary.isPointInside(cellCenterX, cellCenterY);
+                    // Check if cell center is inside the boundary - Note: using the boundary center without offset
+                    const cellRelativeToCenter = {
+                        x: cellCenterX - offsetX,
+                        y: cellCenterY - offsetY
+                    };
+                    const centerInside = this.boundary.isPointInside(cellRelativeToCenter.x, cellRelativeToCenter.y);
 
                     // Check corners for partial cells if allowing cuts
                     let includeCell = centerInside;
@@ -1007,10 +1247,10 @@ export class GridGenRenderer extends BaseRenderer {
 
                     if (boundaryMode === 'partial' && !centerInside) {
                         const corners = [
-                            { x: left, y: top },
-                            { x: right, y: top },
-                            { x: left, y: bottom },
-                            { x: right, y: bottom }
+                            { x: left - offsetX, y: top - offsetY },      // Adjust for offset
+                            { x: right - offsetX, y: top - offsetY },     // Adjust for offset
+                            { x: left - offsetX, y: bottom - offsetY },   // Adjust for offset
+                            { x: right - offsetX, y: bottom - offsetY }   // Adjust for offset
                         ];
 
                         // Count corners outside the boundary
@@ -1026,12 +1266,12 @@ export class GridGenRenderer extends BaseRenderer {
                         // For edge case, check edge intersections when all corners are outside
                         if (!includeCell && cornersOutside === 4 && allowCut > 0) {
                             const edges = [
-                                // Horizontal edges
-                                { x1: left, y1: top, x2: right, y2: top },
-                                { x1: left, y1: bottom, x2: right, y2: bottom },
-                                // Vertical edges
-                                { x1: left, y1: top, x2: left, y2: bottom },
-                                { x1: right, y1: top, x2: right, y2: bottom }
+                                // Horizontal edges (adjusted for offset)
+                                { x1: left - offsetX, y1: top - offsetY, x2: right - offsetX, y2: top - offsetY },
+                                { x1: left - offsetX, y1: bottom - offsetY, x2: right - offsetX, y2: bottom - offsetY },
+                                // Vertical edges (adjusted for offset)
+                                { x1: left - offsetX, y1: top - offsetY, x2: left - offsetX, y2: bottom - offsetY },
+                                { x1: right - offsetX, y1: top - offsetY, x2: right - offsetX, y2: bottom - offsetY }
                             ];
 
                             // Check if any edge intersects the boundary
@@ -1056,7 +1296,9 @@ export class GridGenRenderer extends BaseRenderer {
                             color: [0.5, 0.5, 0.5, 1],
                             cellType: 'unknown', // Will be classified later
                             cornersOutside: cornersOutside, // Store corner count
-                            cornersInside: 4 - cornersOutside
+                            cornersInside: 4 - cornersOutside,
+                            xOffset: offsetX,  // Store the offset used to generate this cell
+                            yOffset: offsetY   // This helps with debugging
                         });
 
                         // Stop if we've reached the target number of cells
@@ -1081,7 +1323,8 @@ export class GridGenRenderer extends BaseRenderer {
                     visualScaledH: visualScaledH,
                     visualScaledW: visualScaledW,
                     cols: cols,
-                    rows: rows
+                    rows: rows,
+                    offsets: { x: offsetX, y: offsetY }  // Log offsets
                 });
 
                 this.gridParams = {
@@ -1117,7 +1360,8 @@ export class GridGenRenderer extends BaseRenderer {
                 physicalCellW: bestPhysicalCellW,
                 physicalCellH: bestPhysicalCellH,
                 cols: this.gridParams.cols,
-                rows: this.gridParams.rows
+                rows: this.gridParams.rows,
+                offsets: { x: offsetX, y: offsetY }  // Log offsets
             });
         }
 
@@ -1126,6 +1370,22 @@ export class GridGenRenderer extends BaseRenderer {
 
     // New method to display cell centers
     updateCellCenters(rectangles, displayMode) {
+        // Make sure we don't reset any center offsets when toggling cell centers
+        console.log("Updating cell centers, current offsets:", {
+            centerOffsetX: this.grid.centerOffsetX || 0,
+            centerOffsetY: this.grid.centerOffsetY || 0,
+            boundary: this.boundary ? {
+                centerX: this.boundary.centerX,
+                centerY: this.boundary.centerY
+            } : null
+        });
+
+        // Preserve current physical dimensions - we should not be modifying these
+        const originalDimensions = {
+            physicalWidth: this.params.physicalWidth,
+            physicalHeight: this.params.physicalHeight
+        };
+
         // Determine which cells to display centers for
         const filteredRects = rectangles.filter(rect => {
             // Special case: When allowCut is 0, show centers for all cells
@@ -1191,6 +1451,21 @@ export class GridGenRenderer extends BaseRenderer {
 
             this.centerOverlay.appendChild(dot);
         });
+
+        // Restore original physical dimensions if they've changed
+        if (this.params.physicalWidth !== originalDimensions.physicalWidth ||
+            this.params.physicalHeight !== originalDimensions.physicalHeight) {
+
+            console.log("Restoring original physical dimensions after cell centers update:", originalDimensions);
+            this.params.physicalWidth = originalDimensions.physicalWidth;
+            this.params.physicalHeight = originalDimensions.physicalHeight;
+
+            // Update boundary params too
+            if (this.params.boundaryParams) {
+                this.params.boundaryParams.width = originalDimensions.physicalWidth;
+                this.params.boundaryParams.height = originalDimensions.physicalHeight;
+            }
+        }
     }
 
     // Draw a circle outline
@@ -1272,5 +1547,59 @@ export class GridGenRenderer extends BaseRenderer {
         gl.disableVertexAttribArray(this.programInfo.attribLocations.position);
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.deleteBuffer(buffer);
+    }
+
+    // New method to update UI state without regenerating the grid
+    updateUIState(params) {
+        // Store the current center position to restore later
+        const originalCenter = this.boundary ? {
+            x: this.boundary.centerX,
+            y: this.boundary.centerY
+        } : null;
+
+        console.log("Updating UI state with params:", {
+            showCellCenters: params.showCellCenters,
+            showIndices: params.showIndices,
+            showCellCounts: params.showCellCounts,
+            displayMode: params.displayMode,
+            centerOffsets: { x: params.centerOffsetX || 0, y: params.centerOffsetY || 0 },
+            currentCenter: originalCenter
+        });
+
+        // Use the current parameters
+        this.params = params;
+        this.grid = params;
+
+        // Do NOT recalculate the grid or boundary here
+        // Only update visualization elements based on the current state
+
+        // Clear color overlays
+        const bgColor = this.grid.colors && this.grid.colors.background
+            ? [...this.grid.colors.background, 1.0] // Add alpha=1
+            : [0, 0, 0, 1.0];
+
+        // Clear canvas and overlays
+        this.gl.clearColor(bgColor[0], bgColor[1], bgColor[2], bgColor[3]);
+        this.gl.clear(this.gl.COLOR_BUFFER_BIT | this.gl.STENCIL_BUFFER_BIT);
+        this.textOverlay.innerHTML = '';
+        this.centerOverlay.innerHTML = '';
+
+        // Ensure boundary center remains consistent
+        if (this.boundary && originalCenter) {
+            this.boundary.centerX = originalCenter.x;
+            this.boundary.centerY = originalCenter.y;
+        }
+
+        // Update renderables without regenerating the grid
+        this.updateRenderables();
+
+        // Make sure original center is still preserved
+        if (this.boundary && originalCenter) {
+            if (this.boundary.centerX !== originalCenter.x || this.boundary.centerY !== originalCenter.y) {
+                console.log("Restoring boundary center after UI update:", originalCenter);
+                this.boundary.centerX = originalCenter.x;
+                this.boundary.centerY = originalCenter.y;
+            }
+        }
     }
 } 
