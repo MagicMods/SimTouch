@@ -17,6 +17,7 @@ export class CircularBoundary extends BaseBoundary {
     }
 
     classifyCell(cell, allowCut = 1) {
+        // Get coordinates of cell corners and edges
         const corners = [
             { x: cell.x, y: cell.y }, // Top-left
             { x: cell.x + cell.width, y: cell.y }, // Top-right
@@ -24,15 +25,17 @@ export class CircularBoundary extends BaseBoundary {
             { x: cell.x + cell.width, y: cell.y + cell.height } // Bottom-right
         ];
 
+        // Calculate cell center
         const centerX = cell.x + cell.width / 2;
         const centerY = cell.y + cell.height / 2;
         const centerDist = Math.hypot(centerX - this.centerX, centerY - this.centerY);
+        const centerInside = centerDist <= this.getRadius();
 
-        // Count corners outside and inside the boundary
+        // Determine how many corners are outside the boundary
         const cornersOutside = this.getCornersOutside(cell);
         const cornersInside = 4 - cornersOutside;
 
-        // Store corner count in the cell for UI display and debugging
+        // Store corner counts in the cell for UI display and debugging
         cell.cornersOutside = cornersOutside;
         cell.cornersInside = cornersInside;
 
@@ -46,20 +49,35 @@ export class CircularBoundary extends BaseBoundary {
             topLeft: cornerStatuses[0],
             topRight: cornerStatuses[1],
             bottomLeft: cornerStatuses[2],
-            bottomRight: cornerStatuses[3]
+            bottomRight: cornerStatuses[3],
+            centerDist: centerDist,
+            radius: this.getRadius(),
+            centerInside: centerInside
         };
 
-        // Always include cells that are fully inside the boundary
+        // Case 1: Cell is completely inside (all corners inside)
         if (cornersOutside === 0) {
             return 'inside';
         }
 
-        // Center is inside or we allow the specific number of corners to be outside
-        if ((centerDist <= this.getRadius()) || (cornersOutside <= allowCut)) {
+        // Case 2: Special handling based on allowCut parameter
+        if (allowCut === 0) {
+            // With allowCut=0, only cells with center inside are considered boundary or inside
+            return centerInside ? 'boundary' : 'outside';
+        }
+
+        // Case 3: Center is inside boundary = boundary cell
+        if (centerInside) {
             return 'boundary';
         }
 
-        // Special case: Check edge intersections for cells with all corners outside
+        // Case 4: Some corners are inside, check against allowCut threshold
+        if (cornersInside > 0 && cornersOutside <= allowCut) {
+            return 'boundary';
+        }
+
+        // Case 5: Check if any edge of the cell intersects with the boundary
+        // This handles cells that have all corners outside but still intersect the boundary
         if (cornersOutside === 4 && allowCut > 0) {
             const edges = [
                 // Horizontal edges

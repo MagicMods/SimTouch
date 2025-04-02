@@ -19,6 +19,7 @@ export class PresetManager {
               // Physical dimensions
               "Screen Width": 240,
               "Screen Height": 240,
+              "Screen Diameter": 240,
               "Screen Shape": "circular",
               "Center X Offset": 0,
               "Center Y Offset": 0,
@@ -40,6 +41,7 @@ export class PresetManager {
             controllers: {
               "Screen Width": 240,
               "Screen Height": 240,
+              "Screen Diameter": 240,
               "Screen Shape": "circular",
               "Center X Offset": 0,
               "Center Y Offset": 0,
@@ -57,6 +59,7 @@ export class PresetManager {
             controllers: {
               "Screen Width": 480,
               "Screen Height": 480,
+              "Screen Diameter": 480,
               "Screen Shape": "circular",
               "Center X Offset": 0,
               "Center Y Offset": 0,
@@ -250,7 +253,11 @@ export class PresetManager {
       const uiComponent = this.getUIComponent(presetType);
       if (uiComponent && uiComponent.main && uiComponent.main.params) {
         const params = uiComponent.main.params;
-        suggestedName = `${params.physicalWidth}x${params.physicalHeight}_${params.boundaryType}_${params.target}`;
+        if (params.boundaryType === 'circular') {
+          suggestedName = `${params.physicalWidth}x${params.physicalWidth}_${params.boundaryType}_${params.target}`;
+        } else {
+          suggestedName = `${params.physicalWidth}x${params.physicalHeight}_${params.boundaryType}_${params.target}`;
+        }
       }
     }
 

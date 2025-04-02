@@ -176,10 +176,60 @@ export class GridGenRenderer extends BaseRenderer {
         gl.bindRenderbuffer(gl.RENDERBUFFER, null);
     }
 
+    // Method to properly initialize physical dimensions if they're corrupted
+    ensureValidDimensions() {
+        // Check if physical dimensions are valid (sometimes they get corrupted during transitions)
+        if (!this.params.physicalWidth || this.params.physicalWidth < 120) {
+            console.warn("Invalid physicalWidth detected, resetting to default", this.params.physicalWidth);
+            this.params.physicalWidth = 240;
+        }
+
+        if (!this.params.physicalHeight || this.params.physicalHeight < 120) {
+            console.warn("Invalid physicalHeight detected, resetting to default", this.params.physicalHeight);
+            this.params.physicalHeight = 240;
+        }
+
+        // For circular boundaries, ensure width=height
+        if (this.params.boundaryType === 'circular' && this.params.physicalWidth !== this.params.physicalHeight) {
+            console.log("Circular boundary: ensuring width = height", {
+                old: { width: this.params.physicalWidth, height: this.params.physicalHeight },
+                new: { width: this.params.physicalWidth, height: this.params.physicalWidth }
+            });
+            this.params.physicalHeight = this.params.physicalWidth;
+        }
+
+        // Initialize boundary params if needed
+        if (!this.params.boundaryParams) {
+            this.params.boundaryParams = {
+                width: this.params.physicalWidth,
+                height: this.params.physicalHeight
+            };
+        }
+    }
+
     updateGrid(params) {
+        // Store original dimensions for debugging
+        const originalDimensions = {
+            width: params.physicalWidth,
+            height: params.physicalHeight,
+            boundaryType: params.boundaryType
+        };
+
         // Store params for reference
         this.params = params;
         this.grid = params;
+
+        // Make sure dimensions are valid
+        this.ensureValidDimensions();
+
+        console.log("UpdateGrid called - Dimensions:", {
+            original: originalDimensions,
+            current: {
+                width: this.params.physicalWidth,
+                height: this.params.physicalHeight,
+                boundaryType: this.params.boundaryType
+            }
+        });
 
         // Get canvas dimensions from params
         const canvasDims = this.getCanvasDimensions();
@@ -192,6 +242,13 @@ export class GridGenRenderer extends BaseRenderer {
             (params.boundaryType === 'rectangular' && !(this.boundary instanceof RectangularBoundary))) {
 
             if (params.boundaryType === 'circular') {
+                // For circular screens, ensure width and height are equal (using width as diameter)
+                if (params.physicalWidth !== params.physicalHeight) {
+                    console.log("Adjusting dimensions for circular screen: setting height equal to width",
+                        { width: params.physicalWidth, height: params.physicalHeight });
+                    params.physicalHeight = params.physicalWidth;
+                }
+
                 // For circular boundary, use a radius based on canvas dimensions
                 const scaledRadius = Math.min(canvasDims.width, canvasDims.height) / 2;
 
@@ -200,10 +257,19 @@ export class GridGenRenderer extends BaseRenderer {
 
                 // Create circular boundary
                 this.boundary = new CircularBoundary(centerX, centerY, scaledRadius, params.scale);
+
+                console.log("Created circular boundary", {
+                    centerX: centerX,
+                    centerY: centerY,
+                    radius: scaledRadius,
+                    scale: params.scale,
+                    physicalWidth: params.physicalWidth,
+                    physicalHeight: params.physicalHeight
+                });
             } else {
                 // For rectangular boundary, use dimensions from params
-                const width = params.boundaryParams.width || this.params.physicalWidth;
-                const height = params.boundaryParams.height || this.params.physicalHeight;
+                const width = params.boundaryParams?.width || this.params.physicalWidth;
+                const height = params.boundaryParams?.height || this.params.physicalHeight;
 
                 // Calculate the scaled visual dimensions
                 const renderScale = this.getRenderScale();
@@ -223,8 +289,20 @@ export class GridGenRenderer extends BaseRenderer {
                 );
 
                 // Make sure boundary params are updated to match params
+                if (!params.boundaryParams) {
+                    params.boundaryParams = {};
+                }
                 params.boundaryParams.width = this.params.physicalWidth;
                 params.boundaryParams.height = this.params.physicalHeight;
+
+                console.log("Created rectangular boundary", {
+                    centerX: centerX,
+                    centerY: centerY,
+                    visualWidth: visualWidth,
+                    visualHeight: visualHeight,
+                    physicalWidth: params.physicalWidth,
+                    physicalHeight: params.physicalHeight
+                });
             }
         } else {
             // Update existing boundary scale
@@ -240,8 +318,18 @@ export class GridGenRenderer extends BaseRenderer {
                 this.boundary.height = visualHeight;
 
                 // Update params to match
+                if (!params.boundaryParams) {
+                    params.boundaryParams = {};
+                }
                 params.boundaryParams.width = this.params.physicalWidth;
                 params.boundaryParams.height = this.params.physicalHeight;
+            } else if (this.boundary instanceof CircularBoundary) {
+                // For circular boundary, ensure width and height are equal
+                if (params.physicalWidth !== params.physicalHeight) {
+                    console.log("Updating circular dimensions: setting height equal to width",
+                        { width: params.physicalWidth, height: params.physicalHeight });
+                    params.physicalHeight = params.physicalWidth;
+                }
             }
         }
 
@@ -355,20 +443,72 @@ export class GridGenRenderer extends BaseRenderer {
         // Update cell count display
         this.updateCellCountDisplay(rectangles, this.grid.showCellCounts);
 
-        // Update params with actual values
-        this.grid.cols = this.gridParams.cols;
-        this.grid.rows = this.gridParams.rows;
-        this.grid.width = this.gridParams.width;
-        this.grid.height = this.gridParams.height;
+        // Check if we have valid gridParams before updating params
+        if (this.gridParams && this.gridParams.physicalWidth > 0 && this.gridParams.physicalHeight > 0) {
+            // Update params with actual grid values
+            this.grid.cols = this.gridParams.cols;
+            this.grid.rows = this.gridParams.rows;
+            this.grid.width = this.gridParams.width;
+            this.grid.height = this.gridParams.height;
+
+            // Update calculated cell dimensions for UI 
+            this.grid.calculatedCellWidth = this.gridParams.physicalWidth;
+            this.grid.calculatedCellHeight = this.gridParams.physicalHeight;
+
+            // Log stats for debugging
+            console.log("Grid stats update:", {
+                calculatedCellWidth: this.grid.calculatedCellWidth,
+                calculatedCellHeight: this.grid.calculatedCellHeight,
+                physicalWidth: this.gridParams.physicalWidth,
+                physicalHeight: this.gridParams.physicalHeight,
+                screenPhysicalWidth: this.grid.physicalWidth,
+                screenPhysicalHeight: this.grid.physicalHeight
+            });
+        } else {
+            console.warn("Invalid gridParams detected:", this.gridParams);
+        }
+
+        // Update cell counts
         this.grid.cellCount.total = rectangles.length;
         this.grid.cellCount.inside = rectangles.filter(r => r.cellType === 'inside').length;
         this.grid.cellCount.boundary = rectangles.filter(r => r.cellType === 'boundary').length;
     }
 
     classifyCells(rectangles, allowCut = 1) {
+        // Log the boundary information for debugging
+        let boundaryInfo = this.boundary instanceof CircularBoundary
+            ? { type: 'circular', center: this.boundary.getCenter(), radius: this.boundary.getRadius() }
+            : { type: 'rectangular', center: this.boundary.getCenter(), width: this.boundary.width, height: this.boundary.height };
+
+        console.log("Classifying cells with boundary:", boundaryInfo, "allowCut:", allowCut);
+
+        let insideCount = 0;
+        let boundaryCount = 0;
+        let outsideCount = 0;
+
         rectangles.forEach(rect => {
+            // Get the previous cellType for comparison
+            const prevType = rect.cellType;
+
+            // Classify the cell
             rect.cellType = this.boundary.classifyCell(rect, allowCut);
+
+            // Count cell types
+            if (rect.cellType === 'inside') insideCount++;
+            else if (rect.cellType === 'boundary') boundaryCount++;
+            else outsideCount++;
+
+            // Log if the cell type changed (for debugging inconsistencies)
+            if (prevType !== 'unknown' && prevType !== rect.cellType) {
+                console.warn(`Cell type changed from ${prevType} to ${rect.cellType}`,
+                    {
+                        x: rect.x, y: rect.y, width: rect.width, height: rect.height,
+                        cornersOutside: rect.cornersOutside, cornersInside: rect.cornersInside
+                    });
+            }
         });
+
+        console.log(`Cell classification complete: inside=${insideCount}, boundary=${boundaryCount}, outside=${outsideCount}`);
     }
 
     renderCells(rectangles, displayMode) {
@@ -747,6 +887,9 @@ export class GridGenRenderer extends BaseRenderer {
         const allowCut = params.allowCut !== undefined ? params.allowCut : 1;
         const boundaryMode = allowCut > 0 ? 'partial' : 'center';
 
+        // Ensure physical dimensions are valid
+        this.ensureValidDimensions();
+
         // Calculate maximum cell height based on physical dimensions
         // For a 240x240 screen, we want cells around 11-12px high at 341 cells
         // For a 480x480 screen, we want cells around 22-24px high at the same cell count
@@ -760,19 +903,35 @@ export class GridGenRenderer extends BaseRenderer {
 
         // Scale the maximum cell height to the canvas dimensions for visual consistency
         const renderScale = this.getRenderScale();
-        const maxVisualCellHeight = startCellHeight * renderScale;
+        const maxVisualCellHeight = Math.max(30, Math.round(startCellHeight * renderScale));
 
-        for (let cellH = maxVisualCellHeight; cellH >= 1; cellH--) {
+        // Debug output to help diagnose issues
+        console.log("Grid Calculations:", {
+            physicalWidth: this.params.physicalWidth,
+            physicalHeight: this.params.physicalHeight,
+            renderScale: renderScale,
+            startCellHeight: startCellHeight,
+            maxVisualCellHeight: maxVisualCellHeight,
+        });
+
+        // Store the best physical cell dimensions
+        let bestPhysicalCellW = 0;
+        let bestPhysicalCellH = 0;
+
+        for (let cellH = maxVisualCellHeight; cellH >= 6; cellH--) {
             // Convert visual cell height back to physical-relative size for calculations
-            const physicalCellH = cellH / renderScale;
+            // Ensure we get integers for physical dimensions
+            const physicalCellH = Math.max(1, Math.round(cellH / renderScale));
 
             // Apply user's scale factor to the physical-relative size
+            // Using strict integer values for physical dimensions
             const scaledH = Math.max(1, Math.round(physicalCellH * params.scale));
             const scaledW = Math.max(1, Math.round(params.aspectRatio * scaledH));
 
             // Scale back to visual dimensions for rendering
-            const visualScaledH = Math.max(1, Math.round(scaledH * renderScale));
-            const visualScaledW = Math.max(1, Math.round(scaledW * renderScale));
+            // Ensure consistent visualization by using the same scaling factor
+            const visualScaledH = Math.max(6, Math.round(scaledH * renderScale));
+            const visualScaledW = Math.max(6, Math.round(scaledW * renderScale));
 
             const stepX = visualScaledW + params.gap;
             const stepY = visualScaledH + params.gap;
@@ -909,29 +1068,59 @@ export class GridGenRenderer extends BaseRenderer {
             }
 
             if (rectangles.length >= params.target) {
+                // Store physical dimensions for stats
+                bestPhysicalCellW = scaledW;
+                bestPhysicalCellH = scaledH;
+
+                // Debug the results
+                console.log(`Found solution with ${rectangles.length} cells:`, {
+                    cellH: cellH,
+                    physicalCellH: physicalCellH,
+                    scaledH: scaledH,
+                    scaledW: scaledW,
+                    visualScaledH: visualScaledH,
+                    visualScaledW: visualScaledW,
+                    cols: cols,
+                    rows: rows
+                });
+
                 this.gridParams = {
                     cols,
                     rows,
-                    width: visualScaledW,    // Visual width (for rendering)
-                    height: visualScaledH,    // Visual height (for rendering)
-                    physicalWidth: scaledW,  // Physical width (for stats)
-                    physicalHeight: scaledH  // Physical height (for stats)
+                    width: visualScaledW,         // Visual width (for rendering)
+                    height: visualScaledH,        // Visual height (for rendering)
+                    physicalWidth: scaledW,       // Physical width (for stats)
+                    physicalHeight: scaledH       // Physical height (for stats)
                 };
                 return rectangles.slice(0, params.target);
             }
 
             if (rectangles.length > bestRects.length) {
                 bestRects = rectangles;
+                bestPhysicalCellW = scaledW;
+                bestPhysicalCellH = scaledH;
+
                 this.gridParams = {
                     cols,
                     rows,
-                    width: visualScaledW,    // Visual width (for rendering)
-                    height: visualScaledH,    // Visual height (for rendering)
-                    physicalWidth: scaledW,  // Physical width (for stats)
-                    physicalHeight: scaledH  // Physical height (for stats)
+                    width: visualScaledW,        // Visual width (for rendering)
+                    height: visualScaledH,       // Visual height (for rendering)
+                    physicalWidth: scaledW,      // Physical width (for stats)
+                    physicalHeight: scaledH      // Physical height (for stats)
                 };
             }
         }
+
+        // Debug the best result if we couldn't meet the target
+        if (bestRects.length > 0) {
+            console.log(`Using best solution with ${bestRects.length}/${params.target} cells:`, {
+                physicalCellW: bestPhysicalCellW,
+                physicalCellH: bestPhysicalCellH,
+                cols: this.gridParams.cols,
+                rows: this.gridParams.rows
+            });
+        }
+
         return bestRects.slice(0, params.target);
     }
 

@@ -33,34 +33,52 @@ export class RectangularBoundary extends BaseBoundary {
         const centerX = cell.x + cell.width / 2;
         const centerY = cell.y + cell.height / 2;
 
+        // Check if center is inside
+        const centerInside = Math.abs(centerX - this.centerX) <= halfWidth &&
+            Math.abs(centerY - this.centerY) <= halfHeight;
+
+        // Count corners outside the boundary
         const cornersOutside = this.getCornersOutside(cell);
         const cornersInside = 4 - cornersOutside;
 
-        // Store corner count in the cell for UI display
+        // Store corner count and debug info in the cell for UI display and debugging
         cell.cornersOutside = cornersOutside;
         cell.cornersInside = cornersInside;
 
-        // Special case for allowCut=0 - only fully inside cells
+        // Get detailed information about which corners are outside
+        const cornerStatuses = corners.map(corner =>
+            this.isPointInside(corner.x, corner.y) ? 'in' : 'out'
+        );
+
+        // Store detailed corner information for debugging
+        cell.cornerInfo = {
+            topLeft: cornerStatuses[0],
+            topRight: cornerStatuses[1],
+            bottomLeft: cornerStatuses[2],
+            bottomRight: cornerStatuses[3],
+            centerInside: centerInside,
+            halfWidth: halfWidth,
+            halfHeight: halfHeight
+        };
+
+        // Case 1: Special handling for allowCut=0 - strict classification based on center
         if (allowCut === 0) {
-            return cornersOutside === 0 ? 'inside' : 'outside';
+            return centerInside ? 'boundary' : 'outside';
         }
 
-        // If the cell is fully inside the boundary
+        // Case 2: Cell is fully inside the boundary (all corners inside)
         if (cornersOutside === 0) {
             return 'inside';
         }
 
-        // Check if cell center is inside the rectangular boundary
-        const centerInside = Math.abs(centerX - this.centerX) <= halfWidth &&
-            Math.abs(centerY - this.centerY) <= halfHeight;
-
-        // If the cell center is inside or we have allowed number of corners outside
-        if (centerInside || cornersOutside <= allowCut) {
+        // Case 3: Center is inside or we have allowed number of corners outside
+        if (centerInside || (cornersInside > 0 && cornersOutside <= allowCut)) {
             return 'boundary';
         }
 
-        // Edge case: Check if any edge of the cell intersects the boundary
-        if (cornersOutside === 4) {
+        // Case 4: Edge case - check if any edge of the cell intersects the boundary
+        // This handles cells that have all corners outside but still intersect the boundary
+        if (cornersOutside === 4 && allowCut > 0) {
             const edges = [
                 // Horizontal edges
                 { x1: cell.x, y1: cell.y, x2: cell.x + cell.width, y2: cell.y },
