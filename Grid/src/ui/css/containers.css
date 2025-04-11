@@ -1,0 +1,47 @@
+.gui-container-left {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  margin-bottom: 8px;
+}
+
+.gui-container-right {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  flex-wrap: wrap;
+  align-content: flex-start;
+}
+
+.gui-container-center {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Stats container */
+.stats-container {
+  position: absolute;
+  top: 0;
+  right: 0;
+}
+
+.simulation-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100vw;
+  height: 100vh;
+  background-color: #1a1a1a;
+}
+/* Class added to canvas parent for relative positioning of overlays */
+.canvas-relative-container {
+  position: relative;
+}

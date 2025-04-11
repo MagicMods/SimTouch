@@ -1,60 +1,40 @@
-import { GridUi } from "./panels/gridUi.js";
-
+import { NewGridUi } from "./panels/newGridUi.js";
 export class UiManager {
-    constructor(main) {
-        if (!main) {
-            throw new Error("Main reference is required for UiManager");
-        }
+  constructor(main) {
+    if (!main) {
+      throw new Error("Main reference is required for UiManager");
+    }
+    this.main = main;
+    this.leftContainer = this.createContainer("left");
+    this.rightContainer = this.createContainer("right");
+    this.initializeUIComponents();
+    console.info("CSS loaded via HTML link tag");
+  }
 
-        this.main = main;
+  initializeUIComponents() {
+    this.newGridUi = new NewGridUi(this.main, this.rightContainer);
+  }
 
-        // Create GUI containers
-        this.leftContainer = this.createContainer("left");
-        this.rightContainer = this.createContainer("right");
+  createContainer(position) {
+    const container = document.createElement("div");
+    container.className = `gui-container-${position}`;
+    document.body.appendChild(container);
+    return container;
+  }
 
-        // Initialize UI components
-        this.initializeUIComponents();
+  update(deltaTime) {}
+
+  dispose() {
+    if (this.newGridUi) {
+      this.newGridUi.dispose();
     }
 
-    loadCSS() {
-        // This method is no longer needed as we're using a direct link tag in the HTML
-        // We're keeping it for compatibility but it won't do anything
-        console.log("CSS loaded via HTML link tag");
+    if (this.leftContainer) {
+      document.body.removeChild(this.leftContainer);
     }
 
-    initializeUIComponents() {
-        // Initialize only the GridUI component for now
-        this.gridUi = new GridUi(this.main, this.rightContainer);
+    if (this.rightContainer) {
+      document.body.removeChild(this.rightContainer);
     }
-
-    createContainer(position) {
-        const container = document.createElement("div");
-        container.className = `gui-container-${position}`;
-        document.body.appendChild(container);
-        return container;
-    }
-
-    // Update method for UiManager
-    update(deltaTime) {
-        // // Update the GridUI component
-        // if (this.gridUi) {
-        //     this.gridUi.update(deltaTime);
-        // }
-    }
-
-    dispose() {
-        // Dispose UI components
-        if (this.gridUi) {
-            this.gridUi.dispose();
-        }
-
-        // Remove containers
-        if (this.leftContainer) {
-            document.body.removeChild(this.leftContainer);
-        }
-
-        if (this.rightContainer) {
-            document.body.removeChild(this.rightContainer);
-        }
-    }
-} 
+  }
+}

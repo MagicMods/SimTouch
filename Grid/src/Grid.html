@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GridGen</title>
+    <link rel="stylesheet" href="ui/css/global.css" />
+    <link rel="stylesheet" href="ui/css/containers.css" />
+    <link rel="stylesheet" href="ui/css/grid.css" />
+    <link rel="stylesheet" href="ui/css/toggle-button.css" />
+    <link rel="stylesheet" href="ui/css/overlays.css" />
+
+    <script type="importmap">
+      {
+        "imports": {
+          "lil-gui": "https://cdn.jsdelivr.net/npm/lil-gui@0.18.2/dist/lil-gui.esm.min.js",
+          "gl-matrix": "https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/esm/index.js",
+          "gl-matrix/mat4.js": "https://cdn.jsdelivr.net/npm/gl-matrix@3.4.3/esm/mat4.js"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <div class="simulation-container">
+      <canvas id="glCanvas" width="960" height="960"></canvas>
+    </div>
+    <script type="module" src="main.js"></script>
+  </body>
+</html>

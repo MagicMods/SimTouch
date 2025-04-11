@@ -1,0 +1,40 @@
+/* Styles for toggle buttons in Grid UI */
+.toggle-button {
+  background-color: #333;
+  color: #ccc;
+  border: 1px solid #555;
+  /* padding: 4px 8px; */
+  /* margin: 10px 10px; */
+  border-radius: 4px;
+  cursor: pointer;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
+  flex-grow: 1; /* Make buttons fill space */
+  text-align: center;
+}
+
+.toggle-button.active {
+  background-color: #ffbb00; /* Active background */
+  color: #000; /* Active text color */
+  border-color: #ffdd66;
+}
+
+.toggle-button:hover {
+  border-color: #777;
+  background-color: #ffdd66;
+}
+
+.toggle-button.active:hover {
+  border-color: #ffeeaa;
+  background-color: #ffdd66;
+}
+
+.toggle-button-container {
+  display: flex;
+  /* flex-direction: row; */
+  /* flex-wrap: wrap; */
+  /* align-content: flex-start; */
+  justify-content: space-between;
+  margin: 10px 10px;
+}

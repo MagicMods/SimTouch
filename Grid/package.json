@@ -5,6 +5,7 @@
   "main": "src/main.js",
   "type": "module",
   "dependencies": {
+    "gl-matrix": "^3.4.3",
     "lil-gui": "^0.19.2"
   }
 }

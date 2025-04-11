@@ -1,5 +1,3 @@
-import { BaseUi } from "../panels/baseUi.js";
-
 class UiComponent {
   constructor(main, parent) {
     this.main = main;
