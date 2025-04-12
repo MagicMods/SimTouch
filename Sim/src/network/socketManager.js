@@ -1,3 +1,5 @@
+import { eventBus } from '../util/eventManager.js';
+
 class SocketManager {
   static instance;
 
@@ -48,17 +50,49 @@ class SocketManager {
     Object.values(SocketManager.COMMANDS).forEach(cmd => {
       this.lastSentCommands[cmd.debounceKey] = { value: null, time: 0 };
     });
+
+    // Subscribe to parameter updates
+    eventBus.on('simParamsUpdated', this.handleParamsUpdate.bind(this));
+  }
+
+  // Add handler for simParams updates
+  handleParamsUpdate({ simParams }) {
+    if (simParams?.network) {
+      const netParams = simParams.network;
+      const previousEnable = this.enable; // Store previous state
+
+      this.debugSend = netParams.debugSend ?? this.debugSend;
+      this.debugReceive = netParams.debugReceive ?? this.debugReceive;
+      this.enable = netParams.enabled ?? this.enable;
+
+      // Connect or disconnect if enable state changed
+      if (this.enable !== previousEnable) {
+        console.log(`SocketManager: Enable state changed to ${this.enable}.`);
+        if (this.enable) {
+          // Connect only if not already connected or trying to connect
+          if (!this.isConnected && !this.retryTimeout && this.ws?.readyState !== WebSocket.CONNECTING) {
+            this.connect();
+          }
+        } else {
+          // Disconnect if connected
+          if (this.isConnected || this.ws?.readyState === WebSocket.CONNECTING) {
+            this.disconnect();
+          }
+          // Also clear any pending retry timeouts if disabling
+          if (this.retryTimeout) {
+            clearTimeout(this.retryTimeout);
+            this.retryTimeout = null;
+            this.retryCount = 0; // Reset retries when manually disabled
+          }
+        }
+      }
+    }
   }
 
   connect(port = 5501) {
     if (this.retryTimeout) {
       clearTimeout(this.retryTimeout);
       this.retryTimeout = null;
-    }
-
-    if (!this.enable) {
-      console.log("WebSocket disabled - not connecting");
-      return;
     }
 
     this.port = port;
@@ -119,7 +153,6 @@ class SocketManager {
         this.retryTimeout = setTimeout(() => this.reconnect(), 5000);
       } else if (this.retryCount >= this.maxRetries) {
         console.log("Max retry attempts reached");
-        this.enable = false;
       }
 
       // Notify all callbacks about disconnection

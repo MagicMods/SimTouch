@@ -1,64 +1,19 @@
 import { BaseUi } from "../baseUi.js";
 import { NetworkConfig } from "../../network/networkConfig.js";
 import { socketManager } from "../../network/socketManager.js";
+import { eventBus } from '../../util/eventManager.js';
 
 export class NetworkUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
     this.gui.title("Network");
     this.initNetworkControls();
-
-    // Monitor folder open/close state to enable/disable network
-    const folderElement = this.gui.domElement;
-
-    // Set up a MutationObserver to watch for class changes on the folder
-    const folderObserver = new MutationObserver((mutations) => {
-      mutations.forEach((mutation) => {
-        if (mutation.type === 'attributes' && mutation.attributeName === 'class') {
-          // Check if folder is closed by looking for the 'closed' class
-          const isClosed = folderElement.classList.contains('closed');
-
-          // Update network connection based on folder state
-          if (isClosed) {
-            socketManager.enable = false;
-            if (socketManager.isConnected) {
-              socketManager.disconnect();
-            }
-          } else {
-            socketManager.enable = true;
-            if (!socketManager.isConnected) {
-              socketManager.connect();
-            }
-          }
-        }
-      });
-    });
-
-    // Start observing the folder element
-    folderObserver.observe(folderElement, {
-      attributes: true,
-      attributeFilter: ['class']
-    });
-
-    // Also handle the initial folder state when UI is first created
-    // We need to use a small delay to ensure the DOM is ready
-    setTimeout(() => {
-      // Get the initial state (closed or open)
-      const isClosed = folderElement.classList.contains('closed');
-
-      // Set network connection based on initial folder state
-      socketManager.enable = !isClosed;
-      if (!isClosed && !socketManager.isConnected) {
-        socketManager.connect();
-      } else if (isClosed && socketManager.isConnected) {
-        socketManager.disconnect();
-      }
-    }, 100);
   }
 
   initNetworkControls() {
     const socket = socketManager;
     if (!socket) return;
+    const networkParams = this.main.simParams.network;
 
     // Create local control object
     const controls = {
@@ -75,6 +30,12 @@ export class NetworkUi extends BaseUi {
 
     // Status display (keep at top level)
     const statusController = this.gui.add(status, "connection").name("Status");
+
+    // Add Enable toggle
+    this.networkEnabledController = this.gui
+      .add(networkParams, "enabled")
+      .name("N-Enabled")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'network.enabled', value }));
 
     this.gui
       .add({ brightness: 100 }, "brightness", 0, 100, 1)
@@ -120,14 +81,14 @@ export class NetworkUi extends BaseUi {
       .add(controls, "debugSend")
       .name("Debug Send")
       .onChange((value) => {
-        socket.debugSend = value;
+        eventBus.emit('uiControlChanged', { paramPath: 'network.debugSend', value });
       });
 
     configFolder
       .add(controls, "debugReceive")
       .name("Debug Receive")
       .onChange((value) => {
-        socket.debugReceive = value;
+        eventBus.emit('uiControlChanged', { paramPath: 'network.debugReceive', value });
       });
 
     const lastMessageController = configFolder

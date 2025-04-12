@@ -68,7 +68,7 @@ class Main {
       },
       rendering: {
         // Initial values from GridRenderer and its components
-        gridMode: this.gridRenderer.renderModes?.currentMode || "DENSITY", // Default to DENSITY if not found
+        gridMode: this.gridRenderer.renderModes?.currentMode || "PROXIMITY", // Default to DENSITY if not found
         maxDensity: this.gridRenderer.maxDensity || 5.0 // Default from GridRenderer or a sensible value
       },
       smoothing: {
@@ -161,6 +161,11 @@ class Main {
         // Store base color as hex for UI, renderer will convert
         color: rgbArrayToHex(this.particleRenderer.config?.color?.slice(0, 3) || [1, 1, 1]),
         opacity: this.particleRenderer.particleOpacity // Store opacity separately
+      },
+      network: { // New section
+        enabled: socketManager.enable, // Initial state from manager
+        debugSend: socketManager.debugSend, // Initial state
+        debugReceive: socketManager.debugReceive // Initial state
       }
     };
 
@@ -256,9 +261,7 @@ class Main {
 
   animate() {
     // Read pause state from simParams
-    if (!this.simParams.simulation.paused) {
-      this.render();
-    }
+    if (!this.simParams.simulation.paused) this.render();
     requestAnimationFrame(() => this.animate());
   }
 
