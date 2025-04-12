@@ -63,7 +63,8 @@ class Main {
         particleRadius: this.particleSystem.particleRadius // Add particle radius
       },
       boundary: {
-        mode: this.particleSystem.boundary.mode // From ParticleSystem's boundary
+        mode: this.boundary.mode,
+        shape: boundaryType,
       },
       rendering: {
         // Initial values from GridRenderer and its components

@@ -2,6 +2,7 @@ import { BaseUi } from "../baseUi.js";
 import { CircularBoundary } from "../../simulation/boundary/circularBoundary.js";
 import { RectangularBoundary } from "../../simulation/boundary/rectangularBoundary.js";
 import { BoundaryUtils } from "../../simulation/boundary/boundaryUtils.js";
+import { eventBus } from '../../util/eventManager.js';
 
 export class BoundaryUi extends BaseUi {
   constructor(main, container) {
@@ -18,11 +19,6 @@ export class BoundaryUi extends BaseUi {
       RECTANGULAR: "Rectangular"
     };
 
-    // Create a boundary type property for binding to UI
-    this.boundaryTypeProperty = {
-      type: this.boundaryTypes.CIRCULAR // Default to circular
-    };
-
     // Initialize folders and controllers
     this.initBoundaryControls();
   }
@@ -33,28 +29,47 @@ export class BoundaryUi extends BaseUi {
 
     const boundary = particles.boundary;
 
-    // Add boundary type selector
+    // Add boundary type selector - BIND TO SIMPARAMS
     this.boundaryTypeController = this.gui
-      .add(this.boundaryTypeProperty, "type", Object.values(this.boundaryTypes))
+      // Bind to simParams.boundary.shape
+      .add(this.main.simParams.boundary, "shape", Object.values(this.boundaryTypes))
       .name("B-Type")
       .onChange((value) => {
-        this.changeBoundaryType(value);
+        // Remove direct call to changeBoundaryType
+        // this.changeBoundaryType(value);
+        // Emit event instead
+        eventBus.emit('uiControlChanged', { paramPath: 'boundary.shape', value });
+        // We might still need to update shape controls locally based on the new value
+        // Ideally, this would happen in response to simParamsUpdated
+        this.updateShapeControls(); // Keep for now to maintain UI responsiveness
       });
 
     // Create type-specific folder for shape parameters
     this.shapeFolder = this.gui.addFolder("Shape");
 
-    // Determine current boundary type
-    const currentType = boundary instanceof CircularBoundary
-      ? this.boundaryTypes.CIRCULAR
-      : this.boundaryTypes.RECTANGULAR;
+    // Determine current boundary type from simParams
+    const currentType = this.main.simParams.boundary.shape;
 
-    // Set initial value
-    this.boundaryTypeProperty.type = currentType;
-    this.boundaryTypeController.updateDisplay();
+    // Set initial value (binding should handle this, but updateDisplay might be needed)
+    // this.boundaryTypeProperty.type = currentType;
+    // this.boundaryTypeController.updateDisplay();
 
     // Initialize shape controls based on current boundary type
     this.updateShapeControls();
+
+    // Add boundary mode control - BIND TO SIMPARAMS
+    if (boundary.mode !== undefined) { // Check if mode exists on the initial boundary object
+      this.boundaryModeController = this.gui
+        .add(this.main.simParams.boundary, "mode", { // Bind to simParams
+          Bounce: "BOUNCE",
+          Warp: "WARP",
+        })
+        .name("B-Mode")
+        .onChange((value) => {
+          // Emit event
+          eventBus.emit('uiControlChanged', { paramPath: 'boundary.mode', value });
+        });
+    }
 
     // Common controls for all boundary types
     // Check if properties exist before adding controllers
@@ -96,8 +111,9 @@ export class BoundaryUi extends BaseUi {
 
     const boundary = this.main.particleSystem.boundary;
 
-    // Add shape-specific controllers based on current boundary type
-    if (this.boundaryTypeProperty.type === this.boundaryTypes.CIRCULAR) {
+    // Add shape-specific controllers based on current boundary type IN SIMPARAMS
+    if (this.main.simParams.boundary.shape === this.boundaryTypes.CIRCULAR) {
+      // Keep binding directly to boundary object for now
       if (boundary.radius !== undefined) {
         this.boundarySizeController = this.shapeFolder
           .add(boundary, "radius", 0.1, 0.55, 0.001)
@@ -106,7 +122,8 @@ export class BoundaryUi extends BaseUi {
             if (boundary.update) boundary.update({ radius: value });
           });
       }
-    } else if (this.boundaryTypeProperty.type === this.boundaryTypes.RECTANGULAR) {
+    } else if (this.main.simParams.boundary.shape === this.boundaryTypes.RECTANGULAR) {
+      // Keep binding directly to boundary object for now
       if (boundary.width !== undefined) {
         this.boundaryWidthController = this.shapeFolder
           .add(boundary, "width", 0.1, 1.0, 0.01)
@@ -127,55 +144,6 @@ export class BoundaryUi extends BaseUi {
     }
   }
 
-  changeBoundaryType(typeName) {
-    const particles = this.main.particleSystem;
-    if (!particles) return;
-
-    const currentBoundary = particles.boundary;
-    if (!currentBoundary) return;
-
-    // Determine the new boundary type
-    const newType = typeName === this.boundaryTypes.CIRCULAR
-      ? "CIRCULAR"
-      : "RECTANGULAR";
-
-    // Skip if already the right type
-    if (currentBoundary.getBoundaryType() === newType) return;
-
-    // Convert parameters between boundary types
-    let newBoundaryParams;
-    if (newType === "CIRCULAR") {
-      newBoundaryParams = BoundaryUtils.rectangularToCircular(currentBoundary);
-    } else {
-      newBoundaryParams = BoundaryUtils.circularToRectangular(currentBoundary);
-    }
-
-    // Create new boundary
-    let newBoundary;
-    if (newType === "CIRCULAR") {
-      newBoundary = new CircularBoundary(newBoundaryParams);
-    } else {
-      newBoundary = new RectangularBoundary(newBoundaryParams);
-    }
-
-    // Transfer callbacks from old boundary to new boundary
-    currentBoundary.updateCallbacks.forEach(callback => {
-      newBoundary.addUpdateCallback(callback);
-    });
-
-    // Replace boundary in particle system
-    particles.boundary = newBoundary;
-
-    // Update fluid system to use the new boundary
-    if (particles.fluid) {
-      particles.fluid.boundary = newBoundary;
-      particles.fluid.initializeBoundary();
-    }
-
-    // Update shape controls for the new boundary type
-    this.updateShapeControls();
-  }
-
   getControlTargets() {
     const targets = {};
 
@@ -187,8 +155,8 @@ export class BoundaryUi extends BaseUi {
     if (this.boundaryBounceController)
       targets["B-Bounce"] = this.boundaryBounceController;
 
-    // Type-specific controls
-    if (this.boundaryTypeProperty.type === this.boundaryTypes.CIRCULAR) {
+    // Type-specific controls - READ SHAPE FROM SIMPARAMS
+    if (this.main.simParams.boundary.shape === this.boundaryTypes.CIRCULAR) {
       if (this.boundarySizeController)
         targets["Radius"] = this.boundarySizeController;
     } else {
@@ -201,7 +169,6 @@ export class BoundaryUi extends BaseUi {
     return targets;
   }
 
-  // Add to ParamUi class
   getData() {
     const controllers = {};
     const targets = this.getControlTargets();
@@ -213,8 +180,8 @@ export class BoundaryUi extends BaseUi {
       }
     }
 
-    // Add boundary type
-    controllers["B-Type"] = this.boundaryTypeProperty.type;
+    // Remove boundary type as it's handled by simParams binding
+    // controllers["B-Type"] = this.boundaryTypeProperty.type;
 
     return { controllers };
   }
@@ -228,14 +195,7 @@ export class BoundaryUi extends BaseUi {
     try {
       const targets = this.getControlTargets();
 
-      // Set boundary type first if specified
-      if (data.controllers["B-Type"]) {
-        this.boundaryTypeProperty.type = data.controllers["B-Type"];
-        this.boundaryTypeController.updateDisplay();
-        this.changeBoundaryType(data.controllers["B-Type"]);
-      }
-
-      // Apply values from preset to controllers
+      // Apply values from preset to controllers (excluding B-Type)
       for (const [key, value] of Object.entries(data.controllers)) {
         if (key !== "B-Type" && targets[key] && typeof targets[key].setValue === "function") {
           targets[key].setValue(value);
@@ -265,18 +225,17 @@ export class BoundaryUi extends BaseUi {
 
     // Update all controllers
     safeUpdateDisplay(this.boundaryTypeController);
+    safeUpdateDisplay(this.boundaryModeController);
+    safeUpdateDisplay(this.boundaryRepulsionController);
+    safeUpdateDisplay(this.boundaryFrictionController);
+    safeUpdateDisplay(this.boundaryBounceController);
 
     // Shape controllers
-    if (this.boundaryTypeProperty.type === this.boundaryTypes.CIRCULAR) {
+    if (this.main.simParams.boundary.shape === this.boundaryTypes.CIRCULAR) {
       safeUpdateDisplay(this.boundarySizeController);
     } else {
       safeUpdateDisplay(this.boundaryWidthController);
       safeUpdateDisplay(this.boundaryHeightController);
     }
-
-    // Common controllers
-    safeUpdateDisplay(this.boundaryRepulsionController);
-    safeUpdateDisplay(this.boundaryFrictionController);
-    safeUpdateDisplay(this.boundaryBounceController);
   }
 }

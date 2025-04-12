@@ -480,6 +480,45 @@ class ParticleSystem {
   handleParamsUpdate({ simParams }) {
     if (!simParams) return; // Guard against missing data
 
+    let boundaryShapeChanged = false;
+    // Update boundary mode and shape if present
+    if (simParams.boundary) {
+      const previousShape = this.boundary?.getBoundaryType(); // Get current type before update
+      const newShape = simParams.boundary.shape ?? previousShape;
+
+      // Update mode (use the value from simParams, fallback to current boundary mode)
+      const newMode = simParams.boundary.mode ?? this.boundary?.mode;
+
+      // Recreate boundary object ONLY if shape changes
+      if (newShape && newShape !== previousShape) { // Ensure newShape is valid before comparing
+        console.log(`ParticleSystem: Boundary shape changed from ${previousShape} to ${newShape}. Recreating boundary.`);
+        const boundaryParams = { mode: newMode }; // Pass the potentially updated mode
+
+        // Preserve existing callbacks if possible (simple example)
+        const existingCallbacks = this.boundary?.updateCallbacks || [];
+
+        if (newShape === "RECTANGULAR") {
+          this.boundary = new RectangularBoundary(boundaryParams);
+        } else { // Default to CIRCULAR
+          this.boundary = new CircularBoundary(boundaryParams);
+        }
+
+        // Restore callbacks
+        existingCallbacks.forEach(cb => this.boundary.addUpdateCallback(cb));
+
+        // Link new boundary to dependent components if necessary
+        if (this.fluid) this.fluid.boundary = this.boundary;
+        // if (this.collisionSystem) this.collisionSystem.boundary = this.boundary; // Collision doesn't seem to need boundary ref
+
+        boundaryShapeChanged = true;
+      }
+      // If shape didn't change, just update the mode on the existing boundary
+      else if (this.boundary && typeof this.boundary.setMode === 'function' && newMode && newMode !== this.boundary.mode) {
+        console.log(`ParticleSystem: Boundary mode changed to ${newMode}.`);
+        this.boundary.setMode(newMode);
+      }
+    }
+
     // Update simulation parameters if they exist in the event payload
     if (simParams.simulation) {
       const previousParticleCount = this.numParticles; // Store count before update
@@ -493,12 +532,12 @@ class ParticleSystem {
       this.numParticles = simParams.simulation.particleCount ?? this.numParticles;
       this.particleRadius = simParams.simulation.particleRadius ?? this.particleRadius;
 
-      // Reinitialize if particle count changed
-      if (this.numParticles !== previousParticleCount && typeof this.reinitializeParticles === 'function') {
-        console.log(`ParticleSystem: Count changed from ${previousParticleCount} to ${this.numParticles}. Reinitializing.`);
+      // Reinitialize if particle count changed OR if boundary shape changed
+      if ((this.numParticles !== previousParticleCount || boundaryShapeChanged) && typeof this.reinitializeParticles === 'function') {
+        console.log(`ParticleSystem: Reinitializing due to count change (${previousParticleCount} -> ${this.numParticles}) or shape change (${boundaryShapeChanged}).`);
         this.reinitializeParticles(this.numParticles);
       }
-      // Update radii array if radius changed AND count did NOT change (reinitializeParticles handles it if count changed)
+      // Update radii array if radius changed AND count/shape did NOT change
       else if (this.particleRadius !== previousParticleRadius) {
         // Check if particleRadii exists before filling
         if (this.particleRadii) {
@@ -510,11 +549,10 @@ class ParticleSystem {
       }
     }
 
-    // Update boundary mode if applicable and the boundary object exists
-    if (simParams.boundary && this.boundary && typeof this.boundary.setMode === 'function') {
-      this.boundary.setMode(simParams.boundary.mode);
-    }
-    // Optional: Log for verification
+    // Boundary mode update was handled above, removed duplicate logic here
+    // if (simParams.boundary && this.boundary && typeof this.boundary.setMode === 'function') {
+    //      this.boundary.setMode(simParams.boundary.mode);
+    // }
     // console.log("ParticleSystem updated params via event:", this.timeStep, this.timeScale, /*...*/ this.boundary?.mode);
   }
 }
