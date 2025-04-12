@@ -303,13 +303,13 @@
 
     - `Sim`: Requires `canvasElement` and `dimensionManager`. Tightly coupled.
     - `Grid`: Requires only `canvasElement`. Decoupled from `DimensionManager`.
-    - **Alignment:** Refactor `Sim`'s `OverlayManager` constructor to remove the `dimensionManager` dependency. Modify methods (`updateDimensions`, `updateCellIndices`, `updateCellCenters`) to accept the required `dimensions` object as an argument. Update instantiation and method calls in `Sim`'s `SimGridRendererInstanced`.
+    - **Alignment:** Refactor `Sim`'s `OverlayManager` constructor to remove the `dimensionManager` dependency. Modify methods (`updateDimensions`, `updateCellIndices`, `updateCellCenters`) to accept the required `dimensions` object as an argument. Update instantiation and method calls in `Sim's `SimGridRendererInstanced`.
 
 2.  **Initialization (`#initOverlays`):**
 
     - `Sim`: Uses `this.dimensionManager` for initial size.
     - `Grid`: Takes `initialWidth/Height` args (placeholders used), relies on `updateDimensions`. Uses CSS classes.
-    - **Alignment:** Remove reliance on `dimensionManager` in `Sim`'s `#initOverlays`. Use placeholders or default values, ensuring `updateDimensions` is called correctly after instantiation with actual dimensions. Adopt CSS classes (`overlay-container`, etc.) from `Grid`'s version.
+    - **Alignment:** Remove reliance on `dimensionManager` in `Sim's `#initOverlays`. Use placeholders or default values, ensuring `updateDimensions` is called correctly after instantiation with actual dimensions. Adopt CSS classes (`overlay-container`, etc.) from `Grid's CSS files (`canvas-overlays.css`) for base styling.
 
 3.  **`updateDimensions` Method:**
 
@@ -319,14 +319,14 @@
 
 4.  **`updateCellIndices` / `updateCellCenters` Methods:**
 
-    - `Sim`: Takes only `rectangles`. Reads dimensions from `this.dimensionManager`. Scales based on `canvas.width/height` vs `renderWidth/Height`. Duplicate `label.textContent` line.
+    - `Sim`: Takes only `rectangles`. Reads dimensions from `this.dimensionManager`. Scales based on `canvas.width/height` vs `renderWidth/Height`.
     - `Grid`: Takes `rectangles`, `gridParams`, `dimensions`. Uses passed `dimensions`. Scales based on `getBoundingClientRect().width/height` vs `renderWidth/Height` (more accurate). Uses `indexOf` for `originalIndex`. Adds `clearCellIndices` and `clearCellCenters` methods.
     - **Alignment:** Refactor `Sim` methods to accept `gridParams` and `dimensions`. Implement scaling based on `getBoundingClientRect()`. Fix duplicate line. Add `clear...` methods for better state management. Implement `originalIndex` retrieval using `indexOf`.
 
 5.  **Styling & DOM:**
     - `Sim`: Mostly inline styles.
     - `Grid`: Uses CSS classes + fewer inline styles.
-    - **Alignment:** Refactor `Sim` to use CSS classes defined in `Grid`'s CSS files (`canvas-overlays.css`) for base styling, reducing reliance on inline styles.
+    - **Alignment:** Refactor `Sim` to use CSS classes defined in `Grid's CSS files (`canvas-overlays.css`) for base styling, reducing reliance on inline styles.
 
 **Deprecation Decision:**
 
@@ -719,3 +719,91 @@ _(Analysis Phase Complete. Ready for Refined Plan)_
     - Applied CSS classes (`randomizer-title`, `randomizer-button-container`, `target-selection-button-container`, `randomizer-button`, `target-selection-button`).
     - Replaced button `backgroundColor` updates with `classList.toggle` (`disabled` for randomize, `active` for target selection).
     - Removed JavaScript hover event listeners for buttons.
+
+---
+
+## Verification and Planning Reset (2024-08-02)
+
+**Objective:** Verify codebase state against `memoryBank/plan.md` ("LEGACY Component Isolation...") and recent notebook entries (CSS/Shader refactoring).
+
+**Verification Results:**
+
+- **CSS Refactoring:** Verified as complete for `randomizerUi.js` and `noisePreviewManager.js`.
+- **Shader Alignment:** Verified as complete in `Sim/src/shaders/shaderManager.js`.
+- **Plan Phase A (Renames):** Verification **Inconclusive** due to repeated file search tool interruptions. Cannot confirm existence of `LEGACY_` prefixed files.
+- **Plan Phase B (Imports):** **INCOMPLETE.** Grep search confirmed that imports for `gridRenderModes.js` (in `paramUi.js`, `gridRenderer.js`) and `gridRenderer.js` (in `main.js`) were **not** updated to use the `LEGACY_` prefix as required by the plan.
+- **Plan Phase C (Copies):** Verification **Inconclusive** due to repeated file search tool interruptions. Cannot confirm existence of newly copied aligned components (`overlayManager.js`, `circularBoundaryPs.js`, `gridGenRenderer.js`).
+
+**Conclusion:**
+
+Significant discrepancies exist between the documented plan steps and the verifiable state of the codebase (specifically, the incomplete import updates). Combined with the inability to confirm file renames and copies, there appears to be a disconnect between the intended plan execution and the actual result.
+
+**Decision:**
+
+- **Discard Current Plan:** The plan titled "LEGACY Component Isolation and Aligned Grid Integration (Corrected)" in `memoryBank/plan.md` is now considered obsolete due to the identified inconsistencies and verification failures.
+- **Initiate New Planning Cycle:** A new plan will be created based on a fresh analysis of the _current_ state of the `Sim` project codebase. This requires re-entering the THINK phase to gather accurate information.
+
+**Next Step:** Perform a new THINK phase analysis to establish a reliable baseline of the current `Sim` codebase structure and component status before formulating a new plan.
+
+## Project State Correction & New Direction (2024-08-02)
+
+**Correction:** Previous assumptions about plan execution (renaming legacy files, copying aligned Grid files) were incorrect. The current state of the `Sim` project is:
+
+1.  **Reverted Base:** The codebase reflects the `Sim` project state _before_ the migration attempts detailed in the now-discarded plan.
+2.  **Applied Refactors:** CSS (class-based styling) and ShaderManager (structure/key alignment) refactoring has been successfully applied _to this reverted base_.
+3.  **No Grid Files Copied:** No files from the `Grid` project template have been introduced into `Sim` yet.
+
+**New Priority: Statelessness**
+
+The primary goal is now to refactor `Sim` components towards statelessness, aligning with principles potentially derived from a related C# refactor. The immediate focus is on ensuring components rely on data passed into methods rather than maintaining internal state across operations.
+
+**Next Step:** Discuss the statelessness philosophy and identify candidate components in `Sim` for refactoring analysis.
+
+## Renderer Directory State Verification (2024-08-02)
+
+**Objective:** Verify the actual contents of `Sim/src/renderer/` to establish an accurate baseline, correcting previous assumptions based on outdated notebook entries.
+
+**Findings:**
+Direct listing of `Sim/src/renderer/` revealed the following files:
+
+- `gridRenderer.js` (27KB)
+- `particleRenderer.js` (5.7KB)
+- `baseRenderer.js` (1.3KB)
+- `gridRenderModes.js` (31KB)
+- `emuRenderer.js` (20KB)
+
+**Correction:** The files `gridRenderer.js` and `gridRenderModes.js` have **not** been renamed to `LEGACY_` as previously assumed based on the discarded plan. The `debugRenderer.js` file, mentioned in prior analysis, is not present in this listing.
+
+**Conclusion:** The renderer directory state confirms that the migration plan involving renaming/copying was not executed. Analysis must proceed based on these actual files.
+
+## Renderer Statelessness Analysis Synthesis (2024-08-02)
+
+Based on the analysis of files in `Sim/src/renderer/`:
+
+- **`baseRenderer.js`:**
+
+  - **Finding:** Stateless.
+  - **Reasoning:** Minimal base class holding injected dependencies (`gl`, `shaderManager`) only.
+
+- **`particleRenderer.js`:**
+
+  - **Finding:** Largely stateless for its core `draw` operation.
+  - **Reasoning:** `draw` method primarily relies on input `particles` and internal configuration/WebGL resource properties, without accumulating application state across calls.
+
+- **`gridRenderer.js`:**
+
+  - **Finding:** Highly stateful.
+  - **Reasoning:** Manages persistent internal state for `gridParams`, `gridGeometry`, `gridMap`, `renderModes`, `gradient`, `maxDensity`, DOM overlays, and socket connection. `draw` method depends heavily on this internal state.
+
+- **`gridRenderModes.js`:**
+
+  - **Finding:** Highly stateful.
+  - **Reasoning:** Manages internal data arrays (`values`, `targetValues`, `currentValues`), `currentMode`, and applies smoothing introducing temporal dependency. Relies on external state (`gridGeometry`/`gridMap`) and calculation methods modify internal state arrays.
+
+- **`emuRenderer.js`:**
+  - **Finding:** Extremely stateful and tightly coupled (Controller/View pattern).
+  - **Reasoning:** Manages internal UI interaction state, joystick physics, animation loop. Directly reads _and modifies_ state in external components (`emuForces`, `Gravity`, `TurbulenceField`) and manipulates DOM elements. Rendering is entangled with input handling and external updates.
+
+**Overall Conclusion:**
+
+The `Sim` renderers vary significantly. `baseRenderer` and `particleRenderer` align reasonably well with stateless principles for their core operations. However, `gridRenderer`, `gridRenderModes`, and especially `emuRenderer` exhibit substantial statefulness and coupling. Refactoring these towards statelessness (passing necessary data/state into methods) would require significant architectural changes to separate concerns (state management, calculation, input handling, rendering).

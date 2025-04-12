@@ -7,12 +7,18 @@ export class UiManager {
     this.main = main;
     this.leftContainer = this.createContainer("left");
     this.rightContainer = this.createContainer("right");
-    this.initializeUIComponents();
+    this.newGridUi = null;
     console.info("CSS loaded via HTML link tag");
+    this.onChangeCallback = null;
   }
 
-  initializeUIComponents() {
-    this.newGridUi = new NewGridUi(this.main, this.rightContainer);
+  async initPanels() {
+    return new Promise(resolve => {
+      console.log("UiManager: Starting panel initialization...");
+      this.newGridUi = new NewGridUi(this.main, this.rightContainer);
+      console.log("UiManager: Panel initialization complete.");
+      resolve();
+    });
   }
 
   createContainer(position) {
@@ -22,7 +28,7 @@ export class UiManager {
     return container;
   }
 
-  update(deltaTime) {}
+  update(deltaTime) { }
 
   dispose() {
     if (this.newGridUi) {

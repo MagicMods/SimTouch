@@ -12,11 +12,13 @@ const SCREEN_TYPES = {
 export class NewGridUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
+    this.onChangeCallback = null;
 
     try {
       this.gui.title("Grid");
 
       let initialScreenTypeName = Object.keys(SCREEN_TYPES)[0];
+      let initialScreenSpec = SCREEN_TYPES[initialScreenTypeName];
 
       if (this.main.gridParams.screen) {
         const initialScreen = this.main.gridParams.screen;
@@ -25,15 +27,39 @@ export class NewGridUi extends BaseUi {
           return type.width === initialScreen.width && type.height === initialScreen.height && type.shape === initialScreen.shape;
         });
 
-        if (foundName) initialScreenTypeName = foundName;
+        if (foundName) {
+          initialScreenTypeName = foundName;
+          initialScreenSpec = SCREEN_TYPES[initialScreenTypeName];
+        }
       }
+
+      // Initialize internal UI state with deep copies
+      this.uiGridParams = {
+        screen: { ...initialScreenSpec }, // Copy the spec found or default
+        gridSpecs: { ...main.gridParams.gridSpecs },
+        shadow: { ...main.gridParams.shadow },
+        flags: { ...main.gridParams.flags },
+        renderSize: { ...main.gridParams.renderSize }, // Add renderSize
+        colors: { ...main.gridParams.colors } // Add colors
+      };
+      // Keep uiState separate for screen type dropdown
       this.uiState = { selectedScreen: initialScreenTypeName };
+
 
       this.initGridControls();
 
       this.gui.open(true);
     } catch (error) {
       console.error("Error initializing GridUi:", error);
+    }
+  }
+
+  setOnChangeCallback(callback) {
+    if (typeof callback === 'function') {
+      this.onChangeCallback = callback;
+    } else {
+      console.error("Provided callback is not a function.");
+      this.onChangeCallback = null;
     }
   }
 
@@ -64,30 +90,30 @@ export class NewGridUi extends BaseUi {
 
         console.debug(`Screen type changed to: ${value}`, selectedSpec);
 
-        this.main.gridParams.screen = { ...selectedSpec };
-        this.main.setGridParams(this.main.gridParams);
+        this.uiGridParams.screen = { ...selectedSpec };
+        this.main.setGridParams(this.uiGridParams);
       });
     this.screenTypeController.domElement.classList.add("full-width");
 
     const offsetFolder = screenFolder.addFolder("Center Offset");
 
     this.centerOffsetXController = offsetFolder
-      .add(this.main.gridParams.gridSpecs, "centerOffsetX", -100, 100, 1) // Updated path
+      .add(this.uiGridParams.gridSpecs, "centerOffsetX", -100, 100, 1) // Updated path
       .name("X Offset")
       .onChange(() => {
-        this.main.setGridParams(this.main.gridParams);
+        this.main.setGridParams(this.uiGridParams);
       });
 
     this.centerOffsetYController = offsetFolder
-      .add(this.main.gridParams.gridSpecs, "centerOffsetY", -100, 100, 1) // Updated path
+      .add(this.uiGridParams.gridSpecs, "centerOffsetY", -100, 100, 1) // Updated path
       .name("Y Offset")
       .onChange(() => {
-        this.main.setGridParams(this.main.gridParams);
+        this.main.setGridParams(this.uiGridParams);
       });
 
     // --- GRID PARAMETERS ---
 
-    const gridSpecs = this.main.gridParams.gridSpecs;
+    const gridSpecs = this.uiGridParams.gridSpecs;
 
     const cellCountContainer = document.createElement("div");
     cellCountContainer.classList = "slider-cellCount-container";
@@ -95,7 +121,7 @@ export class NewGridUi extends BaseUi {
     this.targetCellCountCellsController = gridParamFolder
       .add(gridSpecs, "targetCellCount", 1, 1000, 1) // Bind to gridSpecs.targetCellCount
       .name("TargetCells")
-      .onChange(() => this.main.setGridParams(this.main.gridParams));
+      .onChange(() => this.main.setGridParams(this.uiGridParams));
     this.targetCellCountCellsController.domElement.classList.add("slider-dual-input-slider");
     cellCountContainer.appendChild(this.targetCellCountCellsController.domElement);
 
@@ -109,38 +135,55 @@ export class NewGridUi extends BaseUi {
     this.gapController = gridParamFolder
       .add(gridSpecs, "gap", 0, 20, 1) // Bind to gridSpecs.gap
       .name("Grid Gap")
-      .onChange(() => this.main.setGridParams(this.main.gridParams));
+      .onChange(() => this.main.setGridParams(this.uiGridParams));
 
     this.aspectRatioController = gridParamFolder
       .add(gridSpecs, "aspectRatio", 0.2, 5, 0.01) // Bind to gridSpecs.aspectRatio
       .name("Cell Ratio")
-      .onChange(() => this.main.setGridParams(this.main.gridParams));
+      .onChange(() => this.main.setGridParams(this.uiGridParams));
 
     this.scaleController = gridParamFolder
       .add(gridSpecs, "scale", 0.5, 1, 0.001) // Bind to gridSpecs.scale
       .name("Grid Scale")
-      .onChange(() => this.main.setGridParams(this.main.gridParams));
+      .onChange(() => this.main.setGridParams(this.uiGridParams));
 
     // Add allowCut parameter - Bind to gridSpecs.allowCut
     this.allowCutController = gridParamFolder
-      .add(gridSpecs, "allowCut", 0, 3, 1) // Bind to gridSpecs.allowCut
+      .add(this.uiGridParams.gridSpecs, "allowCut", 0, 3, 1) // Bind to uiGridParams
       .name("Allow Cut")
-      .onChange(() => this.main.setGridParams(this.main.gridParams));
+      .onChange(() => {
+        // Notify change via callback
+        if (this.onChangeCallback) {
+          this.onChangeCallback('gridSpecs.allowCut', this.uiGridParams.gridSpecs.allowCut);
+        }
+      });
 
     this.shadowIntensityController = shadowFolder
-      .add(this.main.gridParams.shadow, "shadowIntensity", 0, 1, 0.01) // Bind to shadow.shadowIntensity
+      .add(this.uiGridParams.shadow, "shadowIntensity", 0, 1, 0.01) // Bind to uiGridParams
       .name("Intensity")
-      .onChange(() => this.main.setGridParams(this.main.gridParams));
+      .onChange(() => {
+        if (this.onChangeCallback) {
+          this.onChangeCallback('shadow.shadowIntensity', this.uiGridParams.shadow.shadowIntensity);
+        }
+      });
 
     this.shadowThresholdController = shadowFolder
-      .add(this.main.gridParams.shadow, "shadowThreshold", 0, 0.5, 0.01) // Bind to shadow.shadowThreshold
+      .add(this.uiGridParams.shadow, "shadowThreshold", 0, 0.5, 0.01) // Bind to uiGridParams
       .name("Threshold")
-      .onChange(() => this.main.setGridParams(this.main.gridParams));
+      .onChange(() => {
+        if (this.onChangeCallback) {
+          this.onChangeCallback('shadow.shadowThreshold', this.uiGridParams.shadow.shadowThreshold);
+        }
+      });
 
     this.blurAmountController = shadowFolder
-      .add(this.main.gridParams.shadow, "blurAmount", 0, 1, 0.01) // Bind to shadow.blurAmount
+      .add(this.uiGridParams.shadow, "blurAmount", 0, 1, 0.01) // Bind to uiGridParams
       .name("Blur")
-      .onChange(() => this.main.setGridParams(this.main.gridParams));
+      .onChange(() => {
+        if (this.onChangeCallback) {
+          this.onChangeCallback('shadow.blurAmount', this.uiGridParams.shadow.blurAmount);
+        }
+      });
 
     // --- DISPLAY OPTIONS ---
 
@@ -163,17 +206,21 @@ export class NewGridUi extends BaseUi {
       button.dataset.flag = config.flag; // Store flag name on button
 
       // Set initial active state
-      if (this.main.gridParams.flags[config.flag]) button.classList.add("active");
+      if (this.uiGridParams.flags[config.flag]) button.classList.add("active");
 
       // Add event listener
       button.addEventListener("click", (event) => {
         const clickedButton = event.currentTarget;
         const flagName = clickedButton.dataset.flag;
 
-        this.main.gridParams.flags[flagName] = !this.main.gridParams.flags[flagName];
-
-        this.main.setGridParams(this.main.gridParams);
+        // Update internal UI state first
+        this.uiGridParams.flags[flagName] = !this.uiGridParams.flags[flagName];
         clickedButton.classList.toggle("active");
+
+        // Notify change via callback
+        if (this.onChangeCallback) {
+          this.onChangeCallback('flags.' + flagName, this.uiGridParams.flags[flagName]);
+        }
       });
 
       buttonContainer.appendChild(button);
@@ -255,5 +302,60 @@ export class NewGridUi extends BaseUi {
     safeUpdateDisplay(this.cellWidthController);
     safeUpdateDisplay(this.cellHeightController);
     safeUpdateDisplay(this.totalCellsController);
+  }
+
+  // Add this new method
+  updateUIState(newGridParams) {
+    // --- START REFACTOR ---
+    // Update properties of existing objects instead of replacing them
+    if (newGridParams.screen) {
+      Object.assign(this.uiGridParams.screen, newGridParams.screen);
+    }
+    if (newGridParams.gridSpecs) {
+      Object.assign(this.uiGridParams.gridSpecs, newGridParams.gridSpecs);
+    }
+    if (newGridParams.shadow) {
+      Object.assign(this.uiGridParams.shadow, newGridParams.shadow);
+    }
+    if (newGridParams.flags) {
+      Object.assign(this.uiGridParams.flags, newGridParams.flags);
+    }
+    if (newGridParams.renderSize) {
+      Object.assign(this.uiGridParams.renderSize, newGridParams.renderSize);
+    }
+    if (newGridParams.colors) {
+      Object.assign(this.uiGridParams.colors, newGridParams.colors);
+    }
+    // --- END REFACTOR ---
+
+    // Update screen type dropdown selection
+    const currentScreen = this.uiGridParams.screen;
+    const foundName = Object.keys(SCREEN_TYPES).find(name => {
+      const type = SCREEN_TYPES[name];
+      return type.width === currentScreen.width && type.height === currentScreen.height && type.shape === currentScreen.shape;
+    });
+    this.uiState.selectedScreen = foundName || Object.keys(SCREEN_TYPES)[0]; // Fallback if not found
+
+    // Refresh lil-gui controller displays
+    this.screenTypeController?.updateDisplay();
+    this.centerOffsetXController?.updateDisplay();
+    this.centerOffsetYController?.updateDisplay();
+    this.targetCellCountCellsController?.updateDisplay();
+    this.gapController?.updateDisplay();
+    this.aspectRatioController?.updateDisplay();
+    this.scaleController?.updateDisplay();
+    this.allowCutController?.updateDisplay();
+    this.shadowIntensityController?.updateDisplay();
+    this.shadowThresholdController?.updateDisplay();
+    this.blurAmountController?.updateDisplay();
+
+    // Update toggle button active states
+    const buttons = this.gui.domElement.querySelectorAll('.toggle-button[data-flag]');
+    buttons.forEach(button => {
+      const flagName = button.dataset.flag;
+      if (flagName && typeof this.uiGridParams.flags[flagName] === 'boolean') {
+        button.classList.toggle('active', this.uiGridParams.flags[flagName]);
+      }
+    });
   }
 }

@@ -10,6 +10,43 @@ export class GridGenRenderer extends BaseRenderer {
     this.gl = gl;
     this.shaderManager = shaderManager;
 
+    // Initialize this.grid with the initial config object reference
+    this.grid = gridConfig || {}; // Use passed config or default to empty object
+
+    // Store initial boundary references (can be null initially)
+    this.shapeBoundary = shapeBoundary;
+    this.physicsBoundary = physicsBoundary;
+
+    // Initialize buffer objects
+    this.baseQuadBuffer = null;
+    this.instanceMatrixBuffer = null;
+    this.instanceColorBuffer = null;
+    this.instanceShadowBuffer = null;
+
+    // Object to hold instance data arrays
+    this.instanceData = {
+      matrices: null,
+      colors: null,
+      shadowParams: null,
+      count: 0,
+    };
+
+    // Initialize core components and buffers
+    this.overlayManager = new OverlayManager(gl.canvas); // Instantiate OverlayManager
+    this.gridGeometry = new GridGeometry(); // Instantiate GridGeometry
+    this.initBuffers();
+    this.currentDimensions = { renderWidth: 0, renderHeight: 0 }; // Initialize dimensions
+
+    // Bind methods
+    this.setGrid = this.setGrid.bind(this);
+    this.updateGridGeometryAndRender = this.updateGridGeometryAndRender.bind(this);
+    this.updateRenderables = this.updateRenderables.bind(this);
+    this.prepareInstanceData = this.prepareInstanceData.bind(this);
+    this.setupInstancedDrawing = this.setupInstancedDrawing.bind(this);
+    this.renderCellsInstanced = this.renderCellsInstanced.bind(this);
+
+    console.debug("GridGenRenderer constructor completed.");
+
     // Validate initial gridConfig.screen
     if (
       !gridConfig ||
@@ -24,33 +61,14 @@ export class GridGenRenderer extends BaseRenderer {
       console.warn("GridGenRenderer: Using default screen parameters.");
     }
 
-    this.grid = gridConfig;
-    this.shapeBoundary = shapeBoundary;
-    this.physicsBoundary = physicsBoundary;
-
-    this.gridGeometry = new GridGeometry();
-
     this.boundaryType = gridConfig.screen.shape;
 
     if (!gl.getContextAttributes().stencil) {
       console.warn("Stencil buffer not available, masking will not work correctly");
     }
 
-    // Overlay creation and DOM insertion is now handled by OverlayManager
-    this.overlayManager = new OverlayManager(this.gl.canvas);
-
     // Boundaries are now managed externally and passed via setGrid
     this.projectionMatrix = mat4.create();
-
-    this.instanceData = {
-      // Store instance data arrays
-      matrices: null,
-      colors: null,
-      shadowParams: null,
-      count: 0,
-    };
-
-    this.initBuffers();
   }
 
   initBuffers() {
@@ -90,23 +108,37 @@ export class GridGenRenderer extends BaseRenderer {
 
   // Update grid config, shape boundary, and physics boundary
   setGrid(newGridConfig, shapeBoundary, physicsBoundary, dimensions) {
-    // Validate incoming newGridConfig.screen
-    if (
-      !newGridConfig ||
-      !newGridConfig.screen ||
-      typeof newGridConfig.screen.width !== "number" ||
-      typeof newGridConfig.screen.height !== "number" ||
-      !newGridConfig.screen.shape
-    ) {
-      console.error("GridGenRenderer.setGrid: Invalid gridConfig.screen object provided. Update aborted.", newGridConfig?.screen);
-      return; // Abort if essential screen info is missing
-    }
+    // console.log("Renderer setGrid: Received gridConfig.shadow:", JSON.stringify(newGridConfig?.shadow));
+    // --- START REFACTOR ---
+    // // Remove this line: this.grid = newGridConfig;
 
-    // Store references
-    this.grid = newGridConfig;
+    // Perform a deep update instead of replacing the object reference
+    // This ensures UI listeners bound via .listen() remain attached
+    // to the original object instance.
+    if (newGridConfig) {
+      // Update nested objects carefully
+      if (newGridConfig.screen) Object.assign(this.grid.screen, newGridConfig.screen);
+      if (newGridConfig.gridSpecs) Object.assign(this.grid.gridSpecs, newGridConfig.gridSpecs);
+      if (newGridConfig.shadow) Object.assign(this.grid.shadow, newGridConfig.shadow);
+      if (newGridConfig.colors) Object.assign(this.grid.colors, newGridConfig.colors);
+      if (newGridConfig.flags) Object.assign(this.grid.flags, newGridConfig.flags);
+      if (newGridConfig.renderSize) Object.assign(this.grid.renderSize, newGridConfig.renderSize);
+      // Note: Calculated properties like cellCount, cols, rows etc.
+      // will be updated later in updateGridGeometryAndRender
+      // directly on this same this.grid object instance.
+    }
+    // --- END REFACTOR ---
+
+    // Store other references (these can be replaced)
     this.shapeBoundary = shapeBoundary;
     this.physicsBoundary = physicsBoundary;
     this.currentDimensions = dimensions;
+
+    // Validate incoming gridConfig.screen (essential check)
+    if (!this.grid || !this.grid.screen || typeof this.grid.screen.width !== 'number' || typeof this.grid.screen.height !== 'number' || !this.grid.screen.shape) {
+      console.error("GridGenRenderer.setGrid: Invalid internal gridConfig.screen after update. Aborting.", this.grid?.screen);
+      return; // Abort if essential screen info is missing or became invalid
+    }
 
     if (!this.shapeBoundary) {
       console.warn("GridGenRenderer.setGrid: Received null or undefined shapeBoundary.");
@@ -131,7 +163,7 @@ export class GridGenRenderer extends BaseRenderer {
 
   // Renamed from updateGrid to clarify its purpose
   updateGridGeometryAndRender(dimensions) {
-    console.debug("updateGridGeometryAndRender called with screen:", this.grid.screen);
+    // console.debug("updateGridGeometryAndRender called with screen:", this.grid.screen);
 
     // Use the externally provided shapeBoundary
     if (!this.shapeBoundary) {

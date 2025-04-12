@@ -71,12 +71,12 @@ class Main {
     try {
       await this.shaderManager.init();
 
-      // Note: Boundaries will be passed via setGrid on first update
+      // Instantiate GridGenRenderer
       this.gridRender = new GridGenRenderer(
         this.gl,
         this.shaderManager,
         this.gridParams // Pass initial gridParams
-        // Boundaries are set via setGrid later
+        // Boundaries will be set via setGrid later
       );
 
       // Set initial canvas size, style, and viewport
@@ -85,6 +85,15 @@ class Main {
       this.setGridParams(this.gridParams); // Trigger initial update flow
 
       this.ui = new UiManager(this);
+      await this.ui.initPanels(); // Wait for panels to be created
+
+      // Now register the callback
+      if (this.ui.newGridUi && typeof this.ui.newGridUi.setOnChangeCallback === 'function') {
+        this.ui.newGridUi.setOnChangeCallback(this.handleGridUIChange.bind(this));
+        console.log("Grid UI change callback registered successfully (post-init).");
+      } else {
+        console.error("Failed to register Grid UI change callback even after initPanels.");
+      }
 
       return true;
     } catch (error) {
@@ -123,9 +132,9 @@ class Main {
 
   // Method to update parameters and propagate changes
   setGridParams(newGridParams) {
-    console.debug("Main.setGridParams called with:", newGridParams);
+    // console.debug("Main.setGridParams called with:", newGridParams);
     this.gridParams = newGridParams;
-    console.debug("Updated gridParams:", this.gridParams);
+    // console.debug("Updated gridParams:", this.gridParams);
 
     // Update dimensions FIRST based on new gridParams
     // Note: checkAndApplyDimensionChanges also updates the internal state of dimensionManager
@@ -148,6 +157,55 @@ class Main {
       this.gridRender.setGrid(this.gridParams, this.boundaryManager?.getShapeBoundary(), this.boundaryManager?.getPhysicsBoundary(), currentDimensions);
     } else {
       console.warn("Main.setGridParams: gridRender not initialized, cannot update.");
+    }
+
+    // Add this line at the end to synchronize UI
+    if (this.ui && this.ui.newGridUi && typeof this.ui.newGridUi.updateUIState === 'function') {
+      this.ui.newGridUi.updateUIState(this.gridParams);
+    }
+  }
+
+  // Add this new method to handle UI changes
+  handleGridUIChange(paramPath, value) {
+    // console.log(`Main Handler: Received update for '${paramPath}' with value:`, value);
+    // console.debug(`Grid UI Change: ${paramPath} = ${value}`);
+    try {
+      const parts = paramPath.split('.');
+      let current = this.gridParams;
+
+      // Traverse the path, except for the last part
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (current[parts[i]] === undefined) {
+          console.error(`Invalid path segment ${parts[i]} in ${paramPath}`);
+          return; // Path doesn't exist
+        }
+        current = current[parts[i]];
+      }
+
+      const finalKey = parts[parts.length - 1];
+
+      // Special handling for 'screen' updates from dropdown
+      if (paramPath === 'screen') {
+        // Assuming value is the full screen spec object from SCREEN_TYPES
+        this.gridParams.screen = { ...value };
+      } else {
+        // Update the final property
+        if (current[finalKey] !== undefined) {
+          current[finalKey] = value;
+          if (parts[0] === 'shadow') {
+            // console.log("Main Handler: Updated this.gridParams.shadow:", JSON.stringify(this.gridParams.shadow));
+          }
+        } else {
+          console.error(`Invalid final key ${finalKey} in ${paramPath}`);
+          return; // Key doesn't exist
+        }
+      }
+
+      // After updating the internal gridParams, trigger the update flow
+      this.setGridParams(this.gridParams);
+
+    } catch (error) {
+      console.error(`Error handling grid UI change (${paramPath}=${value}):`, error);
     }
   }
 }

@@ -33,10 +33,10 @@ export class GridGeometry {
     const offsetY = gridParams.gridSpecs.centerOffsetY || 0;
 
     // Log center position used for grid generation
-    console.debug("Grid geometry generation using:", {
-      boundaryCenter: { x: centerX, y: centerY },
-      offsets: { x: offsetX, y: offsetY },
-    });
+    // console.debug("Grid geometry generation using:", {
+    //   boundaryCenter: { x: centerX, y: centerY },
+    //   offsets: { x: offsetX, y: offsetY },
+    // });
 
     // Get render scale from DimensionManager
     const renderScale = dimensions.renderScale;
@@ -60,15 +60,15 @@ export class GridGeometry {
     const maxVisualCellHeight = Math.max(30, Math.round(startCellHeight * renderScale));
 
     // Debug output to help diagnose issues
-    console.debug("Grid Geometry Calculations:", {
-      physicalWidth: physicalWidth,
-      physicalHeight: physicalHeight,
-      renderScale: renderScale,
-      startCellHeight: startCellHeight,
-      maxVisualCellHeight: maxVisualCellHeight,
-      boundaryMode: allowCutConfig,
-      allowCut: allowCutConfig,
-    });
+    // console.debug("Grid Geometry Calculations:", {
+    //   physicalWidth: physicalWidth,
+    //   physicalHeight: physicalHeight,
+    //   renderScale: renderScale,
+    //   startCellHeight: startCellHeight,
+    //   maxVisualCellHeight: maxVisualCellHeight,
+    //   boundaryMode: allowCutConfig,
+    //   allowCut: allowCutConfig,
+    // });
 
     // Store the best physical cell dimensions
     let bestPhysicalCellW = 0;
@@ -216,7 +216,7 @@ export class GridGeometry {
               // Check validity for allowCut=0: the cell making us hit the target must be valid
               if (gridParams.gridSpecs.allowCut === 0 && cornersInside !== 4) {
                 isValidTarget = false;
-                console.debug(`Target count met, but cell not valid for allowCut=0 (cellH: ${cellH}). Skipping.`);
+                // console.debug(`Target count met, but cell not valid for allowCut=0 (cellH: ${cellH}). Skipping.`);
               }
 
               if (isValidTarget) {
@@ -268,7 +268,7 @@ export class GridGeometry {
 
     // --- Plan Step 4.1: Check if valid params found ---
     if (bestVisualCellW <= 0) {
-      console.warn("GridGeometry: No valid grid parameters found.");
+      // console.warn("GridGeometry: No valid grid parameters found.");
       this.rectangles = [];
       this.geomParams = {};
       return [];
@@ -392,14 +392,14 @@ export class GridGeometry {
     };
 
     // --- Plan Step 5.3: Update final logging ---
-    console.info(`Generated final grid with ${this.rectangles.length} cells using optimal parameters. Target: ${gridParams.gridSpecs.targetCellCount || "N/A"}`, this.geomParams);
+    // console.info(`Generated final grid with ${this.rectangles.length} cells using optimal parameters. Target: ${gridParams.gridSpecs.targetCellCount || "N/A"}`, this.geomParams);
 
-    console.debug("Final Grid Geometry:", {
-      rectanglesCount: this.rectangles.length,
-      gridParams: this.geomParams, // Use the stored final params
-    });
+    // console.debug("Final Grid Geometry:", {
+    //   rectanglesCount: this.rectangles.length,
+    //   gridParams: this.geomParams, // Use the stored final params
+    // });
 
-    console.debug(`Stored ${this.rectangles.length} final rectangles.`);
+    // console.debug(`Stored ${this.rectangles.length} final rectangles.`);
     // --- Plan Step 5.4: Ensure return ---
     return this.rectangles;
   }

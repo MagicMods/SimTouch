@@ -64,3 +64,9 @@
 **Experience:** The `gridRenderer.js` used a two-pass stencil buffer technique involving `drawCircle` (using the `basic` shader) to mask the final grid output to a circle. However, testing revealed that commenting out the entire stencil logic produced the identical visual result.
 
 **Learning:** The upstream grid generation logic (`generateRectangles` and `classifyCells`) already filtered the cells to only include those within the desired boundary. The stencil pass was therefore redundant. Regularly review the end-to-end rendering pipeline. Optimizations or refactoring in one stage (e.g., geometry generation) can make subsequent stages (e.g., masking) unnecessary, offering opportunities for simplification and performance improvement.
+
+## State Object References and UI Binding (`lil-gui`) (2024-08-03)
+
+**Experience:** Fixing unresponsive UI elements (shadow sliders, statistics displays) controlled by `lil-gui` revealed issues caused by replacing state object instances (`uiGridParams` in `newGridUi`, `this.grid` in `gridGenRenderer`) instead of updating their properties.
+
+**Learning:** `lil-gui`'s `.listen()` method binds to a specific JavaScript object instance. If this instance is replaced entirely (e.g., `this.state = newStateObject`), the binding breaks. To maintain reactivity for UI elements using `.listen()`, the properties of the _original_ state object instance must be updated (e.g., using `Object.assign(this.state, newStateObject)` or `this.state.property = value`). Replacing the object reference invalidates the listener.

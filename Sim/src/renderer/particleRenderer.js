@@ -135,18 +135,8 @@ class ParticleRenderer extends BaseRenderer {
           0
         );
 
-        // Set vector color (yellow, semi-transparent)
         this.gl.uniform4fv(lineProgram.uniforms.color, [1.0, 1.0, 0.0, 0.7]);
-
-        // Enable blending for lines as well if needed
-        // this.gl.enable(this.gl.BLEND);
-        // this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-
         this.gl.drawArrays(this.gl.LINES, 0, vertices.length / 2);
-
-        // Disable blending if it was enabled for lines
-        // this.gl.disable(this.gl.BLEND);
-
         this.gl.disableVertexAttribArray(lineProgram.attributes.position);
       }
     }
