@@ -219,6 +219,15 @@ These imperatives apply across all modes when reading, analyzing, or modifying c
    - Showing the user the relevant code from similar components
    - Getting confirmation on the pattern to follow
 
+# STATE-BASED STYLING PRINCIPLE
+
+1.  Prioritize using CSS classes, managed via JavaScript's `element.classList` API, for styling UI elements based on application state or dynamic conditions.
+2.  Avoid direct manipulation of inline styles (e.g., `element.style.color = 'red'`, `element.style.display = 'none'`) for state-driven visual changes.
+3.  Define CSS rules corresponding to these state classes in dedicated `.css` files.
+4.  This promotes separation of concerns (structure/logic in JS, presentation in CSS) and improves maintainability.
+
+
+
 # MCP TOOLS PROTOCOL
 
 1. LOG HANDLING RULES

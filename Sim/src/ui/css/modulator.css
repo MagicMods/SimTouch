@@ -1,0 +1,138 @@
+/* BPM slider and value container styling */
+.bpm-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.bpm-slider-row {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 2px;
+}
+
+.bpm-label {
+  font-size: 11px;
+  margin-right: 8px;
+  min-width: 30px;
+}
+
+.bpm-value {
+  font-size: 12px;
+  width: 20% !important;
+  text-align: center;
+  color: #ffbb00;
+  padding: 2px 4px;
+  border-radius: 3px;
+  margin-left: 8px;
+  /* font-weight: bold; */
+}
+
+.bpm-slider {
+  /* flex: 1; */
+  width: 100%;
+  height: 4px;
+  -webkit-appearance: none;
+  background: #3a3a3a;
+  border-radius: 2px;
+  outline: none;
+}
+
+.bpm-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ffbb00;
+  cursor: pointer;
+}
+
+.bpm-slider::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #ffbb00;
+  cursor: pointer;
+  border: none;
+}
+
+/* Beat button styling */
+.bpm-button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background-color: #3a3a3a;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  height: 28px;
+  min-width: 60px;
+  cursor: pointer;
+  transition: background-color 0.1s;
+  /* font-weight: bold; */
+}
+
+.bpm-button:hover {
+  background-color: #4a4a4a;
+}
+
+.bpm-button:active {
+  background-color: #ff5555;
+}
+
+/* Target selection styles */
+.target-selection-mode .controller[data-is-target="true"] {
+  outline: 1px solid #ffaa00;
+  cursor: pointer;
+}
+
+.target-selection-mode .controller[data-is-target="true"]:hover {
+  background-color: rgba(255, 170, 0, 0.15) !important;
+}
+
+.target-selection-mode .controller[data-is-target="false"] {
+  opacity: 0.7;
+}
+
+.target-selection-indicator {
+  display: none;
+  height: 1px;
+  margin: 8px 0;
+  background: #555;
+}
+
+/* Target selection button */
+.target-selection-button {
+  width: 100%;
+  background: #3a3a3a;
+  border: 1px solid #242424;
+  color: white;
+  cursor: pointer;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.target-selection-button:hover {
+  background: #4a4a4a;
+}
+
+/* Make the controller wrapper for target selection button full width */
+.controller .target-selection-button {
+  width: 100%;
+  /* margin: 0 8px; */
+}
+
+.bpm-button {
+  width: 50px !important;
+}
+
+.bpm-button:active {
+  background-color: #ff5555;
+}
+
+.beat-container {
+  margin-right: 10px;
+}

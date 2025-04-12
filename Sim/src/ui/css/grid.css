@@ -1,0 +1,65 @@
+.slider-cellCount-container {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0px;
+  padding: 0px;
+  padding-top: 6px !important;
+  width: 100%;
+}
+
+#lil-gui-name-5 {
+  display: none !important;
+  width: 30px !important;
+  pointer-events: none !important;
+  background-color: red !important;
+}
+
+.slider-dual-input-input {
+  width: 20%;
+  padding: 0px;
+  margin: 0px;
+  padding-top: 0px !important;
+  padding-bottom: 0px !important;
+  margin-top: 0px !important;
+  margin-bottom: 0px !important;
+}
+
+.slider-dual-input-slider {
+  width: 100%;
+  margin-right: 0px !important;
+  padding-right: 0px !important;
+  padding-top: 0px !important;
+  padding-bottom: 0px !important;
+  margin-top: 0px !important;
+  margin-bottom: 0px !important;
+}
+
+#lil-gui-name-4 {
+  /* display: none !important; */
+  width: 81px !important;
+}
+
+.lil-gui .controller .name {
+  /* General lil-gui label selector */
+  /* Potentially hide only within a specific container if needed */
+}
+/* Or more specifically if it's in your custom container */
+/* .slider-cellCount-container .name {
+    display: none !important;
+  } */
+
+#lil-gui-name-5 + .widget input[type="text"] {
+  pointer-events: none !important;
+  color: rgb(219, 219, 219) !important;
+  font-weight: 700;
+  background-color: rgb(5, 5, 5) !important;
+}
+
+.flex-container input[type="text"] {
+  pointer-events: none !important;
+  color: rgb(228, 228, 228) !important;
+  font-weight: 700;
+  background-color: rgb(5, 5, 5) !important;
+  padding-left: 14px;
+  margin-left: 10px;
+}

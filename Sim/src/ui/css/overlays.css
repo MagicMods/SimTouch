@@ -1,0 +1,43 @@
+/* Style for cell index text elements (used by OverlayManager) */
+.cell-index-text {
+  color: var(--index-text-color);
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+  font-size: 9px;
+  font-family: monospace;
+  text-align: center;
+  pointer-events: none;
+  white-space: pre; /* Preserve spacing */
+  background-color: rgba(0, 0, 0, 0.5); /* Optional background for readability */
+  padding: 1px;
+  border-radius: 2px;
+}
+
+.cell-center {
+  position: absolute;
+  background-color: lime;
+  border-radius: 50%;
+  pointer-events: none;
+  box-shadow: 0 0 2px rgba(0, 0, 0, 0.8);
+}
+
+/* Div used by BoundaryRenderer */
+.grid-boundary-overlay {
+  position: absolute;
+  pointer-events: none;
+  box-sizing: border-box;
+  border: 1px solid transparent; /* Initial state */
+  visibility: hidden; /* Initial state */
+}
+
+/* Shared styles for text and center overlay containers */
+.overlay-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  overflow: hidden;
+}

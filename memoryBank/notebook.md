@@ -684,3 +684,38 @@ _(Analysis Phase Complete. Ready for Refined Plan)_
 - The `init()` method logic in both `Sim` and `Grid` supports either `vert`/`vertex` or `frag`/`fragment` keys, but the standard convention is now `vert`/`frag`.
 
 **Status:** Renderers (`ParticleRenderer`, `GridRenderer`) have been cleaned up. ShaderManagers (`Sim`, `Grid`) are aligned in terms of key naming conventions and initialization logic. `Sim` now contains both legacy and instanced versions of the `gridCell` shader.
+
+**CSS in JS Analysis (Sim/):**
+
+- **Inline Styles (`.style.`) Found:**
+  - `Sim/src/util/statsModule.js`
+  - `Sim/src/util/noisePreviewManager.js`
+  - `Sim/src/ui/panels/turbulenceUi.js`
+  - `Sim/src/ui/panels/randomizerUi.js`
+  - `Sim/src/ui/panels/pulseModulationUi.js`
+- **`classList.add(` Usage Found:**
+  - `Sim/src/ui/panels/turbulenceUi.js`
+  - `Sim/src/ui/panels/randomizerUi.js`
+  - `Sim/src/ui/panels/pulseModulationUi.js`
+  - `Sim/src/ui/panels/paramUi.js`
+  - `Sim/src/ui/panels/organicUi.js`
+  - `Sim/src/ui/panels/inputModulationUi.js`
+  - `Sim/src/ui/panels/gravityUi.js`
+  - `Sim/src/renderer/gridRenderer.js`
+  - `Sim/src/presets/presetManager.js`
+
+**CSS Refactoring & Protocol Update:**
+
+- Refactored `Sim/src/util/noisePreviewManager.js` (`updateSelectedUI` method) to use CSS classes (`noise-preview-element`, `selected`, `disabled`) instead of inline styles for border management. Corresponding CSS rules added to `Sim/src/ui/css/noise.css`. Added `noise-preview-element` base class during element creation in `Sim/src/ui/panels/turbulenceUi.js`.
+- Proposed adding a "STATE-BASED STYLING PRINCIPLE" to `riper-5.mdc` to promote using classes over inline styles for state-driven UI changes.
+
+**CSS Refactoring (`randomizerUi.js`):**
+
+- **Re-Scan Results:** Inline styles (`.style.`) remain in `statsModule.js`, `noisePreviewManager.js`, `turbulenceUi.js`, `randomizerUi.js`, `pulseModulationUi.js`, `presetUi.js` (and potentially others due to truncation).
+- **Refactoring:**
+  - Added CSS rules to `Sim/src/ui/css/randomizer.css` for `.randomizer-title`, `.randomizer-button-container`, `.target-selection-button-container`, `.randomizer-button` (base, :hover, .disabled), `.target-selection-button` (base, :hover, .active).
+  - Modified `Sim/src/ui/panels/randomizerUi.js`:
+    - Removed inline styles for title, containers, and buttons.
+    - Applied CSS classes (`randomizer-title`, `randomizer-button-container`, `target-selection-button-container`, `randomizer-button`, `target-selection-button`).
+    - Replaced button `backgroundColor` updates with `classList.toggle` (`disabled` for randomize, `active` for target selection).
+    - Removed JavaScript hover event listeners for buttons.

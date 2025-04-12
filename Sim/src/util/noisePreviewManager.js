@@ -326,61 +326,39 @@ export class NoisePreviewManager {
 
 
     updateSelectedUI() {
-        // Hide title for selected, show for others
         this.previewElements.forEach((element, pattern) => {
             const title = element.querySelector('div');
             if (title) {
                 title.style.display = pattern === this.selectedPattern ? 'none' : 'block';
             }
 
-            // Update border color
+            // Manage state classes for border and indicator
+            element.classList.remove('selected', 'disabled');
+            const existingIndicator = element.querySelector('.disabled-indicator');
+
             if (pattern === this.selectedPattern) {
-                // For selected pattern, show different border when disabled
+                element.classList.add('selected');
                 if (this.refreshingDisabled) {
-                    element.style.borderColor = '#ff6600'; // Orange border for disabled state
-                    element.style.borderStyle = 'dashed';
+                    element.classList.add('disabled');
 
                     // Add or update disabled indicator
-                    let indicator = element.querySelector('.disabled-indicator');
-                    if (!indicator) {
-                        indicator = document.createElement('div');
+                    if (!existingIndicator) {
+                        const indicator = document.createElement('div');
                         indicator.className = 'disabled-indicator';
                         indicator.innerHTML = '⏸'; // Pause symbol
-                        indicator.style.cssText = `
-                            position: absolute;
-                            top: 5px;
-                            right: 5px;
-                            background-color: rgba(255, 102, 0, 0.7);
-                            color: white;
-                            border-radius: 50%;
-                            width: 20px;
-                            height: 20px;
-                            display: flex;
-                            align-items: center;
-                            justify-content: center;
-                            font-size: 12px;
-                            z-index: 2;
-                        `;
+                        // Styles for indicator are now in noise.css
                         element.appendChild(indicator);
                     }
                 } else {
-                    element.style.borderColor = '#fff'; // White border for normal active state
-                    element.style.borderStyle = 'solid';
-
-                    // Remove disabled indicator if it exists
-                    const indicator = element.querySelector('.disabled-indicator');
-                    if (indicator) {
-                        element.removeChild(indicator);
+                    // Active selected state - remove indicator if it exists
+                    if (existingIndicator) {
+                        existingIndicator.remove();
                     }
                 }
             } else {
-                element.style.borderColor = '#666';
-                element.style.borderStyle = 'solid';
-
-                // Remove any disabled indicator
-                const indicator = element.querySelector('.disabled-indicator');
-                if (indicator) {
-                    element.removeChild(indicator);
+                // Unselected state - remove indicator if it exists
+                if (existingIndicator) {
+                    existingIndicator.remove();
                 }
             }
         });

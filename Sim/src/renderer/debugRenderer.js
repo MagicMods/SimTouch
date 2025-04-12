@@ -65,7 +65,7 @@ class DebugRenderer extends BaseRenderer {
     this.gl.enableVertexAttribArray(program.attributes.position);
 
     // Set grid color (light blue, semi-transparent)
-    this.gl.uniform4fv(program.uniforms.color, [0.2, 0.4, 0.8, 0.3]);
+    this.gl.uniform4fv(program.uniforms.color, [1.0, 1.0, 1.0, 0.3]);
 
     this.gl.drawArrays(this.gl.LINES, 0, vertices.length / 2);
     this.gl.deleteBuffer(vertexBuffer);

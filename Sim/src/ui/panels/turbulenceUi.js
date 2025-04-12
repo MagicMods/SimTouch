@@ -233,12 +233,7 @@ export class TurbulenceUi extends BaseUi {
     // Create preview container
     const previewContainer = document.createElement('div');
     previewContainer.className = 'pattern-preview-container';
-    previewContainer.style.cssText = `
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 10px;
-    `;
+
     // Add the preview container to the folder's content area
     const previewsContent = previewsFolder.domElement.querySelector('.children');
     if (previewsContent) {
@@ -393,7 +388,7 @@ export class TurbulenceUi extends BaseUi {
     // Create preview thumbnails
     Object.entries(patternStyles).forEach(([name, value]) => {
       const previewWrapper = document.createElement('div');
-      previewWrapper.className = 'pattern-preview';
+      previewWrapper.className = 'pattern-preview noise-preview-element';
       previewWrapper.setAttribute('data-pattern', value);  // Add data-pattern attribute
       previewWrapper.style.cssText = `
         width: ${previewSize}px;

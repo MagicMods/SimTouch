@@ -1,0 +1,101 @@
+/* Preset save dialog */
+.preset-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.preset-dialog {
+  background: #1a1a1a;
+  padding: 20px;
+  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.preset-input {
+  background: #2a2a2a;
+  border: 1px solid #3a3a3a;
+  color: white;
+  padding: 8px;
+  border-radius: 4px;
+}
+
+.preset-buttons {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.preset-buttons button {
+  background: #3a3a3a;
+  border: none;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.preset-buttons button:hover {
+  background: #4a4a4a;
+}
+
+.preset-select {
+  width: calc(100% - 10px) !important;
+  padding: 3px !important;
+  margin: 0 5px;
+  /* margin: 5px; */
+  /* border: 1px solid #242424; */
+  border-radius: 0px !important;
+  background: #3b3b3b;
+  text-align: center !important;
+  font-size: 10px;
+  color: white;
+  scrollbar-width: thin;
+  scrollbar-color: #555 #333;
+}
+
+.preset-select::-webkit-scrollbar {
+  width: 8px;
+}
+
+.preset-select::-webkit-scrollbar-track {
+  background: #333; /* Dark grey background */
+}
+
+.preset-select::-webkit-scrollbar-thumb {
+  background: #555; /* Lighter grey for the thumb */
+  border-radius: 4px;
+}
+
+/* Common UI component styles */
+.preset-control-button {
+  width: 100%;
+  background: #3a3a3a;
+  border: 1px solid #242424;
+  color: white;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.preset-control-button:hover {
+  background: #4a4a4a;
+}
+
+/* Preset control container */
+.preset-controls-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 8px;
+  gap: 5px;
+}

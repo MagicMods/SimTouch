@@ -9,6 +9,7 @@ export class RandomizerUi extends BaseUi {
     this.includeCheckboxes = true;
     this.useExclusions = true;
     this.targetSelectionMode = false;
+    this.randomizerEnabled = true;
 
     this.exclusions = [
       "Time Step",
@@ -20,7 +21,9 @@ export class RandomizerUi extends BaseUi {
     this.controllers = {};
     this.gui.title("Randomizer");
     const titleElement = this.gui.domElement.querySelector(".title");
-    titleElement.style.textAlign = "center";
+    if (titleElement) {
+      titleElement.classList.add('randomizer-title');
+    }
 
     this.createRandomizeButton();
     this.createTargetSelectionButton();
@@ -62,51 +65,27 @@ export class RandomizerUi extends BaseUi {
   }
 
   createRandomizeButton() {
-    // Create a custom HTML button
     const buttonContainer = document.createElement("div");
-    buttonContainer.style.width = "100%";
-    buttonContainer.style.padding = "10px 0";
-    buttonContainer.style.textAlign = "center";
+    buttonContainer.classList.add('randomizer-button-container');
 
     const randomizeButton = document.createElement("button");
     randomizeButton.textContent = "RANDOMIZE";
     randomizeButton.id = "randomize-all-button";
-    randomizeButton.style.width = "100%";
-    randomizeButton.style.fontSize = "12px";
-    randomizeButton.style.fontWeight = "bold";
-    randomizeButton.style.backgroundColor = this.getButtonColor();
-    randomizeButton.style.color = "white";
-    randomizeButton.style.border = "none";
-    randomizeButton.style.borderRadius = "4px";
-    randomizeButton.style.cursor = "pointer";
-    randomizeButton.style.transition = "background-color 0.3s";
+    randomizeButton.classList.add('randomizer-button');
 
-    // Mouse hover effects
-    randomizeButton.addEventListener("mouseenter", () => {
-      randomizeButton.style.backgroundColor = this.getButtonColor(true);
-    });
-
-    randomizeButton.addEventListener("mouseleave", () => {
-      randomizeButton.style.backgroundColor = this.getButtonColor();
-    });
-
-    // Click handler
     randomizeButton.addEventListener("click", () => {
       this.randomizeAll();
       this.flashButton(randomizeButton);
     });
 
-    // Add to container
     buttonContainer.appendChild(randomizeButton);
-
-    // Add button container to the GUI's main element
     const guiContainer = this.gui.domElement.querySelector(".children");
     if (guiContainer) {
       guiContainer.insertBefore(buttonContainer, guiContainer.firstChild);
     }
-
-    // Store reference
     this.randomizeButton = randomizeButton;
+
+    this.updateButtonStyle();
 
     // Add style for flash animation if not already present
     if (!document.getElementById("randomizer-styles")) {
@@ -127,44 +106,19 @@ export class RandomizerUi extends BaseUi {
   }
 
   createTargetSelectionButton() {
-    // Create a container for the button
     const buttonContainer = document.createElement("div");
-    buttonContainer.style.width = "100%";
-    buttonContainer.style.padding = "5px 0";
-    buttonContainer.style.textAlign = "center";
+    buttonContainer.classList.add('target-selection-button-container');
 
-    // Create the button
     const targetSelectionButton = document.createElement("button");
     targetSelectionButton.textContent = "Select Targets";
     targetSelectionButton.id = "target-selection-button";
-    targetSelectionButton.style.width = "100%";
-    targetSelectionButton.style.fontSize = "12px";
-    targetSelectionButton.style.backgroundColor = "#555";
-    targetSelectionButton.style.color = "white";
-    targetSelectionButton.style.border = "none";
-    targetSelectionButton.style.borderRadius = "4px";
-    targetSelectionButton.style.cursor = "pointer";
-    targetSelectionButton.style.transition = "background-color 0.3s";
-    targetSelectionButton.style.marginBottom = "10px";
+    targetSelectionButton.classList.add('target-selection-button');
 
-    // Add hover effects
-    targetSelectionButton.addEventListener("mouseenter", () => {
-      targetSelectionButton.style.backgroundColor = "#777";
-    });
-
-    targetSelectionButton.addEventListener("mouseleave", () => {
-      targetSelectionButton.style.backgroundColor = this.targetSelectionMode ? "#ff4444" : "#555";
-    });
-
-    // Add click handler
     targetSelectionButton.addEventListener("click", () => {
       this.toggleTargetSelectionMode();
     });
 
-    // Add to container
     buttonContainer.appendChild(targetSelectionButton);
-
-    // Add container to the GUI
     const guiContainer = this.gui.domElement.querySelector(".children");
     if (guiContainer) {
       // Insert after the randomize button
@@ -181,7 +135,6 @@ export class RandomizerUi extends BaseUi {
       }
     }
 
-    // Store reference
     this.targetSelectionButton = targetSelectionButton;
 
     // Add CSS for target selection mode if not already present
@@ -222,6 +175,8 @@ export class RandomizerUi extends BaseUi {
       `;
       document.head.appendChild(style);
     }
+
+    this.updateTargetSelectionButtonStyle();
   }
 
   updateParameterAvailability() {
@@ -472,6 +427,7 @@ export class RandomizerUi extends BaseUi {
     }
 
     console.log(`RandomizerUI: Randomized ${totalChanged} parameters`);
+    this.updateTargetSelectionButtonStyle();
     return { success: true, totalChanged };
   }
 
@@ -580,43 +536,10 @@ export class RandomizerUi extends BaseUi {
   }
 
   updateButtonStyle() {
-    if (!this.randomizeButton) return;
-    this.randomizeButton.style.backgroundColor = this.getButtonColor();
-  }
-
-  getButtonColor(hover = false) {
-    // Color ranges from blue (low intensity) to red (high intensity)
-    const intensity = this.intensity;
-
-    // Base colors
-    const lowColor = [65, 105, 225]; // Royal Blue
-    const midColor = [50, 150, 50]; // Green
-    const highColor = [220, 50, 50]; // Red
-
-    let r, g, b;
-
-    if (intensity < 0.5) {
-      // Blend from low to mid
-      const t = intensity * 2;
-      r = Math.round(lowColor[0] * (1 - t) + midColor[0] * t);
-      g = Math.round(lowColor[1] * (1 - t) + midColor[1] * t);
-      b = Math.round(lowColor[2] * (1 - t) + midColor[2] * t);
-    } else {
-      // Blend from mid to high
-      const t = (intensity - 0.5) * 2;
-      r = Math.round(midColor[0] * (1 - t) + highColor[0] * t);
-      g = Math.round(midColor[1] * (1 - t) + highColor[1] * t);
-      b = Math.round(midColor[2] * (1 - t) + highColor[2] * t);
+    this.randomizerEnabled = this.intensity > 0.05;
+    if (this.randomizeButton) {
+      this.randomizeButton.classList.toggle('disabled', !this.randomizerEnabled);
     }
-
-    // Adjust for hover state
-    if (hover) {
-      r = Math.min(255, r + 20);
-      g = Math.min(255, g + 20);
-      b = Math.min(255, b + 20);
-    }
-
-    return `rgb(${r}, ${g}, ${b})`;
   }
 
   flashButton(button) {
@@ -776,13 +699,7 @@ export class RandomizerUi extends BaseUi {
 
   toggleTargetSelectionMode() {
     this.targetSelectionMode = !this.targetSelectionMode;
-
-    // Update button appearance
-    const button = this.targetSelectionButton;
-    if (button) {
-      button.textContent = this.targetSelectionMode ? "Confirm Selection" : "Select Targets";
-      button.style.backgroundColor = this.targetSelectionMode ? "#ff4444" : "#555";
-    }
+    this.updateTargetSelectionButtonStyle();
 
     // Toggle the body class for styling
     if (this.targetSelectionMode) {
@@ -802,6 +719,14 @@ export class RandomizerUi extends BaseUi {
       // Remove click listener
       document.removeEventListener('click', this.handleTargetSelection, true);
     }
+  }
+
+  updateTargetSelectionButtonStyle() {
+    if (this.targetSelectionButton) {
+      this.targetSelectionButton.classList.toggle('active', this.targetSelectionMode);
+    }
+    // Update button text based on mode
+    this.targetSelectionButton.textContent = this.targetSelectionMode ? "Exit Target Selection" : "Select Targets";
   }
 
   markRandomizerControls() {

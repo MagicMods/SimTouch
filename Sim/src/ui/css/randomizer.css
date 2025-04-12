@@ -1,0 +1,94 @@
+/* Parameter flex layout for randomizer */
+.parameter-flex-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  margin: 4px;
+}
+
+.parameter-checkbox-item {
+  flex: 0 0 calc(33.33% - 6px);
+  min-width: 100px;
+  margin: 0 !important;
+  padding: 0%;
+}
+
+.parameter-checkbox-item:hover {
+  background-color: var(--hover-color);
+}
+
+.parameter-checkbox-item .property-name {
+  font-size: 9px;
+  text-align: left;
+}
+
+.parameter-checkbox-item .name {
+  width: 80%;
+}
+
+/* Randomizer Title */
+.randomizer-title {
+  text-align: center;
+}
+
+/* Button Containers */
+.randomizer-button-container {
+  width: 100%;
+  padding: 10px 0;
+  text-align: center;
+}
+
+.target-selection-button-container {
+  width: 100%;
+  padding: 5px 0;
+  text-align: center;
+}
+
+/* Base Button Styles */
+.randomizer-button,
+.target-selection-button {
+  width: 100%;
+  font-size: 12px;
+  font-weight: bold;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+/* Randomize Button Specifics */
+.randomizer-button {
+  background-color: #ff8800; /* Default active color based on intensity */
+}
+
+.randomizer-button:hover {
+  background-color: #ffaa44; /* Lighter hover */
+}
+
+.randomizer-button.disabled {
+  background-color: #888; /* Color when intensity is low */
+}
+
+.randomizer-button.disabled:hover {
+  background-color: #aaa; /* Lighter hover for disabled */
+}
+
+
+/* Target Selection Button Specifics */
+.target-selection-button {
+  background-color: #555; /* Default */
+  margin-bottom: 10px;
+}
+
+.target-selection-button:hover {
+  background-color: #777;
+}
+
+.target-selection-button.active {
+  background-color: #ff4444; /* Active selection mode color */
+}
+
+.target-selection-button.active:hover {
+  background-color: #ff6666; /* Lighter hover for active */
+}
