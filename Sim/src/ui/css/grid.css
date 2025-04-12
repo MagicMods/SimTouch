@@ -7,7 +7,7 @@
   width: 100%;
 }
 
-#lil-gui-name-5 {
+#lil-gui-name-135 {
   display: none !important;
   width: 30px !important;
   pointer-events: none !important;
@@ -48,7 +48,7 @@
     display: none !important;
   } */
 
-#lil-gui-name-5 + .widget input[type="text"] {
+#lil-gui-name-135 + .widget input[type="text"] {
   pointer-events: none !important;
   color: rgb(219, 219, 219) !important;
   font-weight: 700;
