@@ -1,6 +1,4 @@
-# Sim Project Architecture
-
-_Date: 2024-08-01_
+# Architecture: Sim (Pre-Migration State - 2024-08-01)
 
 This document describes the Sim project's characteristics and the strategy for migrating the Grid rendering system into it.
 
@@ -36,6 +34,54 @@ This document describes the Sim project's characteristics and the strategy for m
 6.  **Deprecation Decisions:**
     - `debugRenderer.js`: **Keep** for its unique debug views.
     - `gridRenderer.js`: **Keep active initially**, then **deprecate and remove** once `SimGridRendererInstanced` is fully functional and validated, potentially including integration for visualizing particle density if required.
+
+# Architecture: Sim (Target State - Pre-Migration)
+
+**Purpose:** Outline the target architecture for the `Sim` project after migrating components from the `Grid` template.
+
+**Core Principles (Inherited from Grid):**
+
+- **Stateless Components:** Components receive necessary state via method parameters.
+- **Clear Dependencies:** Explicit dependency management.
+- **Decoupled Rendering:** Separation of grid, boundary, and potentially particle rendering.
+- **Centralized Configuration:** Use of `gridParams` (or equivalent) object, potentially expanded for simulation-specific needs.
+- **Modern JS:** ES6 classes, modules, `const`/`let`.
+
+**Key Components & Target State:**
+
+- **`main.js`:** Orchestrates `Grid` components, `ParticleSystem`, specific `Sim` renderers, and UI.
+- **`coreGrid/` (Migrated from Grid):**
+  - `dimensionManager.js`
+  - `boundaryManager.js`
+  - `gridGeometry.js`
+  - `boundary/` (Shape boundaries)
+- **`renderer/`:**
+  - `gridGenRenderer.js` (Migrated from Grid): Target for core grid rendering. **Needs adaptation** to accept and visualize data from `ParticleSystem` (likely via a refactored `gridRenderModes.js` or similar data provider).
+  - `baseRenderer.js` (Migrated from Grid): Minimal base class.
+  - `boundaryRenderer.js` (Migrated from Grid): Handles physics boundary visualization via DOM.
+  - `particleRenderer.js` (Existing Sim): Remains for rendering particles directly.
+  - `debugRenderer.js` (Existing Sim): Remains for specific debug overlays (velocity field, etc.).
+  - `emuRenderer.js` (Existing Sim): Remains for Emu-specific rendering.
+  - `gridRenderModes.js` (Refactored Sim): Adapted from legacy `LEGACY_gridRenderModes.js` to interface with `gridGenRenderer` and `ParticleSystem`, providing data for visualization.
+- **`overlays/`:**
+  - `overlayManager.js` (Migrated from Grid): Manages DOM overlays.
+- **`simulation/core/` (Existing Sim):**
+  - `particleSystem.js`: Core simulation engine. Needs integration with migrated `Grid` components (e.g., receive boundaries from `BoundaryManager`).
+  - `fluidFLIP.js`: FLIP simulation component.
+- **`simulation/boundary/` (Migrated from Grid):**
+  - Contains physics boundary definitions (`*Ps.js` files).
+- **`shader/` (Migrated from Grid Structure):**
+  - `shaderManager.js` (Grid version): Manages shaders.
+  - `shaders/`: Contains JS modules for shaders (`gridCell.js`, potentially adapted `particles.js`, and shaders needed for `particleRenderer`, `debugRenderer`, etc.).
+- **`input/`, `network/`, `presets/`, `sound/`, `ui/`, `util/` (Existing Sim):** Retained, interfaces potentially updated for migrated components.
+
+**Key Migration Tasks:**
+
+1.  Replace `Sim`'s missing/legacy `coreGrid`, `overlays`, `simulation/boundary`, and `shader` components with the `Grid` versions.
+2.  Integrate `ParticleSystem` with the migrated `Grid` components (`BoundaryManager`, etc.).
+3.  Adapt `gridGenRenderer` to consume data from `ParticleSystem` for visualization (requiring a refactored `gridRenderModes` or equivalent data provider).
+4.  Update `main.js` to instantiate and connect the migrated components correctly.
+5.  Ensure existing `Sim` renderers (`particleRenderer`, `debugRenderer`) function correctly with the new structure (e.g., using the migrated `ShaderManager`).
 
 ```mermaid
 graph LR

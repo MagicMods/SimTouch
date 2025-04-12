@@ -6,11 +6,10 @@ class ShaderManager {
     this.gl = gl;
     this.programs = new Map();
     this.currentProgram = null;
-    // console.log("ShaderManager created");
   }
 
   async init() {
-    // Create all shader programs
+
     for (const [name, shaders] of Object.entries(ShaderManager.SHADERS)) {
       const vertexSource = shaders.vert || shaders.vertex;
       const fragmentSource = shaders.frag || shaders.fragment;
@@ -69,7 +68,6 @@ class ShaderManager {
       const info = this.gl.getActiveUniform(program, i);
       uniforms[info.name] = this.gl.getUniformLocation(program, info.name);
     }
-
     return uniforms;
   }
 
@@ -95,14 +93,11 @@ class ShaderManager {
       );
     }
 
-    // Store program info
     this.programs.set(name, {
       program,
       attributes: this.getAttributes(program),
       uniforms: this.getUniforms(program),
     });
-
-    // console.log(`Created shader program: ${name}`);
     return this.programs.get(name);
   }
 
@@ -117,7 +112,6 @@ class ShaderManager {
         `Failed to compile ${shaderType} shader: ${this.gl.getShaderInfoLog(shader)}`
       );
     }
-
     return shader;
   }
 
@@ -129,11 +123,6 @@ class ShaderManager {
     return program;
   }
 
-  cleanup(program, vertexShader, fragmentShader) {
-    if (vertexShader) this.gl.deleteShader(vertexShader);
-    if (fragmentShader) this.gl.deleteShader(fragmentShader);
-    if (program) this.gl.deleteProgram(program);
-  }
 
   dispose() {
     this.programs.forEach((programInfo) => {
