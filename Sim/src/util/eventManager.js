@@ -1,4 +1,3 @@
-// Potential location: utils/EventEmitter.js
 class EventEmitter {
     constructor() {
         this._events = {}; // Use underscore for "private" convention
@@ -35,10 +34,10 @@ class EventEmitter {
                 // Use setTimeout to avoid one listener error breaking others
                 setTimeout(() => listener(data), 0);
             } catch (error) {
-                console.error(`Error in listener for event \"${eventName}\":`, error);
+                console.error(`Error in listener for event "${eventName}":`, error);
             }
         });
     }
 }
 
-export const eventBus = new EventEmitter(); 
+export const eventBus = new EventEmitter();

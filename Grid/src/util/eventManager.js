@@ -1,4 +1,3 @@
-// Potential location: utils/EventEmitter.js
 class EventEmitter {
     constructor() {
         this._events = {}; // Use underscore for "private" convention

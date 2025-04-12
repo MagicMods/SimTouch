@@ -44,12 +44,16 @@ This document describes the Sim project's characteristics and the strategy for m
 - **Stateless Components:** Components receive necessary state via method parameters.
 - **Clear Dependencies:** Explicit dependency management.
 - **Decoupled Rendering:** Separation of grid, boundary, and potentially particle rendering.
-- **Centralized Configuration:** Use of `gridParams` (or equivalent) object, potentially expanded for simulation-specific needs.
+- **Centralized Configuration:** Use of `gridParams` (or equivalent) object, potentially expanded for simulation-specific needs (`simParams`).
 - **Modern JS:** ES6 classes, modules, `const`/`let`.
+- **Event-Driven Communication:** Utilizes a singleton `eventBus` provided by `util/eventManager.js` for decoupled communication between components. Components subscribe to events relevant to their function. Key event flows include:
+  - `uiControlChanged` (Payload: `{paramPath, value}`): Emitted by various UI panels. Subscribed by `Main` to update the central `simParams` object.
+  - `simParamsUpdated` (Payload: `{simParams, dimensions}`): Emitted by `Main` after `simParams` state is updated. Subscribed by various components (`UiManager`, renderers, potentially forces, `SocketManager`) to trigger updates.
+  - Potential network/external input events managed via `eventBus`.
 
 **Key Components & Target State:**
 
-- **`main.js`:** Orchestrates `Grid` components, `ParticleSystem`, specific `Sim` renderers, and UI.
+- **`main.js`:** Orchestrates `Grid` components, `ParticleSystem`, specific `Sim` renderers, forces, network, and UI. Owns the master `simParams` object. Subscribes to `uiControlChanged`. Emits `simParamsUpdated`.
 - **`coreGrid/` (Migrated from Grid):**
   - `dimensionManager.js`
   - `boundaryManager.js`
@@ -73,7 +77,7 @@ This document describes the Sim project's characteristics and the strategy for m
 - **`shader/` (Migrated from Grid Structure):**
   - `shaderManager.js` (Grid version): Manages shaders.
   - `shaders/`: Contains JS modules for shaders (`gridCell.js`, potentially adapted `particles.js`, and shaders needed for `particleRenderer`, `debugRenderer`, etc.).
-- **`input/`, `network/`, `presets/`, `sound/`, `ui/`, `util/` (Existing Sim):** Retained, interfaces potentially updated for migrated components.
+- **`input/`, `network/`, `presets/`, `sound/`, `ui/`, `util/` (Existing Sim):** Retained, interfaces potentially updated for migrated components and event bus integration (e.g., `UiManager` subscribes to `simParamsUpdated`, `SocketManager` may subscribe/emit events).
 
 **Key Migration Tasks:**
 
@@ -84,85 +88,116 @@ This document describes the Sim project's characteristics and the strategy for m
 5.  Ensure existing `Sim` renderers (`particleRenderer`, `debugRenderer`) function correctly with the new structure (e.g., using the migrated `ShaderManager`).
 
 ```mermaid
-graph LR
-    subgraph Sim Project Target State
-        Sim_Main[main.js] -- Manages --> Sim_AnimationLoop[Animation Loop]
-        Sim_Main[main.js] -- Manages --> Sim_GridParams[gridParams Object]
-        Sim_Main[main.js] -- Creates/Configures --> Sim_CoreSystems
+graph TD
+    subgraph "Sim Project Target Architecture"
 
-        subgraph Sim_CoreSystems
+        %% Core State & Orchestration
+        Sim_Main["main.js (Orchestrator)"] -- Owns --> Sim_Params["simParams (Master State)"]
+        Sim_Main -- Drives --> Sim_AnimationLoop[Animation Loop]
+
+        %% Event Bus Hub
+        Sim_EventBus[(eventBus - Singleton @ util/eventManager.js)]
+
+        %% Core Managers & Systems (Created by Main)
+        Sim_Main -- Creates --> Sim_DimensionManager[DimensionManager]
+        Sim_Main -- Creates --> Sim_BoundaryManager[BoundaryManager]
+        Sim_Main -- Creates --> Sim_ShaderManager[ShaderManager]
+        Sim_Main -- Creates --> Sim_UiManager[UiManager]
+        Sim_Main -- Creates --> Sim_ParticleSystem[ParticleSystem]
+        Sim_Main -- Creates --> Sim_ForceSystem["Force System (Group)"]
+        Sim_Main -- Creates --> Sim_NetworkGroup["Network (SocketManager, etc.)"]
+        Sim_Main -- Creates --> Renderers_Group[Renderers]
+
+        %% Renderers (Created by Main)
+        subgraph Renderers_Group [Renderers]
             direction LR
-            Sim_Main -- Creates --> Sim_DimensionManager[DimensionManager]
-            Sim_Main -- Creates --> Sim_BoundaryManager[BoundaryManager]
-            Sim_Main -- Creates --> Sim_ShaderManager[ShaderManager]
-            Sim_Main -- Creates --> Sim_UiManager[UiManager]
-            Sim_Main -- Creates --> Sim_ParticleSystem[ParticleSystem]
-            Sim_Main -- Creates --> Renderers_Group[Renderers]
-            Sim_Main -- Creates --> ForceSystem_Group[Force System]
-            Sim_Main -- Creates --> Sim_ExternalInputConnector[ExternalInputConnector]
+            Sim_Main -- Creates --> Sim_GridGenRenderer["gridGenRenderer (Instanced)"]
+            Sim_Main -- Creates --> Sim_BoundaryRenderer[BoundaryRenderer]
+            Sim_Main -- Creates --> Sim_ParticleRenderer[ParticleRenderer]
+            Sim_Main -- Creates --> Sim_DebugRenderer[DebugRenderer]
+            Sim_Main -- Creates --> Sim_EmuRenderer[EmuRenderer]
         end
 
-        subgraph Renderers_Group[Renderers]
+        %% UI -> Main Event Flow
+        subgraph "UI Interaction"
+            Sim_UiPanels["UI Panels (via UiManager)"] -- "Emits 'uiControlChanged' {paramPath, value}" --> Sim_EventBus
+            Sim_EventBus -- "Notifies 'uiControlChanged'" --> Sim_Main
         end
 
-        subgraph ForceSystem_Group[Force System]
+        %% Main -> Components Event Flow
+        subgraph "State Update Notification"
+            Sim_Main -- Updates --> Sim_Params
+            Sim_Main -- "Emits 'simParamsUpdated' {simParams, dimensions}" --> Sim_EventBus
+            Sim_EventBus -- "Notifies 'simParamsUpdated'" --> Sim_ParamSubscribers["Subscribers (UI, Renderers, Network, Forces, etc.)"]
+            %% Note: Individual subscribers listed in text description
         end
 
-        subgraph UI_Group [UI Panels]
-        end
+        %% Component Subscriptions
+        Sim_Main -- "Subscribes to 'uiControlChanged'" --> Sim_EventBus
+        Sim_ParamSubscribers -- "Subscribe to 'simParamsUpdated'" --> Sim_EventBus
 
-        Sim_AnimationLoop -- Calls --> Sim_Main.render
-
-        Sim_Main.render -- Updates --> ForceSystem_Group
-        Sim_Main.render -- Updates --> Sim_ParticleSystem
-        Sim_Main.render -- Calls Draw --> Sim_SimGridRendererInstanced[SimGridRendererInstanced]
-        Sim_Main.render -- Calls Draw --> Sim_ParticleRenderer[ParticleRenderer]
-        Sim_Main.render -- Calls Draw --> Sim_DebugRenderer[DebugRenderer]
-        Sim_Main.render -- Calls Draw --> Sim_EmuRenderer[EmuRenderer]
+        %% Key Dependencies & Data Flow
+        Sim_AnimationLoop -- Calls --> Sim_Main.update
+        Sim_Main.update -- Updates --> Sim_ForceSystem
+        Sim_Main.update -- Updates --> Sim_ParticleSystem
+        Sim_Main.update -- Calls Draw --> Renderers_Group
 
         Sim_DimensionManager -- Calculates --> Sim_Dimensions[Dimensions Data]
-        Sim_DimensionManager -- Uses --> Sim_GridParams
+        Sim_DimensionManager -- Reads --> Sim_Params
+        Sim_DimensionManager -- Interacts --> Sim_Canvas[(Canvas)]
+        Sim_DimensionManager -- Interacts --> Sim_GLContext[(WebGL Context)]
 
         Sim_BoundaryManager -- Manages --> Sim_ShapeBoundary[Shape Boundary]
         Sim_BoundaryManager -- Manages --> Sim_PhysicsBoundary[Physics Boundary]
-        Sim_BoundaryManager -- Uses --> Sim_GridParams
-        Sim_BoundaryManager -- Uses --> Sim_Dimensions[Dimensions Data]
+        Sim_BoundaryManager -- Reads --> Sim_Params
+        Sim_BoundaryManager -- Reads --> Sim_Dimensions
 
+        Sim_ParticleSystem -- Reads --> Sim_Params
         Sim_ParticleSystem -- Uses --> Sim_PhysicsBoundary
-        Sim_ParticleSystem -- Uses --> ForceSystem_Group
-        Sim_ParticleSystem -- Uses --> Sim_GridParams
+        Sim_ParticleSystem -- Uses --> Sim_ForceSystem
         Sim_ParticleSystem -- Contains --> Sim_CollisionSystem[CollisionSystem]
         Sim_ParticleSystem -- Contains --> Sim_FluidFLIP[FluidFLIP]
 
-        ForceSystem_Group -- Interact --> Sim_ParticleSystem
-        ForceSystem_Group -- Use --> Sim_PhysicsBoundary
-        ForceSystem_Group -- Use --> Sim_GridParams
+        Sim_ForceSystem -- Reads --> Sim_Params
+        Sim_ForceSystem -- Uses --> Sim_PhysicsBoundary
 
-        Sim_UiManager -- Manages --> UI_Group
-        Sim_UiManager -- Creates --> Sim_SimGridUi[SimGridUi]
-        Sim_UiManager -- Creates --> Sim_ExistingPanels[Existing Sim Panels]
+        Sim_GridGenRenderer -- Reads --> Sim_Params
+        Sim_GridGenRenderer -- Reads --> Sim_Dimensions
+        Sim_GridGenRenderer -- Uses --> Sim_DimensionManager
+        Sim_GridGenRenderer -- Uses --> Sim_BoundaryManager
+        Sim_GridGenRenderer -- Uses --> Sim_ShaderManager
+        Sim_GridGenRenderer -- Uses --> Sim_GLContext
+        Sim_GridGenRenderer -- Uses --> Sim_ParticleSystem
+        %% For data viz
+        Sim_GridGenRenderer -- Creates --> Sim_GridGeometry[GridGeometry]
+        Sim_GridGenRenderer -- Creates --> Sim_OverlayManager[OverlayManager]
 
-        UI_Group -- Modifies --> Sim_GridParams
-        UI_Group -- Modifies --> ForceSystem_Group
-        UI_Group -- Modifies --> Sim_ParticleSystem
-        UI_Group -- Modifies --> Sim_BoundaryManager
+        Sim_BoundaryRenderer -- Reads --> Sim_Params
+        Sim_BoundaryRenderer -- Uses --> Sim_BoundaryManager
+        Sim_BoundaryRenderer -- Interacts --> Sim_Canvas
 
-        Sim_ExternalInputConnector -- Connects --> Sim_SocketManager[SocketManager]
-        Sim_ExternalInputConnector -- Routes To --> ForceSystem_Group
-
-        Sim_SimGridRendererInstanced -- Uses --> Sim_GL[WebGL Context]
-        Sim_SimGridRendererInstanced -- Uses --> Sim_ShaderManager
-        Sim_SimGridRendererInstanced -- Uses --> Sim_GridParams
-        Sim_SimGridRendererInstanced -- Uses --> Sim_Dimensions[Dimensions Data]
-        Sim_SimGridRendererInstanced -- Contains --> Sim_GridGeometry[GridGeometry]
-        Sim_SimGridRendererInstanced -- Contains --> Sim_OverlayManager[OverlayManager]
-        Sim_SimGridRendererInstanced -- Uses --> Sim_ShapeBoundary
-        Sim_SimGridRendererInstanced -- Uses --> Sim_ParticleSystem
-
-        Sim_ParticleRenderer -- Uses --> Sim_GL
-        Sim_ParticleRenderer -- Uses --> Sim_ShaderManager
+        Sim_ParticleRenderer -- Reads --> Sim_Params
         Sim_ParticleRenderer -- Uses --> Sim_ParticleSystem
+        Sim_ParticleRenderer -- Uses --> Sim_ShaderManager
+        Sim_ParticleRenderer -- Uses --> Sim_GLContext
 
-        Sim_ShaderManager -- Loads --> Sim_Shaders[Shaders List]
+        Sim_DebugRenderer -- Reads --> Sim_Params
+        Sim_DebugRenderer -- Uses --> Sim_ParticleSystem
+        Sim_DebugRenderer -- Uses --> Sim_ForceSystem
+        Sim_DebugRenderer -- Uses --> Sim_ShaderManager
+        Sim_DebugRenderer -- Uses --> Sim_GLContext
+
+        Sim_EmuRenderer -- Reads --> Sim_Params
+        Sim_EmuRenderer -- Interacts --> Sim_ForceSystem
+        Sim_EmuRenderer -- Interacts --> Sim_ParticleSystem
+        Sim_EmuRenderer -- Interacts --> Sim_DOM[(DOM)]
+
+        Sim_NetworkGroup -- Interacts --> Sim_ExternalWorld[(External World)]
+        Sim_NetworkGroup -- Reads/Writes --> Sim_Params
+
+        Sim_ShaderManager -- Loads --> Sim_Shaders[Shaders]
+
+        Sim_UiManager -- Manages --> Sim_UiPanels
+
     end
 ```

@@ -869,3 +869,37 @@ The error occurred because `NewGridUi.initGridControls` attempted to bind a `lil
 
 **Solution:**
 Initialized the calculated properties (`cellCount`, `cols`, `rows`, `calculatedCellWidth`, `calculatedCellHeight`) with default values (0) directly within the `main.gridParams` object definition. `GridGenRenderer` already updates these properties on the same object reference after calculation, so the UI binding will now find the properties during initialization and `.listen()` will correctly reflect later updates.
+
+---
+
+**2024-08-04: Architecture Grid Update**
+
+Updated `memoryBank/architecture_grid.md` to enhance the description of the event-driven communication principle and refine the Mermaid diagram for clarity on event flow and component relationships.
+
+**2024-08-04: Architecture Grid Fix**
+
+Corrected a Mermaid syntax error in the `memoryBank/architecture_grid.md` diagram by enclosing node labels containing parentheses in double quotes.
+
+**2024-08-04: Architecture Grid Fix 2**
+
+Corrected a second Mermaid syntax error in the `memoryBank/architecture_grid.md` diagram, specifically fixing the link label format to use `-- "Label text" -->`.
+
+**2024-08-04: Architecture Sim Update**
+
+Updated `memoryBank/architecture_sim.md` to enhance the Core Principles section with details on Event-Driven Communication and replaced the existing Mermaid diagram with a new, more detailed one showing the event bus, event flows, and component relationships for the target Sim architecture.
+
+**2024-08-04: Architecture Sim Fix**
+
+Corrected Mermaid syntax errors in the `memoryBank/architecture_sim.md` diagram by enclosing node labels containing parentheses in double quotes.
+
+**2024-08-04: Architecture Sim Fix 2**
+
+Corrected a final Mermaid syntax error in the `memoryBank/architecture_sim.md` diagram by moving an inline comment to its own line.
+
+**2024-08-04: Architecture Sim Layout Fix**
+
+Changed the Mermaid diagram orientation in `memoryBank/architecture_sim.md` from Left-to-Right (LR) to Top-Down (TD) to improve layout for complex diagram.
+
+**2024-08-04: Architecture Sim Diagram Simplification**
+
+Simplified the `simParamsUpdated` event flow in the `memoryBank/architecture_sim.md` Mermaid diagram by grouping subscribers into a representative node, reducing line clutter.
