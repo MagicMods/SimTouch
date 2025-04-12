@@ -52,3 +52,15 @@
 **Experience:** HTML overlays were incorrectly positioned/scaled because calculations relied on canvas `width`/`height` attributes or `offsetTop/offsetLeft`, which didn't reflect the actual rendered size influenced by CSS and aspect ratio changes.
 
 **Learning:** To accurately position/scale DOM elements relative to a canvas, use `canvas.getBoundingClientRect()` to obtain the actual rendered dimensions and viewport position. Use these measurements for sizing containers and calculating scaling factors. Account for page scroll (`window.scrollX/Y`) when calculating absolute positions if necessary.
+
+## Shader Dependency Verification (2024-08-02)
+
+**Experience:** While attempting to remove the `basic` shader from `Sim/shaderManager.js`, initial checks showed its usage was removed from `gridRenderer.js` (due to stencil removal). However, a later check revealed it was still potentially used by `debugRenderer.js` in the `drawNoiseField` method. Although removing it didn't cause immediate errors (likely due to `drawNoiseField` not being active), this highlighted a potential pitfall.
+
+**Learning:** Before removing a shared resource like a shader, perform a comprehensive codebase search (e.g., using grep or semantic search) across all potentially relevant modules (`renderer/`, `simulation/`, etc.) to identify _all_ usages. Do not rely solely on fixing the primary or most obvious user. Explicitly checking less frequently used code paths (like debug utilities) is crucial to avoid breaking functionality later.
+
+## Rendering Pipeline Redundancy (2024-08-02)
+
+**Experience:** The `gridRenderer.js` used a two-pass stencil buffer technique involving `drawCircle` (using the `basic` shader) to mask the final grid output to a circle. However, testing revealed that commenting out the entire stencil logic produced the identical visual result.
+
+**Learning:** The upstream grid generation logic (`generateRectangles` and `classifyCells`) already filtered the cells to only include those within the desired boundary. The stencil pass was therefore redundant. Regularly review the end-to-end rendering pipeline. Optimizations or refactoring in one stage (e.g., geometry generation) can make subsequent stages (e.g., masking) unnecessary, offering opportunities for simplification and performance improvement.

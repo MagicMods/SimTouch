@@ -76,7 +76,7 @@ class Main {
     this.emuRenderer = new EmuRenderer(document.body, this.externalInput.emuForces, this);
     this.emuRenderer.hide();
 
-    this.paused = false;
+    this.paused = true;
 
     socketManager.enable = true;
     socketManager.connect();

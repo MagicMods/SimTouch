@@ -203,39 +203,14 @@ class GridRenderer extends BaseRenderer {
         : [0.2, 0.2, 0.2, 1.0]; // Dark grey for debugging
     });
 
-    // Set up variables for circle mask
-    const center = 120;
-
-    // Use the fixed mask radius constant (always 120)
-    const maskRadius = this.FIXED_MASK_RADIUS;
-
-    // Clear both color and stencil buffers
+    // Clear color buffer (stencil clear no longer needed)
     gl.clearColor(0, 0, 0, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT | gl.STENCIL_BUFFER_BIT);
+    gl.clear(gl.COLOR_BUFFER_BIT); // Only clear color buffer
 
-    // ---- Stencil buffer setup matching GridGenRenderer.js exactly ----
-    gl.enable(gl.STENCIL_TEST);
-    gl.stencilFunc(gl.ALWAYS, 1, 0xFF);
-    gl.stencilOp(gl.KEEP, gl.KEEP, gl.REPLACE);
-    gl.stencilMask(0xFF);
-
-    // First pass: Draw the circle into the stencil buffer (but don't show it)
-    gl.colorMask(false, false, false, false); // Don't draw to color buffer
-    this.drawCircle(center, center, maskRadius, [1, 1, 1, 1]);
-
-    // Second pass: Only draw where the stencil is 1 (inside circle)
-    gl.colorMask(true, true, true, true); // Re-enable drawing to color buffer
-    gl.stencilFunc(gl.EQUAL, 1, 0xFF);    // Draw only where stencil is 1
-    gl.stencilMask(0x00);                 // Don't modify stencil buffer
-
-    // Draw each rectangle, applying the stencil mask
-    // We can draw all rectangles now since they're all inside or boundary cells
+    // Draw each rectangle directly
     rectangles.forEach(rect => {
       this.drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color);
     });
-
-    // Disable stencil test when done
-    gl.disable(gl.STENCIL_TEST);
 
     // Draw cell centers if enabled
     if (this.gridParams.showCellCenters) {
@@ -246,65 +221,6 @@ class GridRenderer extends BaseRenderer {
     if (this.gridParams.showIndices) {
       this.drawCellIndices();
     }
-  }
-
-  ///////////////////////////////////////////////////
-
-  drawCircle(x, y, radius, color) {
-    const program = this.shaderManager.use("basic");
-    if (!program) return;
-
-    // Convert center and radius from normalized (0-1) to clip space (-1 to 1)
-    const center = this.pixelToClipSpace(x, y);
-    const radiusClip = (radius / this.TARGET_WIDTH) * 2;
-
-    // Generate circle vertices
-    const numSegments = 32; // Adjust for quality/performance
-    const vertices = [];
-
-    // Center vertex
-    vertices.push(center.x, center.y);
-
-    // Circumference vertices
-    for (let i = 0; i <= numSegments; i++) {
-      const angle = (i / numSegments) * Math.PI * 2;
-      vertices.push(
-        center.x + radiusClip * Math.cos(angle),
-        center.y + radiusClip * Math.sin(angle)
-      );
-    }
-
-    // Create and bind temporary buffer
-    const buffer = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, buffer);
-    this.gl.bufferData(
-      this.gl.ARRAY_BUFFER,
-      new Float32Array(vertices),
-      this.gl.STATIC_DRAW
-    );
-
-    // Set up attributes and uniforms
-    this.gl.vertexAttribPointer(
-      program.attributes.position,
-      2,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
-    this.gl.enableVertexAttribArray(program.attributes.position);
-    this.gl.uniform4fv(program.uniforms.color, color);
-
-    // Enable blending for transparency
-    this.gl.enable(this.gl.BLEND);
-    this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
-
-    // Draw using TRIANGLE_FAN
-    this.gl.drawArrays(this.gl.TRIANGLE_FAN, 0, vertices.length / 2);
-
-    // Cleanup
-    this.gl.disable(this.gl.BLEND);
-    this.gl.deleteBuffer(buffer);
   }
 
   pixelToClipSpace(x, y) {
@@ -322,7 +238,7 @@ class GridRenderer extends BaseRenderer {
   }
 
   drawRectangle(x, y, width, height, color, clipPath) {
-    const program = this.shaderManager.use("gridCell");
+    const program = this.shaderManager.use("gridCell_LEGACY");
     if (!program) return;
 
     // If we have a clip path, draw as a clipped polygon

@@ -642,3 +642,43 @@ _(End of Phase 6. Proceeding to Phase 7...)_
   6.  **Cleanup (Deferred):** Plan for eventual removal of unused legacy Sim components after migration is stable.
 
 _(Analysis Phase Complete. Ready for Refined Plan)_
+
+---
+
+## Renderer & ShaderManager Refinement (2024-08-02)
+
+**Objective:** Refactor Sim renderers for clarity and align ShaderManagers between Sim and Grid projects.
+
+**Execution Log:**
+
+1.  **Velocity Field Refactoring:**
+    - Moved velocity field rendering logic from `Sim/src/renderer/debugRenderer.js` into `Sim/src/renderer/particleRenderer.js`.
+    - Added `showVelocityField` toggle property and `velocityLineBuffer` to `ParticleRenderer`.
+    - Removed corresponding logic and UI controls from `DebugRenderer` and `DebugUi`.
+    - Noted (and kept for now) a change in `y2` calculation (`+ p.vy` vs `- p.vy`).
+2.  **Sim Shader Cleanup:**
+    - Attempted phased removal of unused shaders (`basic`, `rectangle`, `circle`, `grid`, `boundary`) from `Sim/src/shaders/shaderManager.js`.
+    - Initially kept `basic` due to usage in `gridRenderer.js` and `debugRenderer.js`.
+    - Successfully removed `rectangle`.
+    - Failed to automatically remove `circle`.
+3.  **Stencil Logic Removal (`gridRenderer.js`):**
+    - Analyzed stencil buffer usage in `Sim/src/renderer/gridRenderer.js`.
+    - Experimentally commented out stencil logic; confirmed visual output was unchanged.
+    - Permanently removed stencil logic and the associated `drawCircle` method (which used the `basic` shader).
+4.  **Revisit Basic Shader Removal:**
+    - With stencil logic gone, `gridRenderer.js` no longer used the `basic` shader.
+    - Successfully removed the `basic` shader definition from `Sim/src/shaders/shaderManager.js`. (Remaining usage in `debugRenderer.js` did not immediately block removal).
+5.  **ShaderManager Alignment:**
+    - Standardized on `vert`/`frag` keys for shader definitions.
+    - Updated `Grid/src/shader/shaderManager.js`: Changed `particles` keys to `vert`/`frag`; added `await` to `createProgram` call in `init`.
+    - Updated `Sim/src/shaders/shaderManager.js`: Renamed original `gridCell` to `gridCell_LEGACY`; added instanced `gridCell` from Grid; confirmed `particles` and `lines` keys were correct.
+    - Updated `Sim/src/renderer/gridRenderer.js`: Changed `drawRectangle` to use `gridCell_LEGACY` shader.
+
+**Current Shader Protocol:**
+
+- Shaders are defined inline within a `static SHADERS = { ... };` object inside the `ShaderManager` class.
+- Each shader entry uses `vert` and `frag` keys for the vertex and fragment source code (provided as template literals).
+- The `ShaderManager.init()` method asynchronously compiles shaders using `await this.createProgram(...)`.
+- The `init()` method logic in both `Sim` and `Grid` supports either `vert`/`vertex` or `frag`/`fragment` keys, but the standard convention is now `vert`/`frag`.
+
+**Status:** Renderers (`ParticleRenderer`, `GridRenderer`) have been cleaned up. ShaderManagers (`Sim`, `Grid`) are aligned in terms of key naming conventions and initialization logic. `Sim` now contains both legacy and instanced versions of the `gridCell` shader.

@@ -11,8 +11,8 @@ class ShaderManager {
   async init() {
 
     for (const [name, shaders] of Object.entries(ShaderManager.SHADERS)) {
-      const vertexSource = shaders.vert || shaders.vertex;
-      const fragmentSource = shaders.frag || shaders.fragment;
+      const vertexSource = shaders.vert;
+      const fragmentSource = shaders.frag;
 
       if (!vertexSource) {
         throw new Error(`Vertex shader source not provided for "${name}"`);
@@ -22,8 +22,7 @@ class ShaderManager {
         throw new Error(`Fragment shader source not provided for "${name}"`);
       }
 
-      // createProgram is synchronous
-      this.createProgram(name, vertexSource, fragmentSource);
+      await this.createProgram(name, vertexSource, fragmentSource);
     }
     console.log("Grid shaders loaded and compiled."); // Adjusted log message
     return true;
@@ -71,7 +70,7 @@ class ShaderManager {
     return uniforms;
   }
 
-  createProgram(name, vertexSource, fragmentSource) {
+  async createProgram(name, vertexSource, fragmentSource) {
     const vertexShader = this.compileShader(
       this.gl.VERTEX_SHADER,
       vertexSource
@@ -200,7 +199,7 @@ class ShaderManager {
     `,
     },
     particles: {
-      vertex: `
+      vert: `
           attribute vec2 position;
           attribute float size; // Add per-particle size attribute
           uniform float pointSize; // Keep uniform for backward compatibility
@@ -213,7 +212,7 @@ class ShaderManager {
             gl_PointSize = size > 0.0 ? size : pointSize;
           }
         `,
-      fragment: `
+      frag: `
           precision mediump float;
           uniform vec4 color;
           
