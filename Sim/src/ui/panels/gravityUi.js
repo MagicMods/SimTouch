@@ -1,4 +1,5 @@
 import { BaseUi } from "../baseUi.js";
+import { eventBus } from '../../util/eventManager.js';
 
 export class GravityUi extends BaseUi {
   constructor(main, container) {
@@ -13,54 +14,28 @@ export class GravityUi extends BaseUi {
     this.gui.domElement.__controller = this;
 
     this.initGravityControls();
-
-    // Set up periodic UI refresh (every 100ms)
-    this.refreshInterval = setInterval(() => this.updateFromGravity(), 100);
   }
 
   //#region Physics
   initGravityControls() {
-    const particles = this.main.particleSystem;
-    if (!particles || !particles.gravity) return;
-
-    // Add gravity direction controls that directly control magnitude
-    this.gravityDirection = {
-      x: 0,
-      y: 0,
-    };
-
     // Wider range for X and Y to control both direction and strength
     this.gravityXController = this.gui
-      .add(this.gravityDirection, "x", -10, 10, 0.5)
+      // Bind to simParams
+      .add(this.main.simParams.gravity, "directionX", -10, 10, 0.5)
       .name("G-X")
       .onChange((value) => {
-        // Don't normalize - use raw values
-        particles.gravity.setRawDirection(value, this.gravityDirection.y);
+        // Emit event
+        eventBus.emit('uiControlChanged', { paramPath: 'gravity.directionX', value });
       });
 
     this.gravityYController = this.gui
-      .add(this.gravityDirection, "y", -10, 10, 0.5)
+      // Bind to simParams
+      .add(this.main.simParams.gravity, "directionY", -10, 10, 0.5)
       .name("G-Y")
       .onChange((value) => {
-        // Don't normalize - use raw values
-        particles.gravity.setRawDirection(this.gravityDirection.x, value);
+        // Emit event
+        eventBus.emit('uiControlChanged', { paramPath: 'gravity.directionY', value });
       });
-
-    // Initialize with current gravity values
-    this.updateFromGravity();
-  }
-
-  // New method to update UI from gravity values
-  updateFromGravity() {
-    const gravity = this.main.particleSystem?.gravity;
-    if (!gravity) return;
-
-    // Update the local direction values
-    this.gravityDirection.x = gravity.directionX;
-    this.gravityDirection.y = gravity.directionY;
-
-    // Update the controller UI elements
-    this.updateControllerDisplays();
   }
 
   getControlTargets() {
@@ -133,9 +108,6 @@ export class GravityUi extends BaseUi {
 
   // Clean up when UI is destroyed
   destroy() {
-    if (this.refreshInterval) {
-      clearInterval(this.refreshInterval);
-    }
     super.destroy && super.destroy();
   }
 }

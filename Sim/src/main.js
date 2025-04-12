@@ -72,6 +72,10 @@ class Main {
         // Initial values from GridRenderer's smoothing object
         rateIn: this.gridRenderer.renderModes?.smoothing?.rateIn || 0.1, // Default if not found
         rateOut: this.gridRenderer.renderModes?.smoothing?.rateOut || 0.05 // Default if not found
+      },
+      gravity: {
+        directionX: this.particleSystem.gravity.directionX,
+        directionY: this.particleSystem.gravity.directionY
       }
     };
 
