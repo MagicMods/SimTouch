@@ -26,10 +26,10 @@ export class DebugUi extends BaseUi {
       .add(debugRenderer, 'showVoronoiField')
       .name("Show Voronoi");
 
-    // Only keep velocity field from old debug options
-    this.controls.showVelocityField = this.gui
-      .add(debugRenderer, 'showVelocityField')
-      .name("Show Velocity Field");
+    // Removed control for showVelocityField as it's moved to ParticleRenderer
+    // this.controls.showVelocityField = this.gui
+    //   .add(debugRenderer, 'showVelocityField')
+    //   .name("Show Velocity Field");
 
     // Keep opacity control - moved below Velocity Field
     this.controls.turbulenceOpacity = this.gui

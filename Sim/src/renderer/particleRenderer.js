@@ -1,6 +1,8 @@
 import { BaseRenderer } from "./baseRenderer.js";
 
 class ParticleRenderer extends BaseRenderer {
+  showVelocityField = true; // Add property to toggle velocity field
+
   constructor(gl, shaderManager, shaderType = "particles") {
     super(gl, shaderManager);
     this.gl = gl;
@@ -8,6 +10,7 @@ class ParticleRenderer extends BaseRenderer {
     this.shaderType = shaderType;
     this.particleBuffer = gl.createBuffer();
     this.sizeBuffer = gl.createBuffer();
+    this.velocityLineBuffer = gl.createBuffer(); // Add buffer for velocity lines
     this.config = {
       size: 10.0,
       color: [1, 1, 1, 0.1],
@@ -96,14 +99,58 @@ class ParticleRenderer extends BaseRenderer {
     if (program.attributes.size !== undefined) {
       this.gl.disableVertexAttribArray(program.attributes.size);
     }
-    // if (particles.length > 0) {
-    //   console.log(
-    //     `Drawing ${particles.length} particles, first sizes:`,
-    //     `normalized=${particles[0].radius.toFixed(
-    //       4
-    //     )}, pixel=${particles[0].size.toFixed(1)}`
-    //   );
-    // }
+
+    // --- START: Velocity Field Rendering ---
+    if (this.showVelocityField && particles.length > 0) {
+      const lineProgram = this.shaderManager.use('lines');
+      if (!lineProgram) {
+        console.error("Failed to use 'lines' shader for velocity field rendering");
+      } else {
+        const scale = 0.1; // Scale for velocity vectors
+        const vertices = [];
+
+        // Sample every nth particle to avoid too many arrows (optional, can be adjusted)
+        // const stride = Math.max(1, Math.floor(particles.length / 1000));
+        // for (let i = 0; i < particles.length; i += stride) {
+        for (let i = 0; i < particles.length; i++) { // Render for all for now
+          const p = particles[i];
+          const x1 = p.x;
+          const y1 = p.y;
+          // NOTE: Original DebugRenderer had -p.vy. Assuming standard coordinate system now.
+          const x2 = x1 + p.vx * scale;
+          const y2 = y1 + p.vy * scale;
+          vertices.push(x1, y1, x2, y2);
+        }
+
+        this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.velocityLineBuffer);
+        this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(vertices), this.gl.DYNAMIC_DRAW);
+
+        this.gl.enableVertexAttribArray(lineProgram.attributes.position);
+        this.gl.vertexAttribPointer(
+          lineProgram.attributes.position,
+          2,
+          this.gl.FLOAT,
+          false,
+          0,
+          0
+        );
+
+        // Set vector color (yellow, semi-transparent)
+        this.gl.uniform4fv(lineProgram.uniforms.color, [1.0, 1.0, 0.0, 0.7]);
+
+        // Enable blending for lines as well if needed
+        // this.gl.enable(this.gl.BLEND);
+        // this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
+
+        this.gl.drawArrays(this.gl.LINES, 0, vertices.length / 2);
+
+        // Disable blending if it was enabled for lines
+        // this.gl.disable(this.gl.BLEND);
+
+        this.gl.disableVertexAttribArray(lineProgram.attributes.position);
+      }
+    }
+    // --- END: Velocity Field Rendering ---
   }
 
   dispose() {
@@ -114,6 +161,11 @@ class ParticleRenderer extends BaseRenderer {
     if (this.sizeBuffer) {
       this.gl.deleteBuffer(this.sizeBuffer);
       this.sizeBuffer = null;
+    }
+    // Add cleanup for velocity line buffer
+    if (this.velocityLineBuffer) {
+      this.gl.deleteBuffer(this.velocityLineBuffer);
+      this.velocityLineBuffer = null;
     }
   }
 }

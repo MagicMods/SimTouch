@@ -10,8 +10,6 @@ class DebugRenderer extends BaseRenderer {
     this.arrowLength = 2;
     this.pressureScale = 0.01;
     this.enabled = false;
-    this.showVelocityField = true;
-
     this.showTurbulenceField = false;
     this.showVoronoiField = false;
     this.turbulenceOpacity = 0.2;
@@ -22,10 +20,6 @@ class DebugRenderer extends BaseRenderer {
 
     if (!particleSystem) {
       throw new Error("ParticleSystem is required for DebugRenderer.draw");
-    }
-
-    if (this.showVelocityField) {
-      this.drawVelocityField(particleSystem);
     }
 
     if (this.showTurbulenceField && !turbulenceField) {
@@ -72,49 +66,6 @@ class DebugRenderer extends BaseRenderer {
 
     // Set grid color (light blue, semi-transparent)
     this.gl.uniform4fv(program.uniforms.color, [0.2, 0.4, 0.8, 0.3]);
-
-    this.gl.drawArrays(this.gl.LINES, 0, vertices.length / 2);
-    this.gl.deleteBuffer(vertexBuffer);
-  }
-
-  drawVelocityField(particleSystem) {
-    if (!particleSystem) {
-      throw new Error("ParticleSystem is required for drawVelocityField");
-    }
-
-    const program = this.shaderManager.use('lines');
-    if (!program) {
-      throw new Error("Failed to use 'lines' shader for velocity field rendering");
-    }
-
-    const particles = particleSystem.getParticles();
-    if (particles.length === 0) return;
-
-    const vertices = [];
-    const scale = 0.1; // Scale for velocity vectors
-
-    // Sample every nth particle to avoid too many arrows
-    const stride = Math.max(1, Math.floor(particles.length / 1000));
-
-    for (let i = 0; i < particles.length; i += stride) {
-      const p = particles[i];
-      const x1 = p.x;
-      const y1 = p.y;
-      const x2 = x1 + p.vx * scale;
-      const y2 = y1 - p.vy * scale;
-
-      vertices.push(x1, y1, x2, y2);
-    }
-
-    const vertexBuffer = this.gl.createBuffer();
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, vertexBuffer);
-    this.gl.bufferData(this.gl.ARRAY_BUFFER, new Float32Array(vertices), this.gl.STATIC_DRAW);
-
-    this.gl.vertexAttribPointer(program.attributes.position, 2, this.gl.FLOAT, false, 0, 0);
-    this.gl.enableVertexAttribArray(program.attributes.position);
-
-    // Set vector color (yellow)
-    this.gl.uniform4fv(program.uniforms.color, [1.0, 1.0, 0.0, 0.7]);
 
     this.gl.drawArrays(this.gl.LINES, 0, vertices.length / 2);
     this.gl.deleteBuffer(vertexBuffer);
