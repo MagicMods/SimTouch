@@ -5,6 +5,7 @@ import { RectangularBoundary } from "../boundary/rectangularBoundary.js";
 import { CollisionSystem } from "../forces/collisionSystem.js";
 import { OrganicBehavior } from "../behaviors/organicBehavior.js";
 import { GravityForces } from "../forces/gravityForces.js";
+import { eventBus } from '../../util/eventManager.js';
 
 class ParticleSystem {
   constructor({
@@ -103,6 +104,9 @@ class ParticleSystem {
     this.organicBehavior = new OrganicBehavior();
 
     this.initializeParticles();
+
+    // Subscribe to parameter updates
+    eventBus.on('simParamsUpdated', this.handleParamsUpdate.bind(this));
   }
 
   // Helper function to throw errors
@@ -470,6 +474,27 @@ class ParticleSystem {
   // Add method to change boundary mode
   setBoundaryMode(mode) {
     this.boundary.setBoundaryMode(mode);
+  }
+
+  // Add handler for simParams updates
+  handleParamsUpdate({ simParams }) {
+    if (!simParams) return; // Guard against missing data
+
+    // Update simulation parameters if they exist in the event payload
+    if (simParams.simulation) {
+      this.timeStep = simParams.simulation.timeStep ?? this.timeStep;
+      this.timeScale = simParams.simulation.timeScale ?? this.timeScale;
+      this.velocityDamping = simParams.simulation.velocityDamping ?? this.velocityDamping;
+      this.maxVelocity = simParams.simulation.maxVelocity ?? this.maxVelocity;
+      this.picFlipRatio = simParams.simulation.picFlipRatio ?? this.picFlipRatio;
+    }
+
+    // Update boundary mode if applicable and the boundary object exists
+    if (simParams.boundary && this.boundary && typeof this.boundary.setMode === 'function') {
+      this.boundary.setMode(simParams.boundary.mode);
+    }
+    // Optional: Log for verification
+    // console.log("ParticleSystem updated params via event:", this.timeStep, this.timeScale, /*...*/ this.boundary?.mode);
   }
 }
 

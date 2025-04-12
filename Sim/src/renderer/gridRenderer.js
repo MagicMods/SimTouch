@@ -2,6 +2,7 @@ import { BaseRenderer } from "./baseRenderer.js";
 import { GridRenderModes } from "./gridRenderModes.js";
 import { Gradient } from "../shaders/gradients.js";
 import { socketManager } from "../network/socketManager.js";
+import { eventBus } from '../util/eventManager.js';
 
 class GridRenderer extends BaseRenderer {
   constructor(gl, shaderManager) {
@@ -103,7 +104,32 @@ class GridRenderer extends BaseRenderer {
       maskRadius: this.FIXED_MASK_RADIUS,
       classificationRadius: 120 * this.gridParams.scale
     });
+
+    // Subscribe to parameter updates
+    eventBus.on('simParamsUpdated', this.handleParamsUpdate.bind(this));
   }
+
+  // Add handler for simParams updates
+  handleParamsUpdate({ simParams }) {
+    if (!simParams) return; // Guard clause
+
+    // Update rendering parameters
+    if (simParams.rendering) {
+      this.maxDensity = simParams.rendering.maxDensity ?? this.maxDensity;
+      if (this.renderModes) {
+        this.renderModes.currentMode = simParams.rendering.gridMode ?? this.renderModes.currentMode;
+      }
+    }
+
+    // Update smoothing parameters
+    if (simParams.smoothing && this.renderModes?.smoothing) {
+      this.renderModes.smoothing.rateIn = simParams.smoothing.rateIn ?? this.renderModes.smoothing.rateIn;
+      this.renderModes.smoothing.rateOut = simParams.smoothing.rateOut ?? this.renderModes.smoothing.rateOut;
+    }
+    // Optional: Log for verification
+    // console.log("GridRenderer updated params via event:", this.maxDensity, this.renderModes?.currentMode, /*...*/);
+  }
+
   sendGridData(byteArray) {
     if (this.socket.isConnected) {
       return this.socket.send(byteArray);

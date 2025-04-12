@@ -160,6 +160,9 @@ class Main {
     }
     current[keys[keys.length - 1]] = value;
     console.log(`SimParams updated via UI: ${paramPath} = ${value}`, JSON.stringify(this.simParams)); // Log for verification
+
+    // Emit event to notify consumers
+    eventBus.emit('simParamsUpdated', { simParams: this.simParams });
   }
 
   animate() {
