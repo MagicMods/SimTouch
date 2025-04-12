@@ -287,9 +287,6 @@ class Main {
     // Subscribe main to Grid UI changes (assuming NewGridUi emits 'uiControlChanged')
     eventBus.on('uiControlChanged', this.handleGridUIChange.bind(this));
     console.log("Main subscribed to uiControlChanged events for Grid UI.");
-    // --- BEGIN STEP 1: Reinstate Sim Handler Subscription ---
-    eventBus.on('uiControlChanged', this.handleSimUIChange.bind(this));
-    console.log("Main re-subscribed handleSimUIChange to uiControlChanged events.");
     // --- END STEP 1 ---
     // TODO: Review if the existing subscription below needs modification or removal
     // Subscribe main to UI changes using the correct method name 'on'
@@ -306,7 +303,6 @@ class Main {
 
       eventBus.on('uiControlChanged', this.handleSimUIChange.bind(this));
       eventBus.on('uiControlChanged', this.handleGridUIChange.bind(this));
-      console.log("Main subscribed to uiControlChanged events for Grid UI.");
 
       this.animate();
       this.setGridParams(this.gridParams);
@@ -335,7 +331,7 @@ class Main {
       return;
     }
     current[keys[keys.length - 1]] = value;
-    console.log(`SimParams updated via UI: ${paramPath} = ${value}`, JSON.stringify(this.simParams));
+    console.log(`SimParams updated via UI: ${paramPath} = ${value}`);
 
     eventBus.emit('simParamsUpdated', { simParams: this.simParams });
   }

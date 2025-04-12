@@ -947,3 +947,29 @@ Simplified the `simParamsUpdated` event flow in the `memoryBank/architecture_sim
 2.  Added path validation logic to the beginning of `handleGridUIChange` to ensure it only processes events with paths relevant to `gridParams` (starting with 'screen', 'gridSpecs', 'shadow', 'colors', 'flags', 'renderSize').
 
 **Note:** A temporary linter error occurred during the edit due to the re-introduction of `await this.ui.initPanels()` in the non-async constructor; this line was removed again.
+
+---
+
+## Duplicate Subscription & Logging Fix (YYYY-MM-DD)
+
+**Context:** Log analysis revealed duplicate event subscriptions and excessive logging detail.
+
+**Analysis:**
+
+- The log message "Main subscribed to uiControlChanged events for Grid UI" appeared twice, indicating a duplicate subscription setup in `main.js#init()`.
+- The `handleSimUIChange` method logged the entire `simParams` object on every update, flooding the console.
+
+**Fixes:**
+
+1. Located and removed the duplicate `console.log("Main subscribed...")` line within `Sim/src/main.js#init()` (implicitly removing the duplicate subscription logic associated with it).
+2. Modified the `console.log` statement in `handleSimUIChange` to only output the `paramPath` and `value`, significantly reducing log verbosity.
+
+---
+
+## Doubled Sim Log Fix (YYYY-MM-DD)
+
+**Context:** Logs showed doubled `SimParams updated via UI` messages after the previous fix.
+
+**Analysis:** The previous step incorrectly added a second subscription for `handleSimUIChange` in the constructor, while the original subscription remained in the `init()` method. This resulted in `handleSimUIChange` being called twice for every relevant UI event.
+
+**Fix:** Removed the duplicate `eventBus.on('uiControlChanged', this.handleSimUIChange.bind(this));` line (and its associated log) from the _constructor_ of `Sim/src/main.js`. The original subscription in `init()` remains.
