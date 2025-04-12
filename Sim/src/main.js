@@ -3,7 +3,6 @@ import { ParticleSystem } from "./simulation/core/particleSystem.js";
 import { UiManager } from "./ui/uiManager.js";
 import { ParticleRenderer } from "./renderer/particleRenderer.js";
 import { GridRenderer } from "./renderer/gridRenderer.js";
-import { DebugRenderer } from "./renderer/debugRenderer.js";
 import { TurbulenceField } from "./simulation/forces/turbulenceField.js";
 import { VoronoiField } from "./simulation/forces/voronoiField.js";
 import { CircularBoundary } from "./simulation/boundary/circularBoundary.js";
@@ -49,7 +48,6 @@ class Main {
 
     this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager);
     this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
-    this.debugRenderer = new DebugRenderer(this.gl, this.shaderManager);
     this.frame = 0;
     this.mouseForces = new MouseForces();
     this.mouseForces.setMainReference(this); // Set direct reference to main
@@ -132,7 +130,6 @@ class Main {
     // Draw all visual elements
     this.gridRenderer.draw(this.particleSystem);
     this.particleRenderer.draw(this.particleSystem.getParticles());
-    this.debugRenderer.draw(this.particleSystem, this.turbulenceField, this.voronoiField);
 
     // Update UI and modulators
     this.ui.update(this.particleSystem.timeStep);
