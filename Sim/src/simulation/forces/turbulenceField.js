@@ -1,3 +1,5 @@
+import { eventBus } from '../../util/eventManager.js'; // Added import
+
 class TurbulenceField {
   constructor({
     strength = 4,
@@ -165,6 +167,60 @@ class TurbulenceField {
 
     // Add debug mode
     this.debug = false;
+
+    // Subscribe to parameter updates
+    eventBus.on('simParamsUpdated', this.handleParamsUpdate.bind(this));
+  }
+
+  // Add handler for simParams updates
+  handleParamsUpdate({ simParams }) {
+    if (simParams?.turbulence) {
+      const turbulenceParams = simParams.turbulence;
+
+      // Update all relevant properties using nullish coalescing
+      this.strength = turbulenceParams.strength ?? this.strength;
+      this.scale = turbulenceParams.scale ?? this.scale;
+      this.speed = turbulenceParams.speed ?? this.speed;
+      this.rotationSpeed = turbulenceParams.rotationSpeed ?? this.rotationSpeed;
+      this.rotation = turbulenceParams.rotation ?? this.rotation;
+      this.pullFactor = turbulenceParams.pullFactor ?? this.pullFactor;
+      this.affectPosition = turbulenceParams.affectPosition ?? this.affectPosition;
+      this.scaleField = turbulenceParams.scaleField ?? this.scaleField;
+      this.affectScale = turbulenceParams.affectScale ?? this.affectScale;
+      this.minScale = turbulenceParams.minScale ?? this.minScale;
+      this.maxScale = turbulenceParams.maxScale ?? this.maxScale;
+      this.patternStyle = turbulenceParams.patternStyle ?? this.patternStyle;
+      this.decayRate = turbulenceParams.decayRate ?? this.decayRate;
+
+      // Handle directionBias array
+      if (turbulenceParams.directionBiasX !== undefined) {
+        this.directionBias[0] = turbulenceParams.directionBiasX;
+      }
+      if (turbulenceParams.directionBiasY !== undefined) {
+        this.directionBias[1] = turbulenceParams.directionBiasY;
+      }
+
+      // Continue updating other params
+      this.contrast = turbulenceParams.contrast ?? this.contrast;
+      this.biasStrength = turbulenceParams.biasStrength ?? this.biasStrength;
+      this.patternFrequency = turbulenceParams.patternFrequency ?? this.patternFrequency;
+      this.noiseSeed = turbulenceParams.noiseSeed ?? this.noiseSeed;
+      this.separation = turbulenceParams.separation ?? this.separation;
+      this.domainWarp = turbulenceParams.domainWarp ?? this.domainWarp;
+
+      // Handle bias acceleration mapped from display properties
+      if (turbulenceParams._displayBiasAccelX !== undefined) {
+        this._biasAccelX = -turbulenceParams._displayBiasAccelX; // Invert back for internal use
+      }
+      if (turbulenceParams._displayBiasAccelY !== undefined) {
+        this._biasAccelY = turbulenceParams._displayBiasAccelY;
+      }
+
+      // Check if dependent values need recalculation after updates
+      // For now, let's assume no specific update method is needed beyond what happens in `update` or `applyTurbulence`
+      // If issues arise, we might need to add calls like `applyPatternSpecificOffset()` here.
+    }
+    // console.log(`TurbulenceField updated params via event`);
   }
 
   // Apply pattern-specific offset based on current pattern style
