@@ -149,75 +149,6 @@ class ShaderManager {
           }
         `,
     },
-    rectangle: {
-      vert: `
-          precision mediump float;
-          attribute vec2 position;
-          
-          void main() {
-              gl_Position = vec4(position, 0.0, 1.0);
-          }
-        `,
-      frag: `
-          precision mediump float;
-          uniform vec2 resolution;
-          uniform vec2 center;
-          uniform vec2 dimensions;
-          uniform float aspect;
-          uniform vec4 color;
-          uniform float lineWidth;
-          
-          void main() {
-              // Get normalized coordinates (0-1)
-              vec2 uv = gl_FragCoord.xy / resolution;
-              
-              // Correct aspect ratio
-              uv.x = uv.x * aspect;
-              
-              // Calculate distance from point to each edge of rectangle
-              float halfWidth = dimensions.x / 2.0;
-              float halfHeight = dimensions.y / 2.0;
-              
-              float left = center.x - halfWidth;
-              float right = center.x + halfWidth;
-              float top = center.y + halfHeight;
-              float bottom = center.y - halfHeight;
-          
-              // Calculate distance to nearest edge (positive inside, negative outside)
-              float distToLeft = uv.x - left;
-              float distToRight = right - uv.x;
-              float distToBottom = uv.y - bottom;
-              float distToTop = top - uv.y;
-              
-              // Find minimum distance to any edge
-              float dx = min(distToLeft, distToRight);
-              float dy = min(distToBottom, distToTop);
-              
-              // Calculate signed distance field
-              float distanceField = min(dx, dy);
-              
-              // Apply line width
-              float outlineEdge = lineWidth;
-              
-              // Color based on distance
-              vec4 finalColor = vec4(0.0);
-              
-              // Inside rectangle with outline
-              if (distanceField > 0.0 && distanceField < outlineEdge) {
-                  // Inside outline zone - use border color
-                  finalColor = color;
-              } else if (distanceField < 0.0 && distanceField > -outlineEdge) {
-                  // Outside but within line width - use border color
-                  finalColor = color;
-              } else {
-                  // Either well inside or well outside - no color (transparent)
-                  discard;
-              }
-              
-              gl_FragColor = finalColor;
-          }
-        `,
-    },
     gridCell: {
       vert: `
           attribute vec2 position;
@@ -309,78 +240,8 @@ class ShaderManager {
             }
         `,
     },
-    circle: {
-      vert: `
-            precision mediump float;
-            attribute vec2 position;
-            
-            void main() {
-                gl_Position = vec4(position, 0.0, 1.0);
-            }
-        `,
-      frag: `
-            precision mediump float;
-            
-            uniform vec2 resolution;
-            uniform vec2 center;
-            uniform float radius;
-            uniform float aspect;
-            uniform vec4 color;
-            uniform float lineWidth;
-            
-            void main() {
-                vec2 uv = gl_FragCoord.xy / resolution;
-                vec2 pos = uv * 2.0 - 1.0;
-                pos.x *= aspect;  // Correct for aspect ratio
-                
-                vec2 centerPos = center * 2.0 - 1.0;
-                centerPos.x *= aspect;
-                
-                float dist = length(pos - centerPos);
-                float circleRadius = radius * 2.0;  // Scale radius to match boundary
-                
-                float circle = smoothstep(circleRadius - lineWidth, circleRadius, dist) *
-                             smoothstep(circleRadius + lineWidth, circleRadius, dist);
-                             
-                gl_FragColor = vec4(color.rgb, color.a * circle);
-            }
-        `,
-    },
-    grid: {
-      vert: `
-        attribute vec2 position;
-        uniform vec2 resolution;
-        void main() {
-            vec2 zeroToOne = position / resolution;
-            vec2 zeroToTwo = zeroToOne * 2.0;
-            vec2 clipSpace = zeroToTwo - 1.0;
-            gl_Position = vec4(clipSpace * vec2(1, -1), 0, 1);
-        }
-        `,
-      frag: `
-            precision mediump float;
-            uniform vec4 color;
-            
-            void main() {
-                gl_FragColor = color;
-            }
-        `,
-    },
-    boundary: {
-      vert: `
-            attribute vec2 position;
-            void main() {
-                gl_Position = vec4(position, 0.0, 1.0);
-            }
-        `,
-      frag: `
-            precision mediump float;
-            uniform vec4 color;
-            void main() {
-                gl_FragColor = color;
-            }
-        `,
-    },
+
+
   };
 }
 
