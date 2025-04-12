@@ -86,6 +86,16 @@ export class GridGeometry {
     // --- Plan Step 3: Remove Old Tracking ---
     // let bestRects = []; // Removed
 
+    // --- BEGIN STEP 1: Add Boundary Type Logging ---
+    console.log(`GridGeometry.generate received boundary type: ${boundary?.constructor?.name}`, {
+      isCircular: boundary instanceof CircularBoundaryShape,
+      isRectangular: boundary instanceof RectangularBoundaryShape,
+      radius: boundary?.getRadius ? boundary.getRadius() : 'N/A',
+      width: boundary?.width ?? 'N/A', // Use nullish coalescing for direct property access
+      height: boundary?.height ?? 'N/A'
+    });
+    // --- END STEP 1 ---
+
     // --- Phase 1: Parameter Search ---
     for (let cellH = maxVisualCellHeight; cellH >= 6; cellH--) {
       // Convert visual cell height back to physical-relative size for calculations

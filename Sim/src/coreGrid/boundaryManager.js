@@ -11,7 +11,16 @@ export class BoundaryManager {
         "BoundaryManager requires initialgridParams and initialgridDimensions."
       );
     }
-    this.params = { ...initialgridParams }; // Shallow copy initial params
+    // --- BEGIN STEP 1: Decouple state via copy ---
+    // this.params = { ...initialgridParams }; // Old shallow copy
+    this.params = {
+      screen: { ...(initialgridParams.screen || {}) }, // Deep copy screen
+      // Selectively copy other needed top-level keys
+      boundaryParams: { ...(initialgridParams.boundaryParams || {}) }
+      // Note: Other keys like gridSpecs, flags etc. are not directly used by BoundaryManager
+      // but might be needed if logic expands. For now, copy what's used.
+    };
+    // --- END STEP 1 ---
     this.shapeBoundary = null;
     this.physicsBoundary = null;
 
@@ -82,8 +91,9 @@ export class BoundaryManager {
     const oldShape = this.params?.screen?.shape;
     const newShape = params?.screen?.shape;
 
-    // Store the new params regardless of shape change
-    this.params = { ...params };
+    // --- BEGIN STEP 2: Add Detailed Logging ---
+    console.log(`BoundaryManager.update: Comparing shapes - Old: '${oldShape}', New: '${newShape}'`);
+    // --- END STEP 2 ---
 
     if (!newShape) {
       console.error("BoundaryManager.update: params.screen.shape is missing.");
@@ -98,13 +108,20 @@ export class BoundaryManager {
       console.info(
         `BoundaryManager: Shape changed from ${oldShape} to ${newShape}. Recreating boundaries.`
       );
-      this._createBoundaries(this.params, dimensions);
+      this._createBoundaries(params, dimensions);
     } else {
       console.debug(
         "BoundaryManager: Shape unchanged, updating existing boundaries."
       );
       this._updateBoundaries(dimensions);
     }
+
+    // --- BEGIN STEP 2: Update internal state with copy ---
+    // this.params = { ...params }; // Old shallow copy / reassignment
+    // Selectively update internal state with copies from the event payload
+    this.params.screen = { ...(params.screen || {}) };
+    this.params.boundaryParams = { ...(params.boundaryParams || {}) };
+    // --- END STEP 2 ---
   }
 
   _updateBoundaries(dimensions) {

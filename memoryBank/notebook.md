@@ -973,3 +973,44 @@ Simplified the `simParamsUpdated` event flow in the `memoryBank/architecture_sim
 **Analysis:** The previous step incorrectly added a second subscription for `handleSimUIChange` in the constructor, while the original subscription remained in the `init()` method. This resulted in `handleSimUIChange` being called twice for every relevant UI event.
 
 **Fix:** Removed the duplicate `eventBus.on('uiControlChanged', this.handleSimUIChange.bind(this));` line (and its associated log) from the _constructor_ of `Sim/src/main.js`. The original subscription in `init()` remains.
+
+## NewGridUi Initialization Fix (YYYY-MM-DD)
+
+**Context:** After fixing event routing, the `NewGridUi` panel was still not displaying its controls.
+
+**Analysis:** The `initGridControls` method in `Sim/src/ui/panels/newGridUi.js`:
+
+1. Incorrectly referenced `this.main.gridRender` instead of the correctly instantiated `this.main.gridGenRenderer`. This caused the method to exit early.
+2. Incorrectly attempted to bind the statistics controls (`cellCount`, `cols`, `rows`, etc.) to `gridRender.grid` instead of the correct target `gridGenRenderer.grid` (which holds the reference to the `gridParams` object updated by the renderer).
+
+**Fix:** Modified `Sim/src/ui/panels/newGridUi.js`:
+
+1. Changed `this.main.gridRender` to `this.main.gridGenRenderer`.
+2. Updated the target object for the statistics controls in the `.add()` calls to `gridGenRenderer.grid`.
+
+---
+
+## Grid Shape Update Debugging (BoundaryManager Log) (YYYY-MM-DD)
+
+**Context:** Despite correcting the order of operations in `BoundaryManager.update`, logs still indicated "Shape unchanged" when the UI shape was modified.
+
+**Analysis:** The code structure where `oldShape` is read from `this.params` before the internal state is updated _appears_ logically correct. The previous hypothesis about identical object references seems less likely.
+
+**Diagnostic Step:** To understand why the comparison `oldShape !== newShape` is failing, added a detailed `console.log` statement _immediately before_ the `if` check in `Sim/src/coreGrid/boundaryManager.js#update`. This log will output the exact string values of `oldShape` and `newShape` being compared.
+
+**Goal:** To precisely identify the values involved in the failing comparison.
+
+---
+
+## Grid Shape Update Fix (BoundaryManager State Decoupling) (YYYY-MM-DD)
+
+**Context:** Detailed logging confirmed the `BoundaryManager.update` method was comparing the _new_ shape to itself (`Old: 'rectangular', New: 'rectangular'`) because both `this.params` and the incoming `params` argument referred to the same object modified earlier in the event chain by `main.js#handleGridUIChange`.
+
+**Root Cause:** Shared object reference between `main.js` (`this.gridParams`) and `BoundaryManager` (`this.params`).
+
+**Fix:** Modified `Sim/src/coreGrid/boundaryManager.js` to decouple its internal state:
+
+1.  **Constructor:** Changed the initialization of `this.params` to create a separate copy of the `screen` and `boundaryParams` objects from the `initialgridParams`.
+2.  **Update Method:** Changed the final state update logic to copy the `screen` and `boundaryParams` objects from the incoming event payload (`params`) into the internal `this.params`, rather than reassigning the whole object reference.
+
+**Result:** This ensures `BoundaryManager.update` compares the `newShape` from the event payload against the _previous_ internal state, allowing correct detection of shape changes.

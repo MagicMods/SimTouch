@@ -1,11 +1,14 @@
 IMPLEMENTATION CHECKLIST:
 
-1.  [x] **Locate and Remove Duplicate `handleSimUIChange` Subscription (`Sim/src/main.js`)**
-    - **File:** `Sim/src/main.js`
-    - **Action:** Remove the duplicate subscription line `eventBus.on('uiControlChanged', this.handleSimUIChange.bind(this));` found in the _constructor_.
-2.  [x] **Update `memoryBank/notebook.md`:**
+1.  [x] **Modify `BoundaryManager` Constructor (`Sim/src/coreGrid/boundaryManager.js`)**
+    - **File:** `Sim/src/coreGrid/boundaryManager.js`
+    - **Action:** Change `this.params` initialization to create copies of `screen` and `boundaryParams` objects.
+2.  [x] **Modify `BoundaryManager.update` State Update (`Sim/src/coreGrid/boundaryManager.js`)**
+    - **File:** `Sim/src/coreGrid/boundaryManager.js`
+    - **Action:** Change the final state update to copy `screen` and `boundaryParams` from the event payload into `this.params`.
+3.  [x] **Update `memoryBank/notebook.md`:**
     - **File:** `memoryBank/notebook.md`
-    - **Action:** Add an entry detailing the finding (doubled `SimParams` logs), the cause (duplicate `handleSimUIChange` subscription in constructor), and the fix applied.
-3.  [x] **Update `memoryBank/plan.md`:**
+    - **Action:** Add an entry explaining the root cause (shared object reference) and the fix (state decoupling in `BoundaryManager`).
+4.  [x] **Update `memoryBank/plan.md`:**
     - **File:** `memoryBank/plan.md`
     - **Action:** Replace the content of `plan.md` with this checklist (marked as complete).

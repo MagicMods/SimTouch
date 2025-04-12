@@ -56,8 +56,11 @@ export class NewGridUi extends BaseUi {
 
   // Initialize grid configuration controls
   initGridControls() {
-    const gridRender = this.main.gridRender;
-    if (!gridRender) return;
+    const gridGenRenderer = this.main.gridGenRenderer;
+    if (!gridGenRenderer) {
+      console.error("NewGridUi: this.main.gridGenRenderer is not available. Cannot initialize controls.");
+      return;
+    }
 
     // Create main folders in a logical hierarchy
     const screenFolder = this.gui.addFolder("Screen Configuration");
@@ -118,7 +121,7 @@ export class NewGridUi extends BaseUi {
     this.targetCellCountCellsController.domElement.classList.add("slider-dual-input-slider");
     cellCountContainer.appendChild(this.targetCellCountCellsController.domElement);
 
-    const totalCellsController = gridParamFolder.add(gridRender.grid, "cellCount").name("CellCount").listen();
+    const totalCellsController = gridParamFolder.add(gridGenRenderer.grid, "cellCount").name("CellCount").listen();
     totalCellsController.domElement.classList.add("slider-dual-input-input");
     cellCountContainer.appendChild(totalCellsController.domElement);
 
@@ -223,10 +226,10 @@ export class NewGridUi extends BaseUi {
     const statsFlexContainer = document.createElement("div");
     statsFlexContainer.classList = "flex-container";
 
-    const colsController = statsFolder.add(gridRender.grid, "cols").name("Columns").listen();
-    const rowsController = statsFolder.add(gridRender.grid, "rows").name("Rows").listen();
-    const cellWidthController = statsFolder.add(gridRender.grid, "calculatedCellWidth").name("Cell pxW").listen();
-    const cellHeightController = statsFolder.add(gridRender.grid, "calculatedCellHeight").name("Cell pxH").listen();
+    const colsController = statsFolder.add(gridGenRenderer.grid, "cols").name("Columns").listen();
+    const rowsController = statsFolder.add(gridGenRenderer.grid, "rows").name("Rows").listen();
+    const cellWidthController = statsFolder.add(gridGenRenderer.grid, "calculatedCellWidth").name("Cell pxW").listen();
+    const cellHeightController = statsFolder.add(gridGenRenderer.grid, "calculatedCellHeight").name("Cell pxH").listen();
     const statsControllers = [colsController, rowsController, cellWidthController, cellHeightController];
 
     // Step 5: Iterate, style, and append controller elements
