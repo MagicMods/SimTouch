@@ -1,6 +1,7 @@
 import { BaseUi } from "../baseUi.js";
 import { GridField } from "../../renderer/gridRenderModes.js";
 import { Behaviors } from "../../simulation/behaviors/organicBehavior.js";
+import { eventBus } from "../../util/eventManager.js";
 
 export class ParamUi extends BaseUi {
   constructor(main, container) {
@@ -19,34 +20,41 @@ export class ParamUi extends BaseUi {
     // Pause control
     const pauseControl = {
       togglePause: () => {
-        this.main.paused = !this.main.paused;
-        this.pauseButtonController.name(this.main.paused ? "Resume" : "Pause");
-        // console.log(`Simulation is ${this.main.paused ? "paused" : "running"}`);
+        // Remove direct modification
+        // this.main.paused = !this.main.paused;
+        // Emit event instead
+        const intendedState = !this.main.simParams.simulation.paused;
+        eventBus.emit('uiControlChanged', { paramPath: 'simulation.paused', value: intendedState });
+        // Update button name based on intended state
+        this.pauseButtonController.name(intendedState ? "Resume" : "Pause");
+        // console.log(`Simulation is ${intendedState ? "paused" : "running"}`);
       },
     };
 
     // Store as class property instead of local variable
     this.pauseButtonController = this.gui.add(pauseControl, "togglePause");
 
-    // Set initial button text based on current state
-    this.pauseButtonController.name(this.main.paused ? "Resume" : "Pause");
+    // Set initial button text based on current simParams state
+    this.pauseButtonController.name(this.main.simParams.simulation.paused ? "Resume" : "Pause");
     this.pauseButtonController.domElement.style.marginBottom = "10px";
 
     if (this.main.gridRenderer.renderModes) {
-      const fieldControl = {
-        field: this.main.gridRenderer.renderModes.currentMode,
-      };
+      // Removed fieldControl object, bind directly to simParams
+      // const fieldControl = {
+      //   field: this.main.gridRenderer.renderModes.currentMode,
+      // };
 
       // Store as class property instead of in this.controls
       this.fieldTypeController = this.gui
-        .add(fieldControl, "field", Object.values(GridField))
-        // .className("full-width")
+        // Bind to simParams instead of fieldControl
+        .add(this.main.simParams.rendering, "gridMode", Object.values(GridField))
         .name("Mode")
         .onChange((value) => {
-          // Set new mode
-          this.main.gridRenderer.renderModes.currentMode = value;
-          // Update display
-          this.fieldTypeController.updateDisplay();
+          // Remove direct modifications
+          // this.main.gridRenderer.renderModes.currentMode = value;
+          // this.fieldTypeController.updateDisplay();
+          // Emit event instead
+          eventBus.emit('uiControlChanged', { paramPath: 'rendering.gridMode', value });
         });
 
       this.fieldTypeController.domElement.classList.add("full-width");
@@ -54,62 +62,103 @@ export class ParamUi extends BaseUi {
 
       // Store as class property
       this.boundaryModeController = this.gui
-        .add(this.main.particleSystem.boundary, "mode", {
+        // Bind to simParams instead of particleSystem.boundary
+        .add(this.main.simParams.boundary, "mode", {
           Bounce: "BOUNCE",
           Warp: "WARP",
         })
         .name("Boundary")
         .onChange((value) => {
-          this.main.particleSystem.setBoundaryMode(value);
+          // Remove direct call
+          // this.main.particleSystem.setBoundaryMode(value);
+          // Emit event instead
+          eventBus.emit('uiControlChanged', { paramPath: 'boundary.mode', value });
         });
       this.boundaryModeController.domElement.classList.add("full-width");
       this.boundaryModeController.domElement.style.marginBottom = "10px";
-      const smoothing = this.main.gridRenderer.renderModes.smoothing;
-
+      // Removed smoothing object reference, bind directly to simParams
+      // const smoothing = this.main.gridRenderer.renderModes.smoothing;
 
       this.maxDensityController = this.gui
-        .add(this.main.gridRenderer, "maxDensity", 0.1, 12, 0.1)
-        .name("Density");
-
+        // Bind to simParams instead of gridRenderer
+        .add(this.main.simParams.rendering, "maxDensity", 0.1, 12, 0.1)
+        .name("Density")
+        // Add onChange handler to emit event
+        .onChange((value) => {
+          eventBus.emit('uiControlChanged', { paramPath: 'rendering.maxDensity', value });
+        });
 
       this.fadeInSpeedController = this.gui
-        .add(smoothing, "rateIn", 0.01, 0.5)
+        // Bind to simParams instead of smoothing
+        .add(this.main.simParams.smoothing, "rateIn", 0.01, 0.5)
         .name("FadInSpd")
+        // Add onChange handler to emit event
+        .onChange((value) => {
+          eventBus.emit('uiControlChanged', { paramPath: 'smoothing.rateIn', value });
+        });
       // .onFinishChange(() => console.log("Smoothing in:", smoothing.rateIn));
 
-
       this.fadeOutSpeedController = this.gui
-        .add(smoothing, "rateOut", 0.01, 0.5)
+        // Bind to simParams instead of smoothing
+        .add(this.main.simParams.smoothing, "rateOut", 0.01, 0.5)
         .name("FadOutSpd")
+        // Add onChange handler to emit event
+        .onChange((value) => {
+          eventBus.emit('uiControlChanged', { paramPath: 'smoothing.rateOut', value });
+        });
       // .onFinishChange(() => console.log("Smoothing out:", smoothing.rateOut));
 
       this.timeStepController = this.gui
-        .add(particles, "timeStep", 0.001, 0.05, 0.001)
-        .name("Time Step");
+        // Bind to simParams instead of particles
+        .add(this.main.simParams.simulation, "timeStep", 0.001, 0.05, 0.001)
+        .name("Time Step")
+        // Add onChange handler to emit event
+        .onChange((value) => {
+          eventBus.emit('uiControlChanged', { paramPath: 'simulation.timeStep', value });
+        });
       this.timeStepController.domElement.style.marginTop = "10px";
 
-
       this.timeScaleController = this.gui
-        .add(particles, "timeScale", 0, 4, 0.1)
+        // Bind to simParams instead of particles
+        .add(this.main.simParams.simulation, "timeScale", 0, 4, 0.1)
         .name("SimSpeed")
+        // Add onChange handler to emit event
+        .onChange((value) => {
+          eventBus.emit('uiControlChanged', { paramPath: 'simulation.timeScale', value });
+        });
       // .onFinishChange((value) => {
       // console.log(`Animation speed: ${value}x`);
       // });
 
       this.velocityDampingController = this.gui
-        .add(particles, "velocityDamping", 0.8, 1, 0.01)
+        // Bind to simParams instead of particles
+        .add(this.main.simParams.simulation, "velocityDamping", 0.8, 1, 0.01)
         .name("VeloDamp")
+        // Add onChange handler to emit event
+        .onChange((value) => {
+          eventBus.emit('uiControlChanged', { paramPath: 'simulation.velocityDamping', value });
+        });
       // .onFinishChange((value) => {
       //   console.log(`Velocity damping set to ${value}`);
       // });
 
       this.maxVelocityController = this.gui
-        .add(particles, "maxVelocity", 0.01, 1, 0.01)
-        .name("MaxVelocity");
+        // Bind to simParams instead of particles
+        .add(this.main.simParams.simulation, "maxVelocity", 0.01, 1, 0.01)
+        .name("MaxVelocity")
+        // Add onChange handler to emit event
+        .onChange((value) => {
+          eventBus.emit('uiControlChanged', { paramPath: 'simulation.maxVelocity', value });
+        });
 
       this.ratioPicFlip = this.gui
-        .add(particles, "picFlipRatio", 0, 1, 0.01)
+        // Bind to simParams instead of particles
+        .add(this.main.simParams.simulation, "picFlipRatio", 0, 1, 0.01)
         .name("PicFlipRatio")
+        // Add onChange handler to emit event
+        .onChange((value) => {
+          eventBus.emit('uiControlChanged', { paramPath: 'simulation.picFlipRatio', value });
+        });
       // .onFinishChange((value) => {
 
       this.velocityDampingController.domElement.style.marginTop = "10px";
