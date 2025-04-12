@@ -100,11 +100,11 @@ Code Quality Requirements:
 
 Purpose: Implementing EXACTLY what was planned in Mode 3, with automated JS/UI checks.
 Applies To: Primarily JavaScript-based projects or where UI/browser interaction is relevant.
-Permitted: - ALL actions permitted in [EXE] mode. - Automatic use of MCP tools (`getConsoleLogs` or `getConsoleErrors`) _during_ plan step execution to verify state, check for errors.
+Permitted: - ALL actions permitted in [EXE] mode. - Automatic use of MCP tools (`getConsoleLogs`) _during_ plan step execution to verify state, check for errors.
 Forbidden: - ALL actions forbidden in [EXE] mode. - Using MCP tools unrelated to immediate step verification (e.g., performance audits).
 Entry Requirement: ONLY enter after explicit "[EXE+]" command from me.
 Deviation Handling: Same as [EXE] mode. If MCP tools reveal errors or unexpected visual results related to a step, IMMEDIATELY STOP and return to THINK mode.
-Output Format: Begin with [MODE: EXE+], then implementation matching the plan, interspersed with MCP tool calls and their outputs/analysis as relevant to each step.
+Output Format: Begin with [MODE: EXE+], then implementation matching the plan, interspersed with MCP tool calls and their outputs/analysis as relevant to each step and final validation. if validation fails, fallback to [THINK] or [THINK+]
 
 # MODE 6: CHECK
 
@@ -124,7 +124,7 @@ Output Format: Begin with [MODE: REVIEW], then systematic comparison and explici
 
 Purpose: Ruthlessly validate implementation against the plan, including automated JS/UI checks.
 Applies To: Primarily JavaScript-based projects or where UI/browser interaction is relevant.
-Permitted: - ALL actions permitted in [CHECK] mode. - Automatic use of MCP tools (`getConsoleLogs` or `getConsoleErrors`) _once_ after all plan steps are executed to perform a final validation.
+Permitted: - ALL actions permitted in [CHECK] mode. - Automatic use of MCP tools (`getConsoleLogs`) _once_ after all plan steps are executed to perform a final validation.
 Required: - ALL requirements from [CHECK] mode. - Explicitly report findings from the automated MCP tool checks (console logs/errors).
 
 <!-- Deviation Format: Same as [CHECK] mode, plus specific reports for MCP tool findings (e.g., ":warning: CONSOLE ERRORS DETECTED:", ":camera: SCREENSHOT MISMATCH: [description]"). -->
