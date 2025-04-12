@@ -78,7 +78,7 @@ class Main {
 
     this.paused = true;
 
-    socketManager.enable = true;
+    socketManager.enable = false;
     socketManager.connect();
 
     // Connect components directly without null checks

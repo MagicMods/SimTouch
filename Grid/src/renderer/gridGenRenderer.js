@@ -1,7 +1,7 @@
 import { BaseRenderer } from "./baseRenderer.js";
 import * as mat4 from "gl-matrix/mat4.js";
 import { GridGeometry } from "../coreGrid/gridGeometry.js";
-import { OverlayManager } from "../overlays/overlayManager.js";
+import { OverlayManager } from "./overlayRenderer.js";
 
 export class GridGenRenderer extends BaseRenderer {
   constructor(gl, shaderManager, gridConfig, shapeBoundary, physicsBoundary) {

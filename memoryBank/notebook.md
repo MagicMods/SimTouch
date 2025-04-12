@@ -580,9 +580,11 @@ _(End of Phase 3. Proceeding to Phase 4...)_
 **Phase 4: Overlay Component Comparison (`overlays`)**
 
 - **Step 13: OverlayManager (`overlayManager.js`)**
-  - `Grid`: File `Grid/src/overlays/overlayManager.js` exists and was read.
+  - `Grid`: File `Grid/src/renderer/overlayRenderer.js` exists and was read.
   - `Sim`: File `Sim/src/overlays/overlayManager.js` not found at expected location or via search. File likely missing in reverted state. (Note: `Sim/src/overlays/` directory exists).
-  - **Decision:** Use `Grid` `overlayManager.js` as the definitive source.
+  - **Decision:** Use `Grid` `overlayRenderer.js` as the definitive source.
+
+**File Refactoring:** Renamed `Grid/src/overlays/overlayManager.js` to `Grid/src/renderer/overlayRenderer.js` and moved it to the `renderer` directory. Updated import paths in `Grid/src/renderer/gridGenRenderer.js`.
 
 _(End of Phase 4. Proceeding to Phase 5...)_
 
