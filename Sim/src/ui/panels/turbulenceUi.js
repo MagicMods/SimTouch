@@ -345,19 +345,6 @@ export class TurbulenceUi extends BaseUi {
     this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulenceParams, "patternFrequency", 0.1, 10).name("T-Freq")
       .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'turbulence.patternFrequency', value }));
 
-    // Noise Seed - Needs special handling (button?)
-    this.turbulenceNoiseSeedController = patternControlsFolder.add(turbulenceParams, "noiseSeed").name("T-Seed").listen(); // Listen for programmatic changes
-    patternControlsFolder.add({
-      randomizeSeed: () => {
-        const newValue = Math.random() * 10000;
-        // Directly update simParams and turbulenceField for now, emit event
-        turbulenceParams.noiseSeed = newValue;
-        turbulenceField.noiseSeed = newValue; // Keep direct update for immediate preview?
-        this.turbulenceNoiseSeedController.updateDisplay();
-        eventBus.emit('uiControlChanged', { paramPath: 'turbulence.noiseSeed', value: newValue });
-      }
-    }, "randomizeSeed").name("Randomize Seed");
-
     // Move Pattern Offset folder under Direction Bias and close it
     const patternOffsetFolder = biasFolder.addFolder("Pattern Offset");
     this.patternOffsetFolder = patternOffsetFolder;
@@ -375,54 +362,21 @@ export class TurbulenceUi extends BaseUi {
     // Create preview thumbnails
     Object.entries(patternStyles).forEach(([name, value]) => {
       const previewWrapper = document.createElement('div');
+      // Add both classes
       previewWrapper.className = 'pattern-preview noise-preview-element';
       previewWrapper.setAttribute('data-pattern', value);  // Add data-pattern attribute
-      previewWrapper.style.cssText = `
-        width: ${previewSize}px;
-        height: ${previewSize}px;
-        border: 1px solid #666;
-        cursor: pointer;
-        transition: border-color 0.2s;
-        position: relative;
-      `;
 
       const previewImg = document.createElement('img');
-      previewImg.style.cssText = `
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-      `;
 
       // Add title first
       const title = document.createElement('div');
       title.textContent = name;
-      title.style.cssText = `
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        background: rgba(0, 0, 0, 0.7);
-        color: white;
-        font-size: 12px;
-        padding: 2px;
-        text-align: center;
-      `;
+      // Add class instead of inline styles
+      title.className = 'pattern-title';
       previewWrapper.appendChild(title);
 
       // Generate initial static preview (now handled by PreviewManager)
       previewWrapper.appendChild(previewImg);
-
-      // Add hover effect
-      previewWrapper.addEventListener('mouseover', () => {
-        if (value !== turbulenceField.patternStyle) {
-          previewWrapper.style.borderColor = '#fff';
-        }
-      });
-      previewWrapper.addEventListener('mouseout', () => {
-        if (value !== turbulenceField.patternStyle) {
-          previewWrapper.style.borderColor = '#666';
-        }
-      });
 
       // Add click handler
       previewWrapper.addEventListener('click', () => {
@@ -535,11 +489,6 @@ export class TurbulenceUi extends BaseUi {
     // Create button group container for time influence controls
     const timeInfluenceContainer = document.createElement("div");
     timeInfluenceContainer.className = "time-influence-toggle-buttons";
-    timeInfluenceContainer.style.cssText = `
-      display: flex;
-      gap: 5px;
-      margin-bottom: 10px;
-    `;
 
     // Domain warp control
     this.turbulenceDomainWarpController = patternControlsFolder.add(turbulenceParams, "domainWarp", 0, 1)
@@ -956,31 +905,18 @@ export class TurbulenceUi extends BaseUi {
     const statusElement = document.createElement('div');
     statusElement.className = 'turbulence-status-message';
     statusElement.textContent = message;
-    statusElement.style.cssText = `
-      position: fixed;
-      bottom: 20px;
-      left: 50%;
-      transform: translateX(-50%);
-      background-color: rgba(0, 0, 0, 0.7);
-      color: #fff;
-      padding: 8px 16px;
-      border-radius: 4px;
-      font-size: 14px;
-      z-index: 9999;
-      pointer-events: none;
-      transition: opacity 0.3s;
-    `;
 
     document.body.appendChild(statusElement);
 
     // Fade out and remove after duration
     setTimeout(() => {
-      statusElement.style.opacity = '0';
+      statusElement.classList.add('fade-out');
+      // Remove the element after the transition completes
       setTimeout(() => {
         if (statusElement.parentNode) {
           document.body.removeChild(statusElement);
         }
-      }, 300);
+      }, 300); // Match CSS transition duration
     }, duration);
   }
 

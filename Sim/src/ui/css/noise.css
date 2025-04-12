@@ -38,4 +38,68 @@
   /* Selected and disabled state */
   border-color: #ff6600;
   border-style: dashed;
+}
+
+/* Added styles for pattern previews */
+.pattern-preview {
+  width: 60px; /* Assuming default previewSize */
+  height: 60px; /* Assuming default previewSize */
+  cursor: pointer;
+  transition: border-color 0.2s;
+  position: relative;
+  /* Inherits border from .noise-preview-element */
+}
+
+/* Apply hover border only when not selected or disabled */
+.pattern-preview:not(.selected):not(.disabled):hover {
+  border-color: #fff;
+}
+
+.pattern-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.pattern-title {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  font-size: 10px;
+  padding: 2px;
+  text-align: center;
+  pointer-events: none;
+}
+
+/* Added styles for time influence toggle buttons */
+.time-influence-toggle-buttons {
+  display: flex;
+  gap: 5px;
+  margin-bottom: 10px;
+}
+
+/* Added styles for turbulence status message */
+.turbulence-status-message {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 14px;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 1; /* Start visible */
+  transition: opacity 0.3s ease-out; /* Apply transition */
+}
+
+/* Optional: Explicit style for fading out */
+.turbulence-status-message.fade-out {
+    opacity: 0;
 } 
