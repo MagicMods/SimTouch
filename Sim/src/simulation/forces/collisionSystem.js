@@ -1,3 +1,5 @@
+import { eventBus } from '../../util/eventManager.js';
+
 class CollisionSystem {
   constructor({
     enabled = true,
@@ -22,6 +24,43 @@ class CollisionSystem {
     }
 
     this.particleSystem = null;
+
+    // Assuming initializeGrid exists and needs to be called
+    this.initializeGrid(); // Call initial grid setup
+
+    // Subscribe to parameter updates
+    eventBus.on('simParamsUpdated', this.handleParamsUpdate.bind(this));
+  }
+
+  // Add handler for simParams updates
+  handleParamsUpdate({ simParams }) {
+    if (simParams?.collision) {
+      const previousGridSize = this.gridSize; // Store previous size for comparison
+
+      this.enabled = simParams.collision.enabled ?? this.enabled;
+      this.gridSize = simParams.collision.gridSize ?? this.gridSize;
+      this.repulsion = simParams.collision.repulsion ?? this.repulsion;
+      this.particleRestitution = simParams.collision.particleRestitution ?? this.particleRestitution;
+
+      // Re-initialize grid if gridSize has changed
+      if (this.gridSize !== previousGridSize && typeof this.initializeGrid === 'function') {
+        console.log(`CollisionSystem: Grid size changed from ${previousGridSize} to ${this.gridSize}. Reinitializing grid.`);
+        this.initializeGrid(); // Assuming this method exists to handle grid resizing
+      }
+    }
+    // console.log(`CollisionSystem updated: enabled=${this.enabled}, gridSize=${this.gridSize}, repulsion=${this.repulsion}, restitution=${this.particleRestitution}`);
+  }
+
+  // Add initializeGrid method if it doesn't exist (or update existing one)
+  initializeGrid() {
+    this.cellSize = 1 / this.gridSize;
+    // Reset grid array based on new size
+    this.grid = [];
+    const gridCellCount = this.gridSize * this.gridSize;
+    for (let i = 0; i < gridCellCount; i++) {
+      this.grid.push([]);
+    }
+    console.log(`Collision grid initialized with size ${this.gridSize}x${this.gridSize}`);
   }
 
   update(particles, velocitiesX, velocitiesY) {

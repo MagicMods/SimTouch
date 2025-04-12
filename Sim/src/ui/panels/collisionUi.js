@@ -1,4 +1,5 @@
 import { BaseUi } from "../baseUi.js";
+import { eventBus } from '../../util/eventManager.js';
 
 export class CollisionUi extends BaseUi {
   constructor(main, container) {
@@ -14,49 +15,56 @@ export class CollisionUi extends BaseUi {
   }
 
   initCollisionControls() {
-    const particles = this.main.particleSystem;
-    if (!particles || !particles.collisionSystem) return;
+    // Add Enabled control
+    this.collisionEnabledController = this.gui
+      .add(this.main.simParams.collision, "enabled")
+      .name("C-Enabled")
+      .onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'collision.enabled', value });
+      });
 
-    const collisionSystem = particles.collisionSystem;
+    // Add GridSize control
+    this.collisionGridSizeController = this.gui
+      .add(this.main.simParams.collision, "gridSize", 8, 128, 1) // Assuming step 1
+      .name("C-GridSize")
+      .onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'collision.gridSize', value });
+      });
 
     this.collisionRepulsionController = this.gui
-      .add(collisionSystem, "repulsion", 0, 4, 0.01)
-      .name("C-Repulse");
+      // Bind to simParams
+      .add(this.main.simParams.collision, "repulsion", 0, 4, 0.01)
+      .name("C-Repulse")
+      // Add onChange handler
+      .onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'collision.repulsion', value });
+      });
 
-    // Check if properties exist before adding them
-    if (collisionSystem.particleRestitution !== undefined) {
+    // Check if properties exist before adding them - Bind to simParams
+    if (this.main.simParams.collision.particleRestitution !== undefined) {
       this.collisionBounceController = this.gui
-        .add(collisionSystem, "particleRestitution", 0.0, 1.0, 0.05)
-        .name("C-Bounce");
-    }
-
-    if (collisionSystem.damping !== undefined) {
-      this.collisionDampingController = this.gui
-        .add(collisionSystem, "damping", 0.01, 1.0, 0.01)
-        .name("C-Damping");
-    }
-
-    // Add Rest Density control (moved from RestStateUi)
-    if (particles.restDensity !== undefined) {
-      this.restDensityController = this.gui
-        .add(particles, "restDensity", 0, 10, 0.1)
-        .name("C-RestState");
+        // Bind to simParams
+        .add(this.main.simParams.collision, "particleRestitution", 0.0, 1.0, 0.05)
+        .name("C-Bounce")
+        // Add onChange handler
+        .onChange((value) => {
+          eventBus.emit('uiControlChanged', { paramPath: 'collision.particleRestitution', value });
+        });
     }
   }
 
   getControlTargets() {
     const targets = {};
 
-    // Collision controllers
+    // Update targets list
+    if (this.collisionEnabledController)
+      targets["C-Enabled"] = this.collisionEnabledController;
+    if (this.collisionGridSizeController)
+      targets["C-GridSize"] = this.collisionGridSizeController;
     if (this.collisionRepulsionController)
       targets["C-Repulse"] = this.collisionRepulsionController;
     if (this.collisionBounceController)
       targets["C-Bounce"] = this.collisionBounceController;
-    if (this.collisionDampingController)
-      targets["C-Damping"] = this.collisionDampingController;
-    // Add Rest Density controller to targets
-    if (this.restDensityController)
-      targets["C-RestState"] = this.restDensityController;
 
     return targets;
   }
@@ -113,11 +121,10 @@ export class CollisionUi extends BaseUi {
       }
     };
 
-    // Update collision controllers
+    // Update relevant collision controllers
+    safeUpdateDisplay(this.collisionEnabledController);
+    safeUpdateDisplay(this.collisionGridSizeController);
     safeUpdateDisplay(this.collisionRepulsionController);
     safeUpdateDisplay(this.collisionBounceController);
-    safeUpdateDisplay(this.collisionDampingController);
-    // Update Rest Density controller
-    safeUpdateDisplay(this.restDensityController);
   }
 }

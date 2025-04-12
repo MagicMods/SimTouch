@@ -76,6 +76,12 @@ class Main {
       gravity: {
         directionX: this.particleSystem.gravity.directionX,
         directionY: this.particleSystem.gravity.directionY
+      },
+      collision: {
+        enabled: this.particleSystem.collisionSystem.enabled,
+        gridSize: this.particleSystem.collisionSystem.gridSize,
+        repulsion: this.particleSystem.collisionSystem.repulsion,
+        particleRestitution: this.particleSystem.collisionSystem.particleRestitution,
       }
     };
 
