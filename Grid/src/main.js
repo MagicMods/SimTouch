@@ -4,6 +4,7 @@ import { ShaderManager } from "./shader/shaderManager.js";
 import { DimensionManager } from "./coreGrid/dimensionManager.js";
 import { BoundaryManager } from "./coreGrid/boundaryManager.js";
 import { BoundaryRenderer } from "./renderer/boundaryRenderer.js";
+import { eventBus } from './util/eventManager.js';
 
 class Main {
   constructor() {
@@ -159,10 +160,9 @@ class Main {
       console.warn("Main.setGridParams: gridRender not initialized, cannot update.");
     }
 
-    // Add this line at the end to synchronize UI
-    if (this.ui && this.ui.newGridUi && typeof this.ui.newGridUi.updateUIState === 'function') {
-      this.ui.newGridUi.updateUIState(this.gridParams);
-    }
+    // Removed direct UI update call
+    // Emit event instead
+    eventBus.emit('gridParamsUpdated', this.gridParams);
   }
 
   // Add this new method to handle UI changes

@@ -291,7 +291,7 @@
 5.  **Dependencies:**
     - `Sim`: Unused `gl-matrix/mat4.js` import.
     - `Grid`: No unused imports noted.
-    - **Alignment:** Remove unused `gl-matrix` import from `Sim`'s `GridGeometry`.
+    - **Alignment:** Remove unused `gl-matrix` import from `Sim's `GridGeometry`.
 
 ## Phase C Analysis: OverlayManager (Sim vs. Grid) - 2024-07-27
 
@@ -807,3 +807,16 @@ Based on the analysis of files in `Sim/src/renderer/`:
 **Overall Conclusion:**
 
 The `Sim` renderers vary significantly. `baseRenderer` and `particleRenderer` align reasonably well with stateless principles for their core operations. However, `gridRenderer`, `gridRenderModes`, and especially `emuRenderer` exhibit substantial statefulness and coupling. Refactoring these towards statelessness (passing necessary data/state into methods) would require significant architectural changes to separate concerns (state management, calculation, input handling, rendering).
+
+## Decoupling via Event Bus (Grid Project) - 2024-08-01
+
+**Context:** Brainstorming identified tight coupling between `Main.setGridParams` and `UiManager.newGridUi.updateUIState`.
+
+**Decision:** Implement a simple Pub/Sub event system using a singleton `eventBus` (`util/eventManager.js`) to decouple components.
+
+**Initial Implementation:** Refactor the Grid UI update flow:
+
+1. `Main.setGridParams` will now emit a `gridParamsUpdated` event instead of calling the UI update directly.
+2. `UiManager` will subscribe to `gridParamsUpdated` during initialization and trigger `newGridUi.updateUIState` when the event is received.
+
+**Plan Reference:** See `memoryBank/plan.md` for detailed implementation steps.

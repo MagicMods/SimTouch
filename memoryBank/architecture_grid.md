@@ -9,6 +9,7 @@
 - **Decoupled Rendering:** Visual boundary rendering is separated into `boundaryRenderer` (DOM-based). Grid rendering (`gridGenRenderer`) focuses on instanced cell drawing.
 - **Centralized Configuration:** Uses `gridConfig` object for parameters.
 - **Modern JS:** Uses ES6 classes, modules, `const`/`let`.
+- **Event-Driven Communication (New):** Uses a singleton `eventBus` (`util/eventManager.js`) for decoupled communication between major components (e.g., `Main` emitting `gridParamsUpdated`, `UiManager` subscribing).
 
 **Key Components & State:**
 
@@ -30,6 +31,7 @@
   - `shaderManager.js`: Simplified manager. Loads shaders from JS modules.
   - `shaders/`: Contains `gridCell.js`, `particles.js` (shader source embedded in JS).
 - **`ui/`, `util/`, `visualization/`:** Present but not deeply analyzed in this phase.
+- **`util/eventManager.js` (New):** Provides a singleton `eventBus` instance for Pub/Sub event handling.
 
 ```mermaid
 graph LR
@@ -77,5 +79,9 @@ graph LR
         Grid_DimensionManager -- Interacts --> Grid_GL(WebGL Context)
 
         Grid_ShaderManager -- Loads --> Grid_Shaders[Shaders]
+
+        Grid_Main -- Emits --> Grid_EventBus(eventBus)
+        Grid_EventBus -- Notifies --> Grid_UiManager
+        Grid_UiManager -- Subscribes --> Grid_EventBus
     end
 ```

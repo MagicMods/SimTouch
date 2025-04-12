@@ -1,4 +1,6 @@
 import { NewGridUi } from "./panels/newGridUi.js";
+import { eventBus } from '../util/eventManager.js';
+
 export class UiManager {
   constructor(main) {
     if (!main) {
@@ -16,7 +18,9 @@ export class UiManager {
     return new Promise(resolve => {
       console.log("UiManager: Starting panel initialization...");
       this.newGridUi = new NewGridUi(this.main, this.rightContainer);
-      console.log("UiManager: Panel initialization complete.");
+      // Subscribe to grid parameter updates
+      eventBus.on('gridParamsUpdated', this.newGridUi.updateUIState.bind(this.newGridUi));
+      console.log("UiManager: Panel initialization complete and event listener added.");
       resolve();
     });
   }
