@@ -126,7 +126,9 @@ Purpose: Ruthlessly validate implementation against the plan, including automate
 Applies To: Primarily JavaScript-based projects or where UI/browser interaction is relevant.
 Permitted: - ALL actions permitted in [CHECK] mode. - Automatic use of MCP tools (`getConsoleLogs` or `getConsoleErrors`) _once_ after all plan steps are executed to perform a final validation.
 Required: - ALL requirements from [CHECK] mode. - Explicitly report findings from the automated MCP tool checks (console logs/errors).
+
 <!-- Deviation Format: Same as [CHECK] mode, plus specific reports for MCP tool findings (e.g., ":warning: CONSOLE ERRORS DETECTED:", ":camera: SCREENSHOT MISMATCH: [description]"). -->
+
 Reporting: Same as [CHECK] mode, incorporating MCP tool results into the final verdict.
 Conclusion Format: Same as [CHECK] mode.
 Output Format: Begin with [MODE: CHECK+], then systematic comparison, MCP tool results, and explicit verdict.
@@ -225,8 +227,6 @@ These imperatives apply across all modes when reading, analyzing, or modifying c
 2.  Avoid direct manipulation of inline styles (e.g., `element.style.color = 'red'`, `element.style.display = 'none'`) for state-driven visual changes.
 3.  Define CSS rules corresponding to these state classes in dedicated `.css` files.
 4.  This promotes separation of concerns (structure/logic in JS, presentation in CSS) and improves maintainability.
-
-
 
 # MCP TOOLS PROTOCOL
 
@@ -528,6 +528,25 @@ This protocol specifically governs interactions in environments where you can mo
 
 # - Debugging changes (e.g., disabling features, simplifying code blocks, extensive logging) should generally be reverted before proceeding with the main implementation or further debugging steps, unless the diagnostic directly identifies the root cause AND the fix aligns with the approved PLAN and established patterns. Such deviations require returning to PLAN mode.
 
+# REACTIVE UI STATE MANAGEMENT PROTOCOL (`.listen()` Pattern)
+
+This protocol applies when working with UI libraries (like `lil-gui`) that use a `.listen()` method or similar mechanism to bind UI elements directly to JavaScript object properties for automatic updates.
+
+1.  **Object Reference Preservation:**
+
+    - Recognize that `.listen()` binds to a _specific object instance_.
+    - NEVER replace the entire bound object instance with a new object (e.g., `this.state = newStateObject;`). Doing so breaks the binding.
+
+2.  **Property Mutation Strategy:**
+
+    - To update the UI via the bound object, MUTATE the properties of the _existing_ object instance.
+    - PREFER using `Object.assign(this.state, updates)` or direct property assignment (e.g., `this.state.property = newValue`).
+    - This ensures the UI library's listener remains attached to the correct object reference.
+
+3.  **Debugging Broken Bindings:**
+    - If UI elements bound with `.listen()` stop updating after initial changes, suspect that the object reference was inadvertently replaced.
+    - Trace the state update logic to ensure the original object instance's properties are being modified, not the instance itself being reassigned.
+
 # UI STATE DEBUGGING FUNDAMENTALS
 
 1. Boolean Control Pattern
@@ -591,18 +610,19 @@ This protocol guides the removal of unnecessary comments to improve code readabi
 This pattern promotes DRY code, maintainability, and separation of concerns when creating multiple similar UI elements dynamically (e.g., toggle buttons, list items).
 
 1.  **CSS for Styling:**
-    *   Define all visual states (default, active, hover, etc.) using dedicated CSS classes (e.g., `.my-element`, `.my-element.active`).
-    *   Place these styles in appropriate CSS files (like `main.css`).
-    *   AVOID setting state-dependent inline styles (e.g., `element.style.backgroundColor`) within JavaScript event handlers.
+
+    - Define all visual states (default, active, hover, etc.) using dedicated CSS classes (e.g., `.my-element`, `.my-element.active`).
+    - Place these styles in appropriate CSS files (like `main.css`).
+    - AVOID setting state-dependent inline styles (e.g., `element.style.backgroundColor`) within JavaScript event handlers.
 
 2.  **JavaScript for Logic & Structure:**
-    *   **Configuration:** Define an array or object holding the variable data for each element instance (e.g., `[{ text: 'Label', dataValue: 'value1' }, ...]`).
-    *   **Programmatic Creation:** Loop through the configuration array to create the necessary DOM elements.
-    *   **Data Attributes:** Store element-specific information needed by event listeners using `dataset` attributes (e.g., `element.dataset.value = config.dataValue`).
-    *   **Class Assignment:** Assign the base CSS class(es) during creation. Check initial state and add relevant state classes (e.g., `.active`) if necessary.
-    *   **Generic Listener:** Attach a *single*, shared event listener function to handle interactions for all generated elements of that type.
-    *   **Listener Logic:**
-        *   Use `event.currentTarget` to get the specific element interacted with.
-        *   Retrieve element-specific data using `event.currentTarget.dataset`.
-        *   Perform necessary state updates (e.g., toggle flags, call update methods).
-        *   Update the element's visual state SOLELY by toggling CSS classes (e.g., `event.currentTarget.classList.toggle('active')`).
+    - **Configuration:** Define an array or object holding the variable data for each element instance (e.g., `[{ text: 'Label', dataValue: 'value1' }, ...]`).
+    - **Programmatic Creation:** Loop through the configuration array to create the necessary DOM elements.
+    - **Data Attributes:** Store element-specific information needed by event listeners using `dataset` attributes (e.g., `element.dataset.value = config.dataValue`).
+    - **Class Assignment:** Assign the base CSS class(es) during creation. Check initial state and add relevant state classes (e.g., `.active`) if necessary.
+    - **Generic Listener:** Attach a _single_, shared event listener function to handle interactions for all generated elements of that type.
+    - **Listener Logic:**
+      - Use `event.currentTarget` to get the specific element interacted with.
+      - Retrieve element-specific data using `event.currentTarget.dataset`.
+      - Perform necessary state updates (e.g., toggle flags, call update methods).
+      - Update the element's visual state SOLELY by toggling CSS classes (e.g., `event.currentTarget.classList.toggle('active')`).
