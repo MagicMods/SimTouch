@@ -11,7 +11,6 @@ export class UiManager {
     this.rightContainer = this.createContainer("right");
     this.newGridUi = null;
     console.info("CSS loaded via HTML link tag");
-    this.onChangeCallback = null;
   }
 
   async initPanels() {
@@ -19,7 +18,13 @@ export class UiManager {
       console.log("UiManager: Starting panel initialization...");
       this.newGridUi = new NewGridUi(this.main, this.rightContainer);
       // Subscribe to grid parameter updates
-      eventBus.on('gridParamsUpdated', this.newGridUi.updateUIState.bind(this.newGridUi));
+      eventBus.on('gridParamsUpdated', ({ gridParams }) => {
+        if (this.newGridUi && typeof this.newGridUi.updateUIState === 'function') {
+          this.newGridUi.updateUIState(gridParams);
+        } else {
+          console.warn("UiManager: newGridUi or updateUIState not available when gridParamsUpdated received.");
+        }
+      });
       console.log("UiManager: Panel initialization complete and event listener added.");
       resolve();
     });

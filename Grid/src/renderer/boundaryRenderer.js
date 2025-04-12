@@ -1,18 +1,23 @@
 import { CircularBoundaryPs } from "../simulation/boundary/circularBoundaryPs.js";
 import { RectangularBoundaryPs } from "../simulation/boundary/rectangularBoundaryPs.js";
+import { eventBus } from '../util/eventManager.js';
 
 export class BoundaryRenderer {
   #container;
   #boundaryDiv;
   #currentBoundaryType = null;
+  #boundaryManager = null;
+  #canvas = null;
 
-  constructor(containerElement) {
+  constructor(containerElement, boundaryManager, canvasElement) {
     console.log("BoundaryRenderer: Constructor - Creating div");
-    if (!containerElement) {
-      console.error("BoundaryRenderer: Container element is required.");
+    if (!containerElement || !boundaryManager || !canvasElement) {
+      console.error("BoundaryRenderer: Container, BoundaryManager, and Canvas element are required.");
       return;
     }
     this.#container = containerElement;
+    this.#boundaryManager = boundaryManager;
+    this.#canvas = canvasElement;
 
     this.#boundaryDiv = document.createElement("div");
     this.#boundaryDiv.id = "physics-boundary-dom";
@@ -20,6 +25,14 @@ export class BoundaryRenderer {
 
     this.#container.appendChild(this.#boundaryDiv);
     console.log("BoundaryRenderer: Constructor - Appended div to container:", this.#container);
+
+    // Subscribe to grid parameter updates
+    eventBus.on('gridParamsUpdated', ({ gridParams }) => {
+      console.debug("BoundaryRenderer received gridParamsUpdated event.");
+      const physicsBoundary = this.#boundaryManager?.getPhysicsBoundary();
+      // Ensure we use the stored canvas reference (#canvas)
+      this.update(physicsBoundary, this.#canvas, gridParams.flags.showBoundary);
+    });
   }
 
   update(physicsBoundary, canvasElement, show) {

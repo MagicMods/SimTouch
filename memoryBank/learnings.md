@@ -70,3 +70,27 @@
 **Experience:** Fixing unresponsive UI elements (shadow sliders, statistics displays) controlled by `lil-gui` revealed issues caused by replacing state object instances (`uiGridParams` in `newGridUi`, `this.grid` in `gridGenRenderer`) instead of updating their properties.
 
 **Learning:** `lil-gui`'s `.listen()` method binds to a specific JavaScript object instance. If this instance is replaced entirely (e.g., `this.state = newStateObject`), the binding breaks. To maintain reactivity for UI elements using `.listen()`, the properties of the _original_ state object instance must be updated (e.g., using `Object.assign(this.state, newStateObject)` or `this.state.property = value`). Replacing the object reference invalidates the listener.
+
+## Dependency Injection for Event Subscribers (2024-08-03)
+
+**Experience:** Refactoring `BoundaryRenderer` and `GridGenRenderer` to subscribe to the `gridParamsUpdated` event revealed they needed access to other dependencies (`BoundaryManager`, `DimensionManager`, `canvas`) within their event handlers to perform their updates correctly.
+
+**Learning:** Event subscribers often require access to collaborators or context beyond the event payload itself. Use dependency injection (e.g., passing dependencies via the constructor and storing references) to ensure subscribers have the necessary resources available when their event handlers are triggered.
+
+## Instantiation Order & Dependencies (2024-08-03)
+
+**Experience:** Injecting `BoundaryManager` into `BoundaryRenderer` forced a reordering of the component instantiation sequence in `Main.js`, as `BoundaryManager` had to be created before `BoundaryRenderer`.
+
+**Learning:** Implementing dependency injection necessitates careful consideration of the application's initialization order. Ensure dependencies are created and available _before_ the components that require them are instantiated.
+
+## Event Payload Design (Balancing Act) (2024-08-03)
+
+**Experience:** The `gridParamsUpdated` event payload was initially designed to contain only `gridParams`. It was later modified to include `dimensions` because multiple subscribers (`BoundaryManager`, `GridGenRenderer`) required this data, and having the emitter (`Main`) provide it was simpler than having each subscriber fetch it independently.
+
+**Learning:** Carefully design event payloads. Include data commonly needed by subscribers to simplify their logic. However, avoid excessively large payloads. Find a balance between subscriber convenience and emitter responsibility. Providing frequently needed, closely related state (like `dimensions` alongside `gridParams`) in the payload can be beneficial.
+
+## UI Binding Property Existence (`lil-gui` Addendum) (2024-08-03)
+
+**Experience:** A `lil-gui` error occurred when trying to `.add()` a listener for `cellCount`, which was calculated _after_ the UI was initialized. Pre-initializing the property with a default value in the state object resolved the issue.
+
+**Learning:** Reinforces the previous `lil-gui` learning: Ensure properties exist on the target object _before_ attempting to bind UI controls to them, even if using `.listen()`. Initializing with `null` or a sensible default prevents errors during UI setup.

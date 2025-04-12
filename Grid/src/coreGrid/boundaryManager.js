@@ -2,6 +2,7 @@ import { CircularBoundaryShape } from "./boundary/circularBoundaryShape.js";
 import { RectangularBoundaryShape } from "./boundary/rectangularBoundaryShape.js";
 import { CircularBoundaryPs } from "../simulation/boundary/circularBoundaryPs.js";
 import { RectangularBoundaryPs } from "../simulation/boundary/rectangularBoundaryPs.js";
+import { eventBus } from '../util/eventManager.js';
 
 export class BoundaryManager {
   constructor(initialgridParams, initialgridDimensions) {
@@ -15,6 +16,12 @@ export class BoundaryManager {
     this.physicsBoundary = null;
 
     this._createBoundaries(this.params, initialgridDimensions);
+
+    // Subscribe to grid parameter updates
+    eventBus.on('gridParamsUpdated', ({ gridParams, dimensions }) => {
+      console.debug("BoundaryManager received gridParamsUpdated event.");
+      this.update(gridParams, dimensions);
+    });
   }
 
   _createBoundaries(params, dimensions) {

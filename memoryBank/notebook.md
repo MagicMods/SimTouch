@@ -820,3 +820,52 @@ The `Sim` renderers vary significantly. `baseRenderer` and `particleRenderer` al
 2. `UiManager` will subscribe to `gridParamsUpdated` during initialization and trigger `newGridUi.updateUIState` when the event is received.
 
 **Plan Reference:** See `memoryBank/plan.md` for detailed implementation steps.
+
+---
+
+## Event System Refactoring (Grid Project) - 2024-08-03
+
+**Objective:** Implement the refined two-event system (`uiControlChanged` -> `gridParamsUpdated`) to decouple components and centralize state management in `Main`.
+
+**Execution Log:**
+
+1.  **`NewGridUi`:** Modified all controls (`onChange` handlers) to emit `eventBus.emit('uiControlChanged', { paramPath, value })` instead of calling `main.setGridParams` or the old `onChangeCallback`. Removed `onChangeCallback` property and `setOnChangeCallback` method.
+2.  **`UiManager`:** Removed unused `onChangeCallback` property.
+3.  **`Main`:**
+    - Removed old callback registration for `NewGridUi`.
+    - Subscribed to `uiControlChanged` event, routing it to `handleGridUIChange`.
+    - Updated `handleGridUIChange` signature to destructure payload: `({ paramPath, value })`.
+    - Modified `setGridParams` to remove direct calls to `boundaryManager.update`, `boundaryRenderer.update`, `gridRender.setGrid`.
+    - Modified `setGridParams` to emit `gridParamsUpdated` with payload `{ gridParams, dimensions }`.
+4.  **`BoundaryManager`:** Subscribed to `gridParamsUpdated` in constructor, calling `this.update(gridParams, dimensions)` using the event payload.
+5.  **`BoundaryRenderer`:**
+    - Modified constructor to accept and store `boundaryManager` and `canvas` dependencies.
+    - Updated `Main` to instantiate `BoundaryRenderer` _after_ `BoundaryManager` and pass the dependencies.
+    - Subscribed to `gridParamsUpdated` in constructor, calling `this.update` using stored dependencies and event payload.
+6.  **`GridGenRenderer`:**
+    - Modified constructor to accept and store `dimensionManager` and `boundaryManager` dependencies.
+    - Updated `Main` to instantiate `GridGenRenderer` and pass the manager dependencies.
+    - Subscribed to `gridParamsUpdated` in constructor, calling `this.setGrid` using stored dependencies and event payload.
+7.  **`UiManager`:** Updated existing `gridParamsUpdated` subscription handler to destructure the event payload `({ gridParams })`.
+
+**Status:** Core event flow refactoring complete. UI changes now emit `uiControlChanged`, `Main` updates state and emits `gridParamsUpdated`, and relevant components (`UiManager`, `BoundaryManager`, `BoundaryRenderer`, `GridGenRenderer`) subscribe to `gridParamsUpdated` to trigger their respective updates.
+
+---
+
+## Fixing UI Initialization Error (lil-gui) - 2024-08-03
+
+**Context:** After completing the event system refactoring, testing revealed an error during UI panel initialization (`NewGridUi`).
+
+**Error:**
+
+```
+lil-gui.esm.min.js:8 gui.add failed property: cellCount
+...
+TypeError: Cannot read properties of undefined (reading 'name')
+```
+
+**Analysis:**
+The error occurred because `NewGridUi.initGridControls` attempted to bind a `lil-gui` controller to `gridRender.grid.cellCount` using `.listen()`. However, `cellCount` (along with `cols`, `rows`, etc.) is a property _calculated_ by `GridGenRenderer` during its initial `setGrid` call. Even though the calculation happened synchronously before UI initialization, `lil-gui` likely requires the property to exist on the target object _at the moment_ `.add()` is called, even if `.listen()` is used.
+
+**Solution:**
+Initialized the calculated properties (`cellCount`, `cols`, `rows`, `calculatedCellWidth`, `calculatedCellHeight`) with default values (0) directly within the `main.gridParams` object definition. `GridGenRenderer` already updates these properties on the same object reference after calculation, so the UI binding will now find the properties during initialization and `.listen()` will correctly reflect later updates.

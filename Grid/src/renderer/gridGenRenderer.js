@@ -2,20 +2,19 @@ import { BaseRenderer } from "./baseRenderer.js";
 import * as mat4 from "gl-matrix/mat4.js";
 import { GridGeometry } from "../coreGrid/gridGeometry.js";
 import { OverlayManager } from "./overlayRenderer.js";
+import { eventBus } from '../util/eventManager.js';
 
 export class GridGenRenderer extends BaseRenderer {
-  constructor(gl, shaderManager, gridConfig, shapeBoundary, physicsBoundary) {
+  constructor(gl, shaderManager, gridConfig, dimensionManager, boundaryManager) {
     super(gl, shaderManager);
 
     this.gl = gl;
     this.shaderManager = shaderManager;
+    this.dimensionManager = dimensionManager;
+    this.boundaryManager = boundaryManager;
 
     // Initialize this.grid with the initial config object reference
     this.grid = gridConfig || {}; // Use passed config or default to empty object
-
-    // Store initial boundary references (can be null initially)
-    this.shapeBoundary = shapeBoundary;
-    this.physicsBoundary = physicsBoundary;
 
     // Initialize buffer objects
     this.baseQuadBuffer = null;
@@ -67,8 +66,17 @@ export class GridGenRenderer extends BaseRenderer {
       console.warn("Stencil buffer not available, masking will not work correctly");
     }
 
-    // Boundaries are now managed externally and passed via setGrid
+    // Boundaries are now managed externally and passed via setGrid (fetched via manager)
     this.projectionMatrix = mat4.create();
+
+    // Subscribe to grid parameter updates
+    eventBus.on('gridParamsUpdated', ({ gridParams, dimensions }) => {
+      console.debug("GridGenRenderer received gridParamsUpdated event.");
+      const shapeBoundary = this.boundaryManager?.getShapeBoundary();
+      const physicsBoundary = this.boundaryManager?.getPhysicsBoundary();
+      // Call setGrid, passing dimensions from the event payload
+      this.setGrid(gridParams, shapeBoundary, physicsBoundary, dimensions);
+    });
   }
 
   initBuffers() {

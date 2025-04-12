@@ -16,11 +16,7 @@ class Main {
       return;
     }
 
-    // Instantiate the DOM visualizer, attaching it to the body
-    this.boundaryRenderer = new BoundaryRenderer(document.body);
-    this.shaderManager = new ShaderManager(this.gl);
-
-    // Initialize parameters with default 240x240 circular grid (the "sweet spot" configuration)
+    // Initialize parameters (needed for managers)
     this.gridParams = {
       // Use screen object as the source of truth for dimensions/shape
       screen: {
@@ -56,28 +52,39 @@ class Main {
         maxRenderWidth: 960,
         maxRenderHeight: 960,
       },
+      // Add default values for calculated stats (used by lil-gui .listen())
+      cellCount: 0,
+      cols: 0,
+      rows: 0,
+      calculatedCellWidth: 0,
+      calculatedCellHeight: 0,
     };
 
+    // Instantiate Managers BEFORE Renderers that depend on them
     this.dimensionManager = new DimensionManager(this.gridParams.screen.width, this.gridParams.screen.height, this.gridParams.renderSize.maxRenderWidth, this.gridParams.renderSize.maxRenderHeight);
-
-    // Step 3.1: Pass initial dimension VALUES to BoundaryManager
     const initialDimensions = this.dimensionManager.getDimensions();
     this.boundaryManager = new BoundaryManager(
       this.gridParams,
-      initialDimensions // NEW: Pass initial values
+      initialDimensions
     );
+
+    // Instantiate Renderers and other Managers
+    this.boundaryRenderer = new BoundaryRenderer(document.body, this.boundaryManager, this.canvas);
+    this.shaderManager = new ShaderManager(this.gl);
   }
 
   async init() {
     try {
       await this.shaderManager.init();
 
-      // Instantiate GridGenRenderer
+      // Instantiate GridGenRenderer, pass managers
       this.gridRender = new GridGenRenderer(
         this.gl,
         this.shaderManager,
-        this.gridParams // Pass initial gridParams
-        // Boundaries will be set via setGrid later
+        this.gridParams,
+        this.dimensionManager,
+        this.boundaryManager
+        // Initial boundaries are no longer passed here
       );
 
       // Set initial canvas size, style, and viewport
@@ -88,13 +95,8 @@ class Main {
       this.ui = new UiManager(this);
       await this.ui.initPanels(); // Wait for panels to be created
 
-      // Now register the callback
-      if (this.ui.newGridUi && typeof this.ui.newGridUi.setOnChangeCallback === 'function') {
-        this.ui.newGridUi.setOnChangeCallback(this.handleGridUIChange.bind(this));
-        console.log("Grid UI change callback registered successfully (post-init).");
-      } else {
-        console.error("Failed to register Grid UI change callback even after initPanels.");
-      }
+      eventBus.on('uiControlChanged', this.handleGridUIChange.bind(this));
+      console.log("Main subscribed to uiControlChanged events.");
 
       return true;
     } catch (error) {
@@ -140,34 +142,13 @@ class Main {
     // Update dimensions FIRST based on new gridParams
     // Note: checkAndApplyDimensionChanges also updates the internal state of dimensionManager
     this.checkAndApplyDimensionChanges();
-    // Get the latest dimension values AFTER potential update
-    const currentDimensions = this.dimensionManager.getDimensions();
 
-    // Update the Boundary Manager with the new parameters AND current dimensions
-    if (this.boundaryManager) {
-      // Step 3.3: Pass current dimension VALUES to boundaryManager.update
-      this.boundaryManager.update(this.gridParams, currentDimensions);
-      this.boundaryRenderer.update(this.boundaryManager.physicsBoundary, this.canvas, this.gridParams.flags.showBoundary);
-    } else {
-      console.warn("Main.setGridParams: BoundaryManager not initialized.");
-    }
-
-    if (this.gridRender) {
-      // Pass updated boundaries to gridRender
-      // Step 3.4 (deferred to Step 4): Need to pass currentDimensions here too
-      this.gridRender.setGrid(this.gridParams, this.boundaryManager?.getShapeBoundary(), this.boundaryManager?.getPhysicsBoundary(), currentDimensions);
-    } else {
-      console.warn("Main.setGridParams: gridRender not initialized, cannot update.");
-    }
-
-    // Removed direct UI update call
-    // Emit event instead
-    eventBus.emit('gridParamsUpdated', this.gridParams);
+    eventBus.emit('gridParamsUpdated', { gridParams: this.gridParams, dimensions: this.dimensionManager.getDimensions() });
   }
 
   // Add this new method to handle UI changes
-  handleGridUIChange(paramPath, value) {
-    // console.log(`Main Handler: Received update for '${paramPath}' with value:`, value);
+  handleGridUIChange({ paramPath, value }) { // Destructure payload
+    console.log(`Main Handler: Received update for '${paramPath}' with value:`, value);
     // console.debug(`Grid UI Change: ${paramPath} = ${value}`);
     try {
       const parts = paramPath.split('.');
