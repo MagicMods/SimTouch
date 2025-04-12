@@ -12,6 +12,8 @@ class GridRenderer extends BaseRenderer {
     this.TARGET_WIDTH = 240;
     this.TARGET_HEIGHT = 240;
 
+
+
     // Grid parameters (all in pixels)
     this.gridParams = {
       target: 341,
@@ -23,6 +25,7 @@ class GridRenderer extends BaseRenderer {
       cols: 23,
       rows: 23,
       allowCut: 3,      // Controls how many corners can be outside the circle (0-3)
+      showGrid: true,
       showCellCenters: false, // Whether to display cell centers
       showIndices: false,     // Whether to display cell indices
       shadowIntensity: 0.33,   // Shadow intensity (0-1)
@@ -233,10 +236,12 @@ class GridRenderer extends BaseRenderer {
     gl.clearColor(0, 0, 0, 1.0);
     gl.clear(gl.COLOR_BUFFER_BIT); // Only clear color buffer
 
-    // Draw each rectangle directly
-    rectangles.forEach(rect => {
-      this.drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color);
-    });
+    // Conditionally draw the grid based on the showGrid flag
+    if (this.gridParams.showGrid) {
+      rectangles.forEach(rect => {
+        this.drawRectangle(rect.x, rect.y, rect.width, rect.height, rect.color);
+      });
+    }
 
     // Draw cell centers if enabled
     if (this.gridParams.showCellCenters) {

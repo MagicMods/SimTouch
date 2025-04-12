@@ -864,11 +864,9 @@ lil-gui.esm.min.js:8 gui.add failed property: cellCount
 TypeError: Cannot read properties of undefined (reading 'name')
 ```
 
-**Analysis:**
-The error occurred because `NewGridUi.initGridControls` attempted to bind a `lil-gui` controller to `gridRender.grid.cellCount` using `.listen()`. However, `cellCount` (along with `cols`, `rows`, etc.) is a property _calculated_ by `GridGenRenderer` during its initial `setGrid` call. Even though the calculation happened synchronously before UI initialization, `lil-gui` likely requires the property to exist on the target object _at the moment_ `.add()` is called, even if `.listen()` is used.
+**Analysis:** The error occurred because `NewGridUi.initGridControls` attempted to bind a `lil-gui` controller to `gridRender.grid.cellCount` using `.listen()`. However, `cellCount` (along with `cols`, `rows`, etc.) is a property _calculated_ by `GridGenRenderer` during its initial `setGrid` call. Even though the calculation happened synchronously before UI initialization, `lil-gui` likely requires the property to exist on the target object _at the moment_ `.add()` is called, even if `.listen()` is used.
 
-**Solution:**
-Initialized the calculated properties (`cellCount`, `cols`, `rows`, `calculatedCellWidth`, `calculatedCellHeight`) with default values (0) directly within the `main.gridParams` object definition. `GridGenRenderer` already updates these properties on the same object reference after calculation, so the UI binding will now find the properties during initialization and `.listen()` will correctly reflect later updates.
+**Solution:** Initialized the calculated properties (`cellCount`, `cols`, `rows`, `calculatedCellWidth`, `calculatedCellHeight`) with default values (0) directly within the `main.gridParams` object definition. `GridGenRenderer` already updates these properties on the same object reference after calculation, so the UI binding will now find the properties during initialization and `.listen()` will correctly reflect later updates.
 
 ---
 
@@ -903,3 +901,49 @@ Changed the Mermaid diagram orientation in `memoryBank/architecture_sim.md` from
 **2024-08-04: Architecture Sim Diagram Simplification**
 
 Simplified the `simParamsUpdated` event flow in the `memoryBank/architecture_sim.md` Mermaid diagram by grouping subscribers into a representative node, reducing line clutter.
+
+---
+
+## Grid Integration - Phase 1 Execution (YYYY-MM-DD)
+
+**Objective:** Instantiate and connect the new Grid components (`DimensionManager`, `BoundaryManager`, `GridGenRenderer`, `BoundaryRenderer`, `NewGridUi`, `eventBus`) within `Sim/src/main.js` so the new grid renders based on its UI controls, operating independently of the legacy grid rendering pipeline.
+
+**Execution Log:**
+
+1.  **Verified `gridParams`:** Ensured `Sim/src/main.js` `this.gridParams` includes necessary properties (`screen`, `gridSpecs`, `shadow`, `colors`, `flags`, `renderSize`, calculated stats).
+2.  **Imported Components:** Added imports for `DimensionManager`, `BoundaryManager`, `GridGenRenderer`, `BoundaryRenderer`, `eventBus` to `Sim/src/main.js`.
+3.  **Instantiated Components:** Added instantiation logic for `DimensionManager`, `BoundaryManager`, `BoundaryRenderer`, and `GridGenRenderer` (as `this.gridGenRenderer`) within the `Sim/src/main.js` constructor.
+4.  **Added Dimension/Style Logic:** Implemented `#applyCurrentDimensionsAndBoundary` helper and called it after `DimensionManager` instantiation.
+5.  **Added Event Handling:** Implemented `checkAndApplyDimensionChanges`, `setGridParams`, and `handleGridUIChange` methods. Subscribed `handleGridUIChange` to the `uiControlChanged` event in `init()`.
+6.  **Triggered Initial Render:** Added `this.setGridParams(this.gridParams)` call at the end of `init()`.
+
+**Status:** Core integration of the new Grid components and event flow is complete in `Sim/src/main.js`. The new grid should now attempt to render in parallel with the legacy system, driven by the `NewGridUi` panel.
+
+---
+
+## Initialization Error Fix (YYYY-MM-DD)
+
+**Context:** CHECK+ phase after initial Grid component integration revealed a console error.
+
+**Error:** `TypeError: this.ui.initPanels is not a function` in `Sim/src/main.js` `init()` method.
+
+**Cause:** The integration edit incorrectly added a call to `await this.ui.initPanels()`, assuming the method existed based on the `Grid` project's `UiManager` structure. The `Sim` project's `UiManager` does not have this method.
+
+**Fix:** Removed the line `await this.ui.initPanels();` from `Sim/src/main.js` `init()` method.
+
+---
+
+## UI Event Routing Fix (YYYY-MM-DD)
+
+**Context:** After fixing the `initPanels` error, testing revealed a new error during UI interaction.
+
+**Error:** `handleGridUIChange: Invalid path segment simulation in simulation.paused`.
+
+**Analysis:** The `uiControlChanged` event subscription was incorrectly routing all events (including those for `simParams`) only to `handleGridUIChange`. This handler expects `gridParams` paths and failed when receiving a `simParams` path.
+
+**Fix:**
+
+1.  Reinstated the `eventBus.on('uiControlChanged', this.handleSimUIChange.bind(this));` subscription in `Sim/src/main.js#init()`.
+2.  Added path validation logic to the beginning of `handleGridUIChange` to ensure it only processes events with paths relevant to `gridParams` (starting with 'screen', 'gridSpecs', 'shadow', 'colors', 'flags', 'renderSize').
+
+**Note:** A temporary linter error occurred during the edit due to the re-introduction of `await this.ui.initPanels()` in the non-async constructor; this line was removed again.

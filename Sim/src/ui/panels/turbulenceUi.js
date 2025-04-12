@@ -16,7 +16,7 @@ export class TurbulenceUi extends BaseUi {
     this.presetControls = null;
     this.gui.title("Turbulence");
     this.initTurbulenceControls();
-    this.gui.open();
+    this.gui.open(false);
 
     // Track folder states
     this.isTurbulenceFolderOpen = true;

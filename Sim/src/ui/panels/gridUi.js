@@ -85,6 +85,11 @@ export class GridUi extends BaseUi {
         '1-3 = progressively more cells at the boundary. ' +
         'Use "Visualize Boundary" in Debug Tools to see the effect.');
 
+      this.gridShowGridController = gridParamFolder
+        .add(gridRenderer.gridParams, "showGrid")
+        .name("Show Grid")
+        .onChange(() => gridRenderer.updateGrid());
+
       // Add cell centers parameter
       this.gridShowCellCentersController = gridParamFolder
         .add(gridRenderer.gridParams, "showCellCenters")

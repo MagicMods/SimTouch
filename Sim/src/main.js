@@ -15,6 +15,10 @@ import { EmuRenderer } from "./renderer/emuRenderer.js";
 import { MicInputForces } from "./simulation/forces/micForces.js";
 import { ModulatorManager } from "./input/modulatorManager.js";
 import { eventBus } from "./util/eventManager.js";
+import { DimensionManager } from "./coreGrid/dimensionManager.js";
+import { BoundaryManager } from "./coreGrid/boundaryManager.js";
+import { GridGenRenderer } from "./renderer/gridGenRenderer.js";
+import { BoundaryRenderer } from "./renderer/boundaryRenderer.js";
 
 class Main {
   constructor() {
@@ -50,7 +54,50 @@ class Main {
     this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager);
     this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
 
-    // Initialize central parameter object
+
+    // Initialize parameters (needed for managers)
+    this.gridParams = {
+      screen: {
+        width: 240,
+        height: 240,
+        shape: "circular",
+      },
+      gridSpecs: {
+        targetCellCount: 341,
+        gap: 1,
+        aspectRatio: 1.0,
+        scale: 1.0,
+        allowCut: 3,
+        centerOffsetX: 0,
+        centerOffsetY: 0,
+      },
+      shadow: {
+        shadowIntensity: 0.17,
+        shadowThreshold: 0,
+        blurAmount: 0.23,
+      },
+      colors: {
+        gridBackgroundColor: [0.0, 0.0, 0.0], //rgb(0, 0, 0)
+        cellColor: [0.5, 0.5, 0.5], // Default gray #808080
+      },
+      flags: {
+        showGridCells: true,
+        showIndices: false,
+        showCellCenters: false,
+        showBoundary: false,
+      },
+      renderSize: {
+        maxRenderWidth: 960,
+        maxRenderHeight: 960,
+      },
+      // Add default values for calculated stats (used by lil-gui .listen())
+      cellCount: 0,
+      cols: 0,
+      rows: 0,
+      calculatedCellWidth: 0,
+      calculatedCellHeight: 0,
+    };
+
     this.simParams = {
       simulation: {
         paused: true, // Initial state matching existing logic
@@ -209,6 +256,43 @@ class Main {
 
     socketManager.enable = false;
     socketManager.connect();
+
+    this.dimensionManager = new DimensionManager(
+      this.gridParams.screen.width,
+      this.gridParams.screen.height,
+      this.gridParams.renderSize.maxRenderWidth,
+      this.gridParams.renderSize.maxRenderHeight
+    );
+    this.#applyCurrentDimensionsAndBoundary();
+    const initialDimensions = this.dimensionManager.getDimensions();
+    this.boundaryManager = new BoundaryManager(
+      this.gridParams,
+      initialDimensions
+    );
+    this.boundaryRenderer = new BoundaryRenderer(
+      document.body,
+      this.boundaryManager,
+      this.canvas
+    );
+    this.gridGenRenderer = new GridGenRenderer(
+      this.gl,
+      this.shaderManager,
+      this.gridParams,
+      this.dimensionManager,
+      this.boundaryManager
+    );
+    console.log("Instantiated new Grid components (DimensionManager, BoundaryManager, BoundaryRenderer, GridGenRenderer)");
+
+    // --- BEGIN PLAN STEP 5 Action 4: Subscribe Grid UI Handler ---
+    // Subscribe main to Grid UI changes (assuming NewGridUi emits 'uiControlChanged')
+    eventBus.on('uiControlChanged', this.handleGridUIChange.bind(this));
+    console.log("Main subscribed to uiControlChanged events for Grid UI.");
+    // --- BEGIN STEP 1: Reinstate Sim Handler Subscription ---
+    eventBus.on('uiControlChanged', this.handleSimUIChange.bind(this));
+    console.log("Main re-subscribed handleSimUIChange to uiControlChanged events.");
+    // --- END STEP 1 ---
+    // TODO: Review if the existing subscription below needs modification or removal
+    // Subscribe main to UI changes using the correct method name 'on'
   }
 
   async init() {
@@ -220,10 +304,12 @@ class Main {
 
       this.ui = new UiManager(this);
 
-      // Subscribe main to UI changes using the correct method name 'on'
       eventBus.on('uiControlChanged', this.handleSimUIChange.bind(this));
+      eventBus.on('uiControlChanged', this.handleGridUIChange.bind(this));
+      console.log("Main subscribed to uiControlChanged events for Grid UI.");
 
       this.animate();
+      this.setGridParams(this.gridParams);
       return true;
     } catch (error) {
       console.error("Failed to initialize:", error);
@@ -231,36 +317,74 @@ class Main {
     }
   }
 
-  // Add handler for UI changes
   handleSimUIChange({ paramPath, value }) {
     const keys = paramPath.split('.');
     let current = this.simParams;
     for (let i = 0; i < keys.length - 1; i++) {
-      // Create nested objects if they don't exist
       if (!current[keys[i]]) {
         current[keys[i]] = {};
       }
       current = current[keys[i]];
-      // Add a check if the path is still invalid after creation attempt
       if (!current) {
         console.error(`Invalid paramPath structure: ${paramPath} at segment ${keys[i]}`);
         return;
       }
     }
-    // Final check before assignment
     if (!current) {
       console.error(`Invalid paramPath structure before final assignment: ${paramPath}`);
       return;
     }
     current[keys[keys.length - 1]] = value;
-    console.log(`SimParams updated via UI: ${paramPath} = ${value}`, JSON.stringify(this.simParams)); // Log for verification
+    console.log(`SimParams updated via UI: ${paramPath} = ${value}`, JSON.stringify(this.simParams));
 
-    // Emit event to notify consumers
     eventBus.emit('simParamsUpdated', { simParams: this.simParams });
   }
 
+  handleGridUIChange({ paramPath, value }) {
+    // --- BEGIN STEP 2: Add Path Validation ---
+    const validGridPrefixes = ['screen', 'gridSpecs', 'shadow', 'colors', 'flags', 'renderSize'];
+    const pathRoot = paramPath.split('.')[0];
+    if (!validGridPrefixes.includes(pathRoot)) {
+      // console.debug(`handleGridUIChange received non-grid path: ${paramPath}. Ignoring.`);
+      return; // Ignore paths not starting with gridParams keys
+    }
+    // --- END STEP 2 ---
+
+    console.log(`Grid UI Change Received: ${paramPath} =`, value);
+    try {
+      const parts = paramPath.split('.');
+      let current = this.gridParams;
+
+      for (let i = 0; i < parts.length - 1; i++) {
+        if (current[parts[i]] === undefined) {
+          console.error(`handleGridUIChange: Invalid path segment ${parts[i]} in ${paramPath}`);
+          return;
+        }
+        current = current[parts[i]];
+      }
+
+      const finalKey = parts[parts.length - 1];
+
+      if (paramPath === 'screen') {
+        if (!this.gridParams.screen) this.gridParams.screen = {};
+        Object.assign(this.gridParams.screen, value);
+      } else {
+        if (current[finalKey] !== undefined) {
+          current[finalKey] = value;
+        } else {
+          console.error(`handleGridUIChange: Invalid final key ${finalKey} in ${paramPath}`);
+          return;
+        }
+      }
+
+      this.setGridParams(this.gridParams);
+
+    } catch (error) {
+      console.error(`Error handling grid UI change (${paramPath}=${value}):`, error);
+    }
+  }
+
   animate() {
-    // Read pause state from simParams
     if (!this.simParams.simulation.paused) this.render();
     requestAnimationFrame(() => this.animate());
   }
@@ -268,20 +392,15 @@ class Main {
   render() {
     this.frame++;
 
-    // Apply forces in sequence
     this.particleSystem.mouseForces.update(this.particleSystem);
     this.emuForces.apply(this.particleSystem.timeStep);
     this.turbulenceField.update(this.particleSystem.timeStep);
     this.voronoiField.update(this.particleSystem.timeStep);
 
-    // Step the particle system
     this.particleSystem.step();
-
-    // Draw all visual elements
     this.gridRenderer.draw(this.particleSystem);
     this.particleRenderer.draw(this.particleSystem.getParticles());
 
-    // Update UI and modulators
     this.ui.update(this.particleSystem.timeStep);
     this.modulatorManager.update(this.particleSystem.timeStep);
   }
@@ -314,9 +433,53 @@ class Main {
       });
     });
   }
+
+  #applyCurrentDimensionsAndBoundary() {
+    if (!this.canvas || !this.gl || !this.dimensionManager) {
+      console.warn("_applyCurrentDimensionsAndBoundary called before canvas, GL context, or DimensionManager was ready.");
+      return;
+    }
+    this.dimensionManager.applyToCanvas(this.canvas);
+    if (this.gridParams?.screen?.shape) {
+      this.dimensionManager.applyCanvasStyle(this.canvas, this.gridParams.screen.shape);
+    } else {
+      console.warn("#applyCurrentDimensionsAndBoundary: gridParams.screen.shape not available for styling.");
+      this.dimensionManager.applyCanvasStyle(this.canvas, 'rectangular');
+    }
+    this.dimensionManager.applyViewport(this.gl);
+    console.info(`Applied canvas dimensions/settings via DimensionManager: ${this.dimensionManager.renderWidth}x${this.dimensionManager.renderHeight}`);
+  }
+
+  checkAndApplyDimensionChanges() {
+    if (!this.dimensionManager || !this.gridParams?.screen || !this.gridParams?.renderSize) {
+      console.warn("checkAndApplyDimensionChanges called before dependencies were ready.");
+      return false;
+    }
+    const dimensionsChanged = this.dimensionManager.updateDimensions(
+      this.gridParams.screen.width,
+      this.gridParams.screen.height,
+      this.gridParams.renderSize.maxRenderWidth,
+      this.gridParams.renderSize.maxRenderHeight
+    );
+    if (dimensionsChanged) {
+      console.debug("DimensionManager reported changes, applying updates...");
+      this.#applyCurrentDimensionsAndBoundary();
+    }
+    return dimensionsChanged;
+  }
+
+  setGridParams(newGridParams) {
+    this.checkAndApplyDimensionChanges();
+
+    if (this.dimensionManager) {
+      eventBus.emit('gridParamsUpdated', { gridParams: this.gridParams, dimensions: this.dimensionManager.getDimensions() });
+      console.debug("Emitted gridParamsUpdated event.");
+    } else {
+      console.warn("setGridParams: DimensionManager not ready, cannot emit gridParamsUpdated event.");
+    }
+  }
 }
 
-// Helper function (add outside the class or import)
 function rgbArrayToHex(rgb = [1, 1, 1]) {
   const r = Math.max(0, Math.min(255, Math.round(rgb[0] * 255)));
   const g = Math.max(0, Math.min(255, Math.round(rgb[1] * 255)));
