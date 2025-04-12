@@ -58,7 +58,9 @@ class Main {
         timeScale: this.particleSystem.timeScale, // From ParticleSystem
         velocityDamping: this.particleSystem.velocityDamping, // From ParticleSystem
         maxVelocity: this.particleSystem.maxVelocity, // From ParticleSystem
-        picFlipRatio: this.particleSystem.picFlipRatio // From ParticleSystem
+        picFlipRatio: this.particleSystem.picFlipRatio, // From ParticleSystem
+        particleCount: this.particleSystem.numParticles, // Add particle count
+        particleRadius: this.particleSystem.particleRadius // Add particle radius
       },
       boundary: {
         mode: this.particleSystem.boundary.mode // From ParticleSystem's boundary

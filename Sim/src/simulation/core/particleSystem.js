@@ -482,11 +482,32 @@ class ParticleSystem {
 
     // Update simulation parameters if they exist in the event payload
     if (simParams.simulation) {
+      const previousParticleCount = this.numParticles; // Store count before update
+      const previousParticleRadius = this.particleRadius; // Store radius before update
+
       this.timeStep = simParams.simulation.timeStep ?? this.timeStep;
       this.timeScale = simParams.simulation.timeScale ?? this.timeScale;
       this.velocityDamping = simParams.simulation.velocityDamping ?? this.velocityDamping;
       this.maxVelocity = simParams.simulation.maxVelocity ?? this.maxVelocity;
       this.picFlipRatio = simParams.simulation.picFlipRatio ?? this.picFlipRatio;
+      this.numParticles = simParams.simulation.particleCount ?? this.numParticles;
+      this.particleRadius = simParams.simulation.particleRadius ?? this.particleRadius;
+
+      // Reinitialize if particle count changed
+      if (this.numParticles !== previousParticleCount && typeof this.reinitializeParticles === 'function') {
+        console.log(`ParticleSystem: Count changed from ${previousParticleCount} to ${this.numParticles}. Reinitializing.`);
+        this.reinitializeParticles(this.numParticles);
+      }
+      // Update radii array if radius changed AND count did NOT change (reinitializeParticles handles it if count changed)
+      else if (this.particleRadius !== previousParticleRadius) {
+        // Check if particleRadii exists before filling
+        if (this.particleRadii) {
+          this.particleRadii.fill(this.particleRadius);
+          console.log(`ParticleSystem: Radius changed to ${this.particleRadius}. Updating radii array.`);
+        } else {
+          console.warn("ParticleSystem: particleRadii array not found when trying to update radius.");
+        }
+      }
     }
 
     // Update boundary mode if applicable and the boundary object exists

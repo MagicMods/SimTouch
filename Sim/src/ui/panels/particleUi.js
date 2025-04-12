@@ -1,4 +1,5 @@
 import { BaseUi } from "../baseUi.js";
+import { eventBus } from '../../util/eventManager.js';
 
 export class ParticleUi extends BaseUi {
   constructor(main, container) {
@@ -13,33 +14,19 @@ export class ParticleUi extends BaseUi {
 
   //#region Particle
   initParticleControls() {
-    const particles = this.main.particleSystem;
-    if (!particles) return;
-
     // Store controllers as class properties with clear naming
     this.particleCountController = this.gui
-      .add(particles, "numParticles", 0, 1500, 1)
+      .add(this.main.simParams.simulation, "particleCount", 0, 1500, 1)
       .name("P-Count")
-      .onFinishChange((value) => {
-        // Whenever slider is released, track this as the last regenerated count
-        this.lastRegeneratedCount = value;
-        particles.reinitializeParticles(value);
-      })
       .onChange((value) => {
-        // If new value is higher than last regenerated, reinitialize immediately
-        if (value > this.lastRegeneratedCount) {
-          this.lastRegeneratedCount = value;
-          particles.reinitializeParticles(value);
-        }
+        eventBus.emit('uiControlChanged', { paramPath: 'simulation.particleCount', value });
       });
 
     this.particleSizeController = this.gui
-      .add(particles, "particleRadius", 0.002, 0.03, 0.001)
+      .add(this.main.simParams.simulation, "particleRadius", 0.002, 0.03, 0.001)
       .name("P-Size")
       .onChange((value) => {
-        particles.collisionSystem.particleRadius = value * 2;
-        // Reset all particles to new base radius before turbulence affects them
-        particles.particleRadii.fill(value);
+        eventBus.emit('uiControlChanged', { paramPath: 'simulation.particleRadius', value });
       });
 
     this.particleOpacityController = this.gui
