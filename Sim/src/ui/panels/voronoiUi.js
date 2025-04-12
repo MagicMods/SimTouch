@@ -1,5 +1,6 @@
 import { BaseUi } from "../baseUi.js";
 import { PresetManager } from "../../presets/presetManager.js";
+import { eventBus } from '../../util/eventManager.js';
 
 export class VoronoiUi extends BaseUi {
   constructor(main, container) {
@@ -29,21 +30,32 @@ export class VoronoiUi extends BaseUi {
   }
 
   initVoronoiControls() {
-    const voronoi = this.main.voronoiField;
-    if (!voronoi) return;
+    const voronoiParams = this.main.simParams.voronoi;
+    const voronoiField = this.main.voronoiField;
 
-    if (voronoi.pullMode === undefined) {
-      voronoi.pullMode = false;
-    }
+    this.voronoiStrengthController = this.gui.add(voronoiParams, "strength", 0, 10).name("V-Strength")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'voronoi.strength', value }));
 
-    this.voronoiStrengthController = this.gui.add(voronoi, "strength", 0, 10).name("V-Strength");
-    this.voronoiEdgeWidthController = this.gui.add(voronoi, "edgeWidth", 0.01, 3, 0.01).name("V-EdgeWidth");
-    this.voronoiAttractionController = this.gui.add(voronoi, "attractionFactor", 0, 8).name("V-Attract");
-    this.voronoiCellCountController = this.gui.add(voronoi, "cellCount", 1, 10, 1).name("V-CellCount").onChange(() => voronoi.regenerateCells());
-    this.voronoiSpeedController = this.gui.add(voronoi, "cellMovementSpeed", 0, 4).name("V-CellSpeed");
-    this.voronoiDecayRateController = this.gui.add(voronoi, "decayRate", 0.1, 1).name("V-Decay");
-    this.voronoiBlendController = this.gui.add(voronoi, "velocityBlendFactor", 0, 1).name("V-ForceBlend");
-    this.voronoiPullModeController = this.gui.add(voronoi, "pullMode").name("V-Pull Mode");
+    this.voronoiEdgeWidthController = this.gui.add(voronoiParams, "edgeWidth", 0.01, 3, 0.01).name("V-EdgeWidth")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'voronoi.edgeWidth', value }));
+
+    this.voronoiAttractionController = this.gui.add(voronoiParams, "attractionFactor", 0, 8).name("V-Attract")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'voronoi.attractionFactor', value }));
+
+    this.voronoiCellCountController = this.gui.add(voronoiParams, "cellCount", 1, 10, 1).name("V-CellCount")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'voronoi.cellCount', value }));
+
+    this.voronoiSpeedController = this.gui.add(voronoiParams, "cellMovementSpeed", 0, 4).name("V-CellSpeed")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'voronoi.cellMovementSpeed', value }));
+
+    this.voronoiDecayRateController = this.gui.add(voronoiParams, "decayRate", 0.1, 1).name("V-Decay")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'voronoi.decayRate', value }));
+
+    this.voronoiBlendController = this.gui.add(voronoiParams, "velocityBlendFactor", 0, 1).name("V-ForceBlend")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'voronoi.velocityBlendFactor', value }));
+
+    this.voronoiPullModeController = this.gui.add(voronoiParams, "pullMode").name("V-Pull Mode")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'voronoi.pullMode', value }));
   }
 
   getControlTargets() {
@@ -138,14 +150,6 @@ export class VoronoiUi extends BaseUi {
           controller.setValue(value);
           console.log(`Set ${key} to ${value}`);
         }
-      }
-
-      // Special handling for cell count, which needs regeneration
-      if (
-        data.controllers["Cell Count"] !== undefined &&
-        this.main?.voronoiField
-      ) {
-        this.main.voronoiField.regenerateCells();
       }
 
       this.updateControllerDisplays();

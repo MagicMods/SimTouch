@@ -1,6 +1,8 @@
 import { BaseUi } from "../baseUi.js";
 import { Behaviors } from "../../simulation/behaviors/organicBehavior.js";
 import { PresetManager } from "../../presets/presetManager.js";
+import { eventBus } from '../../util/eventManager.js';
+
 export class OrganicUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
@@ -44,26 +46,15 @@ export class OrganicUi extends BaseUi {
   }
 
   initOrganicControls() {
-    const particles = this.main.particleSystem;
-    if (!particles || !particles.organicBehavior) {
-      console.warn("OrganicBehavior not found in ParticleSystem");
-      return;
-    }
-
-    const behaviorControl = {
-      behavior: particles.organicBehavior.currentBehavior,
-    };
+    const organicParams = this.main.simParams.organic;
+    const organicBehavior = this.main.particleSystem.organicBehavior;
 
     this.behaviorTypeController = this.gui
-      .add(behaviorControl, "behavior", Object.values(Behaviors))
+      .add(organicParams, "behavior", Object.values(Behaviors))
       .name("Behavior")
       .onChange((value) => {
-        console.log("Behavior changed to:", value);
-        particles.organicBehavior.currentBehavior = value;
-
+        eventBus.emit('uiControlChanged', { paramPath: 'organic.behavior', value });
         this.updateOrganicFolders(value);
-
-        this.behaviorTypeController.updateDisplay();
       });
 
     this.behaviorTypeController.domElement.classList.add("full-width");
@@ -79,137 +70,79 @@ export class OrganicUi extends BaseUi {
     this.initAutomataControls();
     this.initChainControls();
 
-    this.updateOrganicFolders(this.main.gridRenderer.renderModes.currentMode);
+    this.updateOrganicFolders(organicParams.behavior);
   }
 
   addGlobalForceControl() {
-    if (!this.main.particleSystem || !this.main.particleSystem.organicBehavior ||
-      !this.main.particleSystem.organicBehavior.forceScales) {
-      console.warn("ForceScales not found in OrganicBehavior");
-      return;
-    }
+    const organicParams = this.main.simParams.organic;
 
-    const behavior = this.main.particleSystem.organicBehavior;
-    const forceTypes = ["Fluid", "Swarm", "Automata", "Chain"];
-    const defaultForce = 5.0;
-
-    this.globalForceControl = { force: defaultForce };
-
-    forceTypes.forEach((type) => {
-      if (behavior.forceScales[type]) {
-        behavior.forceScales[type].base = defaultForce;
-      }
-    });
-
-    this.globalForceController = this.gui.add(this.globalForceControl, "force", 0, 5).name("O-Force")
+    this.globalForceController = this.gui.add(organicParams, "globalForce", 0, 5).name("O-Force")
       .onChange((value) => {
-        forceTypes.forEach((type) => {
-          if (behavior.forceScales[type]) {
-            behavior.forceScales[type].base = value;
-          }
-        });
+        eventBus.emit('uiControlChanged', { paramPath: 'organic.globalForce', value });
       });
 
-    // Add global radius control
-    const defaultRadius = 30;
-    this.globalRadiusControl = { radius: defaultRadius };
-
-    // Update all behavior types to use the global radius
-    forceTypes.forEach((type) => {
-      if (behavior.params && behavior.params[type]) {
-        behavior.params[type].radius = defaultRadius;
-      }
-    });
-
-    this.globalRadiusController = this.gui.add(this.globalRadiusControl, "radius", 5, 100).name("O-Radius")
+    this.globalRadiusController = this.gui.add(organicParams, "globalRadius", 5, 100).name("O-Radius")
       .onChange((value) => {
-        forceTypes.forEach((type) => {
-          if (behavior.params && behavior.params[type]) {
-            behavior.params[type].radius = value;
-          }
-        });
+        eventBus.emit('uiControlChanged', { paramPath: 'organic.globalRadius', value });
       });
   }
 
   initFluidControls() {
-    const particles = this.main.particleSystem;
-    if (!particles || !particles.organicBehavior ||
-      !particles.organicBehavior.params ||
-      !particles.organicBehavior.params.Fluid) {
-      console.warn("Fluid parameters not found in OrganicBehavior");
-      return;
-    }
+    const organicParams = this.main.simParams.organic;
+    if (!organicParams || !organicParams.Fluid) return;
+    const fluidParams = organicParams.Fluid;
 
-    const fluid = particles.organicBehavior.params.Fluid;
-    this.fluidSurfaceTensionController = this.fluidFolder.add(fluid, "surfaceTension", 0, 1).name("F-SurfaceT");
-    this.fluidViscosityController = this.fluidFolder.add(fluid, "viscosity", 0, 1).name("F-Visco");
-    this.fluidDampingController = this.fluidFolder.add(fluid, "damping", 0, 1).name("F-Damp");
+    this.fluidSurfaceTensionController = this.fluidFolder.add(fluidParams, "surfaceTension", 0, 1).name("F-SurfaceT")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'organic.Fluid.surfaceTension', value }));
+    this.fluidViscosityController = this.fluidFolder.add(fluidParams, "viscosity", 0, 1).name("F-Visco")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'organic.Fluid.viscosity', value }));
+    this.fluidDampingController = this.fluidFolder.add(fluidParams, "damping", 0, 1).name("F-Damp")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'organic.Fluid.damping', value }));
   }
 
   initSwarmControls() {
-    const particles = this.main.particleSystem;
-    if (!particles || !particles.organicBehavior ||
-      !particles.organicBehavior.params ||
-      !particles.organicBehavior.params.Swarm) {
-      console.warn("Swarm parameters not found in OrganicBehavior");
-      return;
-    }
+    const organicParams = this.main.simParams.organic;
+    if (!organicParams || !organicParams.Swarm) return;
+    const swarmParams = organicParams.Swarm;
 
-    const swarm = particles.organicBehavior.params.Swarm;
-    this.swarmCohesionController = this.swarmFolder.add(swarm, "cohesion", 0, 2).name("S-Cohesion");
-    this.swarmAlignmentController = this.swarmFolder.add(swarm, "alignment", 0, 2).name("S-Align");
-    this.swarmSeparationController = this.swarmFolder.add(swarm, "separation", 0, 2).name("S-Separation");
-    this.swarmMaxSpeedController = this.swarmFolder.add(swarm, "maxSpeed", 0, 1).name("S-MaxSpeed");
+    this.swarmCohesionController = this.swarmFolder.add(swarmParams, "cohesion", 0, 2).name("S-Cohesion")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'organic.Swarm.cohesion', value }));
+    this.swarmAlignmentController = this.swarmFolder.add(swarmParams, "alignment", 0, 2).name("S-Align")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'organic.Swarm.alignment', value }));
+    this.swarmSeparationController = this.swarmFolder.add(swarmParams, "separation", 0, 2).name("S-Separation")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'organic.Swarm.separation', value }));
+    this.swarmMaxSpeedController = this.swarmFolder.add(swarmParams, "maxSpeed", 0, 1).name("S-MaxSpeed")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'organic.Swarm.maxSpeed', value }));
   }
 
   initAutomataControls() {
-    const particles = this.main.particleSystem;
-    if (!particles || !particles.organicBehavior ||
-      !particles.organicBehavior.params ||
-      !particles.organicBehavior.params.Automata) {
-      console.warn("Automata parameters not found in OrganicBehavior");
-      return;
-    }
+    const organicParams = this.main.simParams.organic;
+    if (!organicParams || !organicParams.Automata) return;
+    const automataParams = organicParams.Automata;
 
-    const automata = particles.organicBehavior.params.Automata;
-    this.automataRepulsionController = this.automataFolder.add(automata, "repulsion", 0, 2).name("A-Repulse");
-    this.automataAttractionController = this.automataFolder.add(automata, "attraction", 0, 10).name("A-Attract");
-    this.automataThresholdController = this.automataFolder.add(automata, "threshold", 0, 1).name("A-Threshold");
+    this.automataRepulsionController = this.automataFolder.add(automataParams, "repulsion", 0, 2).name("A-Repulse")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'organic.Automata.repulsion', value }));
+    this.automataAttractionController = this.automataFolder.add(automataParams, "attraction", 0, 10).name("A-Attract")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'organic.Automata.attraction', value }));
+    this.automataThresholdController = this.automataFolder.add(automataParams, "threshold", 0, 1).name("A-Threshold")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'organic.Automata.threshold', value }));
   }
 
   initChainControls() {
-    console.log("Initializing Chain controls");
-    const particles = this.main.particleSystem;
+    const organicParams = this.main.simParams.organic;
+    if (!organicParams || !organicParams.Chain) return;
+    const chainParams = organicParams.Chain;
 
-    // Check if Chain parameters exist
-    if (!particles || !particles.organicBehavior ||
-      !particles.organicBehavior.params ||
-      !particles.organicBehavior.params.Chain) {
-
-      console.log("Chain params not found, initializing");
-
-      // Initialize Chain parameters if they don't exist yet
-      if (particles && particles.organicBehavior && particles.organicBehavior.params) {
-        particles.organicBehavior.params.Chain = {
-          linkDistance: 0,
-          linkStrength: 10,
-          alignment: 1,      // Straight (1) vs curly (0) chains 
-          branchProb: 10,    // Max branches per particle
-          maxLinks: 20,      // Max links per chain
-          mode: "Chain"
-        };
-      } else {
-        console.warn("Cannot initialize Chain parameters - missing organicBehavior or params");
-        return;
-      }
-    }
-
-    const chain = particles.organicBehavior.params.Chain;
-    this.chainLinkDistController = this.chainFolder.add(chain, "linkDistance", 0.01, 50, 0.1).name("Ch-LinkDist");
-    this.chainLinkStrengthController = this.chainFolder.add(chain, "linkStrength", 0, 10).name("Ch-LinkStr");
-    this.chainAlignController = this.chainFolder.add(chain, "alignment", 0, 10, 0.1).name("Ch-Align");
-    this.chainBranchController = this.chainFolder.add(chain, "branchProb", 0, 10, 1).name("Ch-Branch");
-    this.chainMaxLinksController = this.chainFolder.add(chain, "maxLinks", 2, 100, 1).name("Ch-MaxLen");
+    this.chainLinkDistController = this.chainFolder.add(chainParams, "linkDistance", 0.01, 50, 0.1).name("Ch-LinkDist")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'organic.Chain.linkDistance', value }));
+    this.chainLinkStrengthController = this.chainFolder.add(chainParams, "linkStrength", 0, 10).name("Ch-LinkStr")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'organic.Chain.linkStrength', value }));
+    this.chainAlignController = this.chainFolder.add(chainParams, "alignment", 0, 10, 0.1).name("Ch-Align")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'organic.Chain.alignment', value }));
+    this.chainBranchController = this.chainFolder.add(chainParams, "branchProb", 0, 10, 1).name("Ch-Branch")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'organic.Chain.branchProb', value }));
+    this.chainMaxLinksController = this.chainFolder.add(chainParams, "maxLinks", 2, 100, 1).name("Ch-MaxLen")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'organic.Chain.maxLinks', value }));
   }
 
   updateOrganicFolders(mode) {

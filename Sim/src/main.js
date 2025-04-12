@@ -115,6 +115,52 @@ class Main {
         blurAmount: this.turbulenceField.blurAmount,
         _displayBiasAccelX: this.turbulenceField._displayBiasAccelX || 0,
         _displayBiasAccelY: this.turbulenceField._displayBiasAccelY || 0
+      },
+      voronoi: {
+        strength: this.voronoiField.strength,
+        edgeWidth: this.voronoiField.edgeWidth,
+        attractionFactor: this.voronoiField.attractionFactor,
+        cellCount: this.voronoiField.cellCount,
+        cellMovementSpeed: this.voronoiField.cellMovementSpeed,
+        decayRate: this.voronoiField.decayRate,
+        velocityBlendFactor: this.voronoiField.velocityBlendFactor,
+        pullMode: this.voronoiField.pullMode
+      },
+      organic: { // New section for OrganicBehavior
+        behavior: this.particleSystem.organicBehavior.currentBehavior,
+        // Global controls (might need adjustment based on UI)
+        // Assuming global force applies to forceScales.base, radius to params[type].radius
+        globalForce: this.particleSystem.organicBehavior.forceScales?.Fluid?.base || 0.1, // Use one as example
+        globalRadius: this.particleSystem.organicBehavior.params?.Fluid?.radius || 30, // Use one as example
+        // Nested parameters for each behavior type
+        Fluid: { // Get initial values from organicBehavior.params.Fluid
+          surfaceTension: this.particleSystem.organicBehavior.params?.Fluid?.surfaceTension ?? 0.5,
+          viscosity: this.particleSystem.organicBehavior.params?.Fluid?.viscosity ?? 0.2,
+          damping: this.particleSystem.organicBehavior.params?.Fluid?.damping ?? 0.98
+        },
+        Swarm: { // Get initial values from organicBehavior.params.Swarm
+          cohesion: this.particleSystem.organicBehavior.params?.Swarm?.cohesion ?? 1.0,
+          alignment: this.particleSystem.organicBehavior.params?.Swarm?.alignment ?? 0.7,
+          separation: this.particleSystem.organicBehavior.params?.Swarm?.separation ?? 1.2,
+          maxSpeed: this.particleSystem.organicBehavior.params?.Swarm?.maxSpeed ?? 0.5
+        },
+        Automata: { // Get initial values from organicBehavior.params.Automata
+          repulsion: this.particleSystem.organicBehavior.params?.Automata?.repulsion ?? 0.8,
+          attraction: this.particleSystem.organicBehavior.params?.Automata?.attraction ?? 0.5,
+          threshold: this.particleSystem.organicBehavior.params?.Automata?.threshold ?? 0.2
+        },
+        Chain: { // Get initial values from organicBehavior.params.Chain
+          linkDistance: this.particleSystem.organicBehavior.params?.Chain?.linkDistance ?? 0,
+          linkStrength: this.particleSystem.organicBehavior.params?.Chain?.linkStrength ?? 10,
+          alignment: this.particleSystem.organicBehavior.params?.Chain?.alignment ?? 0.5,
+          branchProb: this.particleSystem.organicBehavior.params?.Chain?.branchProb ?? 2,
+          maxLinks: this.particleSystem.organicBehavior.params?.Chain?.maxLinks ?? 10
+        },
+      },
+      particleRenderer: { // Move particleRenderer section to the top level
+        // Store base color as hex for UI, renderer will convert
+        color: rgbArrayToHex(this.particleRenderer.config?.color?.slice(0, 3) || [1, 1, 1]),
+        opacity: this.particleRenderer.particleOpacity // Store opacity separately
       }
     };
 
@@ -265,6 +311,14 @@ class Main {
       });
     });
   }
+}
+
+// Helper function (add outside the class or import)
+function rgbArrayToHex(rgb = [1, 1, 1]) {
+  const r = Math.max(0, Math.min(255, Math.round(rgb[0] * 255)));
+  const g = Math.max(0, Math.min(255, Math.round(rgb[1] * 255)));
+  const b = Math.max(0, Math.min(255, Math.round(rgb[2] * 255)));
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
 }
 
 window.onload = () => Main.create().catch(console.error);

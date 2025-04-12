@@ -1,3 +1,5 @@
+import { eventBus } from '../../util/eventManager.js'; // Added import
+
 class VoronoiField {
   constructor({
     strength = 0,
@@ -44,6 +46,34 @@ class VoronoiField {
 
     this.velocityBlendFactor = 0.7; // How much the voronoi affects existing velocity
     this.forceSmoothingFactor = 0.3; // Lower = smoother transitions
+
+    // Subscribe to parameter updates
+    eventBus.on('simParamsUpdated', this.handleParamsUpdate.bind(this));
+  }
+
+  // Add handler for simParams updates
+  handleParamsUpdate({ simParams }) {
+    if (simParams?.voronoi) {
+      const voronoiParams = simParams.voronoi;
+      const previousCellCount = this.cellCount; // Store cellCount for regeneration check
+
+      this.strength = voronoiParams.strength ?? this.strength;
+      this.cellCount = voronoiParams.cellCount ?? this.cellCount;
+      this.cellMovementSpeed = voronoiParams.cellMovementSpeed ?? this.cellMovementSpeed;
+      this.edgeWidth = voronoiParams.edgeWidth ?? this.edgeWidth;
+      this.attractionFactor = voronoiParams.attractionFactor ?? this.attractionFactor;
+      this.decayRate = voronoiParams.decayRate ?? this.decayRate;
+      this.velocityBlendFactor = voronoiParams.velocityBlendFactor ?? this.velocityBlendFactor;
+      this.pullMode = voronoiParams.pullMode ?? this.pullMode;
+      // Update other parameters if added...
+
+      // Check if cell count change requires cell regeneration
+      if (this.cellCount !== previousCellCount && typeof this.regenerateCells === 'function') {
+        console.log(`VoronoiField: Cell count changed from ${previousCellCount} to ${this.cellCount}. Regenerating cells.`);
+        this.regenerateCells();
+      }
+    }
+    // console.log(`VoronoiField updated params via event`);
   }
 
   initializeCells() {

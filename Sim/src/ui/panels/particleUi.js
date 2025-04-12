@@ -29,24 +29,27 @@ export class ParticleUi extends BaseUi {
         eventBus.emit('uiControlChanged', { paramPath: 'simulation.particleRadius', value });
       });
 
+    // Bind Opacity to simParams
     this.particleOpacityController = this.gui
-      .add(this.main.particleRenderer, "particleOpacity", 0.0, 1.0, 0.01)
-      .name("P-Opacity");
+      .add(this.main.simParams.particleRenderer, "opacity", 0.0, 1.0, 0.01)
+      .name("P-Opacity")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'particleRenderer.opacity', value }));
 
+    // Bind Color to simParams
     this.particleColorController = this.gui
-      .addColor(this.main.particleRenderer.config, "color")
-      .name("P-Color");
+      .addColor(this.main.simParams.particleRenderer, "color") // Assumes lil-gui handles hex strings
+      .name("P-Color")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'particleRenderer.color', value }));
   }
   //#endregion
 
   getControlTargets() {
     const targets = {};
-    if (this.particleCountController)
-      targets["P-Count"] = this.particleCountController;
-    if (this.particleSizeController)
-      targets["P-Size"] = this.particleSizeController;
-    if (this.particleOpacityController)
-      targets["P-Opacity"] = this.particleOpacityController;
+    if (this.particleCountController) targets["P-Count"] = this.particleCountController;
+    if (this.particleSizeController) targets["P-Size"] = this.particleSizeController;
+    // Update targets for opacity and color
+    if (this.particleOpacityController) targets["P-Opacity"] = this.particleOpacityController;
+    if (this.particleColorController) targets["P-Color"] = this.particleColorController; // Add color target
     return targets;
   }
 

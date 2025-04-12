@@ -1,4 +1,16 @@
 import { BaseRenderer } from "./baseRenderer.js";
+import { eventBus } from '../util/eventManager.js'; // Added import
+
+// Helper function (add outside the class or import)
+function hexToRgb(hex) {
+  if (!hex) return null;
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? {
+    r: parseInt(result[1], 16),
+    g: parseInt(result[2], 16),
+    b: parseInt(result[3], 16)
+  } : null;
+}
 
 class ParticleRenderer extends BaseRenderer {
   showVelocityField = true; // Add property to toggle velocity field
@@ -17,6 +29,39 @@ class ParticleRenderer extends BaseRenderer {
     };
     this.particleOpacity = 0.1;
     console.log("ParticleRenderer initialized with per-particle sizing");
+
+    // Subscribe to parameter updates
+    eventBus.on('simParamsUpdated', this.handleParamsUpdate.bind(this));
+  }
+
+  // Add handler for simParams updates
+  handleParamsUpdate({ simParams }) {
+    if (simParams?.particleRenderer) {
+      const rendererParams = simParams.particleRenderer;
+
+      this.particleOpacity = rendererParams.opacity ?? this.particleOpacity;
+
+      // Update color based on hex string from simParams
+      if (rendererParams.color !== undefined) {
+        // Ensure config object exists
+        if (!this.config) { this.config = { color: [1, 1, 1, 1] }; }
+        const rgb = hexToRgb(rendererParams.color);
+        if (rgb) {
+          // Update the RGB part of the config color array
+          this.config.color[0] = rgb.r / 255;
+          this.config.color[1] = rgb.g / 255;
+          this.config.color[2] = rgb.b / 255;
+          // Note: Alpha is handled by particleOpacity, keep config.color[3] as 1 or default?
+          // For consistency, let's set it, draw() will override with particleOpacity
+          this.config.color[3] = 1.0;
+        } else {
+          console.warn(`Invalid hex color received: ${rendererParams.color}`);
+        }
+        // The draw() method already reads this.config.color and this.particleOpacity
+        // and sets the uniform, so no explicit uniform update needed here.
+      }
+    }
+    // console.log(`ParticleRenderer updated params via event: opacity=${this.particleOpacity}, color=${this.config?.color}`);
   }
 
   draw(particles) {
@@ -84,11 +129,17 @@ class ParticleRenderer extends BaseRenderer {
     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 
     // Create color with opacity
-    const finalColor = [...this.config.color];
-    finalColor[3] = this.particleOpacity;
+    const finalColor = [...this.config.color]; // Use spread to copy array
+    // Ensure alpha channel exists before setting opacity
+    if (finalColor.length < 4) finalColor[3] = 1.0;
+    finalColor[3] = this.particleOpacity; // Apply current opacity
 
     // Set particle color uniform with opacity
-    this.gl.uniform4fv(program.uniforms.color, finalColor);
+    if (program && program.uniforms && program.uniforms.color) {
+      this.gl.uniform4fv(program.uniforms.color, finalColor);
+    } else {
+      // console.warn("'color' uniform not found in particle shader program.");
+    }
 
     // Draw the particles
     this.gl.drawArrays(this.gl.POINTS, 0, particles.length);
