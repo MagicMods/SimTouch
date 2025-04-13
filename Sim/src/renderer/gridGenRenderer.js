@@ -5,10 +5,9 @@ import { OverlayManager } from "./overlayRenderer.js";
 import { eventBus } from '../util/eventManager.js';
 import { Gradient } from "../shaders/gradients.js";
 import { GridRenderModes } from "./gridRenderModes.js";
-import { socketManager } from "../network/socketManager.js";
 
 export class GridGenRenderer extends BaseRenderer {
-  constructor(gl, shaderManager, gridConfig, dimensionManager, boundaryManager) {
+  constructor(gl, shaderManager, gridConfig, dimensionManager, boundaryManager, particleSystem) {
     super(gl, shaderManager);
 
     this.gl = gl;
@@ -16,9 +15,7 @@ export class GridGenRenderer extends BaseRenderer {
     this.gradient = new Gradient();
     this.dimensionManager = dimensionManager;
     this.boundaryManager = boundaryManager;
-
-    this.socket = socketManager;
-    this.socket.connect();
+    this.particleSystem = particleSystem;
 
     // Initialize this.grid with the initial config object reference
     this.grid = gridConfig || {}; // Use passed config or default to empty object
@@ -40,6 +37,21 @@ export class GridGenRenderer extends BaseRenderer {
     // Initialize core components and buffers
     this.overlayManager = new OverlayManager(gl.canvas); // Instantiate OverlayManager
     this.gridGeometry = new GridGeometry(); // Instantiate GridGeometry
+
+    // Generate an initial empty gridMap to pass to GridRenderModes
+    this.gridMap = []; // Initialize gridMap as empty array
+
+    // Instantiate GridRenderModes
+    this.renderModes = new GridRenderModes({
+      gridParams: this.grid, // Use the internally stored gridConfig alias
+      gridGeometry: this.gridGeometry,
+      gridMap: this.gridMap, // Pass the initial empty map
+      canvas: this.gl.canvas,
+      coordTransforms: {}, // Pass empty object for now, implement if needed later
+      // Function providing maxDensity - uses optional chaining and nullish coalescing
+      maxDensityRef: () => this.grid?.rendering?.maxDensity ?? 4.0
+    });
+
     this.initBuffers();
     this.currentDimensions = { renderWidth: 0, renderHeight: 0 }; // Initialize dimensions
 
@@ -202,6 +214,12 @@ export class GridGenRenderer extends BaseRenderer {
 
     // Trigger the rendering pipeline with the generated rectangles
     this.updateRenderables(generatedRectangles, dimensions);
+
+    // Update gridMap and notify GridRenderModes
+    this.gridMap = this.createGridMap(generatedRectangles);
+    if (this.renderModes) { // Check if renderModes exists
+      this.renderModes.updateGrid({ gridParams: this.grid, gridGeometry: this.gridGeometry, gridMap: this.gridMap });
+    }
   }
 
   // Renamed from setGridParams
@@ -223,8 +241,7 @@ export class GridGenRenderer extends BaseRenderer {
     gl.disable(gl.DEPTH_TEST);
 
     // --- Prepare and Draw Grid Cells ---
-    const finalCellColor = [...cellColor, 1.0]; // Add alpha
-    this.prepareInstanceData(rectangles, finalCellColor);
+    this.prepareInstanceData(rectangles);
     this.renderCellsInstanced();
 
     // --- Calculate Projection Matrix ---
@@ -276,6 +293,8 @@ export class GridGenRenderer extends BaseRenderer {
     const gl = this.gl;
     const instanceCount = this.instanceData.count;
 
+    console.log(`GridGenRenderer.renderCellsInstanced() called. Count: ${instanceCount}, showGridCells: ${this.grid?.flags?.showGridCells}`); // Add log
+
     if (instanceCount === 0) return; // Nothing to draw
     if (!this.grid.flags.showGridCells) return; // Updated path: Skip drawing if grid is hidden
 
@@ -288,13 +307,44 @@ export class GridGenRenderer extends BaseRenderer {
     // --- Simplified Path (Removed diagnostic depth disable/enable) ---
     this.setupInstancedDrawing();
 
+    console.log(`GridGenRenderer.renderCellsInstanced(): About to call drawArraysInstanced. Count: ${instanceCount}`); // Add log
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instanceCount);
+
+    // --- Cleanup GL State --- 
+    if (shaderInfo) {
+      // Disable instance attributes
+      if (shaderInfo.attributes.instanceMatrix !== null && shaderInfo.attributes.instanceMatrix !== -1) {
+        for (let i = 0; i < 4; ++i) gl.disableVertexAttribArray(shaderInfo.attributes.instanceMatrix + i);
+      }
+      if (shaderInfo.attributes.instanceColor !== null && shaderInfo.attributes.instanceColor !== -1) gl.disableVertexAttribArray(shaderInfo.attributes.instanceColor);
+      if (shaderInfo.attributes.instanceShadowParams !== null && shaderInfo.attributes.instanceShadowParams !== -1) gl.disableVertexAttribArray(shaderInfo.attributes.instanceShadowParams);
+      // Optionally disable position attribute too if GridRenderer always re-enables it (Let's disable it for safety)
+      if (shaderInfo.attributes.position !== null && shaderInfo.attributes.position !== -1) gl.disableVertexAttribArray(shaderInfo.attributes.position);
+    }
+    // Unbind ARRAY_BUFFER as good practice
+    gl.bindBuffer(gl.ARRAY_BUFFER, null);
   }
 
   // New method to prepare instance data arrays and upload to GPU buffers
-  prepareInstanceData(rectangles, finalCellColor) {
+  prepareInstanceData(rectangles) {
     const gl = this.gl;
     const visibleRects = rectangles; // Use all rectangles passed from GridGeometry
+
+    // Ensure renderModes is available
+    if (!this.renderModes) {
+      console.error("prepareInstanceData: this.renderModes is not initialized.");
+      this.instanceData.count = 0;
+      return;
+    }
+    // Ensure particleSystem is available
+    if (!this.particleSystem) {
+      console.error("prepareInstanceData: this.particleSystem is not initialized.");
+      this.instanceData.count = 0;
+      return;
+    }
+
+    // Get data values first
+    const dataValues = this.renderModes.getValues(this.particleSystem);
 
     const numInstances = visibleRects.length;
     this.instanceData.count = numInstances;
@@ -334,6 +384,14 @@ export class GridGenRenderer extends BaseRenderer {
     const renderWidth = this.currentDimensions.renderWidth;
     const renderHeight = this.currentDimensions.renderHeight;
 
+    // Ensure gradient is available
+    if (!this.gradient) {
+      console.error("prepareInstanceData: Gradient not initialized!");
+      // Optionally fill with a default color if gradient fails
+      // return; // Or decide how to handle this error
+    }
+    const gradientValues = this.gradient?.getValues(); // Use optional chaining
+
     for (let i = 0; i < numInstances; i++) {
       const rect = visibleRects[i];
       const matrixOffset = i * 16;
@@ -358,8 +416,17 @@ export class GridGenRenderer extends BaseRenderer {
       // Copy matrix data into the flat array using set
       this.instanceData.matrices.set(matrix, matrixOffset);
 
-      // 2. Determine Color - Use the passed-in finalCellColor for all instances
-      this.instanceData.colors.set(finalCellColor, colorOffset);
+      // 2. Determine Color - Index-based gradient
+      if (gradientValues) { // Check if gradientValues were obtained
+        const normalizedValue = numInstances > 1 ? i / (numInstances - 1) : 0;
+        const gradientIdx = Math.min(255, Math.floor(normalizedValue * 256));
+        const color = gradientValues[gradientIdx];
+        const finalColor = color ? [color.r, color.g, color.b, 1.0] : [0, 0, 0, 1.0]; // Default black
+        this.instanceData.colors.set(finalColor, colorOffset);
+      } else {
+        // Fallback color if gradient failed
+        this.instanceData.colors.set([0.1, 0.1, 0.1, 1.0], colorOffset); // Dark gray fallback
+      }
 
       // 3. Set Shadow Parameters
       this.instanceData.shadowParams[shadowOffset] = shadowIntensity;
@@ -462,8 +529,53 @@ export class GridGenRenderer extends BaseRenderer {
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
   }
 
-  // --- Add Particle Data Update Method ---
-  // REMOVE THE ENTIRE _updateParticleData METHOD
-  // _updateParticleData() { ... }
-  // --- End Add Particle Data Update Method ---
+  // --- Add createGridMap helper method ---
+  createGridMap(rectangles) {
+    // Guard against null or undefined rectangles
+    if (!rectangles) {
+      console.warn("createGridMap received null or undefined rectangles.");
+      return [];
+    }
+    return rectangles.map((rect, index) => ({
+      index,
+      bounds: {
+        x: rect.x,
+        y: rect.y,
+        width: rect.width,
+        height: rect.height,
+      },
+      // Ensure cellType exists, provide a default if not
+      cellType: rect.cellType ?? 'unknown',
+      contains: function (px, py) {
+        // Quick check if point is inside rectangle bounds
+        if (!this.bounds) return false; // Safety check
+        if (
+          px >= this.bounds.x &&
+          px < this.bounds.x + this.bounds.width &&
+          py >= this.bounds.y &&
+          py < this.bounds.y + this.bounds.height
+        ) {
+          return true;
+        }
+        return false;
+      }
+    }));
+  }
+  // --- End createGridMap helper method ---
+
+  // --- Add draw method for per-frame updates ---
+  draw() {
+    console.log(`GridGenRenderer.draw() called. showGridCells: ${this.grid?.flags?.showGridCells}`); // Keep log
+    if (!this.grid?.flags?.showGridCells) return; // Skip if grid hidden (check flags exist)
+
+    // Ensure instance data is ready (check count)
+    const numInstances = this.instanceData.count;
+    if (numInstances === 0) return; // Nothing to draw
+
+    console.log(`GridGenRenderer.draw(): Calling renderCellsInstanced. Count: ${numInstances}`); // Keep log
+
+    // Draw the instanced cells using pre-prepared data (including colors from prepareInstanceData)
+    this.renderCellsInstanced();
+  }
+  // --- End draw method ---
 }

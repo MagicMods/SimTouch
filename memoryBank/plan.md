@@ -1,14 +1,12 @@
 IMPLEMENTATION CHECKLIST:
 
-1.  [x] **Refine `BoundaryManager` Event Handler (`updateSimParams`)**
-    - **File:** `Sim/src/coreGrid/boundaryManager.js`
-    - **Action:** Store previous scale. Only call `_updateBoundaries` if scale changed. Apply other physics props directly.
-2.  [x] **Refine `BoundaryRenderer` Event Handler**
-    - **File:** `Sim/src/renderer/boundaryRenderer.js`
-    - **Action:** Store previous scale and showBoundary flag. Only call `update` if scale or showBoundary changed.
-3.  [x] **Update `memoryBank/notebook.md`**
-    - **File:** `memoryBank/notebook.md`
-    - **Action:** Add an entry explaining the boundary update optimization.
-4.  [x] **Update `memoryBank/plan.md`**
-    - **File:** `memoryBank/plan.md`
-    - **Action:** Replace the content of `plan.md` with this checklist (marked as complete).
+1.  [x] **File:** `Sim/src/renderer/gridGenRenderer.js`
+    - **Action:** Move index-based gradient color calculation logic into `prepareInstanceData()`, ensuring `this.instanceData.colors` is populated correctly before the buffer upload (`gl.bufferData`).
+2.  [x] **File:** `Sim/src/renderer/gridGenRenderer.js`
+    - **Action:** Simplify the `draw()` method to remove color calculations/uploads, keeping only checks and the call to `renderCellsInstanced()`.
+3.  [x] **File:** `Sim/src/renderer/gridGenRenderer.js`
+    - **Action:** Remove the temporary property `this._tempColorArray`.
+4.  [x] **File:** `memoryBank/notebook.md`
+    - **Action:** Document moving index-based coloring to `prepareInstanceData`.
+5.  [x] **File:** `memoryBank/plan.md`
+    - **Action:** Update with this completed checklist.

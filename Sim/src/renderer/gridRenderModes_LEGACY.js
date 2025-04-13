@@ -12,7 +12,7 @@ export const GridField = {
   OVERLAP: "Overlap",
 };
 
-class GridRenderModes {
+export class GridRenderModes_LEGACY {
   constructor({ gridParams, gridGeometry, gridMap, canvas, coordTransforms, maxDensityRef }) {
     this.gridParams = gridParams;
     this.gridGeometry = gridGeometry;
@@ -925,5 +925,3 @@ class GridRenderModes {
     return this.targetValues;
   }
 }
-
-export { GridRenderModes };

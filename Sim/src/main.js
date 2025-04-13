@@ -1,24 +1,30 @@
 import { ShaderManager } from "./shaders/shaderManager.js";
+// Simulation
 import { ParticleSystem } from "./simulation/core/particleSystem.js";
-import { UiManager } from "./ui/uiManager.js";
-import { ParticleRenderer } from "./renderer/particleRenderer.js";
-import { GridRenderer } from "./renderer/gridRenderer.js";
 import { TurbulenceField } from "./simulation/forces/turbulenceField.js";
 import { VoronoiField } from "./simulation/forces/voronoiField.js";
+// CoreGrid   
+import { DimensionManager } from "./coreGrid/dimensionManager.js";
+import { BoundaryManager } from "./coreGrid/boundaryManager.js";
 import { CircularBoundary } from "./simulation/boundary/circularBoundary.js";
 import { RectangularBoundary } from "./simulation/boundary/rectangularBoundary.js";
-import { socketManager } from "./network/socketManager.js";
+// UI
+import { UiManager } from "./ui/uiManager.js";
+// Input
 import { MouseForces } from "./simulation/forces/mouseForces.js";
 import { ExternalInputConnector } from "./input/externalInputConnector.js";
 import { EmuForces } from "./simulation/forces/emuForces.js";
 import { EmuRenderer } from "./renderer/emuRenderer.js";
 import { MicInputForces } from "./simulation/forces/micForces.js";
-import { ModulatorManager } from "./input/modulatorManager.js";
-import { eventBus } from "./util/eventManager.js";
-import { DimensionManager } from "./coreGrid/dimensionManager.js";
-import { BoundaryManager } from "./coreGrid/boundaryManager.js";
+// Renderer
 import { GridGenRenderer } from "./renderer/gridGenRenderer.js";
 import { BoundaryRenderer } from "./renderer/boundaryRenderer.js";
+import { ParticleRenderer } from "./renderer/particleRenderer.js";
+import { GridRenderer } from "./renderer/gridRenderer.js";
+// Network
+import { ModulatorManager } from "./input/modulatorManager.js";
+import { socketManager } from "./network/socketManager.js";
+import { eventBus } from "./util/eventManager.js";
 
 class Main {
   constructor() {
@@ -100,7 +106,7 @@ class Main {
 
     this.simParams = {
       simulation: {
-        paused: true, // Initial state matching existing logic
+        paused: false, // Initial state matching existing logic
         timeStep: this.particleSystem.timeStep, // From ParticleSystem
         timeScale: this.particleSystem.timeScale, // From ParticleSystem
         velocityDamping: this.particleSystem.velocityDamping, // From ParticleSystem
@@ -286,7 +292,8 @@ class Main {
       this.shaderManager,
       this.gridParams,
       this.dimensionManager,
-      this.boundaryManager
+      this.boundaryManager,
+      this.particleSystem
     );
     console.log("Instantiated new Grid components (DimensionManager, BoundaryManager, BoundaryRenderer, GridGenRenderer)");
 
@@ -401,8 +408,9 @@ class Main {
     this.voronoiField.update(this.particleSystem.timeStep);
 
     this.particleSystem.step();
+    this.gridGenRenderer.draw();
     this.gridRenderer.draw(this.particleSystem);
-    this.particleRenderer.draw(this.particleSystem.getParticles());
+    // this.particleRenderer.draw(this.particleSystem.getParticles()); // Temporarily disable
 
     this.ui.update(this.particleSystem.timeStep);
     this.modulatorManager.update(this.particleSystem.timeStep);

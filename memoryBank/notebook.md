@@ -881,3 +881,76 @@ The `Sim` renderers vary significantly. `baseRenderer` and `particleRenderer` al
     - It now only calls its `update` method (which manipulates the DOM element) if either the `scale` or the `showBoundary` flag has changed.
 
 **Result:** Boundary updates are now more efficient. Changes to non-visual physics parameters only update the necessary properties on the `physicsBoundary` object used by the simulation, without triggering geometry recalculations or DOM updates. Visual updates only occur when the scale changes or the visibility flag is toggled.
+
+---
+
+## GridGenRenderer Dynamic Coloring Integration (YYYY-MM-DD)
+
+**Objective:** Enable `GridGenRenderer` to display dynamic colors based on simulation data calculated by `GridRenderModes`, running concurrently with the isolated legacy `GridRenderer` pipeline.
+
+**Execution Log:**
+
+1.  **Dependencies:** Modified `GridGenRenderer` constructor to accept `particleSystem` dependency and instantiate `GridRenderModes`. Removed unused `socketManager` import/instantiation. Kept `Gradient` instantiation as it's needed for color mapping in the new `draw` method.
+2.  **Initialization:** Updated `main.js` to pass `particleSystem` during `GridGenRenderer` instantiation.
+3.  **Grid Map Handling:** Added `createGridMap` helper to `GridGenRenderer`. Updated `updateGridGeometryAndRender` to create/update the internal `gridMap` and notify `renderModes` instance via `renderModes.updateGrid`.
+4.  **Color Calculation:** Modified `GridGenRenderer.prepareInstanceData` to remove the uniform color parameter and instead calculate per-instance color based on data retrieved from `this.renderModes.getValues()`. Used a placeholder grayscale mapping for initial implementation.
+5.  **Per-Frame Drawing:** Added a `draw()` method to `GridGenRenderer`. This method gets latest data from `renderModes`, uses the `Gradient` instance to map normalized data values to colors, updates the instance color buffer on the GPU via `bufferSubData`, and calls `renderCellsInstanced` to draw.
+6.  **Concurrency:** Added `this.gridGenRenderer.draw()` call to the main `render()` loop in `main.js`, placed _before_ the legacy `this.gridRenderer.draw()` call.
+
+**Status:** `GridGenRenderer` is now integrated with `GridRenderModes` and updates its cell colors each frame based on simulation data, drawing concurrently with the legacy `GridRenderer`. Placeholder color mapping is used; needs refinement (normalization, gradient selection). Legacy pipeline remains isolated.
+
+## Legacy GridRenderer Fix (YYYY-MM-DD)
+
+**Issue:** After integrating `GridGenRenderer.draw()` into the main render loop before `GridRenderer.draw()`, the legacy renderer stopped working.
+
+**Analysis:** Determined the cause was WebGL state interference. `GridGenRenderer` uses instanced drawing, enabling multiple vertex attributes (`position`, `instanceMatrix`, `instanceColor`, `instanceShadowParams`). `GridRenderer` uses non-instanced drawing and only expects the `position` attribute to be enabled. The attributes enabled by `GridGenRenderer` were persisting and causing issues for `GridRenderer`.
+
+**Fix:** Modified `GridGenRenderer.renderCellsInstanced()` to disable all vertex attribute arrays it uses immediately after its `gl.drawArraysInstanced` call. This cleans up the GL state, preventing interference with the subsequent legacy `GridRenderer` draw calls.
+
+**Status:** The legacy `GridRenderer` should now function correctly alongside the concurrently drawing `GridGenRenderer`.
+
+## Fix GridGenRenderer Visibility (YYYY-MM-DD)
+
+**Issue:** `GridGenRenderer` output was not visible despite being called in the render loop, and its UI toggle had no effect.
+
+**Analysis:** The legacy `GridRenderer.draw()` method contained a `gl.clear(gl.COLOR_BUFFER_BIT)` call. Since it runs _after_ `GridGenRenderer.draw()`, it was erasing the output of the new renderer every frame.
+
+**Fix:** Commented out the `gl.clearColor` and `gl.clear` calls within `GridRenderer.draw()`. This allows the output of `GridGenRenderer` (drawn first) to persist on the canvas underneath the legacy renderer's output.
+
+**Status:** Both renderers should now be visible concurrently. The UI toggle for `GridGenRenderer`'s visibility (`gridParams.flags.showGridCells`) should now have a visible effect.
+
+## Add Diagnostics to GridGenRenderer (YYYY-MM-DD)
+
+**Issue:** `GridGenRenderer` grid is not displaying, even after ensuring the legacy renderer doesn't clear the canvas.
+
+**Action:** Added `console.log` statements to `GridGenRenderer.draw()` and `GridGenRenderer.renderCellsInstanced()` to track execution flow, the value of the `showGridCells` flag, and the instance count being drawn.
+
+**Purpose:** To determine if the renderer is being skipped due to the flag, attempting to draw zero instances, or if the draw call itself isn't happening as expected.
+
+## Test GridGenRenderer Visibility vs Particles (YYYY-MM-DD)
+
+**Issue:** `GridGenRenderer` grid is not displaying, despite logs confirming its draw calls execute with correct flags and instance counts.
+
+**Hypothesis:** The `ParticleRenderer`, which runs last, might be drawing particles (even semi-transparent ones) over the `GridGenRenderer` output, obscuring it.
+
+**Test:** Temporarily commented out the `this.particleRenderer.draw(...)` call in `main.js` render loop.
+
+**Expected Result:** If the hypothesis is correct, the `GridGenRenderer` grid should now become visible.
+
+## Debug GridGenRenderer Visibility (Index Gradient Test) (YYYY-MM-DD)
+
+**Issue:** `GridGenRenderer` grid visible with fixed color, confirming core drawing works, but not with dynamic color from `GridRenderModes`.
+
+**Action:** Modified `GridGenRenderer.draw()` to color cells based on their instance index mapped through the `Gradient` object. This bypasses `GridRenderModes` data but tests the gradient lookup and color buffer update.
+
+**Purpose:** To further isolate the problem. If this works, the issue lies specifically in how data from `GridRenderModes` is obtained or normalized before gradient lookup. If this fails, the issue might be in the gradient lookup/buffer update itself.
+
+**Expected Result:** A grid displaying a smooth color transition based on cell index according to the active gradient.
+
+## Refactor GridGenRenderer Coloring (Index Gradient Default) (YYYY-MM-DD)
+
+**Action:** Moved the index-based gradient coloring logic from the temporary `draw()` method implementation into the `prepareInstanceData()` method. This ensures that the instance color buffer is populated with the index-based gradient colors whenever the grid geometry is generated or updated.
+
+**Result:** The `draw()` method was simplified to only contain checks and the call to `renderCellsInstanced()`, as the color data is now prepared beforehand.
+
+**Status:** `GridGenRenderer` now defaults to rendering the grid with colors determined by mapping the instance index through the active gradient. This provides a baseline visualization while isolating the `GridRenderModes` data integration for future steps.

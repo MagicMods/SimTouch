@@ -1,5 +1,5 @@
 import { BaseRenderer } from "./baseRenderer.js";
-import { GridRenderModes } from "./gridRenderModes_LEGACY.js";
+import { GridRenderModes_LEGACY } from "./gridRenderModes_LEGACY.js";
 import { Gradient } from "../shaders/gradients.js";
 import { socketManager } from "../network/socketManager.js";
 import { eventBus } from '../util/eventManager.js';
@@ -25,7 +25,7 @@ class GridRenderer extends BaseRenderer {
       cols: 23,
       rows: 23,
       allowCut: 3,      // Controls how many corners can be outside the circle (0-3)
-      showGrid: true,
+      showGrid: false,
       showCellCenters: false, // Whether to display cell centers
       showIndices: false,     // Whether to display cell indices
       shadowIntensity: 0.33,   // Shadow intensity (0-1)
@@ -78,7 +78,7 @@ class GridRenderer extends BaseRenderer {
     this.gridMap = this.createGridMap(this.gridGeometry);
 
     // Initialize modes with grid data and maxDensity reference
-    this.renderModes = new GridRenderModes({
+    this.renderModes = new GridRenderModes_LEGACY({
       gridParams: this.gridParams,
       gridGeometry: this.gridGeometry,
       gridMap: this.gridMap,
@@ -232,9 +232,9 @@ class GridRenderer extends BaseRenderer {
         : [0.2, 0.2, 0.2, 1.0]; // Dark grey for debugging
     });
 
-    // Clear color buffer (stencil clear no longer needed)
-    gl.clearColor(0, 0, 0, 1.0);
-    gl.clear(gl.COLOR_BUFFER_BIT); // Only clear color buffer
+    // Comment out the clear calls to allow GridGenRenderer underneath
+    // gl.clearColor(0, 0, 0, 1.0);
+    // gl.clear(gl.COLOR_BUFFER_BIT); // Only clear color buffer
 
     // Conditionally draw the grid based on the showGrid flag
     if (this.gridParams.showGrid) {
