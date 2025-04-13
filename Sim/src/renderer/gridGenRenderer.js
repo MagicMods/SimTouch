@@ -3,6 +3,9 @@ import * as mat4 from "gl-matrix/mat4.js";
 import { GridGeometry } from "../coreGrid/gridGeometry.js";
 import { OverlayManager } from "./overlayRenderer.js";
 import { eventBus } from '../util/eventManager.js';
+import { Gradient } from "../shaders/gradients.js";
+import { GridRenderModes } from "./gridRenderModes.js";
+import { socketManager } from "../network/socketManager.js";
 
 export class GridGenRenderer extends BaseRenderer {
   constructor(gl, shaderManager, gridConfig, dimensionManager, boundaryManager) {
@@ -10,8 +13,12 @@ export class GridGenRenderer extends BaseRenderer {
 
     this.gl = gl;
     this.shaderManager = shaderManager;
+    this.gradient = new Gradient();
     this.dimensionManager = dimensionManager;
     this.boundaryManager = boundaryManager;
+
+    this.socket = socketManager;
+    this.socket.connect();
 
     // Initialize this.grid with the initial config object reference
     this.grid = gridConfig || {}; // Use passed config or default to empty object

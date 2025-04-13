@@ -70,6 +70,25 @@ export class NewGridUi extends BaseUi {
     const shadowFolder = this.gui.addFolder("Shadow");
     displayFolder.open(false);
 
+
+
+    const gradient = this.main.gridGenRenderer.gradient;
+
+    // Add theme selector at the top level
+    const presetOptions = {};
+    gradient.getPresetNames().forEach((name) => {
+      presetOptions[name] = name;
+    });
+
+    this.themeController = this.gui
+      .add({ theme: gradient.getCurrentPreset() }, "theme", presetOptions)
+      .name("Theme")
+      .onChange((presetName) => {
+        // Apply the preset
+        gradient.applyPreset(presetName);
+      });
+
+
     // --- SCREEN CONFIGURATION ---
 
     this.screenTypeController = screenFolder

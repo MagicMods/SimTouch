@@ -1,5 +1,5 @@
 import { BaseRenderer } from "./baseRenderer.js";
-import { GridRenderModes } from "./gridRenderModes.js";
+import { GridRenderModes } from "./gridRenderModes_LEGACY.js";
 import { Gradient } from "../shaders/gradients.js";
 import { socketManager } from "../network/socketManager.js";
 import { eventBus } from '../util/eventManager.js';
