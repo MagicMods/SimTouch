@@ -76,90 +76,60 @@ export class ParamUi extends BaseUi {
         });
       this.boundaryModeController.domElement.classList.add("full-width");
       this.boundaryModeController.domElement.style.marginBottom = "10px";
-      // Removed smoothing object reference, bind directly to simParams
-      // const smoothing = this.main.gridRenderer.renderModes.smoothing;
 
-      this.maxDensityController = this.gui
-        // Bind to simParams instead of gridRenderer
-        .add(this.main.simParams.rendering, "maxDensity", 0.1, 12, 0.1)
-        .name("Density")
-        // Add onChange handler to emit event
-        .onChange((value) => {
+      this.maxDensityController = this.gui.add(this.main.simParams.rendering, "maxDensity", 0.1, 12, 0.1)
+        .name("Density").onChange((value) => {
           eventBus.emit('uiControlChanged', { paramPath: 'rendering.maxDensity', value });
         });
 
-      this.fadeInSpeedController = this.gui
-        // Bind to simParams instead of smoothing
-        .add(this.main.simParams.smoothing, "rateIn", 0.01, 0.5)
-        .name("FadInSpd")
-        // Add onChange handler to emit event
-        .onChange((value) => {
+      this.fadeInSpeedController = this.gui.add(this.main.simParams.smoothing, "rateIn", 0.01, 0.5)
+        .name("FadInSpd").onChange((value) => {
           eventBus.emit('uiControlChanged', { paramPath: 'smoothing.rateIn', value });
         });
       // .onFinishChange(() => console.log("Smoothing in:", smoothing.rateIn));
 
-      this.fadeOutSpeedController = this.gui
-        // Bind to simParams instead of smoothing
-        .add(this.main.simParams.smoothing, "rateOut", 0.01, 0.5)
-        .name("FadOutSpd")
-        // Add onChange handler to emit event
-        .onChange((value) => {
+      this.fadeOutSpeedController = this.gui.add(this.main.simParams.smoothing, "rateOut", 0.01, 0.5)
+        .name("FadOutSpd").onChange((value) => {
           eventBus.emit('uiControlChanged', { paramPath: 'smoothing.rateOut', value });
         });
       // .onFinishChange(() => console.log("Smoothing out:", smoothing.rateOut));
 
-      this.timeStepController = this.gui
-        // Bind to simParams instead of particles
-        .add(this.main.simParams.simulation, "timeStep", 0.001, 0.05, 0.001)
-        .name("Time Step")
-        // Add onChange handler to emit event
-        .onChange((value) => {
+      this.timeStepController = this.gui.add(this.main.simParams.simulation, "timeStep", 0.001, 0.05, 0.001)
+        .name("Time Step").onChange((value) => {
           eventBus.emit('uiControlChanged', { paramPath: 'simulation.timeStep', value });
         });
       this.timeStepController.domElement.style.marginTop = "10px";
 
-      this.timeScaleController = this.gui
-        // Bind to simParams instead of particles
-        .add(this.main.simParams.simulation, "timeScale", 0, 4, 0.1)
-        .name("SimSpeed")
-        // Add onChange handler to emit event
-        .onChange((value) => {
+      this.timeScaleController = this.gui.add(this.main.simParams.simulation, "timeScale", 0, 4, 0.1)
+        .name("SimSpeed").onChange((value) => {
           eventBus.emit('uiControlChanged', { paramPath: 'simulation.timeScale', value });
         });
       // .onFinishChange((value) => {
       // console.log(`Animation speed: ${value}x`);
       // });
 
-      this.velocityDampingController = this.gui
-        // Bind to simParams instead of particles
-        .add(this.main.simParams.simulation, "velocityDamping", 0.8, 1, 0.01)
-        .name("VeloDamp")
-        // Add onChange handler to emit event
-        .onChange((value) => {
+      this.velocityDampingController = this.gui.add(this.main.simParams.simulation, "velocityDamping", 0.8, 1, 0.01)
+        .name("VeloDamp").onChange((value) => {
           eventBus.emit('uiControlChanged', { paramPath: 'simulation.velocityDamping', value });
         });
       // .onFinishChange((value) => {
       //   console.log(`Velocity damping set to ${value}`);
       // });
 
-      this.maxVelocityController = this.gui
-        // Bind to simParams instead of particles
-        .add(this.main.simParams.simulation, "maxVelocity", 0.01, 1, 0.01)
-        .name("MaxVelocity")
-        // Add onChange handler to emit event
-        .onChange((value) => {
+      this.maxVelocityController = this.gui.add(this.main.simParams.simulation, "maxVelocity", 0.01, 1, 0.01)
+        .name("MaxVelocity").onChange((value) => {
           eventBus.emit('uiControlChanged', { paramPath: 'simulation.maxVelocity', value });
         });
 
-      this.ratioPicFlip = this.gui
-        // Bind to simParams instead of particles
-        .add(this.main.simParams.simulation, "picFlipRatio", 0, 1, 0.01)
-        .name("PicFlipRatio")
-        // Add onChange handler to emit event
-        .onChange((value) => {
+      this.restDensityController = this.gui.add(this.main.simParams.simulation, "restDensity", 0, 10, 0.1)
+        .name("RestDensity").onChange((value) => {
+          eventBus.emit('uiControlChanged', { paramPath: 'simulation.restDensity', value });
+        });
+
+      this.ratioPicFlip = this.gui.add(this.main.simParams.simulation, "picFlipRatio", 0, 1, 0.01)
+        .name("PicFlipRatio").onChange((value) => {
           eventBus.emit('uiControlChanged', { paramPath: 'simulation.picFlipRatio', value });
         });
-      // .onFinishChange((value) => {
 
       this.velocityDampingController.domElement.style.marginTop = "10px";
     }

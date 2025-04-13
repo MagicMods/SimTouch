@@ -107,7 +107,8 @@ class Main {
         maxVelocity: this.particleSystem.maxVelocity, // From ParticleSystem
         picFlipRatio: this.particleSystem.picFlipRatio, // From ParticleSystem
         particleCount: this.particleSystem.numParticles, // Add particle count
-        particleRadius: this.particleSystem.particleRadius // Add particle radius
+        particleRadius: this.particleSystem.particleRadius, // Add particle radius
+        restDensity: this.particleSystem.restDensity, // Add rest density
       },
       boundary: {
         mode: "BOUNCE",
@@ -136,6 +137,7 @@ class Main {
         gridSize: this.particleSystem.collisionSystem.gridSize,
         repulsion: this.particleSystem.collisionSystem.repulsion,
         particleRestitution: this.particleSystem.collisionSystem.particleRestitution,
+        damping: this.particleSystem.collisionSystem.damping,
       },
       turbulence: {
         strength: this.turbulenceField.strength,
@@ -307,7 +309,7 @@ class Main {
       this.ui = new UiManager(this);
 
       eventBus.on('uiControlChanged', this.handleSimUIChange.bind(this));
-      eventBus.on('uiControlChanged', this.handleGridUIChange.bind(this));
+      // eventBus.on('uiControlChanged', this.handleGridUIChange.bind(this));
 
       this.animate();
       this.setGridParams(this.gridParams);
