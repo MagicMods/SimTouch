@@ -163,8 +163,7 @@ export class BoundaryManager {
         Math.min(dimensions.renderWidth, dimensions.renderHeight) / 2;
       this.shapeBoundary.setRadius(baseRadius); // Let scale handle the final size
       console.debug(
-        `BoundaryManager: Updated Circular Shape Boundary - Center: (${this.shapeBoundary.centerX}, ${this.shapeBoundary.centerY}), Radius: ${this.shapeBoundary.radius}, Scale: ${this.shapeBoundary.scale}`
-      );
+        `BoundaryManager: Updated Circular Shape Boundary - Center: (${this.shapeBoundary.centerX}, ${this.shapeBoundary.centerY}), Radius: ${this.shapeBoundary.radius}, Scale: ${this.shapeBoundary.scale}`);
     } else if (this.shapeBoundary instanceof RectangularBoundaryShape) {
       this.shapeBoundary.width = dimensions.renderWidth;
       this.shapeBoundary.height = dimensions.renderHeight;

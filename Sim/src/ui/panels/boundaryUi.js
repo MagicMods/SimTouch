@@ -41,7 +41,7 @@ export class BoundaryUi extends BaseUi {
       .onChange((value) => {
         eventBus.emit('uiControlChanged', { paramPath: 'boundary.mode', value });
       });
-
+    this.boundaryModeController.domElement.classList.add("full-width");
 
 
     this.boundaryScaleController = this.gui
