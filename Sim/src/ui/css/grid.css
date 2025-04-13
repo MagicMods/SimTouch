@@ -7,12 +7,7 @@
   width: 100%;
 }
 
-#lil-gui-name-135 {
-  display: none !important;
-  width: 30px !important;
-  pointer-events: none !important;
-  background-color: red !important;
-}
+
 
 .slider-dual-input-input {
   width: 20%;
@@ -34,21 +29,30 @@
   margin-bottom: 0px !important;
 }
 
-#lil-gui-name-4 {
+#lil-gui-name-132 {
   /* display: none !important; */
   width: 81px !important;
 }
 
-.lil-gui .controller .name {
-  /* General lil-gui label selector */
-  /* Potentially hide only within a specific container if needed */
+/* .lil-gui .controller .name {
+  General lil-gui label selector 
+  Potentially hide only within a specific container if needed
 }
+*/
+
 /* Or more specifically if it's in your custom container */
 /* .slider-cellCount-container .name {
     display: none !important;
   } */
 
-#lil-gui-name-135 + .widget input[type="text"] {
+  #lil-gui-name-133 {
+    display: none !important;
+    width: 30px !important;
+    pointer-events: none !important;
+    background-color: red !important;
+  }
+
+#lil-gui-name-133 + .widget input[type="text"] {
   pointer-events: none !important;
   color: rgb(219, 219, 219) !important;
   font-weight: 700;
@@ -62,4 +66,8 @@
   background-color: rgb(5, 5, 5) !important;
   padding-left: 14px;
   margin-left: 10px;
+}
+
+.slider-dual-input-slider .name {
+  width: 0px !important;
 }

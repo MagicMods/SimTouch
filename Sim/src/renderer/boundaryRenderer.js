@@ -8,6 +8,8 @@ export class BoundaryRenderer {
   #currentBoundaryType = null;
   #boundaryManager = null;
   #canvas = null;
+  #previousScale = null; // Track previous scale
+  #previousShowBoundary = null; // Track previous visibility flag
 
   constructor(containerElement, boundaryManager, canvasElement) {
     console.log("BoundaryRenderer: Constructor - Creating div");
@@ -26,16 +28,34 @@ export class BoundaryRenderer {
     this.#container.appendChild(this.#boundaryDiv);
     console.log("BoundaryRenderer: Constructor - Appended div to container:", this.#container);
 
-    // Subscribe to grid parameter updates
-    eventBus.on('gridParamsUpdated', ({ gridParams }) => {
-      console.debug("BoundaryRenderer received gridParamsUpdated event.");
+    // Subscribe to SIM parameter updates
+    eventBus.on('simParamsUpdated', ({ simParams }) => {
+      console.debug("BoundaryRenderer received simParamsUpdated event.");
       const physicsBoundary = this.#boundaryManager?.getPhysicsBoundary();
       // Ensure we use the stored canvas reference (#canvas)
-      this.update(physicsBoundary, this.#canvas, gridParams.flags.showBoundary);
+      // Pass simParams to the update method
+      // this.update(physicsBoundary, this.#canvas, simParams?.flags?.showBoundary ?? false, simParams); // OLD: Always call update
+
+      // --- BEGIN Selective Update Logic ---
+      const newScale = simParams?.boundary?.scale;
+      const newShowBoundary = simParams?.flags?.showBoundary ?? false;
+
+      const scaleChanged = newScale !== this.#previousScale;
+      const showChanged = newShowBoundary !== this.#previousShowBoundary;
+
+      if (scaleChanged || showChanged || this.#previousScale === null) {
+        console.debug(`BoundaryRenderer: Updating - ScaleChanged: ${scaleChanged}, ShowChanged: ${showChanged}, Initial: ${this.#previousScale === null}`);
+        this.update(physicsBoundary, this.#canvas, newShowBoundary, simParams); // Pass current show state
+        this.#previousScale = newScale;
+        this.#previousShowBoundary = newShowBoundary;
+      } else {
+        console.debug("BoundaryRenderer: No visual change detected (scale/showBoundary). Skipping DOM update.");
+      }
+      // --- END Selective Update Logic ---
     });
   }
 
-  update(physicsBoundary, canvasElement, show) {
+  update(physicsBoundary, canvasElement, show, simParams) {
     console.log("BoundaryRenderer: Update called", {
       show,
       physicsBoundary,
@@ -81,10 +101,8 @@ export class BoundaryRenderer {
     });
     const scrollXOffset = window.scrollX;
     const scrollYOffset = window.scrollY;
-    const scale = physicsBoundary.scale || 1.2; // Use stored scale, default to 1
 
     console.log("BoundaryRenderer: Calculation Inputs", {
-      scale: scale,
       canvasRect: canvasRect,
       centerX: physicsBoundary.centerX,
       centerY: physicsBoundary.centerY,

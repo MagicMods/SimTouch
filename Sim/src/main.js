@@ -110,8 +110,12 @@ class Main {
         particleRadius: this.particleSystem.particleRadius // Add particle radius
       },
       boundary: {
-        mode: this.boundary.mode,
-        shape: boundaryType,
+        mode: "BOUNCE",
+        shape: "CIRCULAR",
+        scale: 1.0,
+        damping: 0.8,
+        restitution: 1.0,
+        repulsion: 1.0,
       },
       rendering: {
         // Initial values from GridRenderer and its components
@@ -267,7 +271,8 @@ class Main {
     const initialDimensions = this.dimensionManager.getDimensions();
     this.boundaryManager = new BoundaryManager(
       this.gridParams,
-      initialDimensions
+      initialDimensions,
+      this.dimensionManager
     );
     this.boundaryRenderer = new BoundaryRenderer(
       document.body,

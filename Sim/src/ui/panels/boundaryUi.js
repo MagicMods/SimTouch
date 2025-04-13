@@ -28,68 +28,56 @@ export class BoundaryUi extends BaseUi {
     if (!particles || !particles.boundary) return;
 
     const boundary = particles.boundary;
-
-    // Add boundary type selector - BIND TO SIMPARAMS
-    this.boundaryTypeController = this.gui
-      // Bind to simParams.boundary.shape
-      .add(this.main.simParams.boundary, "shape", Object.values(this.boundaryTypes))
-      .name("B-Type")
-      .onChange((value) => {
-        // Remove direct call to changeBoundaryType
-        // this.changeBoundaryType(value);
-        // Emit event instead
-        eventBus.emit('uiControlChanged', { paramPath: 'boundary.shape', value });
-        // We might still need to update shape controls locally based on the new value
-        // Ideally, this would happen in response to simParamsUpdated
-        this.updateShapeControls(); // Keep for now to maintain UI responsiveness
-      });
-
-    // Create type-specific folder for shape parameters
-    this.shapeFolder = this.gui.addFolder("Shape");
-
-    // Determine current boundary type from simParams
-    const currentType = this.main.simParams.boundary.shape;
-
-    // Set initial value (binding should handle this, but updateDisplay might be needed)
-    // this.boundaryTypeProperty.type = currentType;
-    // this.boundaryTypeController.updateDisplay();
-
-    // Initialize shape controls based on current boundary type
-    this.updateShapeControls();
+    const boundaryManager = this.main.boundaryManager;
 
     // Add boundary mode control - BIND TO SIMPARAMS
-    if (boundary.mode !== undefined) { // Check if mode exists on the initial boundary object
-      this.boundaryModeController = this.gui
-        .add(this.main.simParams.boundary, "mode", { // Bind to simParams
-          Bounce: "BOUNCE",
-          Warp: "WARP",
-        })
-        .name("B-Mode")
-        .onChange((value) => {
-          // Emit event
-          eventBus.emit('uiControlChanged', { paramPath: 'boundary.mode', value });
-        });
-    }
 
-    // Common controls for all boundary types
-    // Check if properties exist before adding controllers
-    if (particles.boundaryDamping !== undefined) {
-      this.boundaryFrictionController = this.gui
-        .add(particles, "boundaryDamping", 0.0, 1.0, 0.01)
-        .name("B-Friction");
-    }
+    this.boundaryModeController = this.gui
+      .add(this.main.simParams.boundary, "mode", { // Bind to simParams
+        Bounce: "BOUNCE",
+        Warp: "WARP",
+      })
+      .name("B-Mode")
+      .onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'boundary.mode', value });
+      });
 
-    if (boundary.cBoundaryRestitution !== undefined) {
-      this.boundaryBounceController = this.gui
-        .add(boundary, "cBoundaryRestitution", 0.0, 1.0, 0.05)
-        .name("B-Bounce");
-    }
 
-    if (boundary.boundaryRepulsion !== undefined) {
-      this.boundaryRepulsionController = this.gui
-        .add(boundary, "boundaryRepulsion", 0.0, 20, 0.01)
-        .name("B-Repulse");
-    }
+
+    this.boundaryScaleController = this.gui
+      .add(this.main.simParams.boundary, "scale", 0.0, 1.2, 0.01)
+      .name("B-Scale")
+      .onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'boundary.scale', value });
+      });
+
+
+
+    this.boundaryFrictionController = this.gui
+      .add(this.main.simParams.boundary, "damping", 0.0, 1.0, 0.01)
+      .name("B-Friction")
+      .onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'boundary.damping', value });
+      });
+
+
+
+    this.boundaryBounceController = this.gui
+      .add(this.main.simParams.boundary, "restitution", 0.0, 1.0, 0.05)
+      .name("B-Bounce")
+      .onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'boundary.restitution', value });
+      });
+
+
+
+    this.boundaryRepulsionController = this.gui
+      .add(this.main.simParams.boundary, "repulsion", 0.0, 20, 0.01)
+      .name("B-Repulse")
+      .onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'boundary.repulsion', value });
+      });
+
   }
 
   updateShapeControls() {

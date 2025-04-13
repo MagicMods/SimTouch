@@ -324,7 +324,7 @@
     - **Alignment:** Refactor `Sim` methods to accept `gridParams` and `dimensions`. Implement scaling based on `getBoundingClientRect()`. Fix duplicate line. Add `clear...` methods for better state management. Implement `originalIndex` retrieval using `indexOf`.
 
 5.  **Styling & DOM:**
-    - `Sim`: Mostly inline styles.
+    - `Sim`: Primarily uses inline styles.
     - `Grid`: Uses CSS classes + fewer inline styles.
     - **Alignment:** Refactor `Sim` to use CSS classes defined in `Grid's CSS files (`canvas-overlays.css`) for base styling, reducing reliance on inline styles.
 
@@ -852,165 +852,32 @@ The `Sim` renderers vary significantly. `baseRenderer` and `particleRenderer` al
 
 ---
 
-## Fixing UI Initialization Error (lil-gui) - 2024-08-03
+## Fix `lil-gui` Error in Boundary UI (YYYY-MM-DD)
 
-**Context:** After completing the event system refactoring, testing revealed an error during UI panel initialization (`NewGridUi`).
+**Context:** After refactoring the boundary scale control, the application failed to initialize with a `lil-gui.esm.min.js:8 gui.add failed property: scale` error.
 
-**Error:**
+**Analysis:** The error log confirmed that `boundaryUi.js` was correctly trying to bind the "B-Scale" slider to `this.main.simParams.boundary`. However, the target object (`simParams.boundary`) lacked the required `scale` property, causing `gui.add()` to fail.
 
-```
-lil-gui.esm.min.js:8 gui.add failed property: cellCount
-...
-TypeError: Cannot read properties of undefined (reading 'name')
-```
+**Fix:** Added the missing `scale: 1.0,` property definition to the `this.simParams.boundary` object within `Sim/src/main.js`.
 
-**Analysis:** The error occurred because `NewGridUi.initGridControls` attempted to bind a `lil-gui` controller to `gridRender.grid.cellCount` using `.listen()`. However, `cellCount` (along with `cols`, `rows`, etc.) is a property _calculated_ by `GridGenRenderer` during its initial `setGrid` call. Even though the calculation happened synchronously before UI initialization, `lil-gui` likely requires the property to exist on the target object _at the moment_ `.add()` is called, even if `.listen()` is used.
-
-**Solution:** Initialized the calculated properties (`cellCount`, `cols`, `rows`, `calculatedCellWidth`, `calculatedCellHeight`) with default values (0) directly within the `main.gridParams` object definition. `GridGenRenderer` already updates these properties on the same object reference after calculation, so the UI binding will now find the properties during initialization and `.listen()` will correctly reflect later updates.
+**Result:** The UI can now successfully initialize the boundary scale slider, binding it to the newly defined property in `simParams`.
 
 ---
 
-**2024-08-04: Architecture Grid Update**
+## Optimize Boundary Updates for Non-Visual Changes (YYYY-MM-DD)
 
-Updated `memoryBank/architecture_grid.md` to enhance the description of the event-driven communication principle and refine the Mermaid diagram for clarity on event flow and component relationships.
+**Context:** Noticed in logs that changes to physics-only boundary parameters (restitution, damping, repulsion, mode) or scale changes when the boundary wasn't visible were triggering unnecessary recalculations and potential DOM updates in `BoundaryManager` and `BoundaryRenderer`.
 
-**2024-08-04: Architecture Grid Fix**
+**Analysis:** Both `BoundaryManager` and `BoundaryRenderer` were subscribed to the general `simParamsUpdated` event and performed their full update routines regardless of which specific parameter changed.
 
-Corrected a Mermaid syntax error in the `memoryBank/architecture_grid.md` diagram by enclosing node labels containing parentheses in double quotes.
+**Optimization:**
 
-**2024-08-04: Architecture Grid Fix 2**
+1.  **`BoundaryManager`:**
+    - Modified the `simParamsUpdated` handler (`updateSimParams`) to track the previous `scale` value.
+    - It now only calls `_updateBoundaries` (which recalculates shape/size) if the `scale` value has actually changed.
+    - Physics-only properties (damping, restitution, etc.) are now applied directly to the `this.physicsBoundary` object if they change, without triggering the more expensive `_updateBoundaries`.
+2.  **`BoundaryRenderer`:**
+    - Modified the `simParamsUpdated` handler to track the previous `scale` and `showBoundary` flag values.
+    - It now only calls its `update` method (which manipulates the DOM element) if either the `scale` or the `showBoundary` flag has changed.
 
-Corrected a second Mermaid syntax error in the `memoryBank/architecture_grid.md` diagram, specifically fixing the link label format to use `-- "Label text" -->`.
-
-**2024-08-04: Architecture Sim Update**
-
-Updated `memoryBank/architecture_sim.md` to enhance the Core Principles section with details on Event-Driven Communication and replaced the existing Mermaid diagram with a new, more detailed one showing the event bus, event flows, and component relationships for the target Sim architecture.
-
-**2024-08-04: Architecture Sim Fix**
-
-Corrected Mermaid syntax errors in the `memoryBank/architecture_sim.md` diagram by enclosing node labels containing parentheses in double quotes.
-
-**2024-08-04: Architecture Sim Fix 2**
-
-Corrected a final Mermaid syntax error in the `memoryBank/architecture_sim.md` diagram by moving an inline comment to its own line.
-
-**2024-08-04: Architecture Sim Layout Fix**
-
-Changed the Mermaid diagram orientation in `memoryBank/architecture_sim.md` from Left-to-Right (LR) to Top-Down (TD) to improve layout for complex diagram.
-
-**2024-08-04: Architecture Sim Diagram Simplification**
-
-Simplified the `simParamsUpdated` event flow in the `memoryBank/architecture_sim.md` Mermaid diagram by grouping subscribers into a representative node, reducing line clutter.
-
----
-
-## Grid Integration - Phase 1 Execution (YYYY-MM-DD)
-
-**Objective:** Instantiate and connect the new Grid components (`DimensionManager`, `BoundaryManager`, `GridGenRenderer`, `BoundaryRenderer`, `NewGridUi`, `eventBus`) within `Sim/src/main.js` so the new grid renders based on its UI controls, operating independently of the legacy grid rendering pipeline.
-
-**Execution Log:**
-
-1.  **Verified `gridParams`:** Ensured `Sim/src/main.js` `this.gridParams` includes necessary properties (`screen`, `gridSpecs`, `shadow`, `colors`, `flags`, `renderSize`, calculated stats).
-2.  **Imported Components:** Added imports for `DimensionManager`, `BoundaryManager`, `GridGenRenderer`, `BoundaryRenderer`, `eventBus` to `Sim/src/main.js`.
-3.  **Instantiated Components:** Added instantiation logic for `DimensionManager`, `BoundaryManager`, `BoundaryRenderer`, and `GridGenRenderer` (as `this.gridGenRenderer`) within the `Sim/src/main.js` constructor.
-4.  **Added Dimension/Style Logic:** Implemented `#applyCurrentDimensionsAndBoundary` helper and called it after `DimensionManager` instantiation.
-5.  **Added Event Handling:** Implemented `checkAndApplyDimensionChanges`, `setGridParams`, and `handleGridUIChange` methods. Subscribed `handleGridUIChange` to the `uiControlChanged` event in `init()`.
-6.  **Triggered Initial Render:** Added `this.setGridParams(this.gridParams)` call at the end of `init()`.
-
-**Status:** Core integration of the new Grid components and event flow is complete in `Sim/src/main.js`. The new grid should now attempt to render in parallel with the legacy system, driven by the `NewGridUi` panel.
-
----
-
-## Initialization Error Fix (YYYY-MM-DD)
-
-**Context:** CHECK+ phase after initial Grid component integration revealed a console error.
-
-**Error:** `TypeError: this.ui.initPanels is not a function` in `Sim/src/main.js` `init()` method.
-
-**Cause:** The integration edit incorrectly added a call to `await this.ui.initPanels()`, assuming the method existed based on the `Grid` project's `UiManager` structure. The `Sim` project's `UiManager` does not have this method.
-
-**Fix:** Removed the line `await this.ui.initPanels();` from `Sim/src/main.js` `init()` method.
-
----
-
-## UI Event Routing Fix (YYYY-MM-DD)
-
-**Context:** After fixing the `initPanels` error, testing revealed a new error during UI interaction.
-
-**Error:** `handleGridUIChange: Invalid path segment simulation in simulation.paused`.
-
-**Analysis:** The `uiControlChanged` event subscription was incorrectly routing all events (including those for `simParams`) only to `handleGridUIChange`. This handler expects `gridParams` paths and failed when receiving a `simParams` path.
-
-**Fix:**
-
-1.  Reinstated the `eventBus.on('uiControlChanged', this.handleSimUIChange.bind(this));` subscription in `Sim/src/main.js#init()`.
-2.  Added path validation logic to the beginning of `handleGridUIChange` to ensure it only processes events with paths relevant to `gridParams` (starting with 'screen', 'gridSpecs', 'shadow', 'colors', 'flags', 'renderSize').
-
-**Note:** A temporary linter error occurred during the edit due to the re-introduction of `await this.ui.initPanels()` in the non-async constructor; this line was removed again.
-
----
-
-## Duplicate Subscription & Logging Fix (YYYY-MM-DD)
-
-**Context:** Log analysis revealed duplicate event subscriptions and excessive logging detail.
-
-**Analysis:**
-
-- The log message "Main subscribed to uiControlChanged events for Grid UI" appeared twice, indicating a duplicate subscription setup in `main.js#init()`.
-- The `handleSimUIChange` method logged the entire `simParams` object on every update, flooding the console.
-
-**Fixes:**
-
-1. Located and removed the duplicate `console.log("Main subscribed...")` line within `Sim/src/main.js#init()` (implicitly removing the duplicate subscription logic associated with it).
-2. Modified the `console.log` statement in `handleSimUIChange` to only output the `paramPath` and `value`, significantly reducing log verbosity.
-
----
-
-## Doubled Sim Log Fix (YYYY-MM-DD)
-
-**Context:** Logs showed doubled `SimParams updated via UI` messages after the previous fix.
-
-**Analysis:** The previous step incorrectly added a second subscription for `handleSimUIChange` in the constructor, while the original subscription remained in the `init()` method. This resulted in `handleSimUIChange` being called twice for every relevant UI event.
-
-**Fix:** Removed the duplicate `eventBus.on('uiControlChanged', this.handleSimUIChange.bind(this));` line (and its associated log) from the _constructor_ of `Sim/src/main.js`. The original subscription in `init()` remains.
-
-## NewGridUi Initialization Fix (YYYY-MM-DD)
-
-**Context:** After fixing event routing, the `NewGridUi` panel was still not displaying its controls.
-
-**Analysis:** The `initGridControls` method in `Sim/src/ui/panels/newGridUi.js`:
-
-1. Incorrectly referenced `this.main.gridRender` instead of the correctly instantiated `this.main.gridGenRenderer`. This caused the method to exit early.
-2. Incorrectly attempted to bind the statistics controls (`cellCount`, `cols`, `rows`, etc.) to `gridRender.grid` instead of the correct target `gridGenRenderer.grid` (which holds the reference to the `gridParams` object updated by the renderer).
-
-**Fix:** Modified `Sim/src/ui/panels/newGridUi.js`:
-
-1. Changed `this.main.gridRender` to `this.main.gridGenRenderer`.
-2. Updated the target object for the statistics controls in the `.add()` calls to `gridGenRenderer.grid`.
-
----
-
-## Grid Shape Update Debugging (BoundaryManager Log) (YYYY-MM-DD)
-
-**Context:** Despite correcting the order of operations in `BoundaryManager.update`, logs still indicated "Shape unchanged" when the UI shape was modified.
-
-**Analysis:** The code structure where `oldShape` is read from `this.params` before the internal state is updated _appears_ logically correct. The previous hypothesis about identical object references seems less likely.
-
-**Diagnostic Step:** To understand why the comparison `oldShape !== newShape` is failing, added a detailed `console.log` statement _immediately before_ the `if` check in `Sim/src/coreGrid/boundaryManager.js#update`. This log will output the exact string values of `oldShape` and `newShape` being compared.
-
-**Goal:** To precisely identify the values involved in the failing comparison.
-
----
-
-## Grid Shape Update Fix (BoundaryManager State Decoupling) (YYYY-MM-DD)
-
-**Context:** Detailed logging confirmed the `BoundaryManager.update` method was comparing the _new_ shape to itself (`Old: 'rectangular', New: 'rectangular'`) because both `this.params` and the incoming `params` argument referred to the same object modified earlier in the event chain by `main.js#handleGridUIChange`.
-
-**Root Cause:** Shared object reference between `main.js` (`this.gridParams`) and `BoundaryManager` (`this.params`).
-
-**Fix:** Modified `Sim/src/coreGrid/boundaryManager.js` to decouple its internal state:
-
-1.  **Constructor:** Changed the initialization of `this.params` to create a separate copy of the `screen` and `boundaryParams` objects from the `initialgridParams`.
-2.  **Update Method:** Changed the final state update logic to copy the `screen` and `boundaryParams` objects from the incoming event payload (`params`) into the internal `this.params`, rather than reassigning the whole object reference.
-
-**Result:** This ensures `BoundaryManager.update` compares the `newShape` from the event payload against the _previous_ internal state, allowing correct detection of shape changes.
+**Result:** Boundary updates are now more efficient. Changes to non-visual physics parameters only update the necessary properties on the `physicsBoundary` object used by the simulation, without triggering geometry recalculations or DOM updates. Visual updates only occur when the scale changes or the visibility flag is toggled.

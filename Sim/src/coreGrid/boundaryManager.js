@@ -5,12 +5,15 @@ import { RectangularBoundaryPs } from "../simulation/boundary/rectangularBoundar
 import { eventBus } from '../util/eventManager.js';
 
 export class BoundaryManager {
-  constructor(initialgridParams, initialgridDimensions) {
-    if (!initialgridParams || !initialgridDimensions) {
+  constructor(initialgridParams, initialgridDimensions, dimensionManager) {
+    if (!initialgridParams || !initialgridDimensions || !dimensionManager) {
       throw new Error(
-        "BoundaryManager requires initialgridParams and initialgridDimensions."
+        "BoundaryManager requires initialgridParams, initialgridDimensions, and dimensionManager."
       );
     }
+    this.dimensionManager = dimensionManager;
+    this.simParams = null; // Initialize internal simParams state
+    this.previousScale = null; // Initialize previousScale tracking
     // --- BEGIN STEP 1: Decouple state via copy ---
     // this.params = { ...initialgridParams }; // Old shallow copy
     this.params = {
@@ -26,10 +29,18 @@ export class BoundaryManager {
 
     this._createBoundaries(this.params, initialgridDimensions);
 
-    // Subscribe to grid parameter updates
-    eventBus.on('gridParamsUpdated', ({ gridParams, dimensions }) => {
-      console.debug("BoundaryManager received gridParamsUpdated event.");
-      this.update(gridParams, dimensions);
+    // Subscribe to SIM parameter updates, not grid updates
+    eventBus.on('simParamsUpdated', ({ simParams }) => {
+      console.debug("BoundaryManager received simParamsUpdated event.");
+      // Need dimensions here - assume main provides a way to get current ones
+      // This requires passing 'main' instance to BoundaryManager constructor or using a singleton/global access pattern
+      // For now, we'll assume a mechanism exists or add a placeholder
+      const dimensions = this.dimensionManager?.getDimensions();
+      if (!dimensions) {
+        console.error("BoundaryManager: Could not get dimensions to process simParams update.");
+        return;
+      }
+      this.updateSimParams(simParams, dimensions); // Pass full simParams
     });
   }
 
@@ -163,7 +174,8 @@ export class BoundaryManager {
     }
 
     // --- Update Physics Boundary (Normalized Coordinates - Initial Simple Update) ---
-    const physicsBoundaryScale = 1.1; // TODO: Replace with dedicated boundary scale parameter (e.g., params.boundary.scale)
+    // Read scale from internal simParams copy
+    const physicsBoundaryScale = this.simParams?.boundary?.scale ?? 1.1; // Use dynamic scale, default 1.1
 
     // Apply scale to dimensions
     if (this.physicsBoundary instanceof CircularBoundaryPs) {
@@ -228,5 +240,52 @@ export class BoundaryManager {
 
   getPhysicsBoundary() {
     return this.physicsBoundary;
+  }
+
+  // New method to handle simParam updates specifically affecting the boundary
+  updateSimParams(simParams, dimensions) {
+    if (!simParams || !simParams.boundary) {
+      console.error("BoundaryManager.updateSimParams: Missing simParams or simParams.boundary.");
+      return;
+    }
+    if (!dimensions) {
+      console.error("BoundaryManager.updateSimParams: dimensions object is missing.");
+      return;
+    }
+
+    // Update internal state related to physics boundary properties
+    const oldSimParamsBoundary = this.simParams?.boundary; // Store ref before overwrite
+    this.simParams = { ...(this.simParams || {}), boundary: { ...(simParams.boundary || {}) } };
+    const newScale = this.simParams?.boundary?.scale;
+
+    // Check if scale changed
+    const scaleChanged = newScale !== this.previousScale;
+
+    if (scaleChanged || this.previousScale === null) {
+      console.debug(`BoundaryManager: Scale changed (or initial update). Old: ${this.previousScale}, New: ${newScale}. Recalculating boundaries.`);
+      this._updateBoundaries(dimensions); // Call shape/size update logic ONLY if scale changed
+      this.previousScale = newScale; // Update tracked scale
+    } else {
+      console.debug(`BoundaryManager: Scale unchanged (${newScale}). Skipping boundary geometry update.`);
+      // Apply other physics properties if they changed, without recalculating geometry
+      // Check if other relevant physics props changed
+      if (this.physicsBoundary && simParams.boundary && oldSimParamsBoundary) {
+        const propsToCheck = ['damping', 'restitution', 'repulsion', 'mode'];
+        let physicsPropsChanged = false;
+        for (const prop of propsToCheck) {
+          if (simParams.boundary[prop] !== oldSimParamsBoundary[prop]) {
+            this.physicsBoundary[prop] = simParams.boundary[prop];
+            physicsPropsChanged = true;
+            console.debug(`BoundaryManager: Applied physics property ${prop} = ${simParams.boundary[prop]}`);
+          }
+        }
+        // if (physicsPropsChanged) {
+        //     console.debug("BoundaryManager: Applied updated physics properties to existing boundary.");
+        // }
+      }
+
+    }
+    // console.debug("BoundaryManager: Updating physics boundary based on simParams.");
+    // this._updateBoundaries(dimensions); // OLD: Call existing update logic always
   }
 }
