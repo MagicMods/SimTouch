@@ -1,6 +1,6 @@
 import { BaseRenderer } from "./baseRenderer.js";
 import { GridRenderModes_LEGACY } from "./gridRenderModes_LEGACY.js";
-import { Gradient } from "../shaders/gradients.js";
+import { Gradients } from "../shaders/gradients.js";
 import { socketManager } from "../network/socketManager.js";
 import { eventBus } from '../util/eventManager.js';
 
@@ -42,7 +42,7 @@ class GridRenderer extends BaseRenderer {
     this.maxDensity = 2.10;
 
     // Initialize systems
-    this.gradient = new Gradient();
+    this.gradient = new Gradients();
 
     // Create a div container for cell center indicators
     this.centerOverlay = document.createElement('div');

@@ -1,17 +1,17 @@
-import c0 from "./gradients/c0.js";
-import c1 from "./gradients/c1.js";
-import c2 from "./gradients/c2.js";
-import c3 from "./gradients/c3.js";
-import c4 from "./gradients/c4.js";
-import c5 from "./gradients/c5.js";
-import c6 from "./gradients/c6.js";
-import c7 from "./gradients/c7.js";
-import c8 from "./gradients/c8.js";
-import c9 from "./gradients/c9.js";
-import c10 from "./gradients/c10.js";
+import c0 from "./Gradients/c0.js";
+import c1 from "./Gradients/c1.js";
+import c2 from "./Gradients/c2.js";
+import c3 from "./Gradients/c3.js";
+import c4 from "./Gradients/c4.js";
+import c5 from "./Gradients/c5.js";
+import c6 from "./Gradients/c6.js";
+import c7 from "./Gradients/c7.js";
+import c8 from "./Gradients/c8.js";
+import c9 from "./Gradients/c9.js";
+import c10 from "./Gradients/c10.js";
 import { socketManager } from "../network/socketManager.js";
 
-export class Gradient {
+export class Gradients {
   // Use FastLED palettes as presets
   static PRESETS = {
     c0,
@@ -36,7 +36,7 @@ export class Gradient {
   }
 
   applyPreset(presetName) {
-    if (!Gradient.PRESETS[presetName]) {
+    if (!Gradients.PRESETS[presetName]) {
       console.warn(`Preset "${presetName}" not found, using default`);
       presetName = "c0";
     }
@@ -45,19 +45,19 @@ export class Gradient {
     this.currentPreset = presetName;
 
     // Deep clone the preset points to avoid modifying the original
-    this.points = JSON.parse(JSON.stringify(Gradient.PRESETS[presetName]));
+    this.points = JSON.parse(JSON.stringify(Gradients.PRESETS[presetName]));
     this.update();
 
     // If preset actually changed, send notification over socket
     if (oldPreset !== presetName) {
-      this.sendGradientUpdate(presetName);
+      this.sendGradientsUpdate(presetName);
     }
 
     return this.points;
   }
 
-  // Send gradient update to hardware over WebSocket
-  sendGradientUpdate(presetName) {
+  // Send Gradients update to hardware over WebSocket
+  sendGradientsUpdate(presetName) {
     const presetIndex = this.getPresetIndex(presetName);
     return this.socket.sendColor(presetIndex);
   }
@@ -69,7 +69,7 @@ export class Gradient {
   }
 
   getPresetNames() {
-    return Object.keys(Gradient.PRESETS);
+    return Object.keys(Gradients.PRESETS);
   }
 
   getCurrentPreset() {

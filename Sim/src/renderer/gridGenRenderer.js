@@ -3,7 +3,7 @@ import * as mat4 from "gl-matrix/mat4.js";
 import { GridGeometry } from "../coreGrid/gridGeometry.js";
 import { OverlayManager } from "./overlayRenderer.js";
 import { eventBus } from '../util/eventManager.js';
-import { Gradient } from "../shaders/gradients.js";
+import { Gradients } from "../shaders/gradients.js";
 import { GridRenderModes } from "./gridRenderModes.js";
 
 export class GridGenRenderer extends BaseRenderer {
@@ -12,7 +12,7 @@ export class GridGenRenderer extends BaseRenderer {
 
     this.gl = gl;
     this.shaderManager = shaderManager;
-    this.gradient = new Gradient();
+    this.gradient = new Gradients();
     this.dimensionManager = dimensionManager;
     this.boundaryManager = boundaryManager;
     this.particleSystem = particleSystem;

@@ -410,7 +410,7 @@ class Main {
     this.particleSystem.step();
     this.gridGenRenderer.draw();
     this.gridRenderer.draw(this.particleSystem);
-    // this.particleRenderer.draw(this.particleSystem.getParticles()); // Temporarily disable
+    this.particleRenderer.draw(this.particleSystem.getParticles()); // Temporarily disable
 
     this.ui.update(this.particleSystem.timeStep);
     this.modulatorManager.update(this.particleSystem.timeStep);
