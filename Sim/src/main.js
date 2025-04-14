@@ -20,7 +20,7 @@ import { MicInputForces } from "./simulation/forces/micForces.js";
 import { GridGenRenderer } from "./renderer/gridGenRenderer.js";
 import { BoundaryRenderer } from "./renderer/boundaryRenderer.js";
 import { ParticleRenderer } from "./renderer/particleRenderer.js";
-import { GridRenderer } from "./renderer/gridRenderer.js";
+import { GridRenderModes } from "./renderer/gridRenderModes.js";
 // Network
 import { ModulatorManager } from "./input/modulatorManager.js";
 import { socketManager } from "./network/socketManager.js";
@@ -235,10 +235,10 @@ class Main {
       // Use defaults for particleCount, timeStep etc. from simParams or ParticleSystem constructor
     });
 
+    this.gridRenderModes = new GridRenderModes(this.gridParams, this.dimensionManager, this.boundaryManager, this.particleSystem);
     // Instantiate other components
     this.modulatorManager = new ModulatorManager();
     this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager);
-    this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
 
     this.frame = 0;
     this.mouseForces = new MouseForces();
@@ -293,7 +293,8 @@ class Main {
       this.gridParams,
       this.dimensionManager,
       this.boundaryManager,
-      this.particleSystem
+      this.particleSystem,
+      this.gridRenderModes
     );
     console.log("Instantiated new Grid components (DimensionManager, BoundaryManager, BoundaryRenderer, GridGenRenderer)");
 
@@ -409,7 +410,6 @@ class Main {
 
     this.particleSystem.step();
     this.gridGenRenderer.draw();
-    this.gridRenderer.draw(this.particleSystem);
     this.particleRenderer.draw(this.particleSystem.getParticles()); // Temporarily disable
 
     this.ui.update(this.particleSystem.timeStep);

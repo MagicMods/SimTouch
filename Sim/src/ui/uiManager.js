@@ -1,7 +1,6 @@
 import { TurbulenceUi } from "./panels/turbulenceUi.js";
 import { VoronoiUi } from "./panels/voronoiUi.js";
 import { OrganicUi } from "./panels/organicUi.js";
-import { GridUi } from "./panels/gridUi.js";
 import { PulseModulationUi } from "./panels/pulseModulationUi.js";
 import { NetworkUi } from "./panels/networkUi.js";
 import { InputModulationUi } from "./panels/inputModulationUi.js";
@@ -18,6 +17,7 @@ import { RandomizerUi } from "./panels/randomizerUi.js";
 import { NewGridUi } from "./panels/newGridUi.js";
 
 import Stats from "../util/statsModule.js";
+import { eventBus } from "../util/eventManager.js";
 
 export class UiManager {
   constructor(main) {
@@ -36,7 +36,6 @@ export class UiManager {
     this.inputModContainer = this.createContainer("right-middle");
 
     this.initializeUIComponents();
-    this.setupModeChangeHandler();
 
     this.stats = new Stats();
     this.initStats();
@@ -44,6 +43,12 @@ export class UiManager {
 
     this.initializeModulatorManager();
     this.initializePresetManager();
+
+    eventBus.on('uiControlChanged', ({ paramPath, value }) => {
+      if (paramPath === 'rendering.gridMode') {
+        this.organicUi.updateOrganicFolders(value);
+      }
+    });
   }
 
   initializeUIComponents() {
@@ -65,26 +70,12 @@ export class UiManager {
     this.turbulenceUi = new TurbulenceUi(this.main, this.rightContainer);
     this.voronoiUi = new VoronoiUi(this.main, this.rightContainer);
     this.organicUi = new OrganicUi(this.main, this.rightContainer);
-    this.gridUi = new GridUi(this.main, this.rightContainer);
     this.newGridUi = new NewGridUi(this.main, this.rightContainer);
 
 
     this.randomizerUi = new RandomizerUi(this.main, this.presetContainer);
   }
 
-  setupModeChangeHandler() {
-    if (!this.main.gridRenderer) {
-      throw new Error("GridRenderer is required in main for UiManager");
-    }
-
-    if (!this.main.gridRenderer.renderModes) {
-      throw new Error("RenderModes is required in GridRenderer for UiManager");
-    }
-
-    this.main.gridRenderer.renderModes.onModeChange = (mode) => {
-      this.organicUi.updateOrganicFolders(mode);
-    };
-  }
 
   createContainer(position) {
     const container = document.createElement("div");
@@ -162,7 +153,6 @@ export class UiManager {
   update(deltaTime) {
     // Update UI components with time step
     this.inputModUi.update(deltaTime);
-    this.gridUi.update(deltaTime);
     this.stats.update();
   }
 
@@ -178,7 +168,6 @@ export class UiManager {
     this.turbulenceUi.dispose();
     this.voronoiUi.dispose();
     this.organicUi.dispose();
-    this.gridUi.dispose();
     this.pulseModUi.dispose();
     this.inputModUi.dispose();
     this.networkUi.dispose();

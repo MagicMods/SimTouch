@@ -290,11 +290,11 @@ class MouseForces {
       throw new Error("Main reference is required for isInNoiseMode");
     }
 
-    if (!this.main.gridRenderer) {
-      throw new Error("GridRenderer is required in main for isInNoiseMode");
+    if (!this.main.gridGenRenderer) {
+      throw new Error("GridGenRenderer is required in main for isInNoiseMode");
     }
 
-    const currentMode = this.main.gridRenderer.renderModes.currentMode;
+    const currentMode = this.main.gridRenderModes.currentMode;
     return currentMode === "--- NOISE ---";
   }
 
