@@ -15,7 +15,7 @@ class ParticleSystem {
     picFlipRatio = 0,
     turbulence = null, // Keep turbulence as optional parameter
     voronoi = null, // Add voronoi as optional parameter
-    physicsBoundary = null, // Added - required physics boundary instance
+    boundaryManager = null, // Added
   } = {}) {
     // Particle properties
     this.numParticles = particleCount;
@@ -71,31 +71,24 @@ class ParticleSystem {
     // Store reference to collision system in particle system
     this.collisionSystem.particleSystem = this;
 
-    // Remove boundary creation logic - instance is now passed in
-    // const defaultBoundaryParams = {
-    //   mode: boundaryMode,
-    //   ...boundaryParams
-    // };
-
-    // if (boundaryType === "RECTANGULAR") {
-    //   this.boundary = new RectangularBoundary(defaultBoundaryParams);
-    // } else {
-    //   // Default to circular boundary
-    //   this.boundary = new CircularBoundary(defaultBoundaryParams);
-    // }
-
-    // Assign the passed physics boundary instance
-    if (!physicsBoundary) {
-      throw new Error("ParticleSystem requires a physicsBoundary instance.");
+    // Assign the passed boundary manager
+    if (!boundaryManager) {
+      throw new Error("ParticleSystem requires a boundaryManager instance.");
     }
-    this.boundary = physicsBoundary;
+    this.boundaryManager = boundaryManager;
+
+    // Get initial boundary for FluidFLIP instantiation
+    const initialBoundary = this.boundaryManager.getPhysicsBoundary();
+    if (!initialBoundary) {
+      throw new Error("ParticleSystem could not get initial boundary from manager.");
+    }
 
     // Then create FLIP system with boundary reference
     this.fluid = new FluidFLIP({
       gridSize: 32,
       picFlipRatio: this.picFlipRatio,
       dt: timeStep,
-      boundary: this.boundary,
+      boundary: initialBoundary, // Use initial boundary here
       restDensity: this.restDensity,
       gasConstant: this.gasConstant,
       particleSystem: this
@@ -120,7 +113,11 @@ class ParticleSystem {
 
   initializeParticles() {
     // Get boundary details to determine distribution
-    const boundary = this.boundary;
+    const boundary = this.boundaryManager.getPhysicsBoundary(); // Get from manager
+    if (!boundary) { // Add null check
+      console.error("ParticleSystem.initializeParticles: Could not get boundary from manager!");
+      return;
+    }
     const boundaryType = boundary.getBoundaryType();
 
     // Calculate center point
@@ -384,8 +381,15 @@ class ParticleSystem {
       const velocity = [this.velocitiesX[i], this.velocitiesY[i]];
       const radius = this.particleRadii[i];
 
+      // Get current boundary from manager inside the loop
+      const currentBoundary = this.boundaryManager.getPhysicsBoundary();
+      if (!currentBoundary) {
+        console.error(`ParticleSystem.updateParticles: Could not get boundary from manager for particle ${i}! Skipping collision.`);
+        continue; // Skip collision for this particle if boundary is missing
+      }
+
       // Pass boundary damping to the boundary collision resolver
-      this.boundary.resolveCollision(
+      currentBoundary.resolveCollision( // Use currentBoundary
         position,
         velocity,
         radius,
@@ -482,82 +486,39 @@ class ParticleSystem {
 
   // Add handler for simParams updates
   handleParamsUpdate({ simParams }) {
-    if (!simParams) return; // Guard against missing data
+    if (!simParams) return;
 
-    let boundaryShapeChanged = false;
-    // Update boundary mode and shape if present
-    if (simParams.boundary) {
-      const previousShape = this.boundary?.getBoundaryType(); // Get current type before update
-      const newShape = simParams.boundary.shape ?? previousShape;
-
-      // Update mode (use the value from simParams, fallback to current boundary mode)
-      const newMode = simParams.boundary.mode ?? this.boundary?.mode;
-
-      // Recreate boundary object ONLY if shape changes
-      if (newShape && newShape !== previousShape) { // Ensure newShape is valid before comparing
-        console.log(`ParticleSystem: Boundary shape changed from ${previousShape} to ${newShape}. Recreating boundary.`);
-        const boundaryParams = { mode: newMode }; // Pass the potentially updated mode
-
-        // Preserve existing callbacks if possible (simple example)
-        const existingCallbacks = this.boundary?.updateCallbacks || [];
-
-        if (newShape === "RECTANGULAR") {
-          this.boundary = new RectangularBoundary(boundaryParams);
-        } else { // Default to CIRCULAR
-          this.boundary = new CircularBoundary(boundaryParams);
-        }
-
-        // Restore callbacks
-        existingCallbacks.forEach(cb => this.boundary.addUpdateCallback(cb));
-
-        // Link new boundary to dependent components if necessary
-        if (this.fluid) this.fluid.boundary = this.boundary;
-        // if (this.collisionSystem) this.collisionSystem.boundary = this.boundary; // Collision doesn't seem to need boundary ref
-
-        boundaryShapeChanged = true;
-      }
-      // If shape didn't change, just update the mode on the existing boundary
-      else if (this.boundary && typeof this.boundary.setMode === 'function' && newMode && newMode !== this.boundary.mode) {
-        console.log(`ParticleSystem: Boundary mode changed to ${newMode}.`);
-        this.boundary.setMode(newMode);
-      }
-    }
-
-    // Update simulation parameters if they exist in the event payload
+    // Update simulation parameters
     if (simParams.simulation) {
-      const previousParticleCount = this.numParticles; // Store count before update
-      const previousParticleRadius = this.particleRadius; // Store radius before update
-
       this.timeStep = simParams.simulation.timeStep ?? this.timeStep;
       this.timeScale = simParams.simulation.timeScale ?? this.timeScale;
       this.velocityDamping = simParams.simulation.velocityDamping ?? this.velocityDamping;
       this.maxVelocity = simParams.simulation.maxVelocity ?? this.maxVelocity;
       this.picFlipRatio = simParams.simulation.picFlipRatio ?? this.picFlipRatio;
-      this.numParticles = simParams.simulation.particleCount ?? this.numParticles;
+      // Particle count requires reinitialization, handled separately if needed
       this.particleRadius = simParams.simulation.particleRadius ?? this.particleRadius;
+      this.restDensity = simParams.simulation.restDensity ?? this.restDensity;
 
-      // Reinitialize if particle count changed OR if boundary shape changed
-      if ((this.numParticles !== previousParticleCount || boundaryShapeChanged) && typeof this.reinitializeParticles === 'function') {
-        console.log(`ParticleSystem: Reinitializing due to count change (${previousParticleCount} -> ${this.numParticles}) or shape change (${boundaryShapeChanged}).`);
-        this.reinitializeParticles(this.numParticles);
-      }
-      // Update radii array if radius changed AND count/shape did NOT change
-      else if (this.particleRadius !== previousParticleRadius) {
-        // Check if particleRadii exists before filling
-        if (this.particleRadii) {
-          this.particleRadii.fill(this.particleRadius);
-          console.log(`ParticleSystem: Radius changed to ${this.particleRadius}. Updating radii array.`);
-        } else {
-          console.warn("ParticleSystem: particleRadii array not found when trying to update radius.");
-        }
+      // Update FluidFLIP if restDensity changed
+      if (this.fluid && simParams.simulation.restDensity !== undefined) {
+        this.fluid.setParameters(this.restDensity);
       }
     }
 
-    // Boundary mode update was handled above, removed duplicate logic here
-    // if (simParams.boundary && this.boundary && typeof this.boundary.setMode === 'function') {
-    //      this.boundary.setMode(simParams.boundary.mode);
-    // }
-    // console.log("ParticleSystem updated params via event:", this.timeStep, this.timeScale, /*...*/ this.boundary?.mode);
+    // Update gravity parameters
+    if (simParams.gravity && this.gravity) {
+      this.gravity.setDirection(
+        simParams.gravity.directionX ?? this.gravity.directionX,
+        simParams.gravity.directionY ?? this.gravity.directionY
+      );
+    }
+
+    // Note: Boundary parameters (mode, damping, restitution, repulsion) are now handled
+    // by BoundaryManager and accessed via this.boundaryManager.getPhysicsBoundary().
+    // No need to update a local boundary instance here.
+
+    // Optional: Log for verification
+    // console.log(`ParticleSystem updated params via event: timeStep=${this.timeStep}, damping=${this.velocityDamping}, ...`);
   }
 }
 

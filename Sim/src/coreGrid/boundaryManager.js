@@ -56,6 +56,8 @@ export class BoundaryManager {
 
   _createBoundaries(params, dimensions) {
     const shape = params?.screen?.shape;
+    // ---> ADDED LOGGING HERE <---
+    console.log('[DEBUG] BoundaryManager._createBoundaries received shape:', shape);
     if (!shape) {
       console.error(
         "BoundaryManager: Cannot create boundaries, params.screen.shape is missing."
@@ -97,10 +99,14 @@ export class BoundaryManager {
     }
 
     if (this.shapeBoundary && this.physicsBoundary) {
+      // ---> ADDED LOGGING HERE <---
+      console.log('[DEBUG] BoundaryManager._createBoundaries created boundary of type:', this.physicsBoundary?.constructor?.name);
       console.info(
         `BoundaryManager: Successfully created ${shape} Shape and Physics boundaries.`
       );
       this._updateBoundaries(dimensions); // Perform initial update
+      // ---> ADDED EVENT EMISSION HERE <---
+      eventBus.emit('physicsBoundaryRecreated', { physicsBoundary: this.physicsBoundary });
     } else {
       console.error(
         `BoundaryManager: Failed to create one or both boundaries for shape ${shape}.`
@@ -114,6 +120,8 @@ export class BoundaryManager {
 
     // --- BEGIN STEP 2: Add Detailed Logging ---
     console.log(`BoundaryManager.update: Comparing shapes - Old: '${oldShape}', New: '${newShape}'`);
+    // ---> ADDED LOGGING HERE <---
+    console.log('[DEBUG] BoundaryManager.update received newShape:', newShape);
     // --- END STEP 2 ---
 
     if (!newShape) {
@@ -129,6 +137,8 @@ export class BoundaryManager {
       console.info(
         `BoundaryManager: Shape changed from ${oldShape} to ${newShape}. Recreating boundaries.`
       );
+      // ---> ADDED LOGGING HERE <---
+      console.log('[DEBUG] BoundaryManager.update entering _createBoundaries due to shape change.');
       this._createBoundaries(params, dimensions);
     } else {
       console.debug(
@@ -190,7 +200,22 @@ export class BoundaryManager {
     if (this.physicsBoundary instanceof CircularBoundary) {
       this.physicsBoundary.radius = 0.5 * physicsBoundaryScale; // Base radius 0.5 scaled - Direct property access
     } else if (this.physicsBoundary instanceof RectangularBoundary) {
-      // Determine aspect ratio to find the longer side before scaling
+      // Corrected logic: Scale normalized dimensions based on aspect ratio
+      // const physW = dimensions.physicalWidth;
+      // const physH = dimensions.physicalHeight;
+      // const maxDim = Math.max(physW, physH);
+      // if (maxDim === 0) { // Avoid division by zero
+      //   console.error("BoundaryManager: Physical dimensions are zero!");
+      //   return; // Or handle appropriately
+      // }
+      // const normW = physW / maxDim;
+      // const normH = physH / maxDim;
+      // const scaledWidth = normW * physicsBoundaryScale;
+      // const scaledHeight = normH * physicsBoundaryScale;
+
+      // this.physicsBoundary.width = scaledWidth;
+      // this.physicsBoundary.height = scaledHeight;
+
       const aspectRatio = dimensions.physicalWidth / dimensions.physicalHeight;
 
       // Calculate initial scaled dimensions (base size * scale)
@@ -201,12 +226,8 @@ export class BoundaryManager {
       const targetMultiplier = 0.88; // Target squish factor for the longer side
       const maxScaleDeviation = 0.4; // Deviation from 1.0 where targetMultiplier is fully applied (e.g., at 1.4 or 0.6)
       const currentDeviation = Math.abs(physicsBoundaryScale - 1.0);
-      const interpolationFactor = Math.min(
-        currentDeviation / maxScaleDeviation,
-        1.0
-      );
-      const dynamicMultiplier =
-        1.0 + interpolationFactor * (targetMultiplier - 1.0);
+      const interpolationFactor = Math.min(currentDeviation / maxScaleDeviation, 1.0);
+      const dynamicMultiplier = 1.0 + interpolationFactor * (targetMultiplier - 1.0);
 
       let finalWidth = baseWidth;
       let finalHeight = baseHeight;
@@ -223,6 +244,16 @@ export class BoundaryManager {
 
       this.physicsBoundary.width = finalWidth;
       this.physicsBoundary.height = finalHeight;
+
+      // Update dependent properties in the boundary instance
+      this.physicsBoundary.halfWidth = finalWidth / 2;
+      this.physicsBoundary.halfHeight = finalWidth / 2;
+      this.physicsBoundary.minX = this.physicsBoundary.centerX - this.physicsBoundary.halfWidth;
+      this.physicsBoundary.maxX = this.physicsBoundary.centerX + this.physicsBoundary.halfWidth;
+      this.physicsBoundary.minY = this.physicsBoundary.centerY - this.physicsBoundary.halfHeight;
+      this.physicsBoundary.maxY = this.physicsBoundary.centerY + this.physicsBoundary.halfHeight;
+      // ---> ADDED LOGGING HERE <---
+      console.log(`[DEBUG] BoundaryManager - Rect Set: w=${this.physicsBoundary.width.toFixed(3)}, h=${this.physicsBoundary.height.toFixed(3)}, minX=${this.physicsBoundary.minX.toFixed(3)}, maxX=${this.physicsBoundary.maxX.toFixed(3)}, minY=${this.physicsBoundary.minY.toFixed(3)}, maxY=${this.physicsBoundary.maxY.toFixed(3)}`);
     }
 
     // For now, just ensure its parameters reflect the intended normalized shape

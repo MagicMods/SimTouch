@@ -227,11 +227,11 @@ class Main {
     this.turbulenceField = new TurbulenceField({ boundary: physicsBoundary });
     this.voronoiField = new VoronoiField({ boundary: physicsBoundary });
 
-    // Instantiate ParticleSystem, passing the boundary instance
+    // Instantiate ParticleSystem, passing the boundary manager
     this.particleSystem = new ParticleSystem({
       turbulence: this.turbulenceField,
       voronoi: this.voronoiField,
-      physicsBoundary: physicsBoundary // Pass the instance here
+      boundaryManager: this.boundaryManager
       // Use defaults for particleCount, timeStep etc. from simParams or ParticleSystem constructor
     });
 
