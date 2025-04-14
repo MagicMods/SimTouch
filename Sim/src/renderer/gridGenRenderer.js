@@ -4,7 +4,7 @@ import { GridGeometry } from "../coreGrid/gridGeometry.js";
 import { OverlayManager } from "./overlayRenderer.js";
 import { eventBus } from '../util/eventManager.js';
 import { Gradients } from "../shaders/gradients.js";
-import { GridRenderModes } from "./gridRenderModes.js";
+import { GridRenderModes, GridField } from "./gridRenderModes.js";
 
 export class GridGenRenderer extends BaseRenderer {
   constructor(gl, shaderManager, gridConfig, dimensionManager, boundaryManager, particleSystem) {
@@ -12,7 +12,7 @@ export class GridGenRenderer extends BaseRenderer {
 
     this.gl = gl;
     this.shaderManager = shaderManager;
-    this.gradient = new Gradients();
+    this.gradient = new Gradients("c0"); // Initialize gradient in constructor
     this.dimensionManager = dimensionManager;
     this.boundaryManager = boundaryManager;
     this.particleSystem = particleSystem;
@@ -49,7 +49,7 @@ export class GridGenRenderer extends BaseRenderer {
       canvas: this.gl.canvas,
       coordTransforms: {}, // Pass empty object for now, implement if needed later
       // Function providing maxDensity - uses optional chaining and nullish coalescing
-      maxDensityRef: () => this.grid?.rendering?.maxDensity ?? 4.0
+      maxDensityRef: () => this.maxDensity
     });
 
     this.initBuffers();
@@ -62,6 +62,7 @@ export class GridGenRenderer extends BaseRenderer {
     this.prepareInstanceData = this.prepareInstanceData.bind(this);
     this.setupInstancedDrawing = this.setupInstancedDrawing.bind(this);
     this.renderCellsInstanced = this.renderCellsInstanced.bind(this);
+    this.handleParamsUpdate = this.handleParamsUpdate.bind(this);
 
     console.debug("GridGenRenderer constructor completed.");
 
@@ -96,6 +97,9 @@ export class GridGenRenderer extends BaseRenderer {
       // Call setGrid, passing dimensions from the event payload
       this.setGrid(gridParams, shapeBoundary, physicsBoundary, dimensions);
     });
+
+    // Subscribe to simulation parameter updates (for maxDensity, gridMode)
+    eventBus.on('simParamsUpdated', this.handleParamsUpdate);
   }
 
   initBuffers() {
@@ -162,11 +166,7 @@ export class GridGenRenderer extends BaseRenderer {
     this.currentDimensions = dimensions;
 
     // Initialize or update gradient based on grid config
-    if (!this.gradient) {
-      console.warn("GridGenRenderer.setGrid: Gradient not initialized, creating default.");
-      this.gradient = new Gradients(); // Initialize if it doesn't exist
-    }
-
+    // Ensure gradient is created using the non-legacy Gradients class
     const colorsConfig = this.grid?.colors;
     const newPresetName = colorsConfig?.gradientPreset;
     const newColorStops = colorsConfig?.colorStops;
@@ -182,9 +182,6 @@ export class GridGenRenderer extends BaseRenderer {
     } else if (newPresetName === 'custom') {
       // If preset is 'custom', try applying colorStops
       if (Array.isArray(newColorStops) && newColorStops.length >= 2) {
-        // Optional: Add a check here to see if newColorStops are actually different
-        // from the current points if performance becomes an issue.
-        // For simplicity, we apply them if the preset is 'custom'.
         console.debug("GridGenRenderer: Applying custom color stops.");
         const success = this.gradient.setColorStops(newColorStops);
         if (!success) {
@@ -197,8 +194,8 @@ export class GridGenRenderer extends BaseRenderer {
         this.gradient.applyPreset('c0'); // Fallback if custom stops are bad
         themeUpdated = true;
       }
-    } else if (!newPresetName && !currentPreset) {
-      // Initial setup or if preset becomes undefined, ensure a default is set
+    } else if (!newPresetName && currentPreset === null) {
+      // Catch case where gradient exists but preset wasn't set initially
       console.warn("GridGenRenderer: No gradient preset defined, applying default 'c0'.");
       this.gradient.applyPreset('c0');
       themeUpdated = true;
@@ -261,8 +258,23 @@ export class GridGenRenderer extends BaseRenderer {
 
     // Update gridMap and notify GridRenderModes
     this.gridMap = this.createGridMap(generatedRectangles);
-    if (this.renderModes) { // Check if renderModes exists
-      this.renderModes.updateGrid({ gridParams: this.grid, gridGeometry: this.gridGeometry, gridMap: this.gridMap });
+    if (!this.renderModes) {
+      this.renderModes = new GridRenderModes({
+        gridParams: this.grid,        // Use updated internal grid
+        gridGeometry: this.gridGeometry, // Use updated internal geometry
+        gridMap: this.gridMap,          // Use newly created gridMap
+        canvas: this.gl.canvas,         // Pass canvas
+        coordTransforms: {},            // Empty for now
+        maxDensityRef: () => this.maxDensity // CORRECTED: Pass internal maxDensity getter
+      });
+      console.debug("GridGenRenderer: Initialized GridRenderModes.");
+    } else {
+      this.renderModes.updateGrid({
+        gridParams: this.grid,
+        gridGeometry: this.gridGeometry,
+        gridMap: this.gridMap
+      });
+      // console.debug("GridGenRenderer: Updated GridRenderModes.");
     }
   }
 
@@ -388,7 +400,12 @@ export class GridGenRenderer extends BaseRenderer {
     }
 
     // Get data values first
-    const dataValues = this.renderModes.getValues(this.particleSystem);
+    // Ensure renderModes is available before getting values
+    const dataValues = this.renderModes ? this.renderModes.getValues(this.particleSystem) : null;
+    if (!dataValues) {
+      console.warn("prepareInstanceData: dataValues not available from renderModes.");
+      // Optionally handle this case, e.g., by filling with default color
+    }
 
     const numInstances = visibleRects.length;
     this.instanceData.count = numInstances;
@@ -435,6 +452,9 @@ export class GridGenRenderer extends BaseRenderer {
       // return; // Or decide how to handle this error
     }
     const gradientValues = this.gradient?.getValues(); // Use optional chaining
+    if (!gradientValues) {
+      console.warn("prepareInstanceData: gradientValues not available from gradient.");
+    }
 
     for (let i = 0; i < numInstances; i++) {
       const rect = visibleRects[i];
@@ -460,17 +480,30 @@ export class GridGenRenderer extends BaseRenderer {
       // Copy matrix data into the flat array using set
       this.instanceData.matrices.set(matrix, matrixOffset);
 
-      // 2. Determine Color - Index-based gradient
-      if (gradientValues) { // Check if gradientValues were obtained
+      // 2. Determine Color - Data-driven
+      let finalColor = [0.1, 0.1, 0.1, 1.0]; // Default fallback color (dark gray)
+
+      if (dataValues && gradientValues && rect.index !== undefined && rect.index < dataValues.length) {
+        const cellValue = dataValues[rect.index];
+        // Normalize using internal maxDensity, ensure maxDensity is not zero
+        const normalizationFactor = this.maxDensity || 1.0; // Fallback to 1.0 if maxDensity is 0 or undefined
+        const normalizedValue = Math.max(0, Math.min(1, cellValue / normalizationFactor));
+        const gradientIdx = Math.min(255, Math.floor(normalizedValue * 256));
+        const color = gradientValues[gradientIdx];
+        if (color) {
+          finalColor = [color.r, color.g, color.b, 1.0]; // Use 1.0 for alpha, final opacity handled in shader if needed
+        }
+      } else if (gradientValues) { // Fallback: index-based color if data is missing but gradient exists
         const normalizedValue = numInstances > 1 ? i / (numInstances - 1) : 0;
         const gradientIdx = Math.min(255, Math.floor(normalizedValue * 256));
         const color = gradientValues[gradientIdx];
-        const finalColor = color ? [color.r, color.g, color.b, 1.0] : [0, 0, 0, 1.0]; // Default black
-        this.instanceData.colors.set(finalColor, colorOffset);
-      } else {
-        // Fallback color if gradient failed
-        this.instanceData.colors.set([0.1, 0.1, 0.1, 1.0], colorOffset); // Dark gray fallback
-      }
+        if (color) {
+          finalColor = [color.r, color.g, color.b, 1.0];
+        }
+      } // Otherwise, the default dark gray is used
+
+      // Apply the final color to the instance buffer
+      this.instanceData.colors.set(finalColor, colorOffset);
 
       // 3. Set Shadow Parameters
       this.instanceData.shadowParams[shadowOffset] = shadowIntensity;
@@ -622,4 +655,29 @@ export class GridGenRenderer extends BaseRenderer {
     this.renderCellsInstanced();
   }
   // --- End draw method ---
+
+  // Add handler for simParams updates
+  handleParamsUpdate({ simParams }) {
+    if (!simParams) return; // Guard clause
+
+    if (simParams.rendering) {
+      this.maxDensity = simParams.rendering.maxDensity ?? this.maxDensity;
+      // Update render mode if needed
+      if (this.renderModes && simParams.rendering.gridMode) {
+        // Ensure the mode exists before assigning
+        const isValidMode = Object.values(this.renderModes.modes).includes(simParams.rendering.gridMode);
+        if (isValidMode) {
+          this.renderModes.currentMode = simParams.rendering.gridMode;
+          console.debug(`GridGenRenderer: Set render mode to ${this.renderModes.currentMode}`);
+        } else {
+          console.warn(`GridGenRenderer: Invalid gridMode received: ${simParams.rendering.gridMode}`);
+        }
+      }
+    }
+    // Also update smoothing if renderModes exists
+    if (simParams?.smoothing && this.renderModes?.smoothing) {
+      this.renderModes.smoothing.rateIn = simParams.smoothing.rateIn ?? this.renderModes.smoothing.rateIn;
+      this.renderModes.smoothing.rateOut = simParams.smoothing.rateOut ?? this.renderModes.smoothing.rateOut;
+    }
+  }
 }

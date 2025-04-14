@@ -198,7 +198,8 @@
 **5. Styling & DOM:**
 
 - `Sim`: Primarily uses inline styles.
-- `Grid`: Uses some CSS classes (e.g., `.overlay-container`, `.canvas-relative-container`, `.cell-index-text`) and fewer inline styles, suggesting a move towards CSS-based styling.
+- `Grid`: Uses CSS classes + fewer inline styles.
+- **Alignment:** Refactor `Sim` to use CSS classes defined in `Grid's CSS files (`canvas-overlays.css`) for base styling, reducing reliance on inline styles.
 
 **Conclusion:** `Grid`'s version is less coupled, removing the direct dependency on `DimensionManager` in the constructor. It uses more robust positioning (`getBoundingClientRect`) and separates concerns better by requiring necessary data (`dimensions`) to be passed into methods. It also leans more towards CSS classes for styling. `Sim`'s version is tightly coupled to `DimensionManager` and uses less accurate positioning logic.
 
@@ -960,5 +961,20 @@ The `Sim` renderers vary significantly. `baseRenderer` and `particleRenderer` al
     - If `setColorStops` fails (returns `false`), or if the `colorStops` were initially invalid/missing, it logs a warning and calls `this.gradient.applyPreset('c0')` as a fallback to ensure a valid gradient state.
 
 **Outcome:** `GridGenRenderer` can now correctly process `colorStops` defined in its configuration (`gridParams`) to generate custom color gradients. If custom stops are invalid or missing, it falls back to the default "c0" preset. Hardware synchronization for custom gradients is currently disabled.
+
+---
+
+## Fix UI Initialization Error (TypeError: Cannot read properties of null) (YYYY-MM-DD)
+
+**Issue:** Log showed `TypeError: Cannot read properties of null (reading 'getPresetNames')` during `NewGridUi.initGridControls`.
+
+**Analysis:** The error occurred because `NewGridUi` initialization attempted to access `gridGenRenderer.gradient.getPresetNames()` before the `Gradients` instance was created within `GridGenRenderer`. The `Gradients` instance was previously initialized later, inside the `setGrid` method, which ran after UI initialization.
+
+**Fix:**
+
+1.  Moved gradient instantiation (`this.gradient = new Gradients("c0");`) from `GridGenRenderer.setGrid` to the `GridGenRenderer` constructor.
+2.  Removed the now-redundant initialization block (`if (!this.gradient) { ... }`) from `GridGenRenderer.setGrid`.
+
+**Outcome:** `GridGenRenderer.gradient` is now guaranteed to be initialized when `NewGridUi` runs, resolving the `TypeError`. The UI should now correctly populate the gradient theme dropdown.
 
 ---
