@@ -57,7 +57,8 @@
 
 1.  - [x] Modify `Sim/src/renderer/gridGenRenderer.js`: Add `import { Gradient } from '../utils/gradient.js';` (adjust path if necessary).
 2.  - [x] Modify `Sim/src/renderer/gridGenRenderer.js`: Change `this.logThrottle` in the constructor to `5`.
-3.  - [x] Modify `Sim/src/renderer/gridGenRenderer.js`: In `setGrid`, add logic to initialize `this.gradient = new Gradient(this.grid.colors.colorStops)` after validating `colorStops`.
+3.  - [x] Modify `Sim/src/renderer/gridGenRenderer.js`: In `setGrid`, add logic to initialize `this.gradient = new Gradient(this.grid.colors.
+colorStops)` after validating `colorStops`.
 4.  - [x] Modify `Sim/src/renderer/gridGenRenderer.js`: In `setGrid`, add fallback to `this.gradient = null;` and log a warning if `colorStops` are invalid.
 5.  - [x] Update `memoryBank/notebook.md` with documentation for initializing the gradient and adjusting log throttle.
 
@@ -157,3 +158,16 @@
 4.  - [x] Modify `Sim/src/coreGrid/boundaryManager.js` (`_updateBoundaries` method): Read physics properties from `this.simParams.boundary`.
 5.  - [x] Document the `BoundaryManager` event handling fix in `memoryBank/notebook.md`.
 6.  - [x] Update this checklist (`memoryBank/plan.md`) upon completion.
+
+### Task: Implement Custom Color Stops in Gradients Class (YYYY-MM-DD)
+
+**Goal:** Enable `GridGenRenderer` to use custom `colorStops` from `gridParams` by modifying the `Gradients` class and updating the renderer's usage.
+
+**IMPLEMENTATION CHECKLIST:**
+
+1.  - [x] Modify `Sim/src/shaders/gradients.js`: Add a new public method `setColorStops(colorStopsArray)` with validation.
+2.  - [x] Modify `Sim/src/shaders/gradients.js`: Update `setColorStops` to deep clone, sort, set `this.currentPreset = "custom"`, and call `this.update()`.
+3.  - [x] Modify `Sim/src/shaders/gradients.js` (`sendGradientsUpdate` method): Add check to skip hardware sync if `this.currentPreset === "custom"`.
+4.  - [x] Modify `Sim/src/shaders/gradients.js` (`getCurrentPreset` method): Ensure it returns the current value (possibly "custom"). (Verified - No change needed).
+5.  - [x] Modify `Sim/src/renderer/gridGenRenderer.js` (`setGrid` method): Add logic to check for gradient existence, validate `colorStops`, call `setColorStops`, and fallback to `applyPreset('c0')`.
+6.  - [ ] Update `memoryBank/notebook.md` with documentation for implementing custom color stops.

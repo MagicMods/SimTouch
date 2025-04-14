@@ -298,6 +298,7 @@ class SocketManager {
 
   // Unified command sending system
   sendCommand(commandType, value) {
+    console.log(`>>> sendCommand ENTERED with type: ${typeof commandType}`, commandType, ` | value: ${typeof value}`, value);
     const command = SocketManager.COMMANDS[commandType];
     if (!command) {
       console.error(`Invalid command type: ${commandType}`);
@@ -345,7 +346,8 @@ class SocketManager {
 
   // Convenience methods for specific commands
   sendColor(value) {
-    return this.sendCommand(SocketManager.COMMANDS.COLOR, value);
+    console.log(`>>> sendColor called with value: ${typeof value}`, value);
+    return this.sendCommand("COLOR", value);
   }
 
   sendBrightness(value) {

@@ -938,3 +938,27 @@ The `Sim` renderers vary significantly. `baseRenderer` and `particleRenderer` al
 - Modified `_updateBoundaries` to read physics properties (`restitution`, `damping`, `repulsion`, `mode`) from `this.simParams.boundary`.
 
 **Status:** `BoundaryManager` now listens to the correct event (`gridParamsUpdated`) to handle shape changes via its `update` method. It separately listens to `simParamsUpdated` to handle physics property changes via `updateSimParams`. `_updateBoundaries` uses the correct source (`this.simParams`) for physics properties. Screen switching should now function correctly.
+
+## Implement Custom Color Stops in Gradients Class (YYYY-MM-DD)
+
+**Objective:** Enable `GridGenRenderer` to use custom `colorStops` arrays defined in `gridParams` instead of being limited to predefined presets.
+
+**Rationale:** The `Gradients` class constructor only accepted preset names (e.g., "c0"). `GridGenRenderer` needed to supply arbitrary `colorStops` (e.g., `[{pos: 0, color: {r:255,g:0,b:0}}, {pos: 100, color: {r:0,g:0,b:255}}]`) from the configuration.
+
+**Implementation:**
+
+1.  **Added `setColorStops(colorStopsArray)` to `Gradients.js`:**
+    - Added validation for the input array structure.
+    - If valid, deep clones the input, sorts it by `pos`, stores it in `this.points`, sets `this.currentPreset = "custom"`, and calls `this.update()` to regenerate the 256-value lookup table.
+    - Returns `true` on success, `false` on validation failure.
+2.  **Modified `sendGradientsUpdate` in `Gradients.js`:**
+    - Added a check: if `this.currentPreset === "custom"`, it logs a debug message and returns `false`, effectively skipping the hardware sync via WebSocket for custom gradients. This assumes the primary need is visual simulation color, not hardware synchronization for these custom definitions.
+3.  **Modified `setGrid` in `GridGenRenderer.js`:**
+    - Added logic to check if `this.gradient` exists (creates a default if not, though it should be created in constructor/init).
+    - Retrieves `this.grid.colors.colorStops`.
+    - If the `colorStops` array is valid (array, >= 2 elements), it calls `this.gradient.setColorStops()`.
+    - If `setColorStops` fails (returns `false`), or if the `colorStops` were initially invalid/missing, it logs a warning and calls `this.gradient.applyPreset('c0')` as a fallback to ensure a valid gradient state.
+
+**Outcome:** `GridGenRenderer` can now correctly process `colorStops` defined in its configuration (`gridParams`) to generate custom color gradients. If custom stops are invalid or missing, it falls back to the default "c0" preset. Hardware synchronization for custom gradients is currently disabled.
+
+---

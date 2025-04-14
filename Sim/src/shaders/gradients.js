@@ -36,6 +36,7 @@ export class Gradients {
   }
 
   applyPreset(presetName) {
+    console.log(`>>> applyPreset called with presetName: ${typeof presetName}`, presetName);
     if (!Gradients.PRESETS[presetName]) {
       console.warn(`Preset "${presetName}" not found, using default`);
       presetName = "c0";
@@ -50,16 +51,65 @@ export class Gradients {
 
     // If preset actually changed, send notification over socket
     if (oldPreset !== presetName) {
-      this.sendGradientsUpdate(presetName);
+      console.log(`>>> applyPreset calling sendGradientsUpdate`);
+      // this.sendGradientsUpdate(presetName);
     }
 
     return this.points;
   }
 
+  /**
+   * Sets the gradient points from a custom array of color stops.
+   * @param {Array<{pos: number, color: {r: number, g: number, b: number}}>} colorStopsArray - Array of color stops.
+   * @returns {boolean} True if successful, false otherwise.
+   */
+  setColorStops(colorStopsArray) {
+    // Validation
+    if (!Array.isArray(colorStopsArray) || colorStopsArray.length < 2) {
+      console.warn("setColorStops: Input must be an array with at least two color stops.");
+      return false;
+    }
+    const isValid = colorStopsArray.every(stop =>
+      typeof stop.pos === 'number' &&
+      typeof stop.color === 'object' &&
+      stop.color !== null &&
+      typeof stop.color.r === 'number' &&
+      typeof stop.color.g === 'number' &&
+      typeof stop.color.b === 'number'
+    );
+    if (!isValid) {
+      console.warn("setColorStops: Each color stop must have { pos: number, color: { r: number, g: number, b: number } }.");
+      return false;
+    }
+
+    // Deep clone and sort
+    this.points = JSON.parse(JSON.stringify(colorStopsArray));
+    this.points.sort((a, b) => a.pos - b.pos);
+
+    // Set state and update lookup table
+    this.currentPreset = "custom"; // Use "custom" to indicate non-preset state
+    this.update();
+
+    console.debug("setColorStops: Successfully applied custom color stops.");
+    return true;
+  }
+
   // Send Gradients update to hardware over WebSocket
   sendGradientsUpdate(presetName) {
+    // Skip sending if using custom stops
+    if (this.currentPreset === "custom") {
+      console.debug("sendGradientsUpdate: Skipping hardware sync for custom gradient.");
+      return false;
+    }
     const presetIndex = this.getPresetIndex(presetName);
-    return this.socket.sendColor(presetIndex);
+    console.log(`>>> sendGradientsUpdate: presetName="${presetName}", calculated index: ${presetIndex}`);
+    // Check if presetIndex is valid before sending
+    if (presetIndex === -1) {
+      console.warn(`sendGradientsUpdate: Preset name "${presetName}" not found, cannot send update.`);
+      return false;
+    }
+    // return this.socket.sendColor(presetIndex);
+    return true;
   }
 
   // Get the numeric index of a preset (c0=0, c1=1, etc.)

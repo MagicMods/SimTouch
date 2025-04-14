@@ -161,6 +161,28 @@ export class GridGenRenderer extends BaseRenderer {
     this.physicsBoundary = physicsBoundary;
     this.currentDimensions = dimensions;
 
+    // Initialize or update gradient based on colorStops
+    if (!this.gradient) {
+      console.warn("GridGenRenderer.setGrid: Gradient not initialized, creating default.");
+      this.gradient = new Gradients(); // Initialize if it doesn't exist
+    }
+
+    const colorStops = this.grid?.colors?.colorStops;
+    if (Array.isArray(colorStops) && colorStops.length >= 2) {
+      const success = this.gradient.setColorStops(colorStops);
+      if (!success) {
+        console.warn("GridGenRenderer.setGrid: Setting custom color stops failed, falling back to default preset 'c0'.");
+        this.gradient.applyPreset('c0');
+      }
+    } else {
+      console.warn("GridGenRenderer.setGrid: Invalid or missing colorStops in grid config, falling back to default preset 'c0'.");
+      // Apply default preset if colorStops are invalid or not provided
+      // This assumes the gradient instance already exists
+      if (this.gradient.getCurrentPreset() !== 'c0') {
+        this.gradient.applyPreset('c0');
+      }
+    }
+
     // Validate incoming gridConfig.screen (essential check)
     if (!this.grid || !this.grid.screen || typeof this.grid.screen.width !== 'number' || typeof this.grid.screen.height !== 'number' || !this.grid.screen.shape) {
       console.error("GridGenRenderer.setGrid: Invalid internal gridConfig.screen after update. Aborting.", this.grid?.screen);
