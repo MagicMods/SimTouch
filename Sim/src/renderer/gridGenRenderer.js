@@ -293,7 +293,7 @@ export class GridGenRenderer extends BaseRenderer {
     const gl = this.gl;
     const instanceCount = this.instanceData.count;
 
-    console.log(`GridGenRenderer.renderCellsInstanced() called. Count: ${instanceCount}, showGridCells: ${this.grid?.flags?.showGridCells}`); // Add log
+    // console.log(`GridGenRenderer.renderCellsInstanced() called. Count: ${instanceCount}, showGridCells: ${this.grid?.flags?.showGridCells}`); // Add log
 
     if (instanceCount === 0) return; // Nothing to draw
     if (!this.grid.flags.showGridCells) return; // Updated path: Skip drawing if grid is hidden
@@ -307,7 +307,7 @@ export class GridGenRenderer extends BaseRenderer {
     // --- Simplified Path (Removed diagnostic depth disable/enable) ---
     this.setupInstancedDrawing();
 
-    console.log(`GridGenRenderer.renderCellsInstanced(): About to call drawArraysInstanced. Count: ${instanceCount}`); // Add log
+    // console.log(`GridGenRenderer.renderCellsInstanced(): About to call drawArraysInstanced. Count: ${instanceCount}`); // Add log
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instanceCount);
 
     // --- Cleanup GL State --- 
@@ -565,14 +565,14 @@ export class GridGenRenderer extends BaseRenderer {
 
   // --- Add draw method for per-frame updates ---
   draw() {
-    console.log(`GridGenRenderer.draw() called. showGridCells: ${this.grid?.flags?.showGridCells}`); // Keep log
+    // console.log(`GridGenRenderer.draw() called. showGridCells: ${this.grid?.flags?.showGridCells}`); // Keep log
     if (!this.grid?.flags?.showGridCells) return; // Skip if grid hidden (check flags exist)
 
     // Ensure instance data is ready (check count)
     const numInstances = this.instanceData.count;
     if (numInstances === 0) return; // Nothing to draw
 
-    console.log(`GridGenRenderer.draw(): Calling renderCellsInstanced. Count: ${numInstances}`); // Keep log
+    // console.log(`GridGenRenderer.draw(): Calling renderCellsInstanced. Count: ${numInstances}`); // Keep log
 
     // Draw the instanced cells using pre-prepared data (including colors from prepareInstanceData)
     this.renderCellsInstanced();

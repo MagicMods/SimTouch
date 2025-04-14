@@ -141,3 +141,19 @@
 2.  - [x] Document the removal of `initBuffers()` call in `memoryBank/notebook.md`.
 3.  - [x] Update the checklist item for "Task: Fix TypeError in GridGenRenderer.init" step 4 in `memoryBank/plan.md` to also mention this fix.
 4.  - [ ] Update this checklist (`memoryBank/plan.md`) upon completion.
+
+### Task: Fix BoundaryManager Shape Change Handling (YYYY-MM-DD)
+
+**Goal:** Ensure BoundaryManager correctly reacts to screen shape changes and updates boundaries accordingly.
+
+**IMPLEMENTATION CHECKLIST:**
+
+1.  - [x] Modify `Sim/src/coreGrid/boundaryManager.js` (Constructor): Add subscription to `'gridParamsUpdated'`.
+2.  - [x] Modify `Sim/src/coreGrid/boundaryManager.js`: Implement the handler for `'gridParamsUpdated'` to call `this.update(gridParams, dimensions)`.
+3.  - [x] Modify `Sim/src/coreGrid/boundaryManager.js` (`updateSimParams` method):
+    * Update `this.simParams`.
+    * Update `this.physicsBoundary` properties if changed.
+    * Call `_updateBoundaries` only if `scale` changed.
+4.  - [x] Modify `Sim/src/coreGrid/boundaryManager.js` (`_updateBoundaries` method): Read physics properties from `this.simParams.boundary`.
+5.  - [x] Document the `BoundaryManager` event handling fix in `memoryBank/notebook.md`.
+6.  - [ ] Update this checklist (`memoryBank/plan.md`) upon completion.

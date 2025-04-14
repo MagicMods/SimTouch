@@ -918,3 +918,23 @@ The `Sim` renderers vary significantly. `baseRenderer` and `particleRenderer` al
 - The previous `TypeError`s related to `super.init()` and `initBuffers()` should be resolved by the reset.
 
 **Next Step:** Re-evaluate the approach to handling gradient initialization, likely by correcting the `setGrid` method to use preset names without modifying `init()`.
+
+## Fix BoundaryManager Shape Change Handling (YYYY-MM-DD)
+
+**Issue:** Changing the screen shape via the UI did not update the boundary used for grid generation, causing incorrect layouts.
+
+**Analysis:**
+
+- `BoundaryManager` was incorrectly subscribed to `simParamsUpdated` instead of `gridParamsUpdated`.
+- The existing `update` method, which correctly handled shape changes by comparing `oldShape` vs `newShape` and calling `_createBoundaries`, was never being called.
+- The `updateSimParams` method handled physics parameter updates (scale, damping, etc.) but didn't check for shape changes.
+- The `_updateBoundaries` method read physics properties (damping, mode, etc.) from the wrong source (`this.params.boundaryParams` instead of `this.simParams.boundary`).
+
+**Fix:**
+
+- Modified `Sim/src/coreGrid/boundaryManager.js`.
+- Added a new event subscription in the constructor for `gridParamsUpdated`, which calls `this.update(gridParams, dimensions)`.
+- Simplified the `simParamsUpdated` handler (`updateSimParams`) to only update `this.simParams` state and directly update physics properties on `this.physicsBoundary` if scale hasn't changed. It still calls `_updateBoundaries` if scale _did_ change.
+- Modified `_updateBoundaries` to read physics properties (`restitution`, `damping`, `repulsion`, `mode`) from `this.simParams.boundary`.
+
+**Status:** `BoundaryManager` now listens to the correct event (`gridParamsUpdated`) to handle shape changes via its `update` method. It separately listens to `simParamsUpdated` to handle physics property changes via `updateSimParams`. `_updateBoundaries` uses the correct source (`this.simParams`) for physics properties. Screen switching should now function correctly.
