@@ -681,6 +681,23 @@ export class GridGenRenderer extends BaseRenderer {
 
     // Draw the instanced cells using pre-prepared data (including colors from prepareInstanceData)
     this.renderCellsInstanced();
+
+    // --- Update Overlays --- 
+    const rectangles = this.gridGeometry?.getGeometry()?.rectangles;
+    const dimensions = this.currentDimensions;
+
+    if (this.grid?.flags?.showIndices && rectangles && dimensions && this.overlayManager) {
+      this.overlayManager.updateCellIndices(rectangles, this.grid, dimensions);
+    } else if (this.overlayManager) {
+      this.overlayManager.clearCellIndices();
+    }
+
+    if (this.grid?.flags?.showCellCenters && rectangles && dimensions && this.overlayManager) {
+      this.overlayManager.updateCellCenters(rectangles, this.grid, dimensions);
+    } else if (this.overlayManager) {
+      this.overlayManager.clearCellCenters();
+    }
+    // --- End Update Overlays ---
   }
   // --- End draw method ---
 

@@ -1068,3 +1068,21 @@ The `Sim` renderers vary significantly. `baseRenderer` and `particleRenderer` al
 **Next Step:** Investigate the data normalization and coordinate space transformations more closely. Consider mode-specific normalization or adjustments to coordinate handling between `GridRenderModes` and `GridGenRenderer`.
 
 ---
+
+## Restore Missing Overlay Updates (Indices/Centers) (YYYY-MM-DD)
+
+**Issue:** Cell indices and centers stopped rendering after the refactoring that separated `prepareInstanceData` and `updateInstanceColors`.
+
+**Analysis:** The calls to `overlayManager.updateCellIndices` and `overlayManager.updateCellCenters` were inadvertently removed from `GridGenRenderer` during the refactoring of the old `updateRenderables` method.
+
+**Fix:**
+
+1.  Modified `Sim/src/renderer/gridGenRenderer.js`.
+2.  Added logic to the `draw` method, after `renderCellsInstanced()`:
+    - Retrieve `rectangles` from `this.gridGeometry` and `dimensions` from `this.currentDimensions`.
+    - Check `this.grid.flags.showIndices`; if true, call `this.overlayManager.updateCellIndices(...)`; otherwise, call `clearCellIndices()`.
+    - Check `this.grid.flags.showCellCenters`; if true, call `this.overlayManager.updateCellCenters(...)`; otherwise, call `clearCellCenters()`.
+
+**Outcome:** The overlay manager update calls are restored and run each frame within the `draw` method. Cell indices and centers should now render correctly when their corresponding flags are enabled.
+
+---
