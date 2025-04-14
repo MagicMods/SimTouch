@@ -37,31 +37,7 @@ class Main {
 
     this.shaderManager = new ShaderManager(this.gl);
 
-    // Set default boundary type
-    const boundaryType = "CIRCULAR"; // Can be "CIRCULAR" or "RECTANGULAR"
-
-    // Create appropriate boundary
-    if (boundaryType === "RECTANGULAR") {
-      this.boundary = new RectangularBoundary();
-    } else {
-      this.boundary = new CircularBoundary();
-    }
-
-    this.turbulenceField = new TurbulenceField({ boundary: this.boundary });
-    this.voronoiField = new VoronoiField({ boundary: this.boundary });
-    this.particleSystem = new ParticleSystem({
-      turbulence: this.turbulenceField,
-      voronoi: this.voronoiField,
-      boundaryType: boundaryType
-    });
-
-    this.modulatorManager = new ModulatorManager();
-
-    this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager);
-    this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
-
-
-    // Initialize parameters (needed for managers)
+    // Define gridParams first
     this.gridParams = {
       screen: {
         width: 240,
@@ -105,129 +81,164 @@ class Main {
       calculatedCellHeight: 0,
     };
 
+    // Define simParams next, using default values
     this.simParams = {
       simulation: {
-        paused: false, // Initial state matching existing logic
-        timeStep: this.particleSystem.timeStep, // From ParticleSystem
-        timeScale: this.particleSystem.timeScale, // From ParticleSystem
-        velocityDamping: this.particleSystem.velocityDamping, // From ParticleSystem
-        maxVelocity: this.particleSystem.maxVelocity, // From ParticleSystem
-        picFlipRatio: this.particleSystem.picFlipRatio, // From ParticleSystem
-        particleCount: this.particleSystem.numParticles, // Add particle count
-        particleRadius: this.particleSystem.particleRadius, // Add particle radius
-        restDensity: this.particleSystem.restDensity, // Add rest density
+        paused: false,
+        timeStep: 1 / 60, // Default from ParticleSystem
+        timeScale: 1.0, // Default from ParticleSystem
+        velocityDamping: 0.98, // Default from ParticleSystem
+        maxVelocity: 1, // Default from ParticleSystem
+        picFlipRatio: 0, // Default from ParticleSystem
+        particleCount: 500, // Default from ParticleSystem
+        particleRadius: 0.01, // Default from ParticleSystem
+        restDensity: 2.0, // Default from ParticleSystem
       },
       boundary: {
-        mode: "BOUNCE",
-        shape: "CIRCULAR",
+        mode: "BOUNCE", // Initial default
+        shape: "CIRCULAR", // Initial default
         scale: 1.0,
         damping: 0.8,
         restitution: 1.0,
         repulsion: 1.0,
       },
       rendering: {
-        // Initial values from GridRenderer and its components
-        gridMode: this.gridRenderer.renderModes?.currentMode || "PROXIMITY", // Default to DENSITY if not found
-        maxDensity: this.gridRenderer.maxDensity || 5.0 // Default from GridRenderer or a sensible value
+        gridMode: "PROXIMITY", // Default guess (was from gridRenderer)
+        maxDensity: 2.10 // Default from GridRenderer
       },
       smoothing: {
-        // Initial values from GridRenderer's smoothing object
-        rateIn: this.gridRenderer.renderModes?.smoothing?.rateIn || 0.1, // Default if not found
-        rateOut: this.gridRenderer.renderModes?.smoothing?.rateOut || 0.05 // Default if not found
+        rateIn: 0.1, // Default guess (was from gridRenderer.renderModes)
+        rateOut: 0.05 // Default guess (was from gridRenderer.renderModes)
       },
       gravity: {
-        directionX: this.particleSystem.gravity.directionX,
-        directionY: this.particleSystem.gravity.directionY
+        directionX: 0, // Default from GravityForces (via ParticleSystem)
+        directionY: 0  // Default from GravityForces (via ParticleSystem)
       },
       collision: {
-        enabled: this.particleSystem.collisionSystem.enabled,
-        gridSize: this.particleSystem.collisionSystem.gridSize,
-        repulsion: this.particleSystem.collisionSystem.repulsion,
-        particleRestitution: this.particleSystem.collisionSystem.particleRestitution,
-        damping: this.particleSystem.collisionSystem.damping,
+        enabled: true, // Default from CollisionSystem
+        gridSize: 10, // Default from CollisionSystem
+        repulsion: 0.5, // Default from CollisionSystem
+        particleRestitution: 0.8, // Default from CollisionSystem
+        damping: 0.98, // Default from CollisionSystem
       },
       turbulence: {
-        strength: this.turbulenceField.strength,
-        scale: this.turbulenceField.scale,
-        speed: this.turbulenceField.speed,
-        rotationSpeed: this.turbulenceField.rotationSpeed,
-        rotation: this.turbulenceField.rotation,
-        pullFactor: this.turbulenceField.pullFactor,
-        affectPosition: this.turbulenceField.affectPosition,
-        scaleField: this.turbulenceField.scaleField,
-        affectScale: this.turbulenceField.affectScale,
-        minScale: this.turbulenceField.minScale,
-        maxScale: this.turbulenceField.maxScale,
-        patternStyle: this.turbulenceField.patternStyle,
-        decayRate: this.turbulenceField.decayRate,
-        directionBiasX: this.turbulenceField.directionBias[0],
-        directionBiasY: this.turbulenceField.directionBias[1],
-        contrast: this.turbulenceField.contrast,
-        biasStrength: this.turbulenceField.biasStrength,
-        patternFrequency: this.turbulenceField.patternFrequency,
-        noiseSeed: this.turbulenceField.noiseSeed,
-        separation: this.turbulenceField.separation,
-        domainWarp: this.turbulenceField.domainWarp,
-        domainWarpSpeed: this.turbulenceField.domainWarpSpeed,
-        symmetryAmount: this.turbulenceField.symmetryAmount,
-        phase: this.turbulenceField.phase,
-        phaseSpeed: this.turbulenceField.phaseSpeed,
-        blurAmount: this.turbulenceField.blurAmount,
-        _displayBiasAccelX: this.turbulenceField._displayBiasAccelX || 0,
-        _displayBiasAccelY: this.turbulenceField._displayBiasAccelY || 0
+        strength: 4, // Default from TurbulenceField
+        scale: 3.0, // Default from TurbulenceField
+        speed: 1.0, // Default from TurbulenceField
+        rotationSpeed: 0.0, // Default from TurbulenceField
+        rotation: 0.0, // Default from TurbulenceField
+        pullFactor: 1.0, // Default from TurbulenceField
+        affectPosition: false, // Default from TurbulenceField
+        scaleField: false, // Default from TurbulenceField
+        affectScale: false, // Default from TurbulenceField
+        minScale: 0.008, // Default from TurbulenceField
+        maxScale: 0.03, // Default from TurbulenceField
+        patternStyle: "Checkerboard", // Default from TurbulenceField
+        decayRate: 0.99, // Default from TurbulenceField
+        directionBiasX: 0, // Default from TurbulenceField
+        directionBiasY: 0, // Default from TurbulenceField
+        contrast: 0.5, // Default from TurbulenceField
+        biasStrength: 0.3, // Default from TurbulenceField
+        patternFrequency: 2.0, // Default from TurbulenceField
+        noiseSeed: Math.random() * 10000, // Default from TurbulenceField
+        separation: 0, // Default from TurbulenceField
+        domainWarp: 0, // Default from TurbulenceField
+        domainWarpSpeed: 0, // Default from TurbulenceField
+        symmetryAmount: 0.0, // Default from TurbulenceField
+        phase: 0.0, // Default from TurbulenceField
+        phaseSpeed: -1, // Default from TurbulenceField
+        blurAmount: 0.8, // Default from TurbulenceField
+        _displayBiasAccelX: 0, // Default internal state
+        _displayBiasAccelY: 0  // Default internal state
       },
       voronoi: {
-        strength: this.voronoiField.strength,
-        edgeWidth: this.voronoiField.edgeWidth,
-        attractionFactor: this.voronoiField.attractionFactor,
-        cellCount: this.voronoiField.cellCount,
-        cellMovementSpeed: this.voronoiField.cellMovementSpeed,
-        decayRate: this.voronoiField.decayRate,
-        velocityBlendFactor: this.voronoiField.velocityBlendFactor,
-        pullMode: this.voronoiField.pullMode
+        strength: 0, // Default from VoronoiField
+        edgeWidth: 0.3, // Default from VoronoiField
+        attractionFactor: 1.0, // Default from VoronoiField
+        cellCount: 10, // Default from VoronoiField
+        cellMovementSpeed: 0.2, // Default from VoronoiField
+        decayRate: 0.99, // Default from VoronoiField
+        velocityBlendFactor: 0.7, // Default from VoronoiField
+        pullMode: false // Default from VoronoiField
       },
-      organic: { // New section for OrganicBehavior
-        behavior: this.particleSystem.organicBehavior.currentBehavior,
-        // Global controls (might need adjustment based on UI)
-        // Assuming global force applies to forceScales.base, radius to params[type].radius
-        globalForce: this.particleSystem.organicBehavior.forceScales?.Fluid?.base || 0.1, // Use one as example
-        globalRadius: this.particleSystem.organicBehavior.params?.Fluid?.radius || 30, // Use one as example
-        // Nested parameters for each behavior type
-        Fluid: { // Get initial values from organicBehavior.params.Fluid
-          surfaceTension: this.particleSystem.organicBehavior.params?.Fluid?.surfaceTension ?? 0.5,
-          viscosity: this.particleSystem.organicBehavior.params?.Fluid?.viscosity ?? 0.2,
-          damping: this.particleSystem.organicBehavior.params?.Fluid?.damping ?? 0.98
+      organic: { // Defaults from OrganicBehavior
+        behavior: "None",
+        globalForce: 0.1,
+        globalRadius: 30,
+        Fluid: {
+          surfaceTension: 0.5,
+          viscosity: 0.2,
+          damping: 0.98
         },
-        Swarm: { // Get initial values from organicBehavior.params.Swarm
-          cohesion: this.particleSystem.organicBehavior.params?.Swarm?.cohesion ?? 1.0,
-          alignment: this.particleSystem.organicBehavior.params?.Swarm?.alignment ?? 0.7,
-          separation: this.particleSystem.organicBehavior.params?.Swarm?.separation ?? 1.2,
-          maxSpeed: this.particleSystem.organicBehavior.params?.Swarm?.maxSpeed ?? 0.5
+        Swarm: {
+          cohesion: 1.0,
+          alignment: 0.7,
+          separation: 1.2,
+          maxSpeed: 0.5
         },
-        Automata: { // Get initial values from organicBehavior.params.Automata
-          repulsion: this.particleSystem.organicBehavior.params?.Automata?.repulsion ?? 0.8,
-          attraction: this.particleSystem.organicBehavior.params?.Automata?.attraction ?? 0.5,
-          threshold: this.particleSystem.organicBehavior.params?.Automata?.threshold ?? 0.2
+        Automata: {
+          repulsion: 0.8,
+          attraction: 0.5,
+          threshold: 0.2
         },
-        Chain: { // Get initial values from organicBehavior.params.Chain
-          linkDistance: this.particleSystem.organicBehavior.params?.Chain?.linkDistance ?? 0,
-          linkStrength: this.particleSystem.organicBehavior.params?.Chain?.linkStrength ?? 10,
-          alignment: this.particleSystem.organicBehavior.params?.Chain?.alignment ?? 0.5,
-          branchProb: this.particleSystem.organicBehavior.params?.Chain?.branchProb ?? 2,
-          maxLinks: this.particleSystem.organicBehavior.params?.Chain?.maxLinks ?? 10
+        Chain: {
+          linkDistance: 0,
+          linkStrength: 10,
+          alignment: 0.5,
+          branchProb: 2,
+          maxLinks: 10
         },
       },
-      particleRenderer: { // Move particleRenderer section to the top level
-        // Store base color as hex for UI, renderer will convert
-        color: rgbArrayToHex(this.particleRenderer.config?.color?.slice(0, 3) || [1, 1, 1]),
-        opacity: this.particleRenderer.particleOpacity // Store opacity separately
+      particleRenderer: {
+        color: "#FFFFFF", // Default from ParticleRenderer config
+        opacity: 0.1 // Default from ParticleRenderer
       },
-      network: { // New section
-        enabled: socketManager.enable, // Initial state from manager
-        debugSend: socketManager.debugSend, // Initial state
-        debugReceive: socketManager.debugReceive // Initial state
+      network: { // Defaults from socketManager
+        enabled: false,
+        debugSend: false,
+        debugReceive: false
       }
     };
+
+    // Instantiate DimensionManager
+    this.dimensionManager = new DimensionManager(
+      this.gridParams.screen.width,
+      this.gridParams.screen.height,
+      this.gridParams.renderSize.maxRenderWidth,
+      this.gridParams.renderSize.maxRenderHeight
+    );
+    this.#applyCurrentDimensionsAndBoundary(); // Apply dimensions early
+
+    // Instantiate BoundaryManager
+    const initialDimensions = this.dimensionManager.getDimensions();
+    this.boundaryManager = new BoundaryManager(
+      this.gridParams,
+      initialDimensions,
+      this.dimensionManager
+    );
+
+    // Get the physics boundary instance from the manager
+    const physicsBoundary = this.boundaryManager.getPhysicsBoundary();
+    if (!physicsBoundary) {
+      throw new Error("Failed to get physicsBoundary from BoundaryManager");
+    }
+
+    // Pass the physics boundary instance to other components that need it
+    this.turbulenceField = new TurbulenceField({ boundary: physicsBoundary });
+    this.voronoiField = new VoronoiField({ boundary: physicsBoundary });
+
+    // Instantiate ParticleSystem, passing the boundary instance
+    this.particleSystem = new ParticleSystem({
+      turbulence: this.turbulenceField,
+      voronoi: this.voronoiField,
+      physicsBoundary: physicsBoundary // Pass the instance here
+      // Use defaults for particleCount, timeStep etc. from simParams or ParticleSystem constructor
+    });
+
+    // Instantiate other components
+    this.modulatorManager = new ModulatorManager();
+    this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager);
+    this.gridRenderer = new GridRenderer(this.gl, this.shaderManager);
 
     this.frame = 0;
     this.mouseForces = new MouseForces();
@@ -240,7 +251,7 @@ class Main {
 
     // Create EmuForces instance with correct reference to gravity
     this.emuForces = new EmuForces({
-      gravity: this.particleSystem.gravity,
+      gravity: this.particleSystem.gravity, // Now particleSystem exists
     });
 
     this.externalInput = new ExternalInputConnector(
@@ -270,19 +281,7 @@ class Main {
     socketManager.enable = false;
     socketManager.connect();
 
-    this.dimensionManager = new DimensionManager(
-      this.gridParams.screen.width,
-      this.gridParams.screen.height,
-      this.gridParams.renderSize.maxRenderWidth,
-      this.gridParams.renderSize.maxRenderHeight
-    );
-    this.#applyCurrentDimensionsAndBoundary();
-    const initialDimensions = this.dimensionManager.getDimensions();
-    this.boundaryManager = new BoundaryManager(
-      this.gridParams,
-      initialDimensions,
-      this.dimensionManager
-    );
+    // Instantiate Renderers that depend on Managers
     this.boundaryRenderer = new BoundaryRenderer(
       document.body,
       this.boundaryManager,

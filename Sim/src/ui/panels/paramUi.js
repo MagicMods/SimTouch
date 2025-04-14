@@ -38,101 +38,79 @@ export class ParamUi extends BaseUi {
     this.pauseButtonController.name(this.main.simParams.simulation.paused ? "Resume" : "Pause");
     this.pauseButtonController.domElement.style.marginBottom = "10px";
 
-    if (this.main.gridRenderer.renderModes) {
-      // Removed fieldControl object, bind directly to simParams
-      // const fieldControl = {
-      //   field: this.main.gridRenderer.renderModes.currentMode,
-      // };
 
-      // Store as class property instead of in this.controls
-      this.fieldTypeController = this.gui
-        // Bind to simParams instead of fieldControl
-        .add(this.main.simParams.rendering, "gridMode", Object.values(GridField))
-        .name("Mode")
-        .onChange((value) => {
-          // Remove direct modifications
-          // this.main.gridRenderer.renderModes.currentMode = value;
-          // this.fieldTypeController.updateDisplay();
-          // Emit event instead
-          eventBus.emit('uiControlChanged', { paramPath: 'rendering.gridMode', value });
-        });
+    this.fieldTypeController = this.gui
+      // Bind to simParams instead of fieldControl
+      .add(this.main.simParams.rendering, "gridMode", Object.values(GridField))
+      .name("Mode")
+      .onChange((value) => {
+        // Remove direct modifications
+        // this.main.gridRenderer.renderModes.currentMode = value;
+        // this.fieldTypeController.updateDisplay();
+        // Emit event instead
+        eventBus.emit('uiControlChanged', { paramPath: 'rendering.gridMode', value });
+      });
 
-      this.fieldTypeController.domElement.classList.add("full-width");
-      // presetSelect.classList = "preset-select";
+    this.fieldTypeController.domElement.classList.add("full-width");
+    // presetSelect.classList = "preset-select";
 
-      // Store as class property
-      this.boundaryModeController = this.gui
-        // Bind to simParams instead of particleSystem.boundary
-        .add(this.main.simParams.boundary, "mode", {
-          Bounce: "BOUNCE",
-          Warp: "WARP",
-        })
-        .name("Boundary")
-        .onChange((value) => {
-          // Remove direct call
-          // this.main.particleSystem.setBoundaryMode(value);
-          // Emit event instead
-          eventBus.emit('uiControlChanged', { paramPath: 'boundary.mode', value });
-        });
-      this.boundaryModeController.domElement.classList.add("full-width");
-      this.boundaryModeController.domElement.style.marginBottom = "10px";
 
-      this.maxDensityController = this.gui.add(this.main.simParams.rendering, "maxDensity", 0.1, 12, 0.1)
-        .name("Density").onChange((value) => {
-          eventBus.emit('uiControlChanged', { paramPath: 'rendering.maxDensity', value });
-        });
+    this.maxDensityController = this.gui.add(this.main.simParams.rendering, "maxDensity", 0.1, 12, 0.1)
+      .name("Density").onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'rendering.maxDensity', value });
+      });
 
-      this.fadeInSpeedController = this.gui.add(this.main.simParams.smoothing, "rateIn", 0.01, 0.5)
-        .name("FadInSpd").onChange((value) => {
-          eventBus.emit('uiControlChanged', { paramPath: 'smoothing.rateIn', value });
-        });
-      // .onFinishChange(() => console.log("Smoothing in:", smoothing.rateIn));
+    this.fadeInSpeedController = this.gui.add(this.main.simParams.smoothing, "rateIn", 0.01, 0.5)
+      .name("FadInSpd").onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'smoothing.rateIn', value });
+      });
+    // .onFinishChange(() => console.log("Smoothing in:", smoothing.rateIn));
 
-      this.fadeOutSpeedController = this.gui.add(this.main.simParams.smoothing, "rateOut", 0.01, 0.5)
-        .name("FadOutSpd").onChange((value) => {
-          eventBus.emit('uiControlChanged', { paramPath: 'smoothing.rateOut', value });
-        });
-      // .onFinishChange(() => console.log("Smoothing out:", smoothing.rateOut));
+    this.fadeOutSpeedController = this.gui.add(this.main.simParams.smoothing, "rateOut", 0.01, 0.5)
+      .name("FadOutSpd").onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'smoothing.rateOut', value });
+      });
+    // .onFinishChange(() => console.log("Smoothing out:", smoothing.rateOut));
 
-      this.timeStepController = this.gui.add(this.main.simParams.simulation, "timeStep", 0.001, 0.05, 0.001)
-        .name("Time Step").onChange((value) => {
-          eventBus.emit('uiControlChanged', { paramPath: 'simulation.timeStep', value });
-        });
-      this.timeStepController.domElement.style.marginTop = "10px";
+    this.timeStepController = this.gui.add(this.main.simParams.simulation, "timeStep", 0.001, 0.05, 0.001)
+      .name("Time Step").onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'simulation.timeStep', value });
+      });
+    this.timeStepController.domElement.style.marginTop = "10px";
 
-      this.timeScaleController = this.gui.add(this.main.simParams.simulation, "timeScale", 0, 4, 0.1)
-        .name("SimSpeed").onChange((value) => {
-          eventBus.emit('uiControlChanged', { paramPath: 'simulation.timeScale', value });
-        });
-      // .onFinishChange((value) => {
-      // console.log(`Animation speed: ${value}x`);
-      // });
+    this.timeScaleController = this.gui.add(this.main.simParams.simulation, "timeScale", 0, 4, 0.1)
+      .name("SimSpeed").onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'simulation.timeScale', value });
+      });
+    // .onFinishChange((value) => {
+    // console.log(`Animation speed: ${value}x`);
+    // });
 
-      this.velocityDampingController = this.gui.add(this.main.simParams.simulation, "velocityDamping", 0.8, 1, 0.01)
-        .name("VeloDamp").onChange((value) => {
-          eventBus.emit('uiControlChanged', { paramPath: 'simulation.velocityDamping', value });
-        });
-      // .onFinishChange((value) => {
-      //   console.log(`Velocity damping set to ${value}`);
-      // });
+    this.velocityDampingController = this.gui.add(this.main.simParams.simulation, "velocityDamping", 0.8, 1, 0.01)
+      .name("VeloDamp").onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'simulation.velocityDamping', value });
+      });
+    // .onFinishChange((value) => {
+    //   console.log(`Velocity damping set to ${value}`);
+    // });
 
-      this.maxVelocityController = this.gui.add(this.main.simParams.simulation, "maxVelocity", 0.01, 1, 0.01)
-        .name("MaxVelocity").onChange((value) => {
-          eventBus.emit('uiControlChanged', { paramPath: 'simulation.maxVelocity', value });
-        });
+    this.maxVelocityController = this.gui.add(this.main.simParams.simulation, "maxVelocity", 0.01, 1, 0.01)
+      .name("MaxVelocity").onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'simulation.maxVelocity', value });
+      });
 
-      this.restDensityController = this.gui.add(this.main.simParams.simulation, "restDensity", 0, 10, 0.1)
-        .name("RestDensity").onChange((value) => {
-          eventBus.emit('uiControlChanged', { paramPath: 'simulation.restDensity', value });
-        });
+    this.restDensityController = this.gui.add(this.main.simParams.simulation, "restDensity", 0, 10, 0.1)
+      .name("RestDensity").onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'simulation.restDensity', value });
+      });
 
-      this.ratioPicFlip = this.gui.add(this.main.simParams.simulation, "picFlipRatio", 0, 1, 0.01)
-        .name("PicFlipRatio").onChange((value) => {
-          eventBus.emit('uiControlChanged', { paramPath: 'simulation.picFlipRatio', value });
-        });
+    this.ratioPicFlip = this.gui.add(this.main.simParams.simulation, "picFlipRatio", 0, 1, 0.01)
+      .name("PicFlipRatio").onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'simulation.picFlipRatio', value });
+      });
 
-      this.velocityDampingController.domElement.style.marginTop = "10px";
-    }
+    this.velocityDampingController.domElement.style.marginTop = "10px";
+
   }
   //#endregion
 

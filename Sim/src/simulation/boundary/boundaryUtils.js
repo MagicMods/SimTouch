@@ -1,19 +1,8 @@
 import { CircularBoundary } from "./circularBoundary.js";
 import { RectangularBoundary } from "./rectangularBoundary.js";
 
-/**
- * BoundaryUtils provides helper methods for converting between boundary types
- * and other boundary-related operations.
- */
 class BoundaryUtils {
-    /**
-     * Converts a circular boundary to an equivalent rectangular boundary
-     * @param {CircularBoundary} circularBoundary - The circular boundary to convert
-     * @param {Object} options - Additional options for conversion
-     * @param {boolean} options.preserveArea - Whether to preserve the area (default false)
-     * @param {number} options.aspectRatio - Aspect ratio for the rectangle (width/height)
-     * @returns {Object} Parameters for creating a rectangular boundary
-     */
+
     static circularToRectangular(circularBoundary, options = {}) {
         const { preserveArea = false, aspectRatio = 1.0 } = options;
 
@@ -67,14 +56,7 @@ class BoundaryUtils {
         };
     }
 
-    /**
-     * Converts a rectangular boundary to an equivalent circular boundary
-     * @param {RectangularBoundary} rectangularBoundary - The rectangular boundary to convert
-     * @param {Object} options - Additional options for conversion
-     * @param {boolean} options.preserveArea - Whether to preserve the area (default false)
-     * @param {boolean} options.inscribed - Whether the circle should be inscribed in the rectangle (default true)
-     * @returns {Object} Parameters for creating a circular boundary
-     */
+
     static rectangularToCircular(rectangularBoundary, options = {}) {
         const { preserveArea = false, inscribed = true } = options;
 
@@ -111,12 +93,7 @@ class BoundaryUtils {
         };
     }
 
-    /**
-     * Creates a boundary of the specified type
-     * @param {string} type - The boundary type ("CIRCULAR" or "RECTANGULAR")
-     * @param {Object} params - Parameters for the boundary
-     * @returns {BaseBoundary} A boundary instance of the specified type
-     */
+
     static createBoundary(type, params = {}) {
         // Import the boundary classes directly to avoid circular dependencies
         if (type === "CIRCULAR") {
@@ -130,11 +107,7 @@ class BoundaryUtils {
         }
     }
 
-    /**
-     * Gets the area of any boundary
-     * @param {BaseBoundary} boundary - The boundary to calculate area for
-     * @returns {number} The area of the boundary
-     */
+
     static getArea(boundary) {
         const type = boundary.getBoundaryType();
 

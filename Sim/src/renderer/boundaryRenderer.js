@@ -1,5 +1,5 @@
-import { CircularBoundaryPs } from "../simulation/boundary/circularBoundaryPs.js";
-import { RectangularBoundaryPs } from "../simulation/boundary/rectangularBoundaryPs.js";
+import { CircularBoundary } from "../simulation/boundary/circularBoundary.js";
+import { RectangularBoundary } from "../simulation/boundary/rectangularBoundary.js";
 import { eventBus } from '../util/eventManager.js';
 
 export class BoundaryRenderer {
@@ -85,9 +85,9 @@ export class BoundaryRenderer {
     // --- Handle Boundary Type Change ---
     if (boundaryType !== this.#currentBoundaryType) {
       // Reset potentially conflicting styles from the other type
-      if (boundaryType === "CircularBoundaryPs") {
+      if (boundaryType === "CircularBoundary") {
         this.#boundaryDiv.style.borderRadius = "50%";
-      } else if (boundaryType === "RectangularBoundaryPs") {
+      } else if (boundaryType === "RectangularBoundary") {
         this.#boundaryDiv.style.borderRadius = "0";
       }
       this.#currentBoundaryType = boundaryType;
@@ -95,8 +95,8 @@ export class BoundaryRenderer {
 
     // --- Position and Size Calculation ---
     console.log("BoundaryRenderer: Checking instanceof:", {
-      isCircular: physicsBoundary instanceof CircularBoundaryPs,
-      isRectangular: physicsBoundary instanceof RectangularBoundaryPs,
+      isCircular: physicsBoundary instanceof CircularBoundary,
+      isRectangular: physicsBoundary instanceof RectangularBoundary,
       constructorName: physicsBoundary?.constructor?.name,
     });
     const scrollXOffset = window.scrollX;
@@ -108,7 +108,7 @@ export class BoundaryRenderer {
       centerY: physicsBoundary.centerY,
     });
 
-    if (physicsBoundary instanceof CircularBoundaryPs) {
+    if (physicsBoundary instanceof CircularBoundary) {
       // Use the smaller canvas dimension as the base for normalized radius (0.5) scaling
       const minCanvasDim = Math.min(canvasRect.width, canvasRect.height);
       // Diameter uses the boundary's own radius property (already scaled in manager)
@@ -132,8 +132,8 @@ export class BoundaryRenderer {
       this.#boundaryDiv.style.height = `${pixelDiameter}px`;
       this.#boundaryDiv.style.left = `${pixelCenterX - pixelRadius}px`;
       this.#boundaryDiv.style.top = `${pixelCenterY - pixelRadius}px`;
-    } else if (physicsBoundary instanceof RectangularBoundaryPs) {
-      console.log(`BoundaryRenderer: Received RectangularBoundaryPs - Width: ${physicsBoundary.width}, Height: ${physicsBoundary.height}`);
+    } else if (physicsBoundary instanceof RectangularBoundary) {
+      console.log(`BoundaryRenderer: Received RectangularBoundary - Width: ${physicsBoundary.width}, Height: ${physicsBoundary.height}`);
       const pixelWidth = canvasRect.width * physicsBoundary.width;
       const pixelHeight = canvasRect.height * physicsBoundary.height;
       const pixelCenterX = canvasRect.left + window.scrollX + canvasRect.width * physicsBoundary.centerX;

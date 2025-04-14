@@ -1,7 +1,7 @@
 import { CircularBoundaryShape } from "./boundary/circularBoundaryShape.js";
 import { RectangularBoundaryShape } from "./boundary/rectangularBoundaryShape.js";
-import { CircularBoundaryPs } from "../simulation/boundary/circularBoundaryPs.js";
-import { RectangularBoundaryPs } from "../simulation/boundary/rectangularBoundaryPs.js";
+import { CircularBoundary } from "../simulation/boundary/circularBoundary.js";
+import { RectangularBoundary } from "../simulation/boundary/rectangularBoundary.js";
 import { eventBus } from '../util/eventManager.js';
 
 export class BoundaryManager {
@@ -86,9 +86,9 @@ export class BoundaryManager {
     // Create Physics Boundary (simulation)
     // Using default constructor values for now (normalized 0-1 space)
     if (shape === "circular") {
-      this.physicsBoundary = new CircularBoundaryPs({});
+      this.physicsBoundary = new CircularBoundary({});
     } else if (shape === "rectangular") {
-      this.physicsBoundary = new RectangularBoundaryPs({});
+      this.physicsBoundary = new RectangularBoundary({});
     } else {
       console.error(
         `BoundaryManager: Unknown shape type for Physics Boundary: ${shape}`
@@ -187,9 +187,9 @@ export class BoundaryManager {
     const physicsBoundaryScale = this.simParams?.boundary?.scale ?? 1.1; // Use dynamic scale, default 1.1
 
     // Apply scale to dimensions
-    if (this.physicsBoundary instanceof CircularBoundaryPs) {
+    if (this.physicsBoundary instanceof CircularBoundary) {
       this.physicsBoundary.radius = 0.5 * physicsBoundaryScale; // Base radius 0.5 scaled - Direct property access
-    } else if (this.physicsBoundary instanceof RectangularBoundaryPs) {
+    } else if (this.physicsBoundary instanceof RectangularBoundary) {
       // Determine aspect ratio to find the longer side before scaling
       const aspectRatio = dimensions.physicalWidth / dimensions.physicalHeight;
 

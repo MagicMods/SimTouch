@@ -15,9 +15,7 @@ class ParticleSystem {
     picFlipRatio = 0,
     turbulence = null, // Keep turbulence as optional parameter
     voronoi = null, // Add voronoi as optional parameter
-    boundaryMode = "WARP", // Add boundary mode parameter
-    boundaryType = "CIRCULAR", // Add boundary type parameter
-    boundaryParams = {}, // Add boundary parameters
+    physicsBoundary = null, // Added - required physics boundary instance
   } = {}) {
     // Particle properties
     this.numParticles = particleCount;
@@ -73,18 +71,24 @@ class ParticleSystem {
     // Store reference to collision system in particle system
     this.collisionSystem.particleSystem = this;
 
-    // Create appropriate boundary based on type
-    const defaultBoundaryParams = {
-      mode: boundaryMode,
-      ...boundaryParams
-    };
+    // Remove boundary creation logic - instance is now passed in
+    // const defaultBoundaryParams = {
+    //   mode: boundaryMode,
+    //   ...boundaryParams
+    // };
 
-    if (boundaryType === "RECTANGULAR") {
-      this.boundary = new RectangularBoundary(defaultBoundaryParams);
-    } else {
-      // Default to circular boundary
-      this.boundary = new CircularBoundary(defaultBoundaryParams);
+    // if (boundaryType === "RECTANGULAR") {
+    //   this.boundary = new RectangularBoundary(defaultBoundaryParams);
+    // } else {
+    //   // Default to circular boundary
+    //   this.boundary = new CircularBoundary(defaultBoundaryParams);
+    // }
+
+    // Assign the passed physics boundary instance
+    if (!physicsBoundary) {
+      throw new Error("ParticleSystem requires a physicsBoundary instance.");
     }
+    this.boundary = physicsBoundary;
 
     // Then create FLIP system with boundary reference
     this.fluid = new FluidFLIP({

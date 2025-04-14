@@ -25,10 +25,8 @@ export class BoundaryUi extends BaseUi {
 
   initBoundaryControls() {
     const particles = this.main.particleSystem;
-    if (!particles || !particles.boundary) return;
+    if (!particles) return;
 
-    const boundary = particles.boundary;
-    const boundaryManager = this.main.boundaryManager;
 
     // Add boundary mode control - BIND TO SIMPARAMS
 
