@@ -372,6 +372,7 @@ export class GridGeometry {
         // --- Plan Step 4.7: Create rectData if included ---
         if (includeCell) {
           const rectData = {
+            index: this.rectangles.length,
             x: Math.round(left), // Render position (left)
             y: Math.round(top), // Render position (top)
             width: bestVisualCellW, // Use BEST render width (No underscore)

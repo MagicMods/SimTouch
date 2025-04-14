@@ -24,10 +24,11 @@ class GridRenderModes {
     this.TARGET_WIDTH = 240;
     this.TARGET_HEIGHT = 240;
 
-    // Create value buffer
-    this.values = new Float32Array(gridParams.target);
-    this.targetValues = new Float32Array(gridParams.target);
-    this.currentValues = new Float32Array(gridParams.target).fill(0);
+    // Create value buffer - Use cellCount instead of target
+    const initialCellCount = gridParams?.cellCount || 0;
+    this.values = new Float32Array(initialCellCount);
+    this.targetValues = new Float32Array(initialCellCount);
+    this.currentValues = new Float32Array(initialCellCount).fill(0);
 
     // Smoothing configuration - simplified
     this.smoothing = {
@@ -61,11 +62,12 @@ class GridRenderModes {
     this.gridGeometry = gridGeometry;
     this.gridMap = gridMap;
 
-    // Resize value buffer if needed
-    if (this.values.length !== gridParams.target) {
-      this.values = new Float32Array(gridParams.target);
-      this.targetValues = new Float32Array(gridParams.target);
-      this.currentValues = new Float32Array(gridParams.target).fill(0);
+    // Resize value buffer if needed - Use cellCount instead of target
+    const currentCellCount = gridParams?.cellCount || 0;
+    if (this.values.length !== currentCellCount) {
+      this.values = new Float32Array(currentCellCount);
+      this.targetValues = new Float32Array(currentCellCount);
+      this.currentValues = new Float32Array(currentCellCount).fill(0);
     }
   }
 
@@ -81,6 +83,7 @@ class GridRenderModes {
   }
 
   calculateTargetValues(particleSystem) {
+    // console.log(`calculateTargetValues: Mode=${this.currentMode}`);
     switch (this.currentMode) {
       case this.modes.PROXIMITY:
         this.calculateProximity(particleSystem);
@@ -137,6 +140,7 @@ class GridRenderModes {
     if (!particleSystem) return this.targetValues;
 
     const particles = particleSystem.getParticles();
+    // console.log(`calculateProximity: particles.length = ${particles?.length ?? 'N/A'}`);
     if (!particles?.length) return this.targetValues;
 
     // Constants
@@ -312,6 +316,7 @@ class GridRenderModes {
     if (!particleSystem) return this.targetValues;
 
     const particles = particleSystem.getParticles();
+    console.log(`calculateDensity: particles.length = ${particles?.length ?? 'N/A'}`);
     if (!particles?.length) return this.targetValues;
 
     // renderScale is now 4000 as per your working setup

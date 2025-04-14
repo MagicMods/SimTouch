@@ -928,7 +928,6 @@ The `Sim` renderers vary significantly. `baseRenderer` and `particleRenderer` al
 
 - `BoundaryManager` was incorrectly subscribed to `simParamsUpdated` instead of `gridParamsUpdated`.
 - The existing `update` method, which correctly handled shape changes by comparing `oldShape` vs `newShape` and calling `_createBoundaries`, was never being called.
-- The `updateSimParams` method handled physics parameter updates (scale, damping, etc.) but didn't check for shape changes.
 - The `_updateBoundaries` method read physics properties (damping, mode, etc.) from the wrong source (`this.params.boundaryParams` instead of `this.simParams.boundary`).
 
 **Fix:**
@@ -966,15 +965,106 @@ The `Sim` renderers vary significantly. `baseRenderer` and `particleRenderer` al
 
 ## Fix UI Initialization Error (TypeError: Cannot read properties of null) (YYYY-MM-DD)
 
-**Issue:** Log showed `TypeError: Cannot read properties of null (reading 'getPresetNames')` during `NewGridUi.initGridControls`.
+**Issue:** Log showed `TypeError: Cannot read properties of null
 
-**Analysis:** The error occurred because `NewGridUi` initialization attempted to access `gridGenRenderer.gradient.getPresetNames()` before the `Gradients` instance was created within `GridGenRenderer`. The `Gradients` instance was previously initialized later, inside the `setGrid` method, which ran after UI initialization.
+---
+
+## Refine Static Grid Debugging (Log Analysis V2) (YYYY-MM-DD)
+
+**Issue:** Previous logs showed `rect.index` was fixed, but `dataValues` remained empty (`dataLen=0`). Also, no logs from within `GridRenderModes` methods appeared, suggesting calculations weren't running or `getValues` returned prematurely. `maxDensity` was logged as `undefined` in `prepareInstanceData`.
+
+**Hypotheses:**
+
+1.  `GridRenderModes` calculation methods returning early (e.g., `getParticles()` returning empty array).
+2.  Timing/scope issue with `maxDensity` update/access.
+
+**Refined Diagnostic Plan:**
+
+1.  **Verify `maxDensity`:** Log raw `this.maxDensity` value in `prepareInstanceData`. Add logging to `handleParamsUpdate` to confirm it runs and updates `this.maxDensity`.
+2.  **Verify Particle Count:** Add logging at start of `calculateTargetValues` (log `currentMode`) and within the specific calculation methods (e.g., `calculateProximity`, `calculateDensity`) to log `particles.length` after `getParticles()` is called.
+3.  **Simplify Logging:** Remove detailed per-particle/smoothing logs from `GridRenderModes`. Keep only the start/end logs for calculation methods and the final `getValues` return log.
+4.  **Update notebook:** This entry.
+
+**Execution Status:** Steps 1 and 2 completed (logging added/modified).
+
+**Next Step:** Run simulation, switch modes, analyze logs for particle counts and `maxDensity` value/updates.
+
+---
+
+## Debug maxDensity Undefined Issue V2 (Log Analysis V4) (YYYY-MM-DD)
+
+**Issue:** Logs confirm `this.maxDensity` is `undefined` at the start of `prepareInstanceData`, despite being initialized to `4.0` in the constructor and the `simParamsUpdated` event (which updates it) not firing beforehand.
+
+**Analysis:** This suggests the value is either being overwritten between the constructor and the `prepareInstanceData` call, or there's a context (`this`) issue specific to the initial event-driven call path.
+
+**Refined Diagnostic Plan:**
+
+1.  Add logging immediately after `this.maxDensity = 4.0;` in the constructor.
+2.  Add logging immediately before the `this.prepareInstanceData(generatedRectangles);` call within `updateGridGeometryAndRender`.
+3.  Keep the existing log at the start of `prepareInstanceData`.
+4.  Correct the call signature for `prepareInstanceData` in `updateGridGeometryAndRender` (it doesn't take `dimensions`). Remove duplicate call from `updateRenderables`.
+5.  Update notebook (this entry).
+
+**Execution Status:** Step 1 completed (logging added, calls corrected/removed).
+
+**Next Step:** Run simulation and analyze logs to trace the value of `this.maxDensity` from constructor to `prepareInstanceData` call.
+
+---
+
+## Fix Initialization Order Error (renderModes vs prepareInstanceData) (YYYY-MM-DD)
+
+**Issue:** Logs showed `prepareInstanceData: this.renderModes is not initialized.` warning, despite code being present to initialize it. `maxDensity` was logged correctly (`4.0`) at the start of `prepareInstanceData`.
+
+**Analysis:** The order of operations within `updateGridGeometryAndRender` was incorrect. `prepareInstanceData(...)` was called _before_ the block of code that initializes/updates `this.renderModes`.
 
 **Fix:**
 
-1.  Moved gradient instantiation (`this.gradient = new Gradients("c0");`) from `GridGenRenderer.setGrid` to the `GridGenRenderer` constructor.
-2.  Removed the now-redundant initialization block (`if (!this.gradient) { ... }`) from `GridGenRenderer.setGrid`.
+1.  Modified `Sim/src/renderer/gridGenRenderer.js`.
+2.  Moved the `this.prepareInstanceData(generatedRectangles);` call to execute _after_ the `this.renderModes` initialization/update block within `updateGridGeometryAndRender`.
 
-**Outcome:** `GridGenRenderer.gradient` is now guaranteed to be initialized when `NewGridUi` runs, resolving the `TypeError`. The UI should now correctly populate the gradient theme dropdown.
+**Outcome:** `this.renderModes` should now be correctly initialized before `prepareInstanceData` attempts to use it. The warning should be gone, and `prepareInstanceData` should now be able to retrieve `dataValues`.
+
+---
+
+## Implement Per-Frame Dynamic Color Update (YYYY-MM-DD)
+
+**Issue:** Grid visualization changed color once on initial load/mode change but did not update dynamically frame-to-frame with the simulation state.
+
+**Analysis:** The `prepareInstanceData` method, responsible for calculating colors and uploading buffer data, was only called when grid geometry changed (via UI events), not every frame. The `draw` method simply rendered using the stale color data already in the GPU buffer.
+
+**Refactoring Plan:**
+
+1.  **Create `updateInstanceColors` Method:** Create a new method in `GridGenRenderer` dedicated to per-frame color updates.
+2.  **Move Logic:** Move color calculation logic (get `dataValues`, get `gradientValues`, loop through instances, calculate `finalColor`, populate `this.instanceData.colors` array) from `prepareInstanceData` to `updateInstanceColors`.
+3.  **Upload Color Buffer:** Add logic to `updateInstanceColors` to upload _only_ the `instanceColorBuffer` (`this.instanceData.colors`) to the GPU.
+4.  **Refactor `prepareInstanceData`:** Remove the color calculation and color buffer upload logic. Keep matrix/shadow calculation and buffer uploads, plus allocation logic for all instance buffers.
+5.  **Modify `draw` Method:** Add a call to `this.updateInstanceColors()` before `this.renderCellsInstanced()` to update colors every frame.
+6.  **Modify `updateGridGeometryAndRender`:** Ensure it still calls the refactored `prepareInstanceData`.
+7.  **Remove Diagnostic Logging:** Remove previous logs related to `maxDensity`, etc.
+8.  **Update Notebook:** This entry.
+
+**Execution Status:** Steps 1-7 completed.
+
+**Outcome:** Color calculation and buffer updates now happen per-frame in `updateInstanceColors`, called by `draw`. Geometry-dependent data (matrices, shadows) is still prepared by `prepareInstanceData` when needed. The grid visualization should now be fully dynamic.
+
+---
+
+## Dynamic Grid Achieved, Visuals Incorrect (YYYY-MM-DD)
+
+**Status:** The refactoring to implement per-frame color updates in `GridGenRenderer` (using `updateInstanceColors`) was successful. The grid visualization now updates dynamically based on the simulation state and selected Grid Mode.
+
+**New Issue:** The visual representation is incorrect. Colors are being applied to the wrong cells, or the overall pattern appears distorted/misaligned (potentially resembling the top-left corner issue seen previously, or other coordinate/scale mismatches).
+
+**Analysis:**
+
+- The core data pipeline (`GridRenderModes` -> `GridGenRenderer.updateInstanceColors` -> Color Buffer) is now connected and running per frame.
+- The mapping between `rect.index` and `dataValues[rect.index]` seems correct.
+- The problem likely lies in:
+  - **Data Normalization:** The current method (`Math.max(0, Math.min(1, cellValue / this.maxDensity))`) might be unsuitable for all `gridMode` value ranges (e.g., Velocity, Vorticity).
+  - **Coordinate Space/Scaling:** Potential mismatch between the 240x240 calculation space in `GridRenderModes` and the render-space pixel coordinates used for matrix transforms in `prepareInstanceData`, although the clip-space conversion appears correct.
+  - **Matrix Calculation:** Subtle error in the `prepareInstanceData` matrix calculation.
+  - **Shader (`gridCell`):** Less likely, but possible issues with how shader interprets instance data or UVs.
+
+**Next Step:** Investigate the data normalization and coordinate space transformations more closely. Consider mode-specific normalization or adjustments to coordinate handling between `GridRenderModes` and `GridGenRenderer`.
 
 ---

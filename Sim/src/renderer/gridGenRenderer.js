@@ -100,6 +100,10 @@ export class GridGenRenderer extends BaseRenderer {
 
     // Subscribe to simulation parameter updates (for maxDensity, gridMode)
     eventBus.on('simParamsUpdated', this.handleParamsUpdate);
+
+    // Initialize render modes and max density state
+    this.renderModes = null;
+    this.maxDensity = 4.0; // Default max density
   }
 
   initBuffers() {
@@ -253,9 +257,6 @@ export class GridGenRenderer extends BaseRenderer {
     this.grid.calculatedCellWidth = calculatedGridParams?.physicalWidth;
     this.grid.calculatedCellHeight = calculatedGridParams?.physicalHeight;
 
-    // Trigger the rendering pipeline with the generated rectangles
-    this.updateRenderables(generatedRectangles, dimensions);
-
     // Update gridMap and notify GridRenderModes
     this.gridMap = this.createGridMap(generatedRectangles);
     if (!this.renderModes) {
@@ -276,6 +277,9 @@ export class GridGenRenderer extends BaseRenderer {
       });
       // console.debug("GridGenRenderer: Updated GridRenderModes.");
     }
+
+    // <<< Call prepareInstanceData AFTER renderModes is ready >>>
+    this.prepareInstanceData(generatedRectangles); // Ensure this call remains
   }
 
   // Renamed from setGridParams
@@ -297,7 +301,6 @@ export class GridGenRenderer extends BaseRenderer {
     gl.disable(gl.DEPTH_TEST);
 
     // --- Prepare and Draw Grid Cells ---
-    this.prepareInstanceData(rectangles);
     this.renderCellsInstanced();
 
     // --- Calculate Projection Matrix ---
@@ -381,31 +384,31 @@ export class GridGenRenderer extends BaseRenderer {
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
   }
 
-  // New method to prepare instance data arrays and upload to GPU buffers
+  // New method to prepare instance data arrays (Matrices, Shadows) - Called when geometry changes
   prepareInstanceData(rectangles) {
+    // REMOVE console.log(`prepareInstanceData Start: this.maxDensity = ${this.maxDensity}`); // Add log at method entry
     const gl = this.gl;
     const visibleRects = rectangles; // Use all rectangles passed from GridGeometry
 
-    // Ensure renderModes is available
-    if (!this.renderModes) {
-      console.error("prepareInstanceData: this.renderModes is not initialized.");
-      this.instanceData.count = 0;
-      return;
-    }
-    // Ensure particleSystem is available
-    if (!this.particleSystem) {
-      console.error("prepareInstanceData: this.particleSystem is not initialized.");
-      this.instanceData.count = 0;
-      return;
-    }
+    // Ensure renderModes is available - STILL needed here for buffer sizing check?
+    // No, buffer size depends on visibleRects.length (numInstances)
+    // if (!this.renderModes) {
+    //   console.error("prepareInstanceData: this.renderModes is not initialized.");
+    //   this.instanceData.count = 0;
+    //   return;
+    // }
+    // Ensure particleSystem is available - Not needed here anymore
+    // if (!this.particleSystem) {
+    //   console.error("prepareInstanceData: this.particleSystem is not initialized.");
+    //   this.instanceData.count = 0;
+    //   return;
+    // }
 
-    // Get data values first
-    // Ensure renderModes is available before getting values
-    const dataValues = this.renderModes ? this.renderModes.getValues(this.particleSystem) : null;
-    if (!dataValues) {
-      console.warn("prepareInstanceData: dataValues not available from renderModes.");
-      // Optionally handle this case, e.g., by filling with default color
-    }
+    // REMOVE // Get data values first - Moved to updateInstanceColors
+    // REMOVE const dataValues = this.renderModes ? this.renderModes.getValues(this.particleSystem) : null;
+    // REMOVE if (!dataValues) {
+    // REMOVE   console.warn("prepareInstanceData: dataValues not available from renderModes.");
+    // REMOVE }
 
     const numInstances = visibleRects.length;
     this.instanceData.count = numInstances;
@@ -413,13 +416,12 @@ export class GridGenRenderer extends BaseRenderer {
     if (numInstances === 0) {
       // Ensure buffers are cleared or handled if count is zero
       this.instanceData.matrices = null;
-      this.instanceData.colors = null;
+      this.instanceData.colors = null; // Still need to manage color array size
       this.instanceData.shadowParams = null;
       return; // Nothing to prepare
     }
 
     // Allocate typed arrays only if needed (size changed or first time)
-    // Check existing array length vs required length
     const requiredMatrixSize = numInstances * 16;
     if (!this.instanceData.matrices || this.instanceData.matrices.length !== requiredMatrixSize) {
       this.instanceData.matrices = new Float32Array(requiredMatrixSize);
@@ -427,6 +429,7 @@ export class GridGenRenderer extends BaseRenderer {
 
     const requiredColorSize = numInstances * 4;
     if (!this.instanceData.colors || this.instanceData.colors.length !== requiredColorSize) {
+      // Allocate color buffer here, it will be populated per-frame
       this.instanceData.colors = new Float32Array(requiredColorSize);
     }
 
@@ -435,92 +438,114 @@ export class GridGenRenderer extends BaseRenderer {
       this.instanceData.shadowParams = new Float32Array(requiredShadowSize);
     }
 
-    // Default shadow parameters from grid config (NOW NESTED) or defaults
-    const shadowIntensity = this.grid.shadow?.shadowIntensity ?? 0.5; // Updated path
-    const blurAmount = this.grid.shadow?.blurAmount ?? 0.0; // Updated path
-    const shadowThreshold = this.grid.shadow?.shadowThreshold ?? 0.5; // Updated path
+    // Default shadow parameters from grid config
+    const shadowIntensity = this.grid.shadow?.shadowIntensity ?? 0.5;
+    const blurAmount = this.grid.shadow?.blurAmount ?? 0.0;
+    const shadowThreshold = this.grid.shadow?.shadowThreshold ?? 0.5;
 
-    // Populate instance data arrays
-    // Get render dimensions for clip space conversion
+    // Populate instance data arrays (Matrices and Shadows ONLY)
     const renderWidth = this.currentDimensions.renderWidth;
     const renderHeight = this.currentDimensions.renderHeight;
 
-    // Ensure gradient is available
-    if (!this.gradient) {
-      console.error("prepareInstanceData: Gradient not initialized!");
-      // Optionally fill with a default color if gradient fails
-      // return; // Or decide how to handle this error
-    }
-    const gradientValues = this.gradient?.getValues(); // Use optional chaining
-    if (!gradientValues) {
-      console.warn("prepareInstanceData: gradientValues not available from gradient.");
-    }
+    // REMOVE Gradient checks - Moved to updateInstanceColors
+    // REMOVE if (!this.gradient) { ... }
+    // REMOVE const gradientValues = this.gradient?.getValues();
+    // REMOVE if (!gradientValues) { ... }
 
     for (let i = 0; i < numInstances; i++) {
       const rect = visibleRects[i];
       const matrixOffset = i * 16;
-      const colorOffset = i * 4;
+      // REMOVE const colorOffset = i * 4; // Color handled separately
       const shadowOffset = i * 3;
 
-      // 1. Calculate Transformation Matrix
-      const matrix = mat4.create(); // Create identity matrix
-      // Translate to center position (rect coords are render space)
+      // 1. Calculate Transformation Matrix (Keep this)
+      const matrix = mat4.create();
       const centerX = rect.x + rect.width / 2;
       const centerY = rect.y + rect.height / 2;
-      // Convert render coords to clip space (-1 to +1)
       const clipX = (centerX / renderWidth) * 2.0 - 1.0;
-      const clipY = -((centerY / renderHeight) * 2.0 - 1.0); // Y is inverted
+      const clipY = -((centerY / renderHeight) * 2.0 - 1.0);
       mat4.translate(matrix, matrix, [clipX, clipY, 0]);
-
-      // Scale based on render dimensions
-      const scaleX = rect.width / renderWidth; // Use render width/height
+      const scaleX = rect.width / renderWidth;
       const scaleY = rect.height / renderHeight;
       mat4.scale(matrix, matrix, [scaleX, scaleY, 1]);
-
-      // Copy matrix data into the flat array using set
       this.instanceData.matrices.set(matrix, matrixOffset);
 
-      // 2. Determine Color - Data-driven
-      let finalColor = [0.1, 0.1, 0.1, 1.0]; // Default fallback color (dark gray)
+      // 2. REMOVE Color Calculation Logic - Moved to updateInstanceColors
+      // REMOVE let finalColor = ...
+      // REMOVE if (dataValues && gradientValues && ...) { ... }
+      // REMOVE this.instanceData.colors.set(finalColor, colorOffset);
 
-      if (dataValues && gradientValues && rect.index !== undefined && rect.index < dataValues.length) {
-        const cellValue = dataValues[rect.index];
-        // Normalize using internal maxDensity, ensure maxDensity is not zero
-        const normalizationFactor = this.maxDensity || 1.0; // Fallback to 1.0 if maxDensity is 0 or undefined
-        const normalizedValue = Math.max(0, Math.min(1, cellValue / normalizationFactor));
-        const gradientIdx = Math.min(255, Math.floor(normalizedValue * 256));
-        const color = gradientValues[gradientIdx];
-        if (color) {
-          finalColor = [color.r, color.g, color.b, 1.0]; // Use 1.0 for alpha, final opacity handled in shader if needed
-        }
-      } else if (gradientValues) { // Fallback: index-based color if data is missing but gradient exists
-        const normalizedValue = numInstances > 1 ? i / (numInstances - 1) : 0;
-        const gradientIdx = Math.min(255, Math.floor(normalizedValue * 256));
-        const color = gradientValues[gradientIdx];
-        if (color) {
-          finalColor = [color.r, color.g, color.b, 1.0];
-        }
-      } // Otherwise, the default dark gray is used
-
-      // Apply the final color to the instance buffer
-      this.instanceData.colors.set(finalColor, colorOffset);
-
-      // 3. Set Shadow Parameters
+      // 3. Set Shadow Parameters (Keep this)
       this.instanceData.shadowParams[shadowOffset] = shadowIntensity;
       this.instanceData.shadowParams[shadowOffset + 1] = blurAmount;
       this.instanceData.shadowParams[shadowOffset + 2] = shadowThreshold;
     }
 
-    // Upload data to GPU buffers
+    // Upload data to GPU buffers (Matrices and Shadows ONLY)
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceMatrixBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, this.instanceData.matrices, gl.DYNAMIC_DRAW);
 
-    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceColorBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, this.instanceData.colors, gl.DYNAMIC_DRAW);
+    // REMOVE gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceColorBuffer);
+    // REMOVE gl.bufferData(gl.ARRAY_BUFFER, this.instanceData.colors, gl.DYNAMIC_DRAW);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceShadowBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, this.instanceData.shadowParams, gl.DYNAMIC_DRAW);
 
+    gl.bindBuffer(gl.ARRAY_BUFFER, null); // Unbind
+  }
+
+  // New method to update instance colors per frame
+  updateInstanceColors() {
+    const gl = this.gl;
+    const numInstances = this.instanceData.count;
+
+    // Ensure needed components are ready
+    if (numInstances === 0 || !this.renderModes || !this.gradient || !this.instanceData.colors) {
+      // console.warn("updateInstanceColors: Missing data, skipping color update.");
+      return; // Skip update if data not ready
+    }
+
+    // Get latest data values and gradient lookup
+    const dataValues = this.renderModes.getValues(this.particleSystem);
+    const gradientValues = this.gradient.getValues();
+    const visibleRects = this.gridGeometry?.getGeometry()?.rectangles; // Need rectangles for index
+
+    if (!dataValues || !gradientValues || !visibleRects || visibleRects.length !== numInstances) {
+      console.warn("updateInstanceColors: Data mismatch or missing, skipping color update.");
+      return;
+    }
+
+    // Recalculate colors and populate the buffer array
+    for (let i = 0; i < numInstances; i++) {
+      const rect = visibleRects[i];
+      const colorOffset = i * 4;
+      let finalColor = [0.1, 0.1, 0.1, 1.0]; // Default fallback color
+
+      if (rect.index !== undefined && rect.index < dataValues.length) {
+        const cellValue = dataValues[rect.index];
+        const normalizationFactor = this.maxDensity || 1.0;
+        const normalizedValue = Math.max(0, Math.min(1, cellValue / normalizationFactor));
+        const gradientIdx = Math.min(255, Math.floor(normalizedValue * 256));
+        const color = gradientValues[gradientIdx];
+        if (color) {
+          finalColor = [color.r, color.g, color.b, 1.0];
+        }
+      } else {
+        // Fallback: index-based color (could use rect.index if available)
+        const fallbackIndex = rect.index !== undefined ? rect.index : i;
+        const normalizedValue = numInstances > 1 ? fallbackIndex / (numInstances - 1) : 0;
+        const gradientIdx = Math.min(255, Math.floor(normalizedValue * 256));
+        const color = gradientValues[gradientIdx];
+        if (color) {
+          finalColor = [color.r, color.g, color.b, 1.0];
+        }
+      }
+      this.instanceData.colors.set(finalColor, colorOffset);
+    }
+
+    // Upload ONLY the color buffer
+    gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceColorBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, this.instanceData.colors, gl.DYNAMIC_DRAW);
     gl.bindBuffer(gl.ARRAY_BUFFER, null); // Unbind
   }
 
@@ -649,6 +674,9 @@ export class GridGenRenderer extends BaseRenderer {
     const numInstances = this.instanceData.count;
     if (numInstances === 0) return; // Nothing to draw
 
+    // Update colors based on latest data (runs every frame)
+    this.updateInstanceColors();
+
     // console.log(`GridGenRenderer.draw(): Calling renderCellsInstanced. Count: ${numInstances}`); // Keep log
 
     // Draw the instanced cells using pre-prepared data (including colors from prepareInstanceData)
@@ -658,10 +686,12 @@ export class GridGenRenderer extends BaseRenderer {
 
   // Add handler for simParams updates
   handleParamsUpdate({ simParams }) {
+    // REMOVE console.log('GridGenRenderer.handleParamsUpdate called'); // Log entry
     if (!simParams) return; // Guard clause
 
     if (simParams.rendering) {
       this.maxDensity = simParams.rendering.maxDensity ?? this.maxDensity;
+      // REMOVE console.log(`  Updated this.maxDensity to: ${this.maxDensity}`); // Log updated value
       // Update render mode if needed
       if (this.renderModes && simParams.rendering.gridMode) {
         // Ensure the mode exists before assigning

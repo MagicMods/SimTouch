@@ -41,7 +41,7 @@ canvas.emu-visualization {
   --font-size: 10px;
   --width: 260px;
   --border-radius: 4px;
-  --slider-knob-width: 2px;
+  --slider-knob-width: 3px;
   --name-width: 33%;
   --slider-input-min-width: 25px;
   --slider-input-width: 18%;
@@ -107,9 +107,6 @@ canvas.emu-visualization {
   /* width: 100%; */
 }
 
-.slider {
-  --slider-knob-width: 5px !important;
-}
 
 
 .lil-gui .controller.option .widget, .lil-gui .controller.option select {
