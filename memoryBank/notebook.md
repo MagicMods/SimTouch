@@ -158,7 +158,6 @@
 **5. Calculation Logic:**
 
 - Both use a similar iterative approach starting from `maxVisualCellHeight`.
-- `Grid` includes more detailed debugging logs.
 - `Grid` applies `gridParams.gridSpecs.scale` directly when calculating `maxCols`/`maxRows` based on boundary size, which seems more correct than `Sim`'s approach.
 - `Grid` appears to have slightly different logic for calculating `physicalCellH_` and `scaledW_`, `scaledH_` vs `visualScaledW_`, `visualScaledH_` (requires closer look, potentially related to `Grid`'s refactoring for better parameter search).
 - `Grid` has logic (commented as Plan Steps) related to finding a target count and optimizing the parameter search, which `Sim` lacks.
@@ -301,7 +300,7 @@
 
 1.  **Constructor Dependencies:**
 
-    - `Sim`: Requires `canvasElement` and `dimensionManager`. Tightly coupled.
+    - `Sim`: Requires `canvasElement` and `dimensionManager`.
     - `Grid`: Requires only `canvasElement`. Decoupled from `DimensionManager`.
     - **Alignment:** Refactor `Sim`'s `OverlayManager` constructor to remove the `dimensionManager` dependency. Modify methods (`updateDimensions`, `updateCellIndices`, `updateCellCenters`) to accept the required `dimensions` object as an argument. Update instantiation and method calls in `Sim's `SimGridRendererInstanced`.
 
@@ -852,105 +851,70 @@ The `Sim` renderers vary significantly. `baseRenderer` and `particleRenderer` al
 
 ---
 
-## Fix `lil-gui` Error in Boundary UI (YYYY-MM-DD)
+## Fix SocketManager Command Type Error (YYYY-MM-DD)
 
-**Context:** After refactoring the boundary scale control, the application failed to initialize with a `lil-gui.esm.min.js:8 gui.add failed property: scale` error.
+**Issue:** An "Invalid command type: [object Object]" error occurred in `socketManager.sendCommand` when the `Gradient` class was initialized.
 
-**Analysis:** The error log confirmed that `boundaryUi.js` was correctly trying to bind the "B-Scale" slider to `this.main.simParams.boundary`. However, the target object (`simParams.boundary`) lacked the required `scale` property, causing `gui.add()` to fail.
+**Analysis:**
 
-**Fix:** Added the missing `scale: 1.0,` property definition to the `this.simParams.boundary` object within `Sim/src/main.js`.
+- The error originated from the convenience methods `sendColor`, `sendBrightness`, and `sendPower` in `socketManager.js`.
+- These methods were incorrectly passing the command _object_ (e.g., `SocketManager.COMMANDS.COLOR`) as the first argument to `sendCommand`.
+- `sendCommand` expects the command _name_ (e.g., "COLOR") as a string to look up the command details in the `SocketManager.COMMANDS` map.
 
-**Result:** The UI can now successfully initialize the boundary scale slider, binding it to the newly defined property in `simParams`.
+**Fix:**
 
----
+- Modified `Sim/src/network/socketManager.js`.
+- Changed the `sendColor`, `sendBrightness`, and `sendPower` methods to pass the correct string command name ("COLOR", "BRIGHTNESS", "POWER") as the first argument to `this.sendCommand`.
 
-## Optimize Boundary Updates for Non-Visual Changes (YYYY-MM-DD)
+**Status:** The socket command type error should be resolved. Gradient initialization should no longer trigger this error.
 
-**Context:** Noticed in logs that changes to physics-only boundary parameters (restitution, damping, repulsion, mode) or scale changes when the boundary wasn't visible were triggering unnecessary recalculations and potential DOM updates in `BoundaryManager` and `BoundaryRenderer`.
+## Early Gradient Initialization in GridGenRenderer (YYYY-MM-DD)
 
-**Analysis:** Both `BoundaryManager` and `BoundaryRenderer` were subscribed to the general `simParamsUpdated` event and performed their full update routines regardless of which specific parameter changed.
+**Issue:** Benign "Gradient not initialized!" warnings appeared in logs during initial frames because `prepareInstanceData` ran before the `gridParamsUpdated` event initialized the gradient via `setGrid`.
 
-**Optimization:**
+**Analysis:**
 
-1.  **`BoundaryManager`:**
-    - Modified the `simParamsUpdated` handler (`updateSimParams`) to track the previous `scale` value.
-    - It now only calls `_updateBoundaries` (which recalculates shape/size) if the `scale` value has actually changed.
-    - Physics-only properties (damping, restitution, etc.) are now applied directly to the `this.physicsBoundary` object if they change, without triggering the more expensive `_updateBoundaries`.
-2.  **`BoundaryRenderer`:**
-    - Modified the `simParamsUpdated` handler to track the previous `scale` and `showBoundary` flag values.
-    - It now only calls its `update` method (which manipulates the DOM element) if either the `scale` or the `showBoundary` flag has changed.
+- Determined the `Gradient` constructor expects a preset name string, not `colorStops` array.
+- Decided to initialize the gradient early in `GridGenRenderer.init` to prevent warnings, and update `setGrid` to use the preset-based API.
 
-**Result:** Boundary updates are now more efficient. Changes to non-visual physics parameters only update the necessary properties on the `physicsBoundary` object used by the simulation, without triggering geometry recalculations or DOM updates. Visual updates only occur when the scale changes or the visibility flag is toggled.
+**Fix:**
 
----
+- Modified `Sim/src/renderer/gridGenRenderer.js`.
+- Added `Gradient` import.
+- Added logic to `init()` to create `this.gradient = new Gradient("c0");` using the default preset name (attempted edit, needs manual verification/fix due to tool issues).
+- Rewritten the gradient handling logic within `setGrid()`:
+  - It now expects a `this.grid.colors.presetName` property (defaulting to "c0").
+  - If `this.gradient` exists, it calls `this.gradient.applyPreset(presetName)` if the name changed.
+  - If `this.gradient` is null, it creates it using `new Gradient(presetName)`.
+  - Removed the previous logic that incorrectly tried to pass `colorStops` to the constructor.
 
-## GridGenRenderer Dynamic Coloring Integration (YYYY-MM-DD)
+**Status:** Gradient should now be initialized early in `init`, eliminating console warnings. `setGrid` should correctly update the gradient based on the preset name specified in `gridParams.colors.presetName`. Requires manual check/fix of the `init()` method edit.
 
-**Objective:** Enable `GridGenRenderer` to display dynamic colors based on simulation data calculated by `GridRenderModes`, running concurrently with the isolated legacy `GridRenderer` pipeline.
+## Fix TypeError in GridGenRenderer.init (Attempt 2) (YYYY-MM-DD)
 
-**Execution Log:**
+**Issue:** After removing `await super.init()`, the application failed with `TypeError: this.initBuffers is not a function` called from within `GridGenRenderer.init`.
 
-1.  **Dependencies:** Modified `GridGenRenderer` constructor to accept `particleSystem` dependency and instantiate `GridRenderModes`. Removed unused `socketManager` import/instantiation. Kept `Gradient` instantiation as it's needed for color mapping in the new `draw` method.
-2.  **Initialization:** Updated `main.js` to pass `particleSystem` during `GridGenRenderer` instantiation.
-3.  **Grid Map Handling:** Added `createGridMap` helper to `GridGenRenderer`. Updated `updateGridGeometryAndRender` to create/update the internal `gridMap` and notify `renderModes` instance via `renderModes.updateGrid`.
-4.  **Color Calculation:** Modified `GridGenRenderer.prepareInstanceData` to remove the uniform color parameter and instead calculate per-instance color based on data retrieved from `this.renderModes.getValues()`. Used a placeholder grayscale mapping for initial implementation.
-5.  **Per-Frame Drawing:** Added a `draw()` method to `GridGenRenderer`. This method gets latest data from `renderModes`, uses the `Gradient` instance to map normalized data values to colors, updates the instance color buffer on the GPU via `bufferSubData`, and calls `renderCellsInstanced` to draw.
-6.  **Concurrency:** Added `this.gridGenRenderer.draw()` call to the main `render()` loop in `main.js`, placed _before_ the legacy `this.gridRenderer.draw()` call.
+**Analysis:** The call to `this.initBuffers()` was redundant because the buffer initialization code had previously been integrated directly into the `async init` method itself. The method `initBuffers` no longer exists.
 
-**Status:** `GridGenRenderer` is now integrated with `GridRenderModes` and updates its cell colors each frame based on simulation data, drawing concurrently with the legacy `GridRenderer`. Placeholder color mapping is used; needs refinement (normalization, gradient selection). Legacy pipeline remains isolated.
+**Fix:**
 
-## Legacy GridRenderer Fix (YYYY-MM-DD)
+- Modified `Sim/src/renderer/gridGenRenderer.js`.
+- Removed the line `this.initBuffers();` from the `async init` method.
 
-**Issue:** After integrating `GridGenRenderer.draw()` into the main render loop before `GridRenderer.draw()`, the legacy renderer stopped working.
+**Status:** The `TypeError` should be resolved. The `init` method now correctly contains the buffer setup logic without calling a non-existent function.
 
-**Analysis:** Determined the cause was WebGL state interference. `GridGenRenderer` uses instanced drawing, enabling multiple vertex attributes (`position`, `instanceMatrix`, `instanceColor`, `instanceShadowParams`). `GridRenderer` uses non-instanced drawing and only expects the `position` attribute to be enabled. The attributes enabled by `GridGenRenderer` were persisting and causing issues for `GridRenderer`.
+## Code State Reset (YYYY-MM-DD)
 
-**Fix:** Modified `GridGenRenderer.renderCellsInstanced()` to disable all vertex attribute arrays it uses immediately after its `gl.drawArraysInstanced` call. This cleans up the GL state, preventing interference with the subsequent legacy `GridRenderer` draw calls.
+**Action:** User reset relevant files (likely `Sim/src/renderer/gridGenRenderer.js`) to the last known good state.
 
-**Status:** The legacy `GridRenderer` should now function correctly alongside the concurrently drawing `GridGenRenderer`.
+**Context:** This state is after the fix for the `socketManager` command type error, but **before** the attempts to implement early gradient initialization in `GridGenRenderer.init` and the associated `setGrid` modifications.
 
-## Fix GridGenRenderer Visibility (YYYY-MM-DD)
+**Expected State:**
 
-**Issue:** `GridGenRenderer` output was not visible despite being called in the render loop, and its UI toggle had no effect.
+- `GridGenRenderer.init()` does not initialize the gradient.
+- `GridGenRenderer.setGrid()` incorrectly attempts `new Gradient(colorStops)`.
+- Initial "Gradient not initialized!" warnings are expected.
+- A potential `TypeError` might occur in `setGrid` during gradient creation.
+- The previous `TypeError`s related to `super.init()` and `initBuffers()` should be resolved by the reset.
 
-**Analysis:** The legacy `GridRenderer.draw()` method contained a `gl.clear(gl.COLOR_BUFFER_BIT)` call. Since it runs _after_ `GridGenRenderer.draw()`, it was erasing the output of the new renderer every frame.
-
-**Fix:** Commented out the `gl.clearColor` and `gl.clear` calls within `GridRenderer.draw()`. This allows the output of `GridGenRenderer` (drawn first) to persist on the canvas underneath the legacy renderer's output.
-
-**Status:** Both renderers should now be visible concurrently. The UI toggle for `GridGenRenderer`'s visibility (`gridParams.flags.showGridCells`) should now have a visible effect.
-
-## Add Diagnostics to GridGenRenderer (YYYY-MM-DD)
-
-**Issue:** `GridGenRenderer` grid is not displaying, even after ensuring the legacy renderer doesn't clear the canvas.
-
-**Action:** Added `console.log` statements to `GridGenRenderer.draw()` and `GridGenRenderer.renderCellsInstanced()` to track execution flow, the value of the `showGridCells` flag, and the instance count being drawn.
-
-**Purpose:** To determine if the renderer is being skipped due to the flag, attempting to draw zero instances, or if the draw call itself isn't happening as expected.
-
-## Test GridGenRenderer Visibility vs Particles (YYYY-MM-DD)
-
-**Issue:** `GridGenRenderer` grid is not displaying, despite logs confirming its draw calls execute with correct flags and instance counts.
-
-**Hypothesis:** The `ParticleRenderer`, which runs last, might be drawing particles (even semi-transparent ones) over the `GridGenRenderer` output, obscuring it.
-
-**Test:** Temporarily commented out the `this.particleRenderer.draw(...)` call in `main.js` render loop.
-
-**Expected Result:** If the hypothesis is correct, the `GridGenRenderer` grid should now become visible.
-
-## Debug GridGenRenderer Visibility (Index Gradient Test) (YYYY-MM-DD)
-
-**Issue:** `GridGenRenderer` grid visible with fixed color, confirming core drawing works, but not with dynamic color from `GridRenderModes`.
-
-**Action:** Modified `GridGenRenderer.draw()` to color cells based on their instance index mapped through the `Gradient` object. This bypasses `GridRenderModes` data but tests the gradient lookup and color buffer update.
-
-**Purpose:** To further isolate the problem. If this works, the issue lies specifically in how data from `GridRenderModes` is obtained or normalized before gradient lookup. If this fails, the issue might be in the gradient lookup/buffer update itself.
-
-**Expected Result:** A grid displaying a smooth color transition based on cell index according to the active gradient.
-
-## Refactor GridGenRenderer Coloring (Index Gradient Default) (YYYY-MM-DD)
-
-**Action:** Moved the index-based gradient coloring logic from the temporary `draw()` method implementation into the `prepareInstanceData()` method. This ensures that the instance color buffer is populated with the index-based gradient colors whenever the grid geometry is generated or updated.
-
-**Result:** The `draw()` method was simplified to only contain checks and the call to `renderCellsInstanced()`, as the color data is now prepared beforehand.
-
-**Status:** `GridGenRenderer` now defaults to rendering the grid with colors determined by mapping the instance index through the active gradient. This provides a baseline visualization while isolating the `GridRenderModes` data integration for future steps.
+**Next Step:** Re-evaluate the approach to handling gradient initialization, likely by correcting the `setGrid` method to use preset names without modifying `init()`.

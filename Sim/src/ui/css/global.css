@@ -29,11 +29,11 @@ canvas.emu-visualization {
 
 /* Override some lil-gui defaults */
 .lil-gui {
-  --background-color: #1a1a1a;
+  --background-color: #2b2b2b;
   --text-color: #e9e9e9;
-  --title-background-color: #2a2a2a;
+  --title-background-color: #393939;
   --title-text-color: #ffffff;
-  --widget-color: #3a3a3a;
+  --widget-color: #000000;
   --hover-color: #4a4a4a;
   --focus-color: #5a5a5a;
   --number-color: #ffbb00;
@@ -41,7 +41,7 @@ canvas.emu-visualization {
   --font-size: 10px;
   --width: 260px;
   --border-radius: 4px;
-  --slider-knob-width: 4px;
+  --slider-knob-width: 2px;
   --name-width: 33%;
   --slider-input-min-width: 25px;
   --slider-input-width: 18%;
@@ -52,30 +52,8 @@ canvas.emu-visualization {
   scrollbar-color: #555 #333;
 }
 
-.lil-gui select {
-  padding: 3px !important;
-  border-radius: 0px !important;
-  background: #3b3b3b;
-  text-align: center !important;
-  font-size: 10px;
-  color: white;
-  scrollbar-width: thin;
-  scrollbar-color: #555 #333;
-}
 
-/* Custom scrollbar for WebKit browsers */
-.lil-gui select::-webkit-scrollbar {
-  width: 8px;
-}
 
-.lil-gui select::-webkit-scrollbar-track {
-  background: #333; /* Dark grey background */
-}
-
-.lil-gui select::-webkit-scrollbar-thumb {
-  background: #555; /* Lighter grey for the thumb */
-  border-radius: 4px;
-}
 .full-width .widget {
   width: 100% !important;
   display: block !important;
@@ -86,6 +64,8 @@ canvas.emu-visualization {
   width: 100% !important;
   margin-right: 0 !important;
   text-align: left;
+  color: #ffbb00;
+  background-color: #000000;
 }
 
 .flex-container {
@@ -101,7 +81,7 @@ canvas.emu-visualization {
   bottom: 20px;
   right: 20px;
   background: #2a2a2a;
-  color: white;
+  /* color: white; */
   padding: 10px 20px;
   border-radius: 4px;
   animation: fadeOut 3s forwards;
@@ -129,4 +109,9 @@ canvas.emu-visualization {
 
 .slider {
   --slider-knob-width: 5px !important;
+}
+
+
+.lil-gui .controller.option .widget, .lil-gui .controller.option select {
+  color: #ffbb00 !important;
 }

@@ -100,17 +100,11 @@ export class PresetManager {
 
     const container = document.createElement("div");
     container.classList.add("preset-controls-container");
-    container.style.display = "flex";
-    container.style.alignItems = "center";
-    container.style.marginTop = "8px";
-    container.style.marginBottom = "8px";
-    // container.style.width = "100%";
+
 
     const presetSelect = document.createElement("select");
     presetSelect.classList.add("preset-select");
-    presetSelect.style.flex = "2";
-    presetSelect.style.margin = "0 4px";
-    presetSelect.style.padding = "3px";
+
 
     // Capture presetType in a closure to ensure it's preserved
     const boundHandleSave = () => {
@@ -138,8 +132,6 @@ export class PresetManager {
     if (options.title) {
       const titleElement = document.createElement("div");
       titleElement.textContent = options.title;
-      titleElement.style.fontWeight = "bold";
-      titleElement.style.marginBottom = "4px";
 
       if (options.insertFirst) {
         parentElement.insertBefore(titleElement, parentElement.firstChild);

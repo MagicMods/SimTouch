@@ -1,4 +1,9 @@
-/* Styles for toggle buttons in Grid UI */
+.lil-gui button {
+  /* color: #ffbb00; */
+  color: #ffffff;
+
+}
+
 .toggle-button {
   background-color: #333;
   color: #ccc;
@@ -61,3 +66,11 @@
   background-color: #ebac00;
   color: #000000;
 }
+
+.preset-buttons-container {
+  display: flex;
+  flex-direction: row;
+  gap: 10px;
+  margin: 8px 4px;
+}
+

@@ -5,7 +5,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  /* background: rgba(0, 0, 0, 0.5); */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -22,7 +22,7 @@
 }
 
 .preset-input {
-  background: #2a2a2a;
+  /* background: #2a2a2a; */
   border: 1px solid #3a3a3a;
   color: white;
   padding: 8px;
@@ -31,14 +31,15 @@
 
 .preset-buttons {
   display: flex;
-  gap: 10px;
+  /* gap: 10px; */
+  margin: 8px 4px;
   justify-content: flex-end;
 }
 
 .preset-buttons button {
   background: #3a3a3a;
   border: none;
-  color: white;
+  /* color: white; */
   padding: 8px 16px;
   border-radius: 4px;
   cursor: pointer;
@@ -50,17 +51,19 @@
 
 .preset-select {
   width: calc(100% - 10px) !important;
+  flex: 2;
   padding: 3px !important;
-  margin: 0 5px;
-  /* margin: 5px; */
-  /* border: 1px solid #242424; */
-  border-radius: 0px !important;
-  background: #3b3b3b;
+  margin: 0 4px;
+  border: 1px solid #000000;
+  /* border-radius: 0px !important; */
+  background-color: #000000;
   text-align: center !important;
   font-size: 10px;
-  color: white;
+  color: #ffbb00;
   scrollbar-width: thin;
-  scrollbar-color: #555 #333;
+  /* scrollbar-color: #555 #333; */
+  padding: 3px !important;
+
 }
 
 .preset-select::-webkit-scrollbar {
@@ -79,9 +82,9 @@
 /* Common UI component styles */
 .preset-control-button {
   width: 100%;
-  background: #3a3a3a;
+  /* background: #3a3a3a; */
   border: 1px solid #242424;
-  color: white;
+  /* color: white; */
   border-radius: 4px;
   cursor: pointer;
   white-space: nowrap;

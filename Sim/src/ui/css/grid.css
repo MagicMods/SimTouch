@@ -29,7 +29,7 @@
   margin-bottom: 0px !important;
 }
 
-#lil-gui-name-132 {
+#lil-gui-name-136 {
   /* display: none !important; */
   width: 81px !important;
 }
@@ -45,16 +45,15 @@
     display: none !important;
   } */
 
-  #lil-gui-name-133 {
+  #lil-gui-name-137 {
     display: none !important;
     width: 30px !important;
     pointer-events: none !important;
-    background-color: red !important;
   }
 
-#lil-gui-name-133 + .widget input[type="text"] {
+#lil-gui-name-137 + .widget input[type="text"] {
   pointer-events: none !important;
-  color: rgb(219, 219, 219) !important;
+  color: rgb(255, 0, 0) !important;
   font-weight: 700;
   background-color: rgb(5, 5, 5) !important;
 }
@@ -71,3 +70,5 @@
 .slider-dual-input-slider .name {
   width: 0px !important;
 }
+
+

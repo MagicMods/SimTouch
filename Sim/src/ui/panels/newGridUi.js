@@ -87,6 +87,7 @@ export class NewGridUi extends BaseUi {
         // Apply the preset
         gradient.applyPreset(presetName);
       });
+    this.themeController.domElement.classList.add("full-width");
 
 
     // --- SCREEN CONFIGURATION ---

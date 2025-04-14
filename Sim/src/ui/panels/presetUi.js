@@ -53,8 +53,7 @@ export class PresetUi extends BaseUi {
 
   _createActionButtons(containerElement) {
     const actionsContainer = document.createElement("div");
-    actionsContainer.style.display = "flex";
-    actionsContainer.style.margin = "8px 4px";
+    actionsContainer.classList.add("preset-buttons-container");
 
     const saveButton = this._createButton("Save", () => {
       // Get current preset name
@@ -191,9 +190,7 @@ export class PresetUi extends BaseUi {
 
   _createNavigationControls(containerElement) {
     const navContainer = document.createElement("div");
-    navContainer.style.display = "flex";
-    navContainer.style.justifyContent = "space-between";
-    navContainer.style.margin = "8px 4px";
+    navContainer.classList.add("preset-buttons-container");
 
     const prevButton = this._createButton("← Prev", () => {
       this.navigatePreset(-1);
@@ -262,9 +259,6 @@ export class PresetUi extends BaseUi {
   _createButton(text, clickHandler) {
     const button = document.createElement("button");
     button.textContent = text;
-    button.style.flex = "1";
-    button.style.margin = "0 2px";
-    // button.style.padding = "4px";
     button.addEventListener("click", clickHandler);
     return button;
   }
