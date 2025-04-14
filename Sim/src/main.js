@@ -103,7 +103,7 @@ class Main {
         repulsion: 1.0,
       },
       rendering: {
-        gridMode: "PROXIMITY", // Default guess (was from gridRenderer)
+        gridMode: "Proximity", // Default guess (was from gridRenderer)
         maxDensity: 2.10 // Default from GridRenderer
       },
       smoothing: {

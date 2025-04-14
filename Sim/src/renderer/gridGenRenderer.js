@@ -266,14 +266,16 @@ export class GridGenRenderer extends BaseRenderer {
         gridMap: this.gridMap,          // Use newly created gridMap
         canvas: this.gl.canvas,         // Pass canvas
         coordTransforms: {},            // Empty for now
-        maxDensityRef: () => this.maxDensity // CORRECTED: Pass internal maxDensity getter
+        maxDensityRef: () => this.maxDensity, // CORRECTED: Pass internal maxDensity getter
+        dimensions: this.currentDimensions // Pass current dimensions
       });
       console.debug("GridGenRenderer: Initialized GridRenderModes.");
     } else {
       this.renderModes.updateGrid({
         gridParams: this.grid,
         gridGeometry: this.gridGeometry,
-        gridMap: this.gridMap
+        gridMap: this.gridMap,
+        dimensions: dimensions // Pass updated dimensions
       });
       // console.debug("GridGenRenderer: Updated GridRenderModes.");
     }

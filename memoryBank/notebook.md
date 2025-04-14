@@ -1086,3 +1086,52 @@ The `Sim` renderers vary significantly. `baseRenderer` and `particleRenderer` al
 **Outcome:** The overlay manager update calls are restored and run each frame within the `draw` method. Cell indices and centers should now render correctly when their corresponding flags are enabled.
 
 ---
+
+## Boundary Refactoring and Centralization (YYYY-MM-DD)
+
+**Objective:** Standardize boundary classes and ensure consistent boundary usage across the simulation.
+
+**Analysis & Actions:**
+
+1.  **File Comparison:** Compared `*Boundary.js` and `*BoundaryPs.js` files. Identified the non-Ps versions as more complete (including drawing, callbacks) and the Ps versions as incomplete refactors with potential logic errors (`CircularBoundaryPs`).
+2.  **Standardization:** Decided to standardize on the non-Ps versions. Deleted `baseBoundaryPs.js`, `circularBoundaryPs.js`, `rectangularBoundaryPs.js`, and `boundaryPsUtils.js`. Updated imports in `boundaryManager.js` and `boundaryRenderer.js`.
+3.  **Centralization Issue:** Diagnosed that `ParticleSystem` was creating its own boundary instance, separate from the one managed by `BoundaryManager`, causing updates (like mode changes) not to propagate to the physics simulation.
+4.  **Centralization Fix:**
+    - Refactored `ParticleSystem` constructor to accept `boundaryManager` instead of creating its own boundary.
+    - Modified `ParticleSystem` (`initializeParticles`, `updateParticles`) to retrieve the current boundary from the manager instance.
+    - Modified `main.js` to instantiate `BoundaryManager` first and pass the manager instance to `ParticleSystem`.
+    - Implemented an event `physicsBoundaryRecreated` emitted by `BoundaryManager` when the boundary instance is recreated (during shape changes).
+    - Added listeners in `TurbulenceField` and `VoronoiField` to update their internal boundary references when this event occurs.
+5.  **Rectangular Boundary Scaling Issue:** Identified that the rectangular physics boundary was being scaled incorrectly in `BoundaryManager._updateBoundaries`, using raw physical dimensions instead of normalized ones. Attempted a fix using normalization based on the maximum dimension.
+6.  **Reversion & Perceived Fix:** Reverted the scaling logic in `BoundaryManager._updateBoundaries` back to the previous complex calculation involving aspect ratio and scale deviation, which is now believed to correctly handle the rectangular boundary physics.
+
+**Status:** Boundary classes standardized. Boundary instantiation centralized in `BoundaryManager`. `ParticleSystem`, `TurbulenceField`, and `VoronoiField` now access the boundary through the manager or update their reference via events. Rectangular boundary scaling logic reverted to the version believed to be functional.
+
+---
+
+## Next Objective: Dynamic Grid Color/Rendering Fix
+
+**Goal:** Resolve issues with the dynamic grid cell visualization where colors appear incorrectly mapped to cells or the overall pattern seems distorted/misaligned, potentially indicating coordinate space, scaling, or data normalization problems between `GridRenderModes` and `GridGenRenderer`.
+
+---
+
+## Fix GridRenderModes Coordinate System & Radius Calculation (YYYY-MM-DD)
+
+**Issue:** The grid visualization rendering (`GridGenRenderer` using `GridRenderModes`) displayed incorrect colors/patterns due to coordinate mismatches and improper particle radius calculations. `GridRenderModes` used a hardcoded 240x240 calculation space (`TARGET_WIDTH`/`HEIGHT`) inconsistent with dynamic render dimensions, and particle radius calculations were based on arbitrary scaling (`/ 8`) rather than physics parameters.
+
+**Analysis:** The core problem was the hardcoded 240x240 dimension, causing incorrect mapping of particle positions (0-1) to the calculation space used by `gridMap`. The particle radius calculation was also detached from normalized physics values.
+
+**Fix:**
+
+1.  **Dynamic Dimensions:** Refactored `GridRenderModes` constructor and `updateGrid` method to accept and store the actual render `dimensions` object passed from `GridGenRenderer`. Replaced all internal uses of `TARGET_WIDTH`/`HEIGHT` with `this.dimensions.renderWidth`/`Height`.
+2.  **Dynamic Particle Radius:** Modified calculation methods (`calculateDensity`, `calculateVelocity`, etc.) to:
+    - Retrieve the normalized particle radius from the `particleSystem` instance (assuming `particleSystem.particleRadius` exists).
+    - Calculate the pixel-space radius dynamically based on this normalized radius and the current render dimensions (`normalizedRadius * Math.max(this.dimensions.renderWidth, this.dimensions.renderHeight)`).
+    - Removed the previous calculation based on `particle.size / 8`.
+    - Used the new dynamic `pixelRadius` for overlap calculations (`calculateCircleRectOverlap`).
+3.  **Dynamic Proximity Radius:** Scaled the fixed pixel `radius` (previously 20) used in `calculateProximity` and `calculateProximityB` based on the current average render dimension relative to the old 240 target, making neighbor searches adapt to resolution.
+4.  **Integration:** Updated `GridGenRenderer` to pass the correct `dimensions` object to `GridRenderModes` during instantiation and updates.
+
+**Status:** `GridRenderModes` now operates using the correct dynamic render dimensions. Particle positions are mapped correctly, and overlap/proximity calculations use a dynamically calculated pixel radius derived from physics parameters and render size. The grid visualization should now be accurate.
+
+---

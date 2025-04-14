@@ -68,14 +68,14 @@ colorStops)` after validating `colorStops`.
 
 **IMPLEMENTATION CHECKLIST:**
 
-1.  - [ ] Modify `Sim/src/renderer/gridGenRenderer.js` (`prepareInstanceData`): Pass `this.currentDimensions` to `this.renderModes.getValues`.
-2.  - [ ] Modify `Sim/src/renderer/gridRenderModes.js` (`getValues`): Update signature to accept `dimensions`, pass it to `calculateTargetValues`.
-3.  - [ ] Modify `Sim/src/renderer/gridRenderModes.js` (`calculateTargetValues`): Update signature to accept `dimensions`, pass it to specific calculation function calls within the switch statement.
-4.  - [ ] Modify `Sim/src/renderer/gridRenderModes.js` (`calculateProximity`): Update signature to accept `dimensions`. Replace `TARGET_WIDTH`/`HEIGHT` with `dimensions.renderWidth`/`Height` in particle mapping.
-5.  - [ ] Modify `Sim/src/renderer/gridRenderModes.js` (`calculateDensity`): Update signature to accept `dimensions`. Replace `TARGET_WIDTH`/`HEIGHT` with `dimensions.renderWidth`/`Height` if used for particle mapping.
-6.  - [ ] Modify `Sim/src/renderer/gridRenderModes.js` (`calculateVelocity`): Update signature to accept `dimensions`. Replace `TARGET_WIDTH`/`HEIGHT` with `dimensions.renderWidth`/`Height` if used for particle mapping.
-7.  - [ ] Modify `Sim/src/renderer/gridRenderModes.js`: Update signatures for all other calculation functions (`calculateProximityB`, `calculatePressure`, `calculateVorticity`, `calculateCollision`, `calculateOverlap`, `calculateNoise`) to accept `dimensions`.
-8.  - [ ] Update `memoryBank/notebook.md` with documentation for fixing the coordinate mismatch.
+1.  - [x] Modify `Sim/src/renderer/gridGenRenderer.js` (`prepareInstanceData`): Pass `this.currentDimensions` to `this.renderModes.getValues`.
+2.  - [x] Modify `Sim/src/renderer/gridRenderModes.js` (`getValues`): Update signature to accept `dimensions`, pass it to `calculateTargetValues`.
+3.  - [x] Modify `Sim/src/renderer/gridRenderModes.js` (`calculateTargetValues`): Update signature to accept `dimensions`, pass it to specific calculation function calls within the switch statement.
+4.  - [x] Modify `Sim/src/renderer/gridRenderModes.js` (`calculateProximity`): Update signature to accept `dimensions`. Replace `TARGET_WIDTH`/`HEIGHT` with `dimensions.renderWidth`/`Height` in particle mapping.
+5.  - [x] Modify `Sim/src/renderer/gridRenderModes.js` (`calculateDensity`): Update signature to accept `dimensions`. Replace `TARGET_WIDTH`/`HEIGHT` with `dimensions.renderWidth`/`Height` if used for particle mapping.
+6.  - [x] Modify `Sim/src/renderer/gridRenderModes.js` (`calculateVelocity`): Update signature to accept `dimensions`. Replace `TARGET_WIDTH`/`HEIGHT` with `dimensions.renderWidth`/`Height` if used for particle mapping.
+7.  - [x] Modify `Sim/src/renderer/gridRenderModes.js`: Update signatures for all other calculation functions (`calculateProximityB`, `calculatePressure`, `calculateVorticity`, `calculateCollision`, `calculateOverlap`, `calculateNoise`) to accept `dimensions`.
+8.  - [x] Update `memoryBank/notebook.md` with documentation for fixing the coordinate mismatch.
 
 ### Task: Analyze and Fix ColorStops in GridGenRenderer (YYYY-MM-DD)
 
@@ -171,3 +171,19 @@ colorStops)` after validating `colorStops`.
 4.  - [x] Modify `Sim/src/shaders/gradients.js` (`getCurrentPreset` method): Ensure it returns the current value (possibly "custom"). (Verified - No change needed).
 5.  - [x] Modify `Sim/src/renderer/gridGenRenderer.js` (`setGrid` method): Add logic to check for gradient existence, validate `colorStops`, call `setColorStops`, and fallback to `applyPreset('c0')`.
 6.  - [ ] Update `memoryBank/notebook.md` with documentation for implementing custom color stops.
+
+### Task: Refactor GridRenderModes Coordinates and Radius (YYYY-MM-DD)
+
+**Goal:** Refactor `GridRenderModes` to use dynamic render dimensions instead of hardcoded 240x240 values and calculate particle pixel radius based on normalized physics parameters and dynamic dimensions.
+
+**IMPLEMENTATION CHECKLIST:**
+
+1.  - [x] Modify `Sim/src/renderer/gridRenderModes.js` (Constructor): Accept/store `dimensions`, remove `TARGET_WIDTH`/`HEIGHT`.
+2.  - [x] Modify `Sim/src/renderer/gridRenderModes.js` (updateGrid): Accept/update `dimensions`.
+3.  - [x] Modify `Sim/src/renderer/gridRenderModes.js` (Coordinate Replacements): Replace `TARGET_WIDTH`/`HEIGHT` with `dimensions.renderWidth`/`Height`.
+4.  - [x] Modify `Sim/src/renderer/gridRenderModes.js` (Radius Calculation): Remove old calc, get normalized radius, calc dynamic pixel radius, use dynamic radius.
+5.  - [x] Modify `Sim/src/renderer/gridRenderModes.js` (Proximity Radius): Replace fixed `radius` with dynamic scaling in `calculateProximity`/`calculateProximityB`.
+6.  - [x] Modify `Sim/src/renderer/gridGenRenderer.js` (Instantiation): Pass `dimensions` to `GridRenderModes` constructor.
+7.  - [x] Modify `Sim/src/renderer/gridGenRenderer.js` (Update): Pass `dimensions` to `this.renderModes.updateGrid`.
+8.  - [x] Update `memoryBank/notebook.md`: Document the coordinate system and radius calculation fixes applied to `GridRenderModes`.
+9.  - [x] Update `memoryBank/plan.md`: Mark checklist items as complete upon finishing implementation.
