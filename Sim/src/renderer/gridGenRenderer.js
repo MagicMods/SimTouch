@@ -161,27 +161,49 @@ export class GridGenRenderer extends BaseRenderer {
     this.physicsBoundary = physicsBoundary;
     this.currentDimensions = dimensions;
 
-    // Initialize or update gradient based on colorStops
+    // Initialize or update gradient based on grid config
     if (!this.gradient) {
       console.warn("GridGenRenderer.setGrid: Gradient not initialized, creating default.");
       this.gradient = new Gradients(); // Initialize if it doesn't exist
     }
 
-    const colorStops = this.grid?.colors?.colorStops;
-    if (Array.isArray(colorStops) && colorStops.length >= 2) {
-      const success = this.gradient.setColorStops(colorStops);
-      if (!success) {
-        console.warn("GridGenRenderer.setGrid: Setting custom color stops failed, falling back to default preset 'c0'.");
-        this.gradient.applyPreset('c0');
+    const colorsConfig = this.grid?.colors;
+    const newPresetName = colorsConfig?.gradientPreset;
+    const newColorStops = colorsConfig?.colorStops;
+
+    // Check if the preset has changed OR if it's custom and stops might have changed
+    const currentPreset = this.gradient.getCurrentPreset();
+    let themeUpdated = false;
+
+    if (newPresetName && newPresetName !== 'custom' && newPresetName !== currentPreset) {
+      console.debug(`GridGenRenderer: Applying new preset: ${newPresetName}`);
+      this.gradient.applyPreset(newPresetName);
+      themeUpdated = true;
+    } else if (newPresetName === 'custom') {
+      // If preset is 'custom', try applying colorStops
+      if (Array.isArray(newColorStops) && newColorStops.length >= 2) {
+        // Optional: Add a check here to see if newColorStops are actually different
+        // from the current points if performance becomes an issue.
+        // For simplicity, we apply them if the preset is 'custom'.
+        console.debug("GridGenRenderer: Applying custom color stops.");
+        const success = this.gradient.setColorStops(newColorStops);
+        if (!success) {
+          console.warn("GridGenRenderer: Setting custom color stops failed, falling back to default preset 'c0'.");
+          this.gradient.applyPreset('c0');
+        }
+        themeUpdated = true;
+      } else {
+        console.warn("GridGenRenderer: Preset set to 'custom' but invalid/missing colorStops. Falling back to 'c0'.");
+        this.gradient.applyPreset('c0'); // Fallback if custom stops are bad
+        themeUpdated = true;
       }
-    } else {
-      console.warn("GridGenRenderer.setGrid: Invalid or missing colorStops in grid config, falling back to default preset 'c0'.");
-      // Apply default preset if colorStops are invalid or not provided
-      // This assumes the gradient instance already exists
-      if (this.gradient.getCurrentPreset() !== 'c0') {
-        this.gradient.applyPreset('c0');
-      }
+    } else if (!newPresetName && !currentPreset) {
+      // Initial setup or if preset becomes undefined, ensure a default is set
+      console.warn("GridGenRenderer: No gradient preset defined, applying default 'c0'.");
+      this.gradient.applyPreset('c0');
+      themeUpdated = true;
     }
+    // If no relevant theme change was detected, the gradient remains as is.
 
     // Validate incoming gridConfig.screen (essential check)
     if (!this.grid || !this.grid.screen || typeof this.grid.screen.width !== 'number' || typeof this.grid.screen.height !== 'number' || !this.grid.screen.shape) {

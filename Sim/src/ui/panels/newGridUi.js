@@ -84,8 +84,8 @@ export class NewGridUi extends BaseUi {
       .add({ theme: gradient.getCurrentPreset() }, "theme", presetOptions)
       .name("Theme")
       .onChange((presetName) => {
-        // Apply the preset
-        gradient.applyPreset(presetName);
+        // Emit event to update central state
+        eventBus.emit('uiControlChanged', { paramPath: 'colors.gradientPreset', value: presetName });
       });
     this.themeController.domElement.classList.add("full-width");
 

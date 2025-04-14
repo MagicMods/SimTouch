@@ -85,6 +85,7 @@ class Main {
       colors: {
         gridBackgroundColor: [0.0, 0.0, 0.0], //rgb(0, 0, 0)
         cellColor: [0.5, 0.5, 0.5], // Default gray #808080
+        gradientPreset: 'c0',
       },
       flags: {
         showGridCells: true,
