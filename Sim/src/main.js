@@ -100,10 +100,10 @@ class Main {
         scale: 1.0,
         damping: 0.8,
         restitution: 1.0,
-        repulsion: 1.0,
+        repulsion: 0,
       },
       rendering: {
-        gridMode: "PROXIMITY", // Default guess (was from gridRenderer)
+        gridMode: "Proximity", // Default guess (was from gridRenderer)
         maxDensity: 2.10 // Default from GridRenderer
       },
       smoothing: {
@@ -191,7 +191,8 @@ class Main {
       },
       particleRenderer: {
         color: "#FFFFFF", // Default from ParticleRenderer config
-        opacity: 0.1 // Default from ParticleRenderer
+        opacity: 0.1, // Default from ParticleRenderer
+        showVelocityField: false,
       },
       network: { // Defaults from socketManager
         enabled: false,
@@ -227,11 +228,11 @@ class Main {
     this.turbulenceField = new TurbulenceField({ boundary: physicsBoundary });
     this.voronoiField = new VoronoiField({ boundary: physicsBoundary });
 
-    // Instantiate ParticleSystem, passing the boundary instance
+    // Instantiate ParticleSystem, passing the boundary manager
     this.particleSystem = new ParticleSystem({
       turbulence: this.turbulenceField,
       voronoi: this.voronoiField,
-      physicsBoundary: physicsBoundary // Pass the instance here
+      boundaryManager: this.boundaryManager
       // Use defaults for particleCount, timeStep etc. from simParams or ParticleSystem constructor
     });
 

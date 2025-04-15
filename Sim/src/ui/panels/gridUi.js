@@ -10,7 +10,7 @@ const SCREEN_TYPES = {
   // Add more predefined types here as needed
 };
 
-export class NewGridUi extends BaseUi {
+export class GridUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
 
@@ -205,7 +205,7 @@ export class NewGridUi extends BaseUi {
 
     // Configuration for toggle buttons
     const toggleButtonsConfig = [
-      { text: "Grid", flag: "showGridCells" },
+      { text: "Data Colors", flag: "showGridCells" },
       { text: "Centers", flag: "showCellCenters" },
       { text: "Indices", flag: "showIndices" },
       { text: "Boundary", flag: "showBoundary" },

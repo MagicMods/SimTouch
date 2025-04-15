@@ -13,7 +13,7 @@ function hexToRgb(hex) {
 }
 
 class ParticleRenderer extends BaseRenderer {
-  showVelocityField = true; // Add property to toggle velocity field
+  showVelocityField = false;
 
   constructor(gl, shaderManager, shaderType = "particles") {
     super(gl, shaderManager);
@@ -59,6 +59,11 @@ class ParticleRenderer extends BaseRenderer {
         }
         // The draw() method already reads this.config.color and this.particleOpacity
         // and sets the uniform, so no explicit uniform update needed here.
+      }
+
+      // Update velocity field visibility
+      if (rendererParams.showVelocityField !== undefined) {
+        this.showVelocityField = rendererParams.showVelocityField;
       }
     }
     // console.log(`ParticleRenderer updated params via event: opacity=${this.particleOpacity}, color=${this.config?.color}`);

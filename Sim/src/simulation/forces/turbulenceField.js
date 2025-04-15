@@ -170,6 +170,16 @@ class TurbulenceField {
 
     // Subscribe to parameter updates
     eventBus.on('simParamsUpdated', this.handleParamsUpdate.bind(this));
+
+    // ---> ADDED EVENT LISTENER HERE <---
+    eventBus.on('physicsBoundaryRecreated', ({ physicsBoundary }) => {
+      if (physicsBoundary) {
+        this.boundary = physicsBoundary;
+        console.log("TurbulenceField updated boundary reference.");
+      } else {
+        console.error("TurbulenceField received null boundary on physicsBoundaryRecreated event.");
+      }
+    });
   }
 
   // Add handler for simParams updates

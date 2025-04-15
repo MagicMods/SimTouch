@@ -11,18 +11,15 @@ export const GridField = {
 };
 
 class GridRenderModes {
-  constructor({ gridParams, gridGeometry, gridMap, canvas, coordTransforms, maxDensityRef }) {
+  constructor({ gridParams, gridGeometry, gridMap, canvas, coordTransforms, maxDensityRef, dimensions }) {
     this.gridParams = gridParams;
     this.gridGeometry = gridGeometry;
     this.gridMap = gridMap;
     this.canvas = canvas;
     this.coordTransforms = coordTransforms;
+    this.dimensions = dimensions;
     // Store the maxDensity reference function
     this.getMaxDensity = maxDensityRef || (() => 4.0); // Default to 4.0 if not provided
-
-    // Fixed target resolution (must match GridRenderer)
-    this.TARGET_WIDTH = 240;
-    this.TARGET_HEIGHT = 240;
 
     // Create value buffer - Use cellCount instead of target
     const initialCellCount = gridParams?.cellCount || 0;
@@ -57,10 +54,11 @@ class GridRenderModes {
     // );
   }
 
-  updateGrid({ gridParams, gridGeometry, gridMap }) {
+  updateGrid({ gridParams, gridGeometry, gridMap, dimensions }) {
     this.gridParams = gridParams;
     this.gridGeometry = gridGeometry;
     this.gridMap = gridMap;
+    this.dimensions = dimensions;
 
     // Resize value buffer if needed - Use cellCount instead of target
     const currentCellCount = gridParams?.cellCount || 0;
@@ -145,13 +143,17 @@ class GridRenderModes {
 
     // Constants
     const tune = 0.15;
-    const radius = 20;
+    // Scale proximity radius based on current dimensions relative to old 240x240 target
+    const baseRadius = 20; // Original value for 240x240
+    const avgDimension = (this.dimensions.renderWidth + this.dimensions.renderHeight) / 2;
+    const radius = baseRadius * (avgDimension / 240);
     const radiusSq = radius * radius;
 
     // Pre-calculate particle positions and cells
     const particleData = particles.map((p, idx) => {
-      const px = p.x * this.TARGET_WIDTH;
-      const py = (1 - p.y) * this.TARGET_HEIGHT;
+      // Use dynamic dimensions
+      const px = p.x * this.dimensions.renderWidth;
+      const py = (1 - p.y) * this.dimensions.renderHeight;
 
       // Use gridMap to find cell (maintain correct coordinate system)
       const cell = this.gridMap.find((cell) => cell.contains(px, py));
@@ -181,7 +183,7 @@ class GridRenderModes {
       let totalProximity = 0;
 
       if (particlesInCell.length > 0) {
-        // Find neighboring cells using gridMap
+        // Find neighboring cells using gridMap (Use dynamic radius)
         const neighbors = this.gridMap.filter(
           (other) =>
             Math.abs(other.bounds.x - cell.bounds.x) <= radius &&
@@ -224,21 +226,29 @@ class GridRenderModes {
 
     // Constants
     const tune = 1;
-    const radius = 20;
+    // Scale proximity radius based on current dimensions relative to old 240x240 target
+    const baseRadius = 20; // Original value for 240x240
+    const avgDimension = (this.dimensions.renderWidth + this.dimensions.renderHeight) / 2;
+    const radius = baseRadius * (avgDimension / 240);
     const radiusSq = radius * radius;
+
+    // Get normalized particle radius from ParticleSystem
+    const normalizedRadius = particleSystem.particleRadius; // Assuming this property exists
+    // Calculate pixel radius dynamically based on dimensions
+    const pixelRadius = normalizedRadius * Math.max(this.dimensions.renderWidth, this.dimensions.renderHeight);
 
     // Pre-calculate particle positions and cells, considering radius
     const particleData = particles.map((p, idx) => {
-      const px = p.x * this.TARGET_WIDTH;
-      const py = (1 - p.y) * this.TARGET_HEIGHT;
-      const particleRadius = p.size / 4; // Convert diameter to radius
+      // Use dynamic dimensions
+      const px = p.x * this.dimensions.renderWidth;
+      const py = (1 - p.y) * this.dimensions.renderHeight;
 
       // Find all cells that this particle overlaps with using circle-rectangle overlap
       const overlappingCells = this.gridMap.filter(cell => {
         const overlap = this.calculateCircleRectOverlap(
           px,
           py,
-          particleRadius,
+          pixelRadius, // Use dynamically calculated pixelRadius
           cell.bounds.x,
           cell.bounds.y,
           cell.bounds.width,
@@ -251,7 +261,7 @@ class GridRenderModes {
         x: px,
         y: py,
         idx,
-        radius: particleRadius,
+        radius: pixelRadius, // Store dynamically calculated pixelRadius
         cells: overlappingCells.map(cell => cell.index)
       };
     });
@@ -273,7 +283,7 @@ class GridRenderModes {
       let totalProximity = 0;
 
       if (particlesInCell.length > 0) {
-        // Find neighboring cells using gridMap
+        // Find neighboring cells using gridMap (Use dynamic radius)
         const neighbors = this.gridMap.filter(
           (other) =>
             Math.abs(other.bounds.x - cell.bounds.x) <= radius &&
@@ -324,8 +334,8 @@ class GridRenderModes {
 
     particles.forEach((particle) => {
       // Convert particle position to pixel space
-      const px = particle.x * this.TARGET_WIDTH;
-      const py = (1 - particle.y) * this.TARGET_HEIGHT;
+      const px = particle.x * this.dimensions.renderWidth;
+      const py = (1 - particle.y) * this.dimensions.renderHeight;
 
       // Use the rendered size (diameter) from getParticles()
       const renderedDiameter = particle.size; // Already scaled by renderScale (e.g., 40 for base 0.01)
@@ -381,14 +391,19 @@ class GridRenderModes {
     const totalWeights = new Float32Array(this.targetValues.length).fill(0);
     const tune = 5; // Keep the same tuning factor
 
+    // Get normalized particle radius from ParticleSystem
+    const normalizedRadius = particleSystem.particleRadius; // Assuming this property exists
+    // Calculate pixel radius dynamically based on dimensions
+    const pixelRadius = normalizedRadius * Math.max(this.dimensions.renderWidth, this.dimensions.renderHeight);
+
     particles.forEach((particle) => {
-      // Convert particle position to pixel space
-      const px = particle.x * this.TARGET_WIDTH;
-      const py = (1 - particle.y) * this.TARGET_HEIGHT;
+      // Convert particle position to pixel space using dynamic dimensions
+      const px = particle.x * this.dimensions.renderWidth;
+      const py = (1 - particle.y) * this.dimensions.renderHeight;
 
       // Use the rendered size (diameter) from getParticles()
-      const renderedDiameter = particle.size; // Already scaled by renderScale (e.g., 40 for base 0.01)
-      const particleRadius = renderedDiameter / 8; // Convert to radius (e.g., 20 pixels)
+      // const renderedDiameter = particle.size; // REMOVED
+      // const particleRadius = renderedDiameter / 8; // REMOVED old calculation
 
       // Calculate particle speed
       const speed = Math.sqrt(
@@ -403,7 +418,7 @@ class GridRenderModes {
         const overlapArea = this.calculateCircleRectOverlap(
           px,
           py,
-          particleRadius,
+          pixelRadius, // Use dynamically calculated pixelRadius
           x,
           y,
           width,
@@ -448,14 +463,19 @@ class GridRenderModes {
     const cellOverlaps = new Float32Array(this.targetValues.length).fill(0);
     const tune = 0.5; // Increased pressure sensitivity
 
+    // Get normalized particle radius from ParticleSystem
+    const normalizedRadius = particleSystem.particleRadius; // Assuming this property exists
+    // Calculate pixel radius dynamically based on dimensions
+    const pixelRadius = normalizedRadius * Math.max(this.dimensions.renderWidth, this.dimensions.renderHeight);
+
     particles.forEach((particle) => {
-      // Convert particle position to pixel space
-      const px = particle.x * this.TARGET_WIDTH;
-      const py = (1 - particle.y) * this.TARGET_HEIGHT;
+      // Convert particle position to pixel space using dynamic dimensions
+      const px = particle.x * this.dimensions.renderWidth;
+      const py = (1 - particle.y) * this.dimensions.renderHeight;
 
       // Use the rendered size (diameter) from getParticles()
-      const renderedDiameter = particle.size; // Already scaled by renderScale (e.g., 40 for base 0.01)
-      const particleRadius = renderedDiameter / 8; // Convert to radius (e.g., 20 pixels)
+      // const renderedDiameter = particle.size; // REMOVED
+      // const particleRadius = renderedDiameter / 8; // REMOVED old calculation
 
       // Find all cells that this particle overlaps with using circle-rectangle overlap
       this.gridMap.forEach((cell) => {
@@ -465,7 +485,7 @@ class GridRenderModes {
         const overlapArea = this.calculateCircleRectOverlap(
           px,
           py,
-          particleRadius,
+          pixelRadius, // Use dynamically calculated pixelRadius
           x,
           y,
           width,
@@ -514,11 +534,17 @@ class GridRenderModes {
     const cellWeights = new Float32Array(this.targetValues.length).fill(0);
     const tune = 5.0; // Adjusted tuning factor for better visualization
 
+    // Get normalized particle radius from ParticleSystem
+    const normalizedRadius = particleSystem.particleRadius; // Assuming this property exists
+    // Calculate pixel radius dynamically based on dimensions
+    const pixelRadius = normalizedRadius * Math.max(this.dimensions.renderWidth, this.dimensions.renderHeight);
+
     // First pass: accumulate weighted velocities in each cell
     particles.forEach((particle) => {
-      const px = particle.x * this.TARGET_WIDTH;
-      const py = (1 - particle.y) * this.TARGET_HEIGHT;
-      const particleRadius = particle.size / 8;
+      // Use dynamic dimensions
+      const px = particle.x * this.dimensions.renderWidth;
+      const py = (1 - particle.y) * this.dimensions.renderHeight;
+      // const particleRadius = particle.size / 8; // REMOVED old calculation
 
       this.gridMap.forEach((cell) => {
         const { x, y, width, height } = cell.bounds;
@@ -527,7 +553,7 @@ class GridRenderModes {
         const overlapArea = this.calculateCircleRectOverlap(
           px,
           py,
-          particleRadius,
+          pixelRadius, // Use dynamically calculated pixelRadius
           x,
           y,
           width,
@@ -622,7 +648,12 @@ class GridRenderModes {
 
     // Constants
     const tune = 50.0;
-    const renderScale = particleSystem.renderScale;
+    // const renderScale = particleSystem.renderScale; // No longer needed directly
+
+    // Get normalized particle radius from ParticleSystem
+    const normalizedRadius = particleSystem.particleRadius; // Assuming this property exists
+    // Calculate pixel radius dynamically based on dimensions
+    const pixelRadius = normalizedRadius * Math.max(this.dimensions.renderWidth, this.dimensions.renderHeight);
 
     // Track collision intensities for each cell
     const cellCollisions = new Float32Array(this.targetValues.length).fill(0);
@@ -639,8 +670,9 @@ class GridRenderModes {
       const y = Math.floor(i / gridSize);
       const normalizedX = (x + 0.5) / gridSize;
       const normalizedY = (y + 0.5) / gridSize;
-      const renderX = normalizedX * this.TARGET_WIDTH;
-      const renderY = (1 - normalizedY) * this.TARGET_HEIGHT;
+      // Use dynamic dimensions
+      const renderX = normalizedX * this.dimensions.renderWidth;
+      const renderY = (1 - normalizedY) * this.dimensions.renderHeight;
 
       // Process particle pairs in this cell
       for (let j = 0; j < collisionCell.length; j++) {
@@ -657,15 +689,17 @@ class GridRenderModes {
           const dvy = particle2.vy - particle1.vy;
           const relativeSpeed = Math.sqrt(dvx * dvx + dvy * dvy);
 
-          // Get particle positions in render space
-          const p1x = particle1.x * this.TARGET_WIDTH;
-          const p1y = (1 - particle1.y) * this.TARGET_HEIGHT;
-          const p2x = particle2.x * this.TARGET_WIDTH;
-          const p2y = (1 - particle2.y) * this.TARGET_HEIGHT;
+          // Get particle positions in render space using dynamic dimensions
+          const p1x = particle1.x * this.dimensions.renderWidth;
+          const p1y = (1 - particle1.y) * this.dimensions.renderHeight;
+          const p2x = particle2.x * this.dimensions.renderWidth;
+          const p2y = (1 - particle2.y) * this.dimensions.renderHeight;
 
           // Use the rendered size (diameter) from getParticles()
-          const p1Radius = particle1.size / 8;
-          const p2Radius = particle2.size / 8;
+          // const p1Radius = particle1.size / 8; // REMOVED old calculation
+          // const p2Radius = particle2.size / 8; // REMOVED old calculation
+          const p1Radius = pixelRadius; // Use dynamic radius
+          const p2Radius = pixelRadius; // Use dynamic radius (assuming same radius for all for now)
 
           // Calculate collision intensity based on overlap and relative speed
           const dx = p2x - p1x;
@@ -687,7 +721,7 @@ class GridRenderModes {
               const p1Overlap = this.calculateCircleRectOverlap(
                 p1x,
                 p1y,
-                p1Radius,
+                p1Radius, // Use dynamic radius
                 x,
                 y,
                 width,
@@ -697,7 +731,7 @@ class GridRenderModes {
               const p2Overlap = this.calculateCircleRectOverlap(
                 p2x,
                 p2y,
-                p2Radius,
+                p2Radius, // Use dynamic radius
                 x,
                 y,
                 width,
@@ -849,16 +883,21 @@ class GridRenderModes {
     if (!particles?.length) return this.targetValues;
 
     // renderScale is now 4000 as per your working setup
-    const renderScale = particleSystem.renderScale; // 4000
+    // const renderScale = particleSystem.renderScale; // No longer needed directly
+
+    // Get normalized particle radius from ParticleSystem
+    const normalizedRadius = particleSystem.particleRadius; // Assuming this property exists
+    // Calculate pixel radius dynamically based on dimensions
+    const pixelRadius = normalizedRadius * Math.max(this.dimensions.renderWidth, this.dimensions.renderHeight);
 
     particles.forEach((particle) => {
-      // Convert particle position to pixel space
-      const px = particle.x * this.TARGET_WIDTH;
-      const py = (1 - particle.y) * this.TARGET_HEIGHT;
+      // Convert particle position to pixel space using dynamic dimensions
+      const px = particle.x * this.dimensions.renderWidth;
+      const py = (1 - particle.y) * this.dimensions.renderHeight;
 
       // Use the rendered size (diameter) from getParticles()
-      const renderedDiameter = particle.size; // Already scaled by renderScale (e.g., 40 for base 0.01)
-      const particleRadius = renderedDiameter / 8; // Convert to radius (e.g., 20 pixels)
+      // const renderedDiameter = particle.size; // REMOVED
+      // const particleRadius = renderedDiameter / 8; // REMOVED old calculation
 
       // Find all cells that this particle overlaps with using circle-rectangle overlap
       this.gridMap.forEach((cell) => {
@@ -868,7 +907,7 @@ class GridRenderModes {
         const overlapArea = this.calculateCircleRectOverlap(
           px,
           py,
-          particleRadius,
+          pixelRadius, // Use dynamically calculated pixelRadius
           x,
           y,
           width,
@@ -876,7 +915,7 @@ class GridRenderModes {
         );
 
         if (overlapArea > 0) {
-          const particleArea = Math.PI * particleRadius * particleRadius;
+          const particleArea = Math.PI * pixelRadius * pixelRadius;
           let coveragePercentage;
 
           // Calculate the actual percentage of cell covered by the particle
@@ -914,9 +953,9 @@ class GridRenderModes {
       const centerX = cell.bounds.x + cell.bounds.width / 2;
       const centerY = cell.bounds.y + cell.bounds.height / 2;
 
-      // Convert to normalized coordinates (0-1)
-      const nx = centerX / this.TARGET_WIDTH;
-      const ny = 1 - centerY / this.TARGET_HEIGHT;
+      // Convert to normalized coordinates (0-1) using dynamic dimensions
+      const nx = centerX / this.dimensions.renderWidth;
+      const ny = 1 - centerY / this.dimensions.renderHeight;
 
       // Get noise value at cell center with blur applied
       const noiseValue = turbulence.noise2D(nx, ny, turbulence.time, true);

@@ -136,6 +136,7 @@ export class BoundaryRenderer {
       console.log(`BoundaryRenderer: Received RectangularBoundary - Width: ${physicsBoundary.width}, Height: ${physicsBoundary.height}`);
       const pixelWidth = canvasRect.width * physicsBoundary.width;
       const pixelHeight = canvasRect.height * physicsBoundary.height;
+      console.log(`[DEBUG] BoundaryRenderer - Rect Calc: physicsW=${physicsBoundary.width.toFixed(3)}, physicsH=${physicsBoundary.height.toFixed(3)}, canvasW=${canvasRect.width.toFixed(0)}, canvasH=${canvasRect.height.toFixed(0)}, pixelW=${pixelWidth.toFixed(1)}, pixelH=${pixelHeight.toFixed(1)}`);
       const pixelCenterX = canvasRect.left + window.scrollX + canvasRect.width * physicsBoundary.centerX;
       const pixelCenterY = canvasRect.top + window.scrollY + canvasRect.height * physicsBoundary.centerY;
       const left = pixelCenterX - pixelWidth / 2;

@@ -49,6 +49,16 @@ class VoronoiField {
 
     // Subscribe to parameter updates
     eventBus.on('simParamsUpdated', this.handleParamsUpdate.bind(this));
+
+    // ---> ADDED EVENT LISTENER HERE <---
+    eventBus.on('physicsBoundaryRecreated', ({ physicsBoundary }) => {
+      if (physicsBoundary) {
+        this.boundary = physicsBoundary;
+        console.log("VoronoiField updated boundary reference.");
+      } else {
+        console.error("VoronoiField received null boundary on physicsBoundaryRecreated event.");
+      }
+    });
   }
 
   // Add handler for simParams updates

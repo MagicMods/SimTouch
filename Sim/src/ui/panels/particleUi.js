@@ -35,11 +35,50 @@ export class ParticleUi extends BaseUi {
       .name("P-Opacity")
       .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'particleRenderer.opacity', value }));
 
+
+    const colorContainer = document.createElement("div");
+    colorContainer.classList = "particleColor-container";
+
+
+
     // Bind Color to simParams
     this.particleColorController = this.gui
       .addColor(this.main.simParams.particleRenderer, "color") // Assumes lil-gui handles hex strings
       .name("P-Color")
       .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'particleRenderer.color', value }));
+    this.particleColorController.domElement.classList.add("particleColor-selector");
+    colorContainer.appendChild(this.particleColorController.domElement);
+
+    // Create position button - Emit event onClick
+    const veloDebugButton = document.createElement("button");
+    veloDebugButton.textContent = "Velo-D";
+    veloDebugButton.className = "toggle-button";
+    if (this.main.simParams.particleRenderer.showVelocityField) veloDebugButton.classList.add("active");
+    veloDebugButton.addEventListener("click", () => {
+      const newValue = !this.main.simParams.particleRenderer.showVelocityField;
+      // Update button state immediately for responsiveness
+      veloDebugButton.classList.toggle("active", newValue);
+      // Emit event
+      eventBus.emit('uiControlChanged', { paramPath: 'particleRenderer.showVelocityField', value: newValue });
+    });
+
+    const veloColorButton = document.createElement("button");
+    veloColorButton.textContent = "Velo-C";
+    veloColorButton.className = "toggle-button";
+    if (this.main.simParams.particleRenderer.showVelocityField) veloColorButton.classList.add("active");
+    veloColorButton.addEventListener("click", () => {
+      const newValue = !this.main.simParams.particleRenderer.showVelocityField;
+      // Update button state immediately for responsiveness
+      veloColorButton.classList.toggle("active", newValue);
+      // Emit event
+      eventBus.emit('uiControlChanged', { paramPath: 'particleRenderer.showVelocityField', value: newValue });
+    });
+
+
+
+    colorContainer.appendChild(veloDebugButton);
+    colorContainer.appendChild(veloColorButton);
+    this.gui.domElement.querySelector(".children").appendChild(colorContainer);
   }
   //#endregion
 
