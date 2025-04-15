@@ -1,7 +1,5 @@
 import { FluidFLIP } from "./fluidFLIP.js";
 import { MouseForces } from "../forces/mouseForces.js";
-import { CircularBoundary } from "../boundary/circularBoundary.js";
-import { RectangularBoundary } from "../boundary/rectangularBoundary.js";
 import { CollisionSystem } from "../forces/collisionSystem.js";
 import { OrganicBehavior } from "../behaviors/organicBehavior.js";
 import { GravityForces } from "../forces/gravityForces.js";
@@ -490,14 +488,44 @@ class ParticleSystem {
 
     // Update simulation parameters
     if (simParams.simulation) {
+      // --- P-Count Handling ---
+      const newCount = simParams.simulation.particleCount;
+      if (newCount !== undefined && newCount !== this.numParticles) {
+        // Check if count is valid before reinitializing
+        if (typeof newCount === 'number' && newCount >= 0) {
+          this.reinitializeParticles(newCount);
+          // Note: No need to update other sim params here if reinitialize handles them or they are read fresh next cycle.
+          // If other params NEED to be applied immediately *after* reinit, place them here.
+        } else {
+          console.warn(`Invalid particle count received: ${newCount}. Ignoring.`);
+        }
+      }
+      // --- End P-Count ---
+
+      // Apply other simulation parameters (only if count didn't change, or apply after reinit if needed)
+      // For simplicity, we'll apply them regardless, reinitializeParticles should reset things correctly anyway.
       this.timeStep = simParams.simulation.timeStep ?? this.timeStep;
       this.timeScale = simParams.simulation.timeScale ?? this.timeScale;
       this.velocityDamping = simParams.simulation.velocityDamping ?? this.velocityDamping;
       this.maxVelocity = simParams.simulation.maxVelocity ?? this.maxVelocity;
       this.picFlipRatio = simParams.simulation.picFlipRatio ?? this.picFlipRatio;
-      // Particle count requires reinitialization, handled separately if needed
-      this.particleRadius = simParams.simulation.particleRadius ?? this.particleRadius;
       this.restDensity = simParams.simulation.restDensity ?? this.restDensity;
+
+      // --- P-Size Handling ---
+      const oldRadius = this.particleRadius;
+      const newRadius = simParams.simulation.particleRadius ?? this.particleRadius;
+      if (newRadius !== oldRadius) {
+        this.particleRadius = newRadius;
+        // Update the radii array for all particles
+        if (this.particleRadii && typeof this.particleRadii.fill === 'function') {
+          this.particleRadii.fill(this.particleRadius);
+          // console.debug(`Updated particleRadii array with new radius: ${this.particleRadius}`);
+        } else {
+          console.warn("Could not update particleRadii array.");
+        }
+      }
+      // --- End P-Size ---
+
 
       // Update FluidFLIP if restDensity changed
       if (this.fluid && simParams.simulation.restDensity !== undefined) {

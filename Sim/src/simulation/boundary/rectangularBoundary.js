@@ -173,25 +173,25 @@ class RectangularBoundary extends BaseBoundary {
             // Left wall repulsion
             if (position[0] - minXWithRadius < repulsionZoneX) {
                 const strength = (1 - ((position[0] - minXWithRadius) / repulsionZoneX)) * this.boundaryRepulsion;
-                velocity[0] += strength * 0.01;
+                velocity[0] += strength;
                 collision = true;
             }
             // Right wall repulsion
             if (maxXWithRadius - position[0] < repulsionZoneX) {
                 const strength = (1 - ((maxXWithRadius - position[0]) / repulsionZoneX)) * this.boundaryRepulsion;
-                velocity[0] -= strength * 0.01;
+                velocity[0] -= strength;
                 collision = true;
             }
             // Bottom wall repulsion
             if (position[1] - minYWithRadius < repulsionZoneY) {
                 const strength = (1 - ((position[1] - minYWithRadius) / repulsionZoneY)) * this.boundaryRepulsion;
-                velocity[1] += strength * 0.01;
+                velocity[1] += strength;
                 collision = true;
             }
             // Top wall repulsion
             if (maxYWithRadius - position[1] < repulsionZoneY) {
                 const strength = (1 - ((maxYWithRadius - position[1]) / repulsionZoneY)) * this.boundaryRepulsion;
-                velocity[1] -= strength * 0.01;
+                velocity[1] -= strength;
                 collision = true;
             }
         }

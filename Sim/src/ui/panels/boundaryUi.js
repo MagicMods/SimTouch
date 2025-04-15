@@ -1,7 +1,4 @@
 import { BaseUi } from "../baseUi.js";
-import { CircularBoundary } from "../../simulation/boundary/circularBoundary.js";
-import { RectangularBoundary } from "../../simulation/boundary/rectangularBoundary.js";
-import { BoundaryUtils } from "../../simulation/boundary/boundaryUtils.js";
 import { eventBus } from '../../util/eventManager.js';
 
 export class BoundaryUi extends BaseUi {

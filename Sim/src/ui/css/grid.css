@@ -72,3 +72,25 @@
 }
 
 
+.particleColor-container {
+  display: flex;
+  justify-content: space-evenly;
+  gap: 0px;
+  padding-left: 0px;
+  padding-right: 6px;
+  padding-top: 2px !important;
+  padding-bottom: 6px !important;
+  width: 100%;
+}
+
+.particleColor-selector {
+  margin : 0 !important;
+}
+
+.particleColor-container .name {
+  display: none !important;
+}
+
+.particleColor-container .toggle-button{
+  flex-grow: 2 !important;
+}

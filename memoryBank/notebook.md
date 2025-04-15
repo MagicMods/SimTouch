@@ -1135,3 +1135,49 @@ The `Sim` renderers vary significantly. `baseRenderer` and `particleRenderer` al
 **Status:** `GridRenderModes` now operates using the correct dynamic render dimensions. Particle positions are mapped correctly, and overlap/proximity calculations use a dynamically calculated pixel radius derived from physics parameters and render size. The grid visualization should now be accurate.
 
 ---
+
+## [THINK] - 2024-07-28 - Velocity Field Toggle Debugging
+
+**Observation:** User reported that the "Show Velocity Field" toggle in `particleUi.js` emits the `uiControlChanged` event with `paramPath: 'particleRenderer.showVelocityField'`, but the rendering doesn't update.
+
+**Analysis Flow:**
+
+1.  Searched for `uiControlChanged` listeners. Found listeners in `uiManager.js` and `main.js`.
+2.  Identified `main.js` -> `handleSimUIChange` as the relevant handler for simulation parameters.
+3.  Examined `handleSimUIChange`: It correctly updates the central `this.simParams` object using the `paramPath` and emits `simParamsUpdated` with the full updated `simParams`.
+4.  Searched for and found `ParticleRenderer` class in `Sim/src/renderer/particleRenderer.js`.
+5.  Examined `ParticleRenderer`:
+    - It listens for `simParamsUpdated` via `handleParamsUpdate`.
+    - `handleParamsUpdate` updates opacity and color from `simParams.particleRenderer`.
+    - `handleParamsUpdate` **does not** read or update `this.showVelocityField` from the event data.
+    - The `draw` method relies on the instance property `this.showVelocityField` (initialized to `false`) to control velocity field rendering.
+
+**Conclusion:** The central `simParams` are updated, but the `ParticleRenderer` instance doesn't sync its internal `showVelocityField` state from the `simParamsUpdated` event, preventing the `draw` method from activating the feature.
+
+---
+
+## [THINK] - 2024-07-28 - P-Count / P-Size Debugging
+
+**Observation:** User reported that the "P-Count" and "P-Size" controls in `particleUi.js` (initially misattributed to `paramUi.js`) are not working.
+
+**Analysis Flow:**
+
+1.  Confirmed controls are in `particleUi.js` and correctly emit `uiControlChanged` with `paramPath: 'simulation.particleCount'` and `paramPath: 'simulation.particleRadius'`.
+2.  Confirmed `Main.handleSimUIChange` updates `this.simParams` correctly and emits `simParamsUpdated`.
+3.  Examined `ParticleSystem.js`:
+    - It listens for `simParamsUpdated` via `handleParamsUpdate`.
+    - `handleParamsUpdate` **does not** call `reinitializeParticles()` when `simParams.simulation.particleCount` changes. It contains a comment indicating this is handled separately.
+    - `handleParamsUpdate` **does** update the instance property `this.particleRadius` from `simParams.simulation.particleRadius`.
+    - `ParticleSystem` has a `reinitializeParticles(newCount)` method to handle count changes.
+    - `ParticleSystem` maintains a `particleRadii` array, initially filled with `this.particleRadius`.
+4.  Re-examined `ParticleRenderer.js`:
+    - The `draw` method gets particle size information from the `size` property of each particle object passed to it (`p.size`).
+    - It does _not_ directly use `simParams.simulation.particleRadius`.
+5.  Checked `ParticleSystem.getParticles()` (need to confirm implementation details): Assumed it currently doesn't include the individual particle size from `particleRadii` array in the objects it returns.
+
+**Conclusion:**
+
+- **P-Count:** The `ParticleSystem.handleParamsUpdate` method needs to be modified to call `this.reinitializeParticles()` when the particle count changes in `simParams`.
+- **P-Size:** The `ParticleSystem.handleParamsUpdate` method needs to not only update `this.particleRadius` but also update the `this.particleRadii` array. Additionally, `ParticleSystem.getParticles()` needs to be modified to include the size from the `particleRadii` array in the returned particle objects so `ParticleRenderer` can use it.
+
+---

@@ -42,8 +42,8 @@
 
 /* Added styles for pattern previews */
 .pattern-preview {
-  width: 60px; /* Assuming default previewSize */
-  height: 60px; /* Assuming default previewSize */
+  width: 74px; /* Assuming default previewSize */
+  height: 74px; /* Assuming default previewSize */
   cursor: pointer;
   transition: border-color 0.2s;
   position: relative;

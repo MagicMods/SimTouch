@@ -191,7 +191,8 @@ class Main {
       },
       particleRenderer: {
         color: "#FFFFFF", // Default from ParticleRenderer config
-        opacity: 0.1 // Default from ParticleRenderer
+        opacity: 0.1, // Default from ParticleRenderer
+        showVelocityField: false,
       },
       network: { // Defaults from socketManager
         enabled: false,
