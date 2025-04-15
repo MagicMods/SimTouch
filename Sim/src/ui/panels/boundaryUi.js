@@ -67,7 +67,7 @@ export class BoundaryUi extends BaseUi {
 
 
     this.boundaryRepulsionController = this.gui
-      .add(this.main.simParams.boundary, "repulsion", 0.0, 20, 0.01)
+      .add(this.main.simParams.boundary, "repulsion", 0.0, 1, 0.01)
       .name("B-Repulse")
       .onChange((value) => {
         eventBus.emit('uiControlChanged', { paramPath: 'boundary.repulsion', value });

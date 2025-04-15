@@ -14,7 +14,7 @@ import { GravityUi } from "./panels/gravityUi.js";
 import { CollisionUi } from "./panels/collisionUi.js";
 import { BoundaryUi } from "./panels/boundaryUi.js";
 import { RandomizerUi } from "./panels/randomizerUi.js";
-import { NewGridUi } from "./panels/newGridUi.js";
+import { GridUi } from "./panels/gridUi.js";
 
 import Stats from "../util/statsModule.js";
 import { eventBus } from "../util/eventManager.js";
@@ -70,7 +70,7 @@ export class UiManager {
     this.turbulenceUi = new TurbulenceUi(this.main, this.rightContainer);
     this.voronoiUi = new VoronoiUi(this.main, this.rightContainer);
     this.organicUi = new OrganicUi(this.main, this.rightContainer);
-    this.newGridUi = new NewGridUi(this.main, this.rightContainer);
+    this.GridUi = new GridUi(this.main, this.rightContainer);
 
 
     this.randomizerUi = new RandomizerUi(this.main, this.presetContainer);

@@ -357,7 +357,7 @@ export class GridGenRenderer extends BaseRenderer {
     // console.log(`GridGenRenderer.renderCellsInstanced() called. Count: ${instanceCount}, showGridCells: ${this.grid?.flags?.showGridCells}`); // Add log
 
     if (instanceCount === 0) return; // Nothing to draw
-    if (!this.grid.flags.showGridCells) return; // Updated path: Skip drawing if grid is hidden
+    // REMOVED: if (!this.grid.flags.showGridCells) return; // Updated path: Skip drawing if grid is hidden
 
     const shaderInfo = this.shaderManager.use("gridCell");
     if (!shaderInfo) {
@@ -500,6 +500,7 @@ export class GridGenRenderer extends BaseRenderer {
   updateInstanceColors() {
     const gl = this.gl;
     const numInstances = this.instanceData.count;
+    const useDataColors = this.grid.flags.showGridCells; // Determine mode based on flag
 
     // Ensure needed components are ready
     if (numInstances === 0 || !this.renderModes || !this.gradient || !this.instanceData.colors) {
@@ -508,12 +509,14 @@ export class GridGenRenderer extends BaseRenderer {
     }
 
     // Get latest data values and gradient lookup
-    const dataValues = this.renderModes.getValues(this.particleSystem);
+    // Fetch dataValues only if needed
+    const dataValues = useDataColors ? this.renderModes.getValues(this.particleSystem) : null;
     const gradientValues = this.gradient.getValues();
     const visibleRects = this.gridGeometry?.getGeometry()?.rectangles; // Need rectangles for index
 
-    if (!dataValues || !gradientValues || !visibleRects || visibleRects.length !== numInstances) {
-      console.warn("updateInstanceColors: Data mismatch or missing, skipping color update.");
+    // Updated validation: dataValues only required if useDataColors is true
+    if ((useDataColors && !dataValues) || !gradientValues || !visibleRects || visibleRects.length !== numInstances) {
+      console.warn("updateInstanceColors: Data mismatch or missing, skipping color update.", { useDataColors, hasDataValues: !!dataValues, hasGradient: !!gradientValues, rectCount: visibleRects?.length, numInstances });
       return;
     }
 
@@ -523,19 +526,31 @@ export class GridGenRenderer extends BaseRenderer {
       const colorOffset = i * 4;
       let finalColor = [0.1, 0.1, 0.1, 1.0]; // Default fallback color
 
-      if (rect.index !== undefined && rect.index < dataValues.length) {
-        const cellValue = dataValues[rect.index];
-        const normalizationFactor = this.maxDensity || 1.0;
-        const normalizedValue = Math.max(0, Math.min(1, cellValue / normalizationFactor));
-        const gradientIdx = Math.min(255, Math.floor(normalizedValue * 256));
-        const color = gradientValues[gradientIdx];
-        if (color) {
-          finalColor = [color.r, color.g, color.b, 1.0];
+      if (useDataColors) {
+        // --- Dynamic Color Logic (based on simulation data) ---
+        if (rect.index !== undefined && dataValues && rect.index < dataValues.length) {
+          const cellValue = dataValues[rect.index];
+          const normalizationFactor = this.maxDensity || 1.0;
+          const normalizedValue = Math.max(0, Math.min(1, cellValue / normalizationFactor));
+          const gradientIdx = Math.min(255, Math.floor(normalizedValue * 256));
+          const color = gradientValues[gradientIdx];
+          if (color) {
+            finalColor = [color.r, color.g, color.b, 1.0];
+          }
+        } else {
+          // Fallback if index is bad or dataValues missing (shouldn't happen with check above, but safe)
+          const fallbackIndex = rect.index !== undefined ? rect.index : i;
+          const normalizedValue = numInstances > 1 ? fallbackIndex / (numInstances - 1) : 0;
+          const gradientIdx = Math.min(255, Math.floor(normalizedValue * 256));
+          const color = gradientValues[gradientIdx];
+          if (color) {
+            finalColor = [color.r, color.g, color.b, 1.0];
+          }
         }
       } else {
-        // Fallback: index-based color (could use rect.index if available)
-        const fallbackIndex = rect.index !== undefined ? rect.index : i;
-        const normalizedValue = numInstances > 1 ? fallbackIndex / (numInstances - 1) : 0;
+        // --- Static Color Logic (based on index/position) ---
+        const staticIndex = rect.index !== undefined ? rect.index : i;
+        const normalizedValue = numInstances > 1 ? staticIndex / (numInstances - 1) : 0;
         const gradientIdx = Math.min(255, Math.floor(normalizedValue * 256));
         const color = gradientValues[gradientIdx];
         if (color) {
@@ -670,7 +685,7 @@ export class GridGenRenderer extends BaseRenderer {
   // --- Add draw method for per-frame updates ---
   draw() {
     // console.log(`GridGenRenderer.draw() called. showGridCells: ${this.grid?.flags?.showGridCells}`); // Keep log
-    if (!this.grid?.flags?.showGridCells) return; // Skip if grid hidden (check flags exist)
+    // REMOVED: if (!this.grid?.flags?.showGridCells) return; // Skip if grid hidden (check flags exist)
 
     // Ensure instance data is ready (check count)
     const numInstances = this.instanceData.count;

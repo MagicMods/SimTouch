@@ -100,7 +100,7 @@ class Main {
         scale: 1.0,
         damping: 0.8,
         restitution: 1.0,
-        repulsion: 1.0,
+        repulsion: 0,
       },
       rendering: {
         gridMode: "Proximity", // Default guess (was from gridRenderer)
