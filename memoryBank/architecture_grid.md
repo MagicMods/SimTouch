@@ -107,3 +107,44 @@ graph LR
         Grid_ShaderManager -- Loads --> Grid_Shaders[/shader/]
     end
 ```
+
+## Component Dependency Diagrams (Mermaid Syntax - 2024-04-06)
+
+**Grid Project Dependencies:**
+
+```mermaid
+graph TD
+    subgraph Grid Project
+        Grid_Main[main.js] --> Grid_Params(Params Object)
+        Grid_Main --> Grid_GridGenRenderer[GridGenRenderer]
+        Grid_Main --> Grid_DimensionManager[DimensionManager]
+        Grid_Main --> Grid_UiManager[UiManager]
+        Grid_Main --> Grid_ShaderManager[ShaderManager]
+        Grid_Main --> Grid_ShapeBoundary(Shape Boundary System)
+
+        Grid_GridGenRenderer --> Grid_GL(WebGL Context)
+        Grid_GridGenRenderer --> Grid_ShaderManager
+        Grid_GridGenRenderer --> Grid_Params
+        Grid_GridGenRenderer --> Grid_DimensionManager
+        Grid_GridGenRenderer --> Grid_GridGeometry[GridGeometry]
+        Grid_GridGenRenderer --> Grid_OverlayManager[OverlayManager]
+        Grid_GridGenRenderer --> Grid_ShapeBoundary
+        Grid_GridGenRenderer --> Grid_InstancingShader(gridCell Shader)
+
+        Grid_DimensionManager --> Grid_Params
+        Grid_GridGeometry --> Grid_Params
+        Grid_GridGeometry --> Grid_DimensionManager
+        Grid_GridGeometry --> Grid_ShapeBoundary
+
+        Grid_UiManager --> Grid_GridUi[GridUi]
+        Grid_GridUi --> Grid_Main
+
+        Grid_OverlayManager --> Grid_DimensionManager
+        Grid_ShaderManager --> Grid_Logger
+        Grid_ShaderManager --> Grid_InstancingShader
+
+        Grid_ShapeBoundary(Shape Boundary System) --> Grid_BaseShapeBoundary[BaseBoundary]
+        Grid_BaseShapeBoundary --> Grid_CircularBoundaryShape[CircularBoundary]
+        Grid_BaseShapeBoundary --> Grid_RectangularBoundaryShape[RectangularBoundary]
+    end
+```
