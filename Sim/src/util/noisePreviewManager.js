@@ -1,10 +1,11 @@
 export class NoisePreviewManager {
 
-    constructor(turbulenceField, previewSize, patterns) {
+    constructor(turbulenceField, previewSize, patterns, debugFlags) {
         this.turbulenceField = turbulenceField;
         this.previewSize = previewSize;
         this.patterns = patterns;
         this.patternEntries = Object.entries(patterns);
+        this.debug = debugFlags;
 
         // State
         this.selectedPattern = null;
@@ -536,9 +537,7 @@ export class NoisePreviewManager {
         if (!this.selectedPattern || this.refreshingDisabled) return;
 
         // Add debug logging
-        if (this.turbulenceField && this.turbulenceField.debug) {
-            console.log(`Refreshing preview for ${this.selectedPattern}, visible: ${this.isVisible}, contrast: ${this.turbulenceField.contrast.toFixed(2)}, blur: ${this.turbulenceField.blurAmount.toFixed(2)}`);
-        }
+        if (this.debug.noise) console.log(`Refreshing preview for ${this.selectedPattern}, visible: ${this.isVisible}, contrast: ${this.turbulenceField.contrast.toFixed(2)}, blur: ${this.turbulenceField.blurAmount.toFixed(2)}`);
 
         // Add a guard to prevent circular calls
         this._inRefreshSelectedPreview = true;

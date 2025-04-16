@@ -1,4 +1,4 @@
-class FluidFLIP {
+export class FluidFLIP {
   constructor({
     gridSize = 64,
     picFlipRatio = 0.95,
@@ -8,6 +8,7 @@ class FluidFLIP {
     boundary = null,
     restDensity = 2.0,
     particleSystem = null,
+    debugFlag,
     ...params
   } = {}) {
     this.gridSize = gridSize;
@@ -19,6 +20,7 @@ class FluidFLIP {
     this.boundary = boundary;
     this.restDensity = restDensity;
     this.particleSystem = particleSystem;
+    this.debugFlag = debugFlag;
 
     const size = gridSize * gridSize;
     this.u = new Array(size).fill(0);
@@ -275,7 +277,7 @@ class FluidFLIP {
     const densityScaling = Math.pow(this.gasConstant, 1.5) / this.restDensity;
     const pressureCoefficient = baseScale * Math.min(Math.max(densityScaling * 0.5, 0.1), 10.0);
 
-    // console.log(`Effective pressure coefficient: ${pressureCoefficient}`);
+    if (this.debugFlag) console.log(`Effective pressure coefficient: ${pressureCoefficient}`);
 
     // ONE pressure solve loop
     for (let iter = 0; iter < this.iterations; iter++) {
@@ -466,7 +468,7 @@ class FluidFLIP {
   // Simplify setParameters to only handle rest density
   setParameters(restDensity) {
     this.restDensity = restDensity;
-    // console.log(`Rest density set to: ${this.restDensity}`);
+    if (this.debugFlag) console.log(`Rest density set to: ${this.restDensity}`);
   }
 
   // Fix the interpolateVelocity function with proper boundary checking
@@ -526,5 +528,3 @@ class FluidFLIP {
     return [vx, vy];
   }
 }
-
-export { FluidFLIP };

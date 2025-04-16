@@ -1,5 +1,5 @@
 
-class PresetBaseHandler {
+export class PresetBaseHandler {
   constructor(storageKey, defaultPresets, protectedPresets) {
     this.storageKey = storageKey;
     this.presets = { ...defaultPresets };
@@ -68,5 +68,3 @@ class PresetBaseHandler {
     return this.selectedPreset;
   }
 }
-
-export { PresetBaseHandler };

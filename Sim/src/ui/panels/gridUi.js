@@ -13,6 +13,7 @@ const SCREEN_TYPES = {
 export class GridUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
+    this.debug = this.main.debugFlags; // 
 
     try {
       this.gui.title("Grid");
@@ -35,12 +36,12 @@ export class GridUi extends BaseUi {
 
       // Initialize internal UI state with deep copies
       this.uiGridParams = {
-        screen: { ...initialScreenSpec }, // Copy the spec found or default
+        screen: { ...initialScreenSpec },
         gridSpecs: { ...main.gridParams.gridSpecs },
         shadow: { ...main.gridParams.shadow },
         flags: { ...main.gridParams.flags },
-        renderSize: { ...main.gridParams.renderSize }, // Add renderSize
-        colors: { ...main.gridParams.colors } // Add colors
+        renderSize: { ...main.gridParams.renderSize },
+        colors: { ...main.gridParams.colors }
       };
       // Keep uiState separate for screen type dropdown
       this.uiState = { selectedScreen: initialScreenTypeName };
@@ -102,7 +103,7 @@ export class GridUi extends BaseUi {
           return;
         }
 
-        console.debug(`Screen type changed to: ${value}`, selectedSpec);
+        if (this.debug.grid) console.log(`Screen type changed to: ${value}`, selectedSpec);
 
         this.uiGridParams.screen = { ...selectedSpec };
         eventBus.emit('uiControlChanged', { paramPath: 'screen', value: this.uiGridParams.screen });

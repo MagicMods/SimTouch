@@ -1,5 +1,6 @@
 export class ChainBehavior {
-    constructor() {
+    constructor(debugFlag) {
+        this.debugFlag = debugFlag;
         // Track all formed chains
         this.chains = [];
         // Map particle index to chain ID and position

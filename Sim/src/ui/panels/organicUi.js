@@ -6,6 +6,7 @@ import { eventBus } from '../../util/eventManager.js';
 export class OrganicUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
+    this.debug = this.main.debugFlags;
     this.gui.title("Organic Behavior");
     this.initOrganicControls();
     this.gui.open(false);
@@ -77,14 +78,10 @@ export class OrganicUi extends BaseUi {
     const organicParams = this.main.simParams.organic;
 
     this.globalForceController = this.gui.add(organicParams, "globalForce", 0, 5).name("O-Force")
-      .onChange((value) => {
-        eventBus.emit('uiControlChanged', { paramPath: 'organic.globalForce', value });
-      });
+      .onChange((value) => eventBus.emit('uiControlChanged', { paramPath: 'organic.globalForce', value }));
 
     this.globalRadiusController = this.gui.add(organicParams, "globalRadius", 5, 100).name("O-Radius")
-      .onChange((value) => {
-        eventBus.emit('uiControlChanged', { paramPath: 'organic.globalRadius', value });
-      });
+      .onChange((value) => eventBus.emit('uiControlChanged', { paramPath: 'organic.globalRadius', value }));
   }
 
   initFluidControls() {
@@ -150,7 +147,7 @@ export class OrganicUi extends BaseUi {
     const swarmEnabled = mode === "Swarm";
     const automataEnabled = mode === "Automata";
     const chainEnabled = mode === "Chain";
-    console.log(`Updating organic folders for mode: ${mode}`);
+    if (this.debug.organic) console.log(`Updating organic folders for mode: ${mode}`);
 
     const enableControllers = (folder, enabled) => {
       if (!folder || !folder.controllers) {
@@ -215,13 +212,12 @@ export class OrganicUi extends BaseUi {
     if (this.automataAttractionController) targets["A-Attract"] = this.automataAttractionController;
     if (this.automataThresholdController) targets["A-Threshold"] = this.automataThresholdController;
 
-    // Add chain controllers
     if (this.chainLinkDistController) targets["Ch-LinkDist"] = this.chainLinkDistController;
     if (this.chainLinkStrengthController) targets["Ch-LinkStr"] = this.chainLinkStrengthController;
     if (this.chainAlignController) targets["Ch-Align"] = this.chainAlignController;
     if (this.chainBranchController) targets["Ch-Branch"] = this.chainBranchController;
     if (this.chainMaxLinksController) targets["Ch-MaxLinks"] = this.chainMaxLinksController;
-    if (this.chainRepelController) targets["Ch-Repel"] = this.chainRepelController; // Add this controller
+    if (this.chainRepelController) targets["Ch-Repel"] = this.chainRepelController;
 
     return targets;
   }

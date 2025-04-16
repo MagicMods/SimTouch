@@ -1,7 +1,7 @@
 import { socketManager } from "../network/socketManager.js";
 
 export class ExternalInputConnector {
-  constructor(mouseForces, emuForces = null, micForces = null) {
+  constructor(mouseForces, emuForces = null, micForces = null, debugFlags) {
     this.mouseForces = mouseForces;
     this.emuForces = emuForces;
     this.micForces = micForces;
@@ -9,6 +9,8 @@ export class ExternalInputConnector {
     this.emuEnabled = false;
     this.micEnabled = false;
     this.autoEnableOnConnection = false;
+    this.debug = debugFlags;
+
 
     // Bind methods to maintain correct 'this' context
     this.handleConnectionChange = this.handleConnectionChange.bind(this);
@@ -32,10 +34,10 @@ export class ExternalInputConnector {
 
   handleConnectionChange(data) {
     if (data.type === "connect" && this.autoEnableOnConnection) {
-      // console.log("WebSocket connected - enabling external input");
+      // if (this.debugFlags.debugInput)console.log("WebSocket connected - enabling external input");
       this.enable();
     } else if (data.type === "disconnect") {
-      // console.log("WebSocket disconnected - disabling external input");
+      // if (this.debugFlags.debugInput)console.log("WebSocket disconnected - disabling external input");
       this.disable();
     }
   }
@@ -50,7 +52,7 @@ export class ExternalInputConnector {
       if (this.emuForces && this.emuEnabled) {
         socketManager.addEmuHandler(this.handleEmuData);
       }
-      console.log("External input connector enabled");
+      if (this.debug.inputs) console.log("External input connector enabled");
     }
     return this;
   }
@@ -65,7 +67,7 @@ export class ExternalInputConnector {
         socketManager.removeEmuHandler(this.handleEmuData);
       }
 
-      console.log("External input connector disabled");
+      if (this.debug.inputs) console.log("External input connector disabled");
     }
     return this;
   }
@@ -86,7 +88,7 @@ export class ExternalInputConnector {
         // Directly store reference to turbulence field if available
         if (main.turbulenceField) {
           this.emuForces.turbulenceField = main.turbulenceField;
-          console.log("Passed turbulenceField reference to EMU forces");
+          if (this.debug.inputs) console.log("Passed turbulenceField reference to EMU forces");
         }
       }
 
@@ -94,7 +96,7 @@ export class ExternalInputConnector {
         socketManager.addEmuHandler(this.handleEmuData);
       }
 
-      console.log("EMU input enabled");
+      if (this.debug.inputs) console.log("EMU input enabled");
     }
     return this;
   }
@@ -104,7 +106,7 @@ export class ExternalInputConnector {
       this.emuEnabled = false;
       this.emuForces.disable();
       socketManager.removeEmuHandler(this.handleEmuData);
-      console.log("EMU input disabled");
+      if (this.debug.inputs) console.log("EMU input disabled");
     }
     return this;
   }
@@ -114,9 +116,9 @@ export class ExternalInputConnector {
       this.micForces.enable().then((success) => {
         if (success) {
           this.micEnabled = true;
-          console.log("Microphone input enabled");
+          if (this.debug.inputs) console.log("Microphone input enabled");
         } else {
-          console.error("Failed to enable microphone input");
+          if (this.debug.inputs) console.error("Failed to enable microphone input");
         }
       });
     }
@@ -127,7 +129,7 @@ export class ExternalInputConnector {
     if (this.micForces && this.micEnabled) {
       this.micEnabled = false;
       this.micForces.disable();
-      console.log("Microphone input disabled");
+      if (this.debug.inputs) console.log("Microphone input disabled");
     }
     return this;
   }
@@ -137,7 +139,7 @@ export class ExternalInputConnector {
       this.micForces.sensitivity = value;
 
       // Debug audio levels
-      // console.log(
+      // if (this.debugFlags.debugInput) console.log(
       //   `Mic level: ${this.micForces.smoothedAmplitude.toFixed(
       //     3
       //   )} at sensitivity ${value}`
@@ -263,13 +265,13 @@ export class ExternalInputConnector {
       return;
     }
 
-    console.log("Changing audio input device:", deviceId);
+    if (this.debug.inputs) console.log("Changing audio input device:", deviceId);
 
     this.micForces
       .changeDevice(deviceId)
       .then((success) => {
         if (success) {
-          console.log("Audio input device changed successfully");
+          if (this.debug.inputs) console.log("Audio input device changed successfully");
         } else {
           console.error("Failed to change audio input device");
           alert(

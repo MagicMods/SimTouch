@@ -1,6 +1,6 @@
 import { BaseUi } from "../panels/baseUi.js";
 
-class UiComponent {
+export class UiComponent {
   constructor(main, parent) {
     this.main = main;
     this.parent = parent;
@@ -26,5 +26,3 @@ class UiComponent {
     // Default implementation does nothing
   }
 }
-
-export { UiComponent };

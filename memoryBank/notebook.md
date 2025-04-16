@@ -543,7 +543,6 @@ _(Proceeding to Step 11...)_
 **Step 11: Base Renderer Comparison (`baseRenderer.js`)**
 
 - **`Sim/baseRenderer.js` (Legacy):**
-  - Exports `class BaseRenderer { ... }` using `export { BaseRenderer };` at the end.
   - Constructor: Takes `gl`, `shaderManager`. Creates `this.vertexBuffer`.
   - Methods: Includes `drawCircle` method with logic for drawing circles using `TRIANGLE_FAN`.
   - Size: ~1.3KB.

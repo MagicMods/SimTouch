@@ -2,7 +2,7 @@ import { PulseModulator } from "./pulseModulator.js";
 import { InputModulator } from "./inputModulator.js";
 
 export class ModulatorManager {
-  constructor() {
+  constructor(debugFlags) {
     this.modulators = [];
     this.targets = {};
     this.targetRanges = {}; // Store min/max ranges for targets
@@ -10,6 +10,7 @@ export class ModulatorManager {
     this.uiComponents = {}; // Single structure for ALL UI components
     this.masterFrequency = 1.0;
     this.globalTime = 0;
+    this.debug = debugFlags;
   }
 
   //#region Target
@@ -185,13 +186,13 @@ export class ModulatorManager {
   //#region Modulators
 
   createPulseModulator() {
-    const modulator = new PulseModulator(this);
+    const modulator = new PulseModulator(this, this.debug.pulseMod);
     this.modulators.push(modulator);
     return modulator;
   }
 
   createInputModulator() {
-    const modulator = new InputModulator(this);
+    const modulator = new InputModulator(this, this.debug.inputMod);
     modulator.inputSource = "mic"; // Default to mic input
     this.modulators.push(modulator);
     return modulator;

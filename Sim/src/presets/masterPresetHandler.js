@@ -1,41 +1,43 @@
 import { PresetBaseHandler } from "./presetBaseHandler.js";
 
 export class MasterPresetHandler extends PresetBaseHandler {
-  constructor(storageKey, defaultPresets, protectedPresets) {
+  constructor(storageKey, defaultPresets, protectedPresets, debugFlag) {
     super(storageKey, defaultPresets, protectedPresets);
+    this.debugFlag = debugFlag;
     this.uiComponents = {};
     this.initialState = null;
   }
 
   setComponents(components) {
     this.uiComponents = components;
+    // setTimeout(() => this.captureInitialState(), 0); // Remove setTimeout
+    // Don't call captureInitialState immediately
+  }
+
+  // New method to be called after handlers are set up
+  finalizeInitialization() {
     this.captureInitialState();
   }
 
   captureInitialState() {
-    // console.log("Capturing initial UI state for Default preset");
-    this.initialState = {};
-
-    try {
-      Object.entries(this.uiComponents).forEach(([key, component]) => {
-        try {
-          this.initialState[key] = component.getData();
-          // console.log(`Captured initial state from ${key}`);
-        } catch (error) {
-          console.error(`Error capturing initial state from ${key}:`, error);
-        }
-      });
-
-      this.presets["Default"] = this.initialState;
-      this.saveToStorage();
-      // console.log("Initial state captured and saved as Default preset");
-    } catch (error) {
-      console.error("Error in captureInitialState:", error);
+    if (this.getPreset("Default")) return; // Don't overwrite if Default exists
+    if (this.debugFlag) console.log("Capturing initial UI state for Default preset");
+    const initialState = {};
+    for (const key of Object.keys(this.uiComponents)) {
+      const uiComponent = this.uiComponents[key];
+      if (uiComponent && typeof uiComponent.getData === "function") {
+        initialState[key] = uiComponent.getData();
+        if (this.debugFlag) console.log(`Captured initial state from ${key}`);
+      } else {
+        console.warn(`Could not capture initial state from ${key}`);
+      }
     }
+    this.savePreset("Default", initialState);
+    if (this.debugFlag) console.log("Initial state captured and saved as Default preset");
   }
 
   applyDefaultPreset() {
-    console.log("Applying Default master preset");
+    if (this.debugFlag) console.log("Applying Default master preset");
     let success = true;
 
     try {
@@ -105,85 +107,127 @@ export class MasterPresetHandler extends PresetBaseHandler {
 
   applyPreset(presetName) {
     if (presetName === "Default") {
-      // console.log("Loading Default master preset");
-      return this.applyDefaultPreset();
+      if (this.debugFlag) console.log("Applying Default master preset");
+      // Special handling for Default: Reload initial state
+      const defaultState = this.getPreset("Default");
+      if (defaultState) {
+        // Add any specific reset logic here
+        // Example: Reset simulation parameters or clear dynamic elements
+        if (this.debugFlag) console.log("Resetting critical components to defaults");
+        // TODO: Define what needs explicit resetting
+
+        // After reset, apply the potentially modified 'Default' state
+        let success = true;
+        try {
+          Object.entries(defaultState).forEach(([key, data]) => {
+            try {
+              const component = this.uiComponents[key];
+              const componentSuccess = component.setData(data);
+              if (!componentSuccess) {
+                console.warn(`Component ${key} returned false from setData()`);
+                success = false;
+              }
+            } catch (error) {
+              console.error(`Error applying initial state to ${key}:`, error);
+              success = false;
+            }
+          });
+        } catch (error) {
+          console.error("Error applying Default preset:", error);
+          success = false;
+        }
+
+        if (success) {
+          this.selectedPreset = "Default";
+          if (this.debugFlag) console.log(`Successfully applied master preset: ${presetName}`);
+        }
+      }
+      return success;
     }
 
+    if (this.debugFlag) console.log("Loading Default master preset");
     const preset = this.getPreset(presetName);
     if (!preset) {
       console.warn(`Preset not found: ${presetName}`);
       return false;
     }
 
-    let success = true;
-    // console.log(`Applying master preset: ${presetName}`);
+    if (this.debugFlag) console.log(`Applying master preset: ${presetName}`);
+    let allSuccess = true;
 
-    try {
-      [
-        "paramUi",
-        "particleUi",
-        "gravityUi",
-        "collisionUi",
-        "boundaryUi",
-        "turbulenceUi",
-        "voronoiUi",
-        "organicUi",
-      ].forEach((key) => {
-        const component = this.uiComponents[key];
-        if (component && preset[key] && typeof component.setData === "function") {
-          try {
-            console.log(`Applying preset to ${key}`);
-            const componentSuccess = component.setData(preset[key]);
-            success = success && componentSuccess;
-          } catch (error) {
+    // Apply each part of the master preset
+    [
+      "paramUi",
+      "particleUi",
+      "gravityUi",
+      "collisionUi",
+      "boundaryUi",
+      "turbulenceUi",
+      "voronoiUi",
+      "organicUi",
+    ].forEach((key) => {
+      const uiComponent = this.uiComponents[key];
+      if (uiComponent && preset[key] && typeof uiComponent.setData === "function") {
+        try {
+          if (this.debugFlag) console.log(`Applying preset to ${key}`);
+          const success = uiComponent.setData(preset[key]);
+          if (!success) {
             console.error(`Error applying preset to ${key}:`, error);
-            success = false;
+            allSuccess = false;
           }
+        } catch (error) {
+          console.error(`Error applying preset to ${key}:`, error);
+          allSuccess = false;
         }
-      });
-
-      if (this.uiComponents.pulseModUi && preset.pulseModUi) {
-        // console.log("Applying pulse modulation preset");
-        const pulseSuccess = this.uiComponents.pulseModUi.setData(preset.pulseModUi);
-        success = success && pulseSuccess;
       }
+    });
 
-      if (this.uiComponents.inputModUi && preset.inputModUi) {
-        // console.log("Applying input modulation preset");
-        const inputSuccess = this.uiComponents.inputModUi.setData(preset.inputModUi);
-        success = success && inputSuccess;
+    // Special handling for modulator types using dedicated presets
+    if (this.uiComponents.pulseModUi && preset.pulseModUi) {
+      const pulsePresetData = preset.pulseModUi;
+      if (this.debugFlag) console.log("Applying pulse modulation preset");
+      if (this.uiComponents.pulseModUi && typeof this.uiComponents.pulseModUi.setData === 'function') {
+        this.uiComponents.pulseModUi.setData(pulsePresetData);
       }
-    } catch (error) {
-      console.error("Error applying master preset:", error);
-      success = false;
     }
 
-    if (success) {
+    if (this.uiComponents.inputModUi && preset.inputModUi) {
+      const inputPresetData = preset.inputModUi;
+      if (this.debugFlag) console.log("Applying input modulation preset");
+      if (this.uiComponents.inputModUi && typeof this.uiComponents.inputModUi.setData === 'function') {
+        this.uiComponents.inputModUi.setData(inputPresetData);
+      }
+    }
+
+    if (allSuccess) {
       this.selectedPreset = presetName;
-      // console.log(`Successfully applied master preset: ${presetName}`);
+      if (this.debugFlag) console.log(`Successfully applied master preset: ${presetName}`);
     }
 
-    return success;
+    return allSuccess;
   }
 
   savePresetFromUI(presetName) {
     if (!this.uiComponents) {
-      // console.warn("No UI components registered");
+      console.warn("No UI components registered");
       return false;
     }
 
     try {
       const data = {};
-      Object.entries(this.uiComponents).forEach(([key, component]) => {
-        if (component && typeof component.getData === "function") {
+      for (const key of Object.keys(this.uiComponents)) {
+        const uiComponent = this.uiComponents[key];
+        if (uiComponent && typeof uiComponent.getData === "function") {
           try {
-            data[key] = component.getData();
-            // console.log(`Saved data from ${key}`);
+            data[key] = uiComponent.getData();
+            if (this.debugFlag) console.log(`Saved data from ${key}`);
           } catch (error) {
             console.error(`Error getting data from ${key}:`, error);
           }
+        } else {
+          console.warn(`Could not save state from ${key}`);
         }
-      });
+      }
 
       return this.savePreset(presetName, data);
     } catch (error) {

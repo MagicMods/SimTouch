@@ -1,8 +1,9 @@
-class AutomataRules {
-  constructor() {
+export class AutomataRules {
+  constructor(debugFlags) {
     this.particleStates = new Map();
     this.stateColors = new Map();
     this.debugEnabled = false;
+    this.debug = debugFlags;
   }
 
   initializeStates(particles) {
@@ -18,7 +19,7 @@ class AutomataRules {
     particles.forEach((particle, idx) => {
       const currentState = this.particleStates.get(idx) || 0.5;
       const neighborList = neighbors.get(idx) || [];
-      
+
       // Calculate average neighbor state
       let avgState = 0;
       neighborList.forEach(n => {
@@ -46,4 +47,3 @@ class AutomataRules {
     return this.particleStates.get(idx) || 0.5;
   }
 }
-export { AutomataRules };

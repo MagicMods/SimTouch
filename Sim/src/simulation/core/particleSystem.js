@@ -5,20 +5,21 @@ import { OrganicBehavior } from "../behaviors/organicBehavior.js";
 import { GravityForces } from "../forces/gravityForces.js";
 import { eventBus } from '../../util/eventManager.js';
 
-class ParticleSystem {
+export class ParticleSystem {
   constructor({
     particleCount = 500,
     timeStep = 1 / 60,
-    gravity = 0, // Default gravity strength
+    gravity = 0,
     picFlipRatio = 0,
-    turbulence = null, // Keep turbulence as optional parameter
-    voronoi = null, // Add voronoi as optional parameter
-    boundaryManager = null, // Added
+    turbulence,
+    voronoi = null,
+    boundaryManager,
+    debugFlags,
   } = {}) {
     // Particle properties
     this.numParticles = particleCount;
     this.timeStep = timeStep;
-    this.gravity = new GravityForces(gravity);
+    this.gravity = new GravityForces(gravity, debugFlags.debugGravity);
     this.particleRadius = 0.01;
     this.renderScale = 2000;
 
@@ -42,12 +43,12 @@ class ParticleSystem {
     this.timeScale = 1.0;
 
     // Debug flags
-    this.debug = false;
-    this.debugShowVelocityField = false;
-    this.debugShowPressureField = false;
-    this.debugShowBoundaries = false;
-    this.debugShowFlipGrid = false;
-    this.debugShowNoiseField = false;
+    this.debug = debugFlags;
+    // this.debugFlagVelocity = debugFlags.debugVelocity;
+    // this.debugFlagPressure = debugFlags.debugPressure;
+    // this.debugFlagBoundaries = debugFlags.debugBoundary;
+    // this.debugFlagFlipGrid = debugFlags.debugFlipGrid;
+    // this.debugFlagNoise = debugFlags.debugNoiseField;
     this.noiseFieldResolution = 20;
 
     // Particle arrays
@@ -89,14 +90,15 @@ class ParticleSystem {
       boundary: initialBoundary, // Use initial boundary here
       restDensity: this.restDensity,
       gasConstant: this.gasConstant,
-      particleSystem: this
+      particleSystem: this,
+      debugFlags: this.debug
     });
 
     // Initialize mouse forces
-    this.mouseForces = new MouseForces({});
+    this.mouseForces = new MouseForces({}, this.debug);
 
     // Initialize organic behavior
-    this.organicBehavior = new OrganicBehavior();
+    this.organicBehavior = new OrganicBehavior(this.debug);
 
     this.initializeParticles();
 
@@ -207,7 +209,7 @@ class ParticleSystem {
 
   reinitializeParticles(newCount = null) {
     if (newCount !== null) {
-      console.log(`Reinitializing particle system with ${newCount} particles`);
+      if (this.debug.particles) console.log(`Reinitializing particle system with ${newCount} particles`);
       this.numParticles = newCount;
 
       // Recreate arrays with new size
@@ -355,7 +357,7 @@ class ParticleSystem {
       //   this.particles[i * 2 + 1] = 0.5;
       //   this.velocitiesX[i] = 0;
       //   this.velocitiesY[i] = 0;
-      //   console.log("Recovered escaped particle");
+      //   if(this.debug.particles) console.log("Recovered escaped particle");
       // }
     }
 
@@ -490,6 +492,7 @@ class ParticleSystem {
     if (simParams.simulation) {
       // --- P-Count Handling ---
       const newCount = simParams.simulation.particleCount;
+
       if (newCount !== undefined && newCount !== this.numParticles) {
         // Check if count is valid before reinitializing
         if (typeof newCount === 'number' && newCount >= 0) {
@@ -519,7 +522,7 @@ class ParticleSystem {
         // Update the radii array for all particles
         if (this.particleRadii && typeof this.particleRadii.fill === 'function') {
           this.particleRadii.fill(this.particleRadius);
-          // console.debug(`Updated particleRadii array with new radius: ${this.particleRadius}`);
+          if (this.debug.particles) console.log(`Updated particleRadii array with new radius: ${this.particleRadius}`);
         } else {
           console.warn("Could not update particleRadii array.");
         }
@@ -546,7 +549,7 @@ class ParticleSystem {
     // No need to update a local boundary instance here.
 
     // Optional: Log for verification
-    // console.log(`ParticleSystem updated params via event: timeStep=${this.timeStep}, damping=${this.velocityDamping}, ...`);
+    // if(this.debug.particles) console.log(`ParticleSystem updated params via event: timeStep=${this.timeStep}, damping=${this.velocityDamping}, ...`);
   }
 }
 
@@ -555,4 +558,3 @@ function throwError(message) {
   throw new Error(message);
 }
 
-export { ParticleSystem };

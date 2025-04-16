@@ -2,7 +2,9 @@ import { CircularBoundaryShape } from "./boundary/circularBoundaryShape.js"; // 
 import { RectangularBoundaryShape } from "./boundary/rectangularBoundaryShape.js"; // Needed for instanceof checks
 
 export class GridGeometry {
-  constructor() {
+  constructor(debugFlags) {
+
+    this.debug = debugFlags;
     this.rectangles = [];
     this.geomParams = {}; // Stores cols, rows, cell dimensions (visual and physical)
   }
@@ -33,7 +35,7 @@ export class GridGeometry {
     const offsetY = gridParams.gridSpecs.centerOffsetY || 0;
 
     // Log center position used for grid generation
-    // console.debug("Grid geometry generation using:", {
+    // if (this.debug.gridGoemetry) console.log("Grid geometry generation using:", {
     //   boundaryCenter: { x: centerX, y: centerY },
     //   offsets: { x: offsetX, y: offsetY },
     // });
@@ -60,7 +62,7 @@ export class GridGeometry {
     const maxVisualCellHeight = Math.max(30, Math.round(startCellHeight * renderScale));
 
     // Debug output to help diagnose issues
-    // console.debug("Grid Geometry Calculations:", {
+    // if (this.debug.gridGeometry) console.log("Grid Geometry Calculations:", {
     //   physicalWidth: physicalWidth,
     //   physicalHeight: physicalHeight,
     //   renderScale: renderScale,
@@ -87,13 +89,13 @@ export class GridGeometry {
     // let bestRects = []; // Removed
 
     // --- BEGIN STEP 1: Add Boundary Type Logging ---
-    console.log(`GridGeometry.generate received boundary type: ${boundary?.constructor?.name}`, {
-      isCircular: boundary instanceof CircularBoundaryShape,
-      isRectangular: boundary instanceof RectangularBoundaryShape,
-      radius: boundary?.getRadius ? boundary.getRadius() : 'N/A',
-      width: boundary?.width ?? 'N/A', // Use nullish coalescing for direct property access
-      height: boundary?.height ?? 'N/A'
-    });
+    // if (this.debug.gridGeometry) console.log(`GridGeometry.generate received boundary type: ${boundary?.constructor?.name}`, {
+    //   isCircular: boundary instanceof CircularBoundaryShape,
+    //   isRectangular: boundary instanceof RectangularBoundaryShape,
+    //   radius: boundary?.getRadius ? boundary.getRadius() : 'N/A',
+    //   width: boundary?.width ?? 'N/A', // Use nullish coalescing for direct property access
+    //   height: boundary?.height ?? 'N/A'
+    // });
     // --- END STEP 1 ---
 
     // --- Phase 1: Parameter Search ---
@@ -226,7 +228,7 @@ export class GridGeometry {
               // Check validity for allowCut=0: the cell making us hit the target must be valid
               if (gridParams.gridSpecs.allowCut === 0 && cornersInside !== 4) {
                 isValidTarget = false;
-                // console.debug(`Target count met, but cell not valid for allowCut=0 (cellH: ${cellH}). Skipping.`);
+                // if (this.debug.gridGoemetry) console.log(`Target count met, but cell not valid for allowCut=0 (cellH: ${cellH}). Skipping.`);
               }
 
               if (isValidTarget) {
@@ -259,7 +261,7 @@ export class GridGeometry {
       if (!targetFound && currentValidCount > bestValidCount) {
         // For non-target search, we accept any valid grid according to allowCut
         // No extra allowCut=0 check needed here, as individual cells already passed includeCell
-        // console.debug(`New best rectangle count: ${currentValidCount} at cellH: ${cellH}`);
+        // if (this.debug.gridGoemetry) console.log(`New best rectangle count: ${currentValidCount} at cellH: ${cellH}`);
         // bestRects = []; // Placeholder cleared - not used anymore
         bestPhysicalCellW = scaledW_;
         bestPhysicalCellH = scaledH_;
@@ -405,12 +407,12 @@ export class GridGeometry {
     // --- Plan Step 5.3: Update final logging ---
     // console.info(`Generated final grid with ${this.rectangles.length} cells using optimal parameters. Target: ${gridParams.gridSpecs.targetCellCount || "N/A"}`, this.geomParams);
 
-    // console.debug("Final Grid Geometry:", {
+    // if (this.debug.gridGoemetry) console.log("Final Grid Geometry:", {
     //   rectanglesCount: this.rectangles.length,
     //   gridParams: this.geomParams, // Use the stored final params
     // });
 
-    // console.debug(`Stored ${this.rectangles.length} final rectangles.`);
+    // if (this.debug.gridGoemetry) console.log(`Stored ${this.rectangles.length} final rectangles.`);
     // --- Plan Step 5.4: Ensure return ---
     return this.rectangles;
   }

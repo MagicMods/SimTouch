@@ -1,7 +1,8 @@
 export class EmuRenderer {
-  constructor(container, emuForces, main = null) {
+  constructor(container, emuForces, main) {
     this.emuForces = emuForces;
     this.main = main;
+    this.debugFlag = this.main.debugFlags.debugEmu;
     this.visible = false;
     this.isDragging = false;
 
@@ -33,8 +34,12 @@ export class EmuRenderer {
     this.animationFrameId = null;
     this.startAnimation();
 
-    if (this.main?.turbulenceField) {
-      console.log("EmuRenderer has direct access to turbulenceField via main");
+    // Check if main has turbulenceField before accessing
+    if (this.main && this.main.turbulenceField) {
+      this.turbulenceField = this.main.turbulenceField;
+      if (this.debugFlag) console.log("EmuRenderer has direct access to turbulenceField via main");
+    } else {
+      console.warn("EmuRenderer: Main reference or turbulenceField not found on main object.");
     }
   }
 

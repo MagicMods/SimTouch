@@ -1,8 +1,8 @@
-class NeighborSearch {
-  constructor() {
+export class NeighborSearch {
+  constructor(debugFlags) {
     // Match GridRenderer's configuration
-    this.TARGET_WIDTH = 240;
-    this.TARGET_HEIGHT = 240;
+    this.TARGET_WIDTH = 240; // TODO: Make dynamic!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    this.TARGET_HEIGHT = 240; // TODO: Make dynamic
 
     // Grid parameters matching GridRenderer
     this.gridParams = {
@@ -16,13 +16,12 @@ class NeighborSearch {
 
     // Initialize cell mapping
     this.cellMap = new Map();
-    this.debug = false; // Enable debugging
-    this.debugEnabled = false;
-    this.cellSize = 24; // 10% of TARGET_WIDTH/HEIGHT
+    this.debug = debugFlags; // Enable debugging
+    this.cellSize = 24; // 10% of TARGET_WIDTH/HEIGHT // TODO: Make dynamic
     this.cols = Math.ceil(240 / this.cellSize);
     this.rows = Math.ceil(240 / this.cellSize);
 
-    console.log("NeighborSearch initialized:", {
+    if (this.debug.organic) console.log("NeighborSearch initialized:", {
       resolution: `${this.TARGET_WIDTH}x${this.TARGET_HEIGHT}`,
       cells: this.gridParams.target,
     });
@@ -40,9 +39,9 @@ class NeighborSearch {
       const col = Math.floor(px / this.cellSize);
       const row = Math.floor(py / this.cellSize);
 
-      if (this.debugEnabled && p.y > 0.7) {
-        console.log(`Mapping particle at (${px.toFixed(1)}, ${py.toFixed(1)}) to cell [${row}, ${col}]`);
-      }
+      // if (p.y > 0.7) {
+      //   if (this.debug.organic) console.log(`Mapping particle at (${px.toFixed(1)}, ${py.toFixed(1)}) to cell [${row}, ${col}]`);
+      // }
 
       const cellIndex = row * this.cols + col;
       if (this.isValidCell(cellIndex)) {
@@ -150,7 +149,7 @@ class NeighborSearch {
   }
 
   logNeighborStats(particles, particleData) {
-    console.log("Neighbor search:", {
+    if (this.debug.organic) console.log("Neighbor search:", {
       particles: particles.length,
       mappedParticles: particleData.size,
       activeCells: this.cellMap.size,
@@ -158,5 +157,3 @@ class NeighborSearch {
     });
   }
 }
-
-export { NeighborSearch };

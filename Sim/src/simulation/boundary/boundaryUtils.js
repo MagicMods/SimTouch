@@ -1,7 +1,7 @@
 import { CircularBoundary } from "./circularBoundary.js";
 import { RectangularBoundary } from "./rectangularBoundary.js";
 
-class BoundaryUtils {
+export class BoundaryUtils {
 
     static circularToRectangular(circularBoundary, options = {}) {
         const { preserveArea = false, aspectRatio = 1.0 } = options;
@@ -120,5 +120,3 @@ class BoundaryUtils {
         }
     }
 }
-
-export { BoundaryUtils }; 

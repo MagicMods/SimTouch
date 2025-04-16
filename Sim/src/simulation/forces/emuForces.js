@@ -1,7 +1,7 @@
 import { EmuData } from "../../input/emuData.js";
 
 export class EmuForces {
-  constructor(simulation) {
+  constructor(simulation, debugFlag) {
     // Store reference to gravity
     this.gravity = simulation.gravity;
 
@@ -18,7 +18,7 @@ export class EmuForces {
     this.accelGravityMultiplier = 0.5;
 
     // Added for debugging
-    this.debug = false;
+    this.debugFlag = debugFlag;
   }
 
   enable() {
@@ -94,7 +94,7 @@ export class EmuForces {
 
       // Set the gravity direction (normalized internally)
       this.gravity.setRawDirection(accelX, accelY, accelZ);
-    } else if (this.debug) {
+    } else if (this.debugFlag) {
       console.log('Direct turbulenceField reference:', this.turbulenceField);
 
       if (this.gravity && this.gravity.particleSystem) {

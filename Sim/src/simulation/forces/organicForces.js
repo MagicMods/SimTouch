@@ -1,9 +1,9 @@
-class OrganicForces {
-  constructor(forceScales) {
+export class OrganicForces {
+  constructor(forceScales, debugFlags) {
     this.TARGET_WIDTH = 240;
     this.TARGET_HEIGHT = 240;
     this.forceScales = forceScales;
-    this.debugEnabled = false;
+    this.debug = debugFlags;
     this.forceDamping = 0.85;
   }
 
@@ -21,10 +21,10 @@ class OrganicForces {
     const pixelParticle = this.toPixelSpace(particle);
     const maxForce = 0.5; // Limit maximum force magnitude
 
-    // if (this.debugEnabled && particle.y > 0.7) {
-    //   console.log(`Computing fluid forces for particle at y=${particle.y.toFixed(3)}`);
-    //   console.log(`Neighbor count: ${neighbors.length}`);
-    // }
+    if (this.debug.organic && particle.y > 0.7) {
+      console.log(`Computing fluid forces for particle at y=${particle.y.toFixed(3)}`);
+      console.log(`Neighbor count: ${neighbors.length}`);
+    }
 
     neighbors.forEach((n) => {
       const other = this.toPixelSpace(n.particle);
@@ -60,7 +60,7 @@ class OrganicForces {
         force.x = Math.max(-maxForce, Math.min(maxForce, force.x + fx + relVelX));
         force.y = Math.max(-maxForce, Math.min(maxForce, force.y + fy + relVelY));
 
-        // if (this.debugEnabled && particle.y > 0.7) {
+        // if (this.debug.organic && particle.y > 0.7) {
         //   console.log(`Applied force: (${force.x.toFixed(3)}, ${force.y.toFixed(3)})`);
         // }
       }
@@ -195,17 +195,17 @@ class OrganicForces {
       force.y *= this.forceDamping;
     }
 
-    // if (this.debugEnabled) {
-    //   console.log(`Swarm force for particle at (${particle.x.toFixed(2)}, ${particle.y.toFixed(2)}):`, {
-    //     force: `(${force.x.toFixed(3)}, ${force.y.toFixed(3)})`,
-    //     neighbors: count,
-    //     params: {
-    //       cohesion: params.cohesion,
-    //       alignment: params.alignment,
-    //       separation: params.separation
-    //     }
-    //   });
-    // }
+    if (this.debug.organic) {
+      console.log(`Swarm force for particle at (${particle.x.toFixed(2)}, ${particle.y.toFixed(2)}):`, {
+        force: `(${force.x.toFixed(3)}, ${force.y.toFixed(3)})`,
+        neighbors: count,
+        params: {
+          cohesion: params.cohesion,
+          alignment: params.alignment,
+          separation: params.separation
+        }
+      });
+    }
   }
 
   calculateAutomataForces(particle, neighbors, force, params) {
@@ -213,12 +213,12 @@ class OrganicForces {
     const maxForce = 0.5;
     let totalForce = { x: 0, y: 0 };
 
-    // if (this.debugEnabled) {
-    //   console.log(`Automata force calculation for particle ${particle.index}:`, {
-    //     state: particle.state,
-    //     neighbors: neighbors.length
-    //   });
-    // }
+    if (this.debug.organic) {
+      console.log(`Automata force calculation for particle ${particle.index}:`, {
+        state: particle.state,
+        neighbors: neighbors.length
+      });
+    }
 
     neighbors.forEach((n) => {
       const other = this.toPixelSpace(n.particle);
@@ -263,21 +263,19 @@ class OrganicForces {
     force.x *= this.forceDamping;
     force.y *= this.forceDamping;
 
-    // if (this.debugEnabled) {
-    //   console.log(`Applied automata force: (${force.x.toFixed(3)}, ${force.y.toFixed(3)})`);
-    // }
+    if (this.debug.organic) {
+      console.log(`Applied automata force: (${force.x.toFixed(3)}, ${force.y.toFixed(3)})`);
+    }
   }
 
   calculateChainForces(particle, neighbors, force, params) {
-    // Skip if no neighbors
     if (!neighbors.length) return;
 
-    // // Debug logging
-    // console.log("CHAIN FORCES:", {
-    //   particleIndex: particle.index,
-    //   neighbors: neighbors.length,
-    //   params: params
-    // });
+    console.log("CHAIN FORCES:", {
+      particleIndex: particle.index,
+      neighbors: neighbors.length,
+      params: params
+    });
 
     // Make sure chain data exists on particle
     if (!particle.chainData) {
@@ -441,13 +439,11 @@ class OrganicForces {
     force.y *= this.forceDamping;
   }
 
-  // logForceCalculation(type, force, neighborCount) {
-  //   console.log(`${type} force:`, {
-  //     magnitude: Math.hypot(force.x, force.y).toFixed(3),
-  //     direction: `${force.x.toFixed(3)},${force.y.toFixed(3)}`,
-  //     neighbors: neighborCount,
-  //   });
-  // }
+  logForceCalculation(type, force, neighborCount) {
+    console.log(`${type} force:`, {
+      magnitude: Math.hypot(force.x, force.y).toFixed(3),
+      direction: `${force.x.toFixed(3)},${force.y.toFixed(3)}`,
+      neighbors: neighborCount,
+    });
+  }
 }
-
-export { OrganicForces };

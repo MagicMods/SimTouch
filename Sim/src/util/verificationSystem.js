@@ -1,7 +1,8 @@
-class VerificationSystem {
-  constructor(enabled = false) {
+export class VerificationSystem {
+  constructor(enabled = false, debugFlags) {
     this.enabled = enabled;
     this.errors = [];
+    this.debug = debugFlags;
   }
 
   enable() {
@@ -128,15 +129,15 @@ class VerificationSystem {
       error: !arrayChecks.valid
         ? "Invalid solver arrays"
         : !paramChecks.valid
-        ? "Invalid solver parameters"
-        : null,
+          ? "Invalid solver parameters"
+          : null,
     };
   }
 
   validateSolverArrays(solver) {
     const expectedLength = solver.numX * solver.numY;
-    console.log("Expected array length:", expectedLength);
-    console.log("Solver arrays:", {
+    if (this.debug.verif) console.log("Expected array length:", expectedLength);
+    if (this.debug.verif) console.log("Solver arrays:", {
       u: solver.u?.length,
       v: solver.v?.length,
       p: solver.p?.length,
@@ -301,8 +302,8 @@ class VerificationSystem {
     const gridValid = this.validateGrid(grid);
     const solverValid = this.validateFluidSolver(grid.fluidSolver);
 
-    console.log("Grid validation:", gridValid);
-    console.log("Solver validation:", solverValid);
+    if (this.debug.verif) console.log("Grid validation:", gridValid);
+    if (this.debug.verif) console.log("Solver validation:", solverValid);
 
     return {
       valid: gridValid.valid && solverValid.valid,
@@ -381,5 +382,3 @@ class VerificationSystem {
     };
   }
 }
-
-export { VerificationSystem };

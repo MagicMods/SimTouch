@@ -1,4 +1,4 @@
-class StateManager {
+export class StateManager {
   constructor() {
     this.metrics = {
       frameCount: 0,
@@ -144,5 +144,3 @@ class StateManager {
     });
   }
 }
-
-export { StateManager };

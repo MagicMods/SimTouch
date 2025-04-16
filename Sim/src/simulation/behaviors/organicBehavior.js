@@ -11,9 +11,10 @@ export const Behaviors = {
   CHAIN: "Chain",
 };
 
-class OrganicBehavior {
-  constructor() {
+export class OrganicBehavior {
+  constructor(debugFlags) {
     this.currentBehavior = "None";
+    this.debug = debugFlags;
 
     this.params = {
       Fluid: {
@@ -69,24 +70,24 @@ class OrganicBehavior {
       },
     };
 
-    this.forces = new OrganicForces(this.forceScales);
-    this.neighborSearch = new NeighborSearch({ resolution: 24 });
-    this.automataRules = new AutomataRules();
+    this.forces = new OrganicForces(this.forceScales, this.debug);
+    this.neighborSearch = new NeighborSearch(this.debug);
+    this.automataRules = new AutomataRules(this.debug);
 
-    this.debug = false;
-    this.debugEnabled = false;
 
-    // console.log(
-    //   "OrganicBehavior initialized:",
-    //   JSON.stringify(
-    //     {
-    //       currentBehavior: this.currentBehavior,
-    //       params: this.params,
-    //     },
-    //     null,
-    //     2
-    //   )
-    // );
+    if (this.debug.organic) {
+      console.log(
+        "OrganicBehavior initialized:",
+        JSON.stringify(
+          {
+            currentBehavior: this.currentBehavior,
+            params: this.params,
+          },
+          null,
+          2
+        )
+      );
+    }
 
     // Subscribe to parameter updates
     eventBus.on('simParamsUpdated', this.handleParamsUpdate.bind(this));
@@ -147,11 +148,11 @@ class OrganicBehavior {
       // this.perceptionRadius = organicParams.perceptionRadius ?? this.perceptionRadius;
       // if (this.perceptionRadius !== previousRadius && typeof this.neighborSearch?.updateResolution === 'function') {
       //     // Assuming neighborSearch uses radius, might need update method
-      //     console.log("OrganicBehavior: Radius changed. Updating neighbor search.");
+      //     if(this.debug.organic) console.log("OrganicBehavior: Radius changed. Updating neighbor search.");
       //     // this.neighborSearch.updateResolution(this.perceptionRadius); // Example call
       // }
     }
-    // console.log(`OrganicBehavior updated params via event: ${this.currentBehavior}`);
+    if (this.debug.organic) console.log(`OrganicBehavior updated params via event: ${this.currentBehavior}`);
   }
 
   updateParticles(particleSystem, dt) {
@@ -177,7 +178,7 @@ class OrganicBehavior {
 
       // Debug particles in top region
       // if (this.debugEnabled && particle.y > 0.7) {
-      //   console.log(`Particle ${i / 2} at y=${particle.y.toFixed(3)}`);
+      //   if(this.debug.organic) console.log(`Particle ${i / 2} at y=${particle.y.toFixed(3)}`);
       // }
     }
 
@@ -188,7 +189,7 @@ class OrganicBehavior {
 
     // Reset chain data when switching to Chain behavior
     if (this.currentBehavior === "Chain" && this.lastBehavior !== "Chain") {
-      console.log("Resetting chain data on all particles");
+      if (this.debug.organic) console.log("Resetting chain data on all particles");
       // Reset chain data on all particles
       particles.forEach(p => {
         p.chainData = { links: [] };
@@ -210,20 +211,19 @@ class OrganicBehavior {
       currentParams
     );
 
-    // Debug output
-    if (this.debugEnabled) {
-      console.log(`${this.currentBehavior} update:`, {
-        particles: particles.length,
-        neighbors: neighbors.size,
-        states:
-          this.currentBehavior === "Automata"
-            ? this.automataRules.particleStates.size
-            : "N/A",
-      });
-    }
+
+    if (this.debug.organic) console.log(`${this.currentBehavior} update:`, {
+      particles: particles.length,
+      neighbors: neighbors.size,
+      states:
+        this.currentBehavior === "Automata"
+          ? this.automataRules.particleStates.size
+          : "N/A",
+    });
+
 
     forces.forEach((force, idx) => {
-      // if (this.debugEnabled && particles[idx].y > 0.7) {
+      // if (this.debug.organic && particles[idx].y > 0.7) {
       //   console.log(
       //     `Force at y=${particles[idx].y.toFixed(3)}: (${force.x.toFixed(
       //       3
@@ -244,7 +244,7 @@ class OrganicBehavior {
   //       ...Array.from(forces.values()).map((f) => Math.hypot(f.x, f.y))
   //     ),
   //   };
-  //   console.log("Behavior Update:", stats);
+  //   if(this.debug.organic) console.log("Behavior Update:", stats);
   // }
 
   reset() {
@@ -252,5 +252,3 @@ class OrganicBehavior {
     this.currentBehavior = "None";
   }
 }
-
-export { OrganicBehavior };

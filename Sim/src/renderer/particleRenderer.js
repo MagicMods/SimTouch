@@ -12,14 +12,22 @@ function hexToRgb(hex) {
   } : null;
 }
 
-class ParticleRenderer extends BaseRenderer {
+export class ParticleRenderer extends BaseRenderer {
   showVelocityField = false;
+  particleCount = 0; // Initialize particle count
+  vertexArray = null;
 
-  constructor(gl, shaderManager, shaderType = "particles") {
+  constructor(gl, shaderManager, debugFlag) {
     super(gl, shaderManager);
+    if (!gl || !shaderManager) {
+      throw new Error(
+        "ParticleRenderer requires gl, shaderManager, and debugFlag."
+      );
+    }
     this.gl = gl;
     this.shaderManager = shaderManager;
-    this.shaderType = shaderType;
+    this.debugFlag = debugFlag;
+    this.shaderType = "particles";
     this.particleBuffer = gl.createBuffer();
     this.sizeBuffer = gl.createBuffer();
     this.velocityLineBuffer = gl.createBuffer(); // Add buffer for velocity lines
@@ -28,7 +36,8 @@ class ParticleRenderer extends BaseRenderer {
       color: [1, 1, 1, 0.1],
     };
     this.particleOpacity = 0.1;
-    console.log("ParticleRenderer initialized with per-particle sizing");
+
+    if (this.debugFlag) console.log("ParticleRenderer initialized");
 
     // Subscribe to parameter updates
     eventBus.on('simParamsUpdated', this.handleParamsUpdate.bind(this));
@@ -66,7 +75,7 @@ class ParticleRenderer extends BaseRenderer {
         this.showVelocityField = rendererParams.showVelocityField;
       }
     }
-    // console.log(`ParticleRenderer updated params via event: opacity=${this.particleOpacity}, color=${this.config?.color}`);
+    // if (this.main.debugFlag) console.log(`ParticleRenderer updated params via event: opacity=${this.particleOpacity}, color=${this.config?.color}`);
   }
 
   draw(particles) {
@@ -215,5 +224,3 @@ class ParticleRenderer extends BaseRenderer {
     }
   }
 }
-
-export { ParticleRenderer };

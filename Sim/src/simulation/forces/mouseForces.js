@@ -1,10 +1,10 @@
-class MouseForces {
+export class MouseForces {
   constructor({
     impulseRadius = 1,
     impulseMag = 0.111,
     overrideRadius = 0.2, // Inner zone where mouse completely overrides other forces
     overrideStrength = 3.0, // How strongly to override other forces
-  } = {}) {
+  } = {}, debugFlag) {
     // Force parameters
     this.impulseRadius = impulseRadius;
     this.impulseMag = impulseMag;
@@ -41,6 +41,7 @@ class MouseForces {
     this.joystickActive = false;
     this.joystickX = 0;
     this.joystickY = 0;
+    this.debugFlag = debugFlag;
   }
 
   // Set main instance reference
@@ -707,5 +708,3 @@ class MouseForces {
     }
   }
 }
-
-export { MouseForces };

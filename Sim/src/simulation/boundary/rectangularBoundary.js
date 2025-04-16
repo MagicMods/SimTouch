@@ -1,6 +1,6 @@
 import { BaseBoundary } from "./baseBoundary.js";
 
-class RectangularBoundary extends BaseBoundary {
+export class RectangularBoundary extends BaseBoundary {
     constructor({
         centerX = 0.5,
         centerY = 0.5,
@@ -10,6 +10,7 @@ class RectangularBoundary extends BaseBoundary {
         damping = 0.95,
         boundaryRepulsion = 0.1,
         mode = "BOUNCE",
+        debugFlag,
     } = {}) {
         // Call the parent constructor with shared parameters
         super({
@@ -18,7 +19,7 @@ class RectangularBoundary extends BaseBoundary {
             boundaryRepulsion,
             mode,
         });
-
+        this.debugFlag = debugFlag;
         // Core parameters specific to rectangular boundary
         this.centerX = centerX;
         this.centerY = centerY;
@@ -331,5 +332,3 @@ class RectangularBoundary extends BaseBoundary {
         };
     }
 }
-
-export { RectangularBoundary }; 

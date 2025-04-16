@@ -1,6 +1,6 @@
 import { eventBus } from '../../util/eventManager.js';
 
-class CollisionSystem {
+export class CollisionSystem {
   constructor({
     enabled = true,
     gridSize = 10,
@@ -60,7 +60,7 @@ class CollisionSystem {
     for (let i = 0; i < gridCellCount; i++) {
       this.grid.push([]);
     }
-    console.log(`Collision grid initialized with size ${this.gridSize}x${this.gridSize}`);
+    // console.log(`Collision grid initialized with size ${this.gridSize}x${this.gridSize}`); // REMOVED
   }
 
   update(particles, velocitiesX, velocitiesY) {
@@ -273,4 +273,3 @@ class CollisionSystem {
     this.grid.forEach((cell) => (cell.length = 0));
   }
 }
-export { CollisionSystem };

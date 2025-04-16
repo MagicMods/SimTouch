@@ -10,14 +10,15 @@ export const GridField = {
   OVERLAP: "Overlap",
 };
 
-class GridRenderModes {
-  constructor({ gridParams, gridGeometry, gridMap, canvas, coordTransforms, maxDensityRef, dimensions }) {
+export class GridRenderModes {
+  constructor({ gridParams, gridGeometry, gridMap, canvas, coordTransforms, maxDensityRef, dimensions, debugFlag }) {
     this.gridParams = gridParams;
     this.gridGeometry = gridGeometry;
     this.gridMap = gridMap;
     this.canvas = canvas;
     this.coordTransforms = coordTransforms;
     this.dimensions = dimensions;
+    this.debugFlag = debugFlag;
     // Store the maxDensity reference function
     this.getMaxDensity = maxDensityRef || (() => 4.0); // Default to 4.0 if not provided
 
@@ -37,21 +38,21 @@ class GridRenderModes {
     this.modes = GridField;
     this.currentMode = this.modes.PROXIMITY; // Start with Density mode
 
-    // console.log(
-    //   "GridRenderModes initialized with new params:",
-    //   JSON.stringify(
-    //     {
-    //       cells: gridParams.target,
-    //       dimensions: {
-    //         cols: gridParams.cols,
-    //         rows: gridParams.rows,
-    //       },
-    //       smoothing: this.smoothing,
-    //     },
-    //     null,
-    //     2
-    //   )
-    // );
+    if (this.debugFlag) console.log(
+      "GridRenderModes initialized with new params:",
+      JSON.stringify(
+        {
+          cells: gridParams.target,
+          dimensions: {
+            cols: gridParams.cols,
+            rows: gridParams.rows,
+          },
+          smoothing: this.smoothing,
+        },
+        null,
+        2
+      )
+    );
   }
 
   updateGrid({ gridParams, gridGeometry, gridMap, dimensions }) {
@@ -81,7 +82,7 @@ class GridRenderModes {
   }
 
   calculateTargetValues(particleSystem) {
-    // console.log(`calculateTargetValues: Mode=${this.currentMode}`);
+    // if(this.debugFlag) console.log(`calculateTargetValues: Mode=${this.currentMode}`);
     switch (this.currentMode) {
       case this.modes.PROXIMITY:
         this.calculateProximity(particleSystem);
@@ -134,11 +135,11 @@ class GridRenderModes {
   }
 
   calculateProximity(particleSystem) {
+    // if(this.debugFlag) console.log(`calculateProximity: particles.length = ${particles?.length ?? 'N/A'}`);
     this.targetValues.fill(0);
     if (!particleSystem) return this.targetValues;
 
     const particles = particleSystem.getParticles();
-    // console.log(`calculateProximity: particles.length = ${particles?.length ?? 'N/A'}`);
     if (!particles?.length) return this.targetValues;
 
     // Constants
@@ -322,11 +323,11 @@ class GridRenderModes {
 
 
   calculateDensity(particleSystem) {
+    if (this.debugFlag) console.log(`calculateDensity: particles.length = ${particles?.length ?? 'N/A'}`);
     this.targetValues.fill(0);
     if (!particleSystem) return this.targetValues;
 
     const particles = particleSystem.getParticles();
-    console.log(`calculateDensity: particles.length = ${particles?.length ?? 'N/A'}`);
     if (!particles?.length) return this.targetValues;
 
     // renderScale is now 4000 as per your working setup
@@ -967,5 +968,3 @@ class GridRenderModes {
     return this.targetValues;
   }
 }
-
-export { GridRenderModes };

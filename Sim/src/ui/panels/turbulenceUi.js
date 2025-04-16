@@ -6,7 +6,7 @@ import { eventBus } from '../../util/eventManager.js';
 export class TurbulenceUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-
+    this.debug = this.main.debugFlags;
     // Validate required dependencies
     if (!main.turbulenceField) {
       throw new Error("TurbulenceField is required in main for TurbulenceUi");
@@ -425,7 +425,8 @@ export class TurbulenceUi extends BaseUi {
     this.previewManager = new NoisePreviewManager(
       turbulenceField,
       previewSize,
-      patternStyles
+      patternStyles,
+      this.main.debugFlags
     );
 
     // Check if previews folder is open
@@ -775,7 +776,7 @@ export class TurbulenceUi extends BaseUi {
 
   setData(data) {
     if (!data || data === "None") {
-      // console.log("Resetting turbulence to None preset");
+      if (this.debug.turbulences) console.log("Resetting turbulence to None preset");
       const targets = this.getControlTargets();
 
       // Reset all numerical values

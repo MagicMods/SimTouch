@@ -1,12 +1,14 @@
 import { PresetBaseHandler } from "./presetBaseHandler.js";
 
 export class RandomizerPresetHandler extends PresetBaseHandler {
-  constructor(storageKey, defaultPresets, protectedPresets) {
+  constructor(storageKey, defaultPresets, protectedPresets, debugFlag) {
     super(storageKey, defaultPresets, protectedPresets);
+    this.debugFlag = debugFlag;
   }
 
   applyPreset(presetName, uiComponent) {
-    console.log(`RandomizerPresetHandler: Applying preset "${presetName}"`);
+    const preset = this.getPreset(presetName);
+    if (this.debugFlag) console.log(`RandomizerPresetHandler: Applying preset "${presetName}"`);
 
     if (!uiComponent) {
       console.error("RandomizerPresetHandler: UI component not provided");
@@ -16,7 +18,7 @@ export class RandomizerPresetHandler extends PresetBaseHandler {
     // Special case handling for None/All
     if (presetName === "None" || presetName === "All") {
       if (typeof uiComponent.setData === "function") {
-        console.log(`RandomizerPresetHandler: Applying special preset "${presetName}"`);
+        if (this.debugFlag) console.log(`RandomizerPresetHandler: Applying special preset "${presetName}"`);
         const success = uiComponent.setData(presetName);
         if (success) this.selectedPreset = presetName;
         return success;
@@ -24,17 +26,18 @@ export class RandomizerPresetHandler extends PresetBaseHandler {
       return false;
     }
 
-    const preset = this.getPreset(presetName);
-    if (!preset) {
-      console.error(`RandomizerPresetHandler: Preset not found: ${presetName}`);
-      return false;
-    }
-
-    if (typeof uiComponent.setData === "function") {
-      console.log(`RandomizerPresetHandler: Applying preset data for "${presetName}"`, preset);
-      const success = uiComponent.setData(preset);
-      if (success) this.selectedPreset = presetName;
-      return success;
+    if (presetName === "Default Randomize") {
+      if (this.debugFlag) console.log(`RandomizerPresetHandler: Applying special preset "${presetName}"`);
+      this.randomizerUi.setData({ controllers: {} }); // Reset UI
+      this.randomizerUi.triggerRandomization(); // Trigger default random
+    } else if (preset) {
+      // Regular preset
+      if (this.debugFlag) console.log(`RandomizerPresetHandler: Applying preset data for "${presetName}"`, preset);
+      if (typeof uiComponent.setData === "function") {
+        const success = uiComponent.setData(preset);
+        if (success) this.selectedPreset = presetName;
+        return success;
+      }
     }
 
     console.error("RandomizerPresetHandler: UI component doesn't implement setData()");
@@ -42,7 +45,7 @@ export class RandomizerPresetHandler extends PresetBaseHandler {
   }
 
   savePresetFromUI(presetName, uiComponent) {
-    console.log(`RandomizerPresetHandler: Saving preset "${presetName}" from UI`);
+    if (this.debugFlag) console.log(`RandomizerPresetHandler: Saving preset "${presetName}" from UI`);
 
     if (!uiComponent || typeof uiComponent.getData !== "function") {
       console.error("RandomizerPresetHandler: UI component doesn't implement getData()");
@@ -50,7 +53,7 @@ export class RandomizerPresetHandler extends PresetBaseHandler {
     }
 
     const data = uiComponent.getData();
-    console.log(`RandomizerPresetHandler: Got data for preset "${presetName}"`, data);
+    if (this.debugFlag) console.log(`RandomizerPresetHandler: Got data for preset "${presetName}"`, data);
 
     this.selectedPreset = presetName;
     return this.savePreset(presetName, data);

@@ -2,8 +2,9 @@
 import { PresetBaseHandler } from "./presetBaseHandler.js";
 
 export class ModulatorPresetHandler extends PresetBaseHandler {
-  constructor(storageKey, defaultPresets, protectedPresets) {
+  constructor(storageKey, defaultPresets, protectedPresets, debugFlag) {
     super(storageKey, defaultPresets, protectedPresets);
+    this.debugFlag = debugFlag;
   }
 
   applyPreset(presetName, uiComponent) {
@@ -26,7 +27,7 @@ export class ModulatorPresetHandler extends PresetBaseHandler {
       return false;
     }
 
-    // console.log(`Applying preset ${presetName}:`, JSON.stringify(preset));
+    if (this.debugFlag) console.log(`Applying preset ${presetName}:`, JSON.stringify(preset));
 
     if (typeof uiComponent.setData === "function") {
       const success = uiComponent.setData(preset);

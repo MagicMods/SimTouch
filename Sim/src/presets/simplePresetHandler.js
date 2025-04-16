@@ -1,8 +1,9 @@
 import { PresetBaseHandler } from "./presetBaseHandler.js";
 
 export class SimplePresetHandler extends PresetBaseHandler {
-  constructor(storageKey, defaultPresets, protectedPresets) {
+  constructor(storageKey, defaultPresets, protectedPresets, debugFlag) {
     super(storageKey, defaultPresets, protectedPresets);
+    this.debugFlag = debugFlag;
   }
 
   applyPreset(presetName, uiComponent) {

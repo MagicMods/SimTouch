@@ -7,12 +7,13 @@ import { Gradients } from "../shaders/gradients.js";
 import { GridRenderModes, GridField } from "./gridRenderModes.js";
 
 export class GridGenRenderer extends BaseRenderer {
-  constructor(gl, shaderManager, gridConfig, dimensionManager, boundaryManager, particleSystem) {
+  constructor(gl, shaderManager, gridConfig, dimensionManager, boundaryManager, particleSystem, gridRenderModes, debugFlags) {
     super(gl, shaderManager);
 
     this.gl = gl;
     this.shaderManager = shaderManager;
-    this.gradient = new Gradients("c0"); // Initialize gradient in constructor
+    this.debug = debugFlags;
+    this.gradient = new Gradients(debugFlags, "c0"); // Initialize gradient in constructor
     this.dimensionManager = dimensionManager;
     this.boundaryManager = boundaryManager;
     this.particleSystem = particleSystem;
@@ -35,8 +36,8 @@ export class GridGenRenderer extends BaseRenderer {
     };
 
     // Initialize core components and buffers
-    this.overlayManager = new OverlayManager(gl.canvas); // Instantiate OverlayManager
-    this.gridGeometry = new GridGeometry(); // Instantiate GridGeometry
+    this.overlayManager = new OverlayManager(gl.canvas, this.debug); // Instantiate OverlayManager
+    this.gridGeometry = new GridGeometry(this.debug); // Instantiate GridGeometry + Pass debugFlags
 
     // Generate an initial empty gridMap to pass to GridRenderModes
     this.gridMap = []; // Initialize gridMap as empty array
@@ -64,8 +65,6 @@ export class GridGenRenderer extends BaseRenderer {
     this.renderCellsInstanced = this.renderCellsInstanced.bind(this);
     this.handleParamsUpdate = this.handleParamsUpdate.bind(this);
 
-    console.debug("GridGenRenderer constructor completed.");
-
     // Validate initial gridConfig.screen
     if (
       !gridConfig ||
@@ -91,7 +90,6 @@ export class GridGenRenderer extends BaseRenderer {
 
     // Subscribe to grid parameter updates
     eventBus.on('gridParamsUpdated', ({ gridParams, dimensions }) => {
-      console.debug("GridGenRenderer received gridParamsUpdated event.");
       const shapeBoundary = this.boundaryManager?.getShapeBoundary();
       const physicsBoundary = this.boundaryManager?.getPhysicsBoundary();
       // Call setGrid, passing dimensions from the event payload
@@ -143,7 +141,8 @@ export class GridGenRenderer extends BaseRenderer {
 
   // Update grid config, shape boundary, and physics boundary
   setGrid(newGridConfig, shapeBoundary, physicsBoundary, dimensions) {
-    // console.log("Renderer setGrid: Received gridConfig.shadow:", JSON.stringify(newGridConfig?.shadow));
+    // >>> MODIFIED: Uncomment and wrap log
+    if (this.debug.gridGenRenderer) console.log("Renderer setGrid: Received gridConfig.shadow:", JSON.stringify(newGridConfig?.shadow));
     // --- START REFACTOR ---
     // // Remove this line: this.grid = newGridConfig;
 
@@ -180,13 +179,13 @@ export class GridGenRenderer extends BaseRenderer {
     let themeUpdated = false;
 
     if (newPresetName && newPresetName !== 'custom' && newPresetName !== currentPreset) {
-      console.debug(`GridGenRenderer: Applying new preset: ${newPresetName}`);
+      console.log(`GridGenRenderer: Applying new preset: ${newPresetName}`);
       this.gradient.applyPreset(newPresetName);
       themeUpdated = true;
     } else if (newPresetName === 'custom') {
       // If preset is 'custom', try applying colorStops
       if (Array.isArray(newColorStops) && newColorStops.length >= 2) {
-        console.debug("GridGenRenderer: Applying custom color stops.");
+        console.log("GridGenRenderer: Applying custom color stops.");
         const success = this.gradient.setColorStops(newColorStops);
         if (!success) {
           console.warn("GridGenRenderer: Setting custom color stops failed, falling back to default preset 'c0'.");
@@ -235,7 +234,7 @@ export class GridGenRenderer extends BaseRenderer {
 
   // Renamed from updateGrid to clarify its purpose
   updateGridGeometryAndRender(dimensions) {
-    // console.debug("updateGridGeometryAndRender called with screen:", this.grid.screen);
+    // console.log("updateGridGeometryAndRender called with screen:", this.grid.screen);
 
     // Use the externally provided shapeBoundary
     if (!this.shapeBoundary) {
@@ -269,7 +268,6 @@ export class GridGenRenderer extends BaseRenderer {
         maxDensityRef: () => this.maxDensity, // CORRECTED: Pass internal maxDensity getter
         dimensions: this.currentDimensions // Pass current dimensions
       });
-      console.debug("GridGenRenderer: Initialized GridRenderModes.");
     } else {
       this.renderModes.updateGrid({
         gridParams: this.grid,
@@ -277,7 +275,6 @@ export class GridGenRenderer extends BaseRenderer {
         gridMap: this.gridMap,
         dimensions: dimensions // Pass updated dimensions
       });
-      // console.debug("GridGenRenderer: Updated GridRenderModes.");
     }
 
     // <<< Call prepareInstanceData AFTER renderModes is ready >>>
@@ -314,7 +311,9 @@ export class GridGenRenderer extends BaseRenderer {
 
     // Draw physics boundary (if enabled)
     if (this.grid.flags.showBoundary && this.physicsBoundary) {
-      // console.log('Drawing physics boundary');
+      // >>> MODIFIED: Uncomment and wrap log
+      if (this.debug.gridGenRenderer) console.log('Drawing physics boundary');
+      // <<< END MODIFIED
       // this.physicsBoundary.drawBoundary(
       //   this.gl,
       //   projectionMatrix,
@@ -354,7 +353,9 @@ export class GridGenRenderer extends BaseRenderer {
     const gl = this.gl;
     const instanceCount = this.instanceData.count;
 
-    // console.log(`GridGenRenderer.renderCellsInstanced() called. Count: ${instanceCount}, showGridCells: ${this.grid?.flags?.showGridCells}`); // Add log
+    // >>> MODIFIED: Uncomment and wrap log
+    if (this.debug.gridGenRenderer) console.log(`GridGenRenderer.renderCellsInstanced() called. Count: ${instanceCount}, showGridCells: ${this.grid?.flags?.showGridCells}`); // Add log
+    // <<< END MODIFIED
 
     if (instanceCount === 0) return; // Nothing to draw
     // REMOVED: if (!this.grid.flags.showGridCells) return; // Updated path: Skip drawing if grid is hidden
@@ -368,7 +369,9 @@ export class GridGenRenderer extends BaseRenderer {
     // --- Simplified Path (Removed diagnostic depth disable/enable) ---
     this.setupInstancedDrawing();
 
-    // console.log(`GridGenRenderer.renderCellsInstanced(): About to call drawArraysInstanced. Count: ${instanceCount}`); // Add log
+    // >>> MODIFIED: Uncomment and wrap log
+    if (this.debug.gridGenRenderer) console.log(`GridGenRenderer.renderCellsInstanced(): About to call drawArraysInstanced. Count: ${instanceCount}`); // Add log
+    // <<< END MODIFIED
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instanceCount);
 
     // --- Cleanup GL State --- 
@@ -388,7 +391,9 @@ export class GridGenRenderer extends BaseRenderer {
 
   // New method to prepare instance data arrays (Matrices, Shadows) - Called when geometry changes
   prepareInstanceData(rectangles) {
-    // REMOVE console.log(`prepareInstanceData Start: this.maxDensity = ${this.maxDensity}`); // Add log at method entry
+    // >>> MODIFIED: Uncomment and wrap log
+    if (this.debug.gridGenRenderer) console.log(`prepareInstanceData Start: this.maxDensity = ${this.maxDensity}`); // Add log at method entry
+    // <<< END MODIFIED
     const gl = this.gl;
     const visibleRects = rectangles; // Use all rectangles passed from GridGeometry
 
@@ -684,7 +689,9 @@ export class GridGenRenderer extends BaseRenderer {
 
   // --- Add draw method for per-frame updates ---
   draw() {
-    // console.log(`GridGenRenderer.draw() called. showGridCells: ${this.grid?.flags?.showGridCells}`); // Keep log
+    // >>> MODIFIED: Uncomment and wrap log
+    if (this.debug.gridGenRenderer) console.log(`GridGenRenderer.draw() called. showGridCells: ${this.grid?.flags?.showGridCells}`); // Keep log
+    // <<< END MODIFIED
     // REMOVED: if (!this.grid?.flags?.showGridCells) return; // Skip if grid hidden (check flags exist)
 
     // Ensure instance data is ready (check count)
@@ -694,7 +701,9 @@ export class GridGenRenderer extends BaseRenderer {
     // Update colors based on latest data (runs every frame)
     this.updateInstanceColors();
 
-    // console.log(`GridGenRenderer.draw(): Calling renderCellsInstanced. Count: ${numInstances}`); // Keep log
+    // >>> MODIFIED: Uncomment and wrap log
+    if (this.debug.gridGenRenderer) console.log(`GridGenRenderer.draw(): Calling renderCellsInstanced. Count: ${numInstances}`); // Keep log
+    // <<< END MODIFIED
 
     // Draw the instanced cells using pre-prepared data (including colors from prepareInstanceData)
     this.renderCellsInstanced();
@@ -720,19 +729,23 @@ export class GridGenRenderer extends BaseRenderer {
 
   // Add handler for simParams updates
   handleParamsUpdate({ simParams }) {
-    // REMOVE console.log('GridGenRenderer.handleParamsUpdate called'); // Log entry
+    // >>> MODIFIED: Uncomment and wrap log
+    if (this.debug.gridGenRenderer) console.log('GridGenRenderer.handleParamsUpdate called'); // Log entry
+    // <<< END MODIFIED
     if (!simParams) return; // Guard clause
 
     if (simParams.rendering) {
       this.maxDensity = simParams.rendering.maxDensity ?? this.maxDensity;
-      // REMOVE console.log(`  Updated this.maxDensity to: ${this.maxDensity}`); // Log updated value
+      // >>> MODIFIED: Uncomment and wrap log
+      if (this.debug.gridGenRenderer) console.log(`  Updated this.maxDensity to: ${this.maxDensity}`); // Log updated value
+      // <<< END MODIFIED
       // Update render mode if needed
       if (this.renderModes && simParams.rendering.gridMode) {
         // Ensure the mode exists before assigning
         const isValidMode = Object.values(this.renderModes.modes).includes(simParams.rendering.gridMode);
         if (isValidMode) {
           this.renderModes.currentMode = simParams.rendering.gridMode;
-          console.debug(`GridGenRenderer: Set render mode to ${this.renderModes.currentMode}`);
+          if (this.debug.gridGenRenderer) console.log(`GridGenRenderer: Set render mode to ${this.renderModes.currentMode}`);
         } else {
           console.warn(`GridGenRenderer: Invalid gridMode received: ${simParams.rendering.gridMode}`);
         }

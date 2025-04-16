@@ -1,9 +1,10 @@
 import { BaseBoundaryShape } from "./baseBoundaryShape.js";
 
 export class CircularBoundaryShape extends BaseBoundaryShape {
-  constructor(centerX, centerY, radius, scale = 1.0) {
+  constructor(centerX, centerY, radius, scale = 1.0, debugFlag) {
     super(centerX, centerY, scale);
     this.radius = radius;
+    this.debugFlag = debugFlag;
   }
 
   isPointInside(x, y) {
@@ -18,16 +19,12 @@ export class CircularBoundaryShape extends BaseBoundaryShape {
 
   setRadius(newRadius) {
     if (typeof newRadius !== "number" || newRadius <= 0) {
-      console.warn(
-        `CircularBoundaryShape: Attempted to set invalid radius: ${newRadius}. Using previous radius: ${this.radius}`
-      );
+      console.warn(`CircularBoundaryShape: Attempted to set invalid radius: ${newRadius}. Using previous radius: ${this.radius}`);
       return;
     }
     if (this.radius !== newRadius) {
-      console.debug(
-        `CircularBoundaryShape: Updating base radius from ${this.radius} to ${newRadius}`
-      );
       this.radius = newRadius;
+      if (this.debugFlag) console.log(`CircularBoundaryShape: Radius updated to ${this.radius}`);
     }
   }
 

@@ -1,5 +1,6 @@
 export class InputModulator {
-  constructor(manager) {
+  constructor(manager, debugFlags) {
+    this.debug = debugFlags;
     this.manager = manager;
     this.enabled = true;
     this.inputSource = "mic";
@@ -52,9 +53,7 @@ export class InputModulator {
       this.min = target.min;
       this.max = target.max;
 
-      // console.log(
-      //   `Set target ${targetName} with range: ${target.min} - ${target.max}`
-      // );
+      if (this.debug.inputMod) console.log(`Set target ${targetName} with range: ${target.min} - ${target.max}`);
     } catch (e) {
       console.warn("Could not store original value:", e);
       // Set default value as fallback
@@ -65,9 +64,7 @@ export class InputModulator {
   resetToOriginal() {
     if (this.targetController && this.originalValue !== null) {
       try {
-        // console.log(
-        //   `Resetting target ${this.targetName} to original value ${this.originalValue}`
-        // );
+        if (this.debug.inputMod) console.log(`Resetting target ${this.targetName} to original value ${this.originalValue}`);
         this.targetController.setValue(this.originalValue);
         if (this.targetController.updateDisplay) {
           this.targetController.updateDisplay();
@@ -100,14 +97,10 @@ export class InputModulator {
       const processedValue = this.processInput();
       this.lastOutputValue = processedValue;
 
-      // // Debug log for high values
-      // if (processedValue > 0.1) {
-      //   console.log(
-      //     `Input modulator ${
-      //       this.targetName || "unnamed"
-      //     }: processed value = ${processedValue.toFixed(2)}`
-      //   );
-      // }
+      // Debug log for high values
+      if (processedValue > 0.1) {
+        if (this.debug.inputMod) console.log(`Input modulator ${this.targetName || "unnamed"}: processed value = ${processedValue.toFixed(2)}`);
+      }
     }
   }
 
@@ -170,14 +163,10 @@ export class InputModulator {
           this.targetController.setValue(mappedValue);
           this._lastAppliedValue = mappedValue;
 
-          // // Log significant changes
-          // if (normalizedValue > 0.2) {
-          //   console.log(
-          //     `Setting ${this.targetName} to ${mappedValue.toFixed(
-          //       2
-          //     )} (from ${normalizedValue.toFixed(2)})`
-          //   );
-          // }
+          // Log significant changes
+          if (normalizedValue > 0.2) {
+            if (this.debug.inputMod) console.log(`Setting ${this.targetName} to ${mappedValue.toFixed(2)} (from ${normalizedValue.toFixed(2)})`);
+          }
         }
       }
     } catch (e) {

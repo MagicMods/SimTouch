@@ -5,34 +5,31 @@ import { RectangularBoundary } from "../simulation/boundary/rectangularBoundary.
 import { eventBus } from '../util/eventManager.js';
 
 export class BoundaryManager {
-  constructor(initialgridParams, initialgridDimensions, dimensionManager) {
+  constructor(initialgridParams, initialgridDimensions, dimensionManager, debugFlags) {
     if (!initialgridParams || !initialgridDimensions || !dimensionManager) {
       throw new Error(
         "BoundaryManager requires initialgridParams, initialgridDimensions, and dimensionManager."
       );
     }
+    this.debug = debugFlags;
     this.dimensionManager = dimensionManager;
-    this.simParams = null; // Initialize internal simParams state
-    this.previousScale = null; // Initialize previousScale tracking
-    // --- BEGIN STEP 1: Decouple state via copy ---
-    // this.params = { ...initialgridParams }; // Old shallow copy
+    this.simParams = null;
+    this.previousScale = null;
+
+
     this.params = {
-      screen: { ...(initialgridParams.screen || {}) }, // Deep copy screen
-      // Selectively copy other needed top-level keys
+      screen: { ...(initialgridParams.screen || {}) },
       boundaryParams: { ...(initialgridParams.boundaryParams || {}) }
-      // Note: Other keys like gridSpecs, flags etc. are not directly used by BoundaryManager
-      // but might be needed if logic expands. For now, copy what's used.
     };
-    // --- END STEP 1 ---
+
     this.shapeBoundary = null;
     this.physicsBoundary = null;
 
-    this._createBoundaries(this.params, initialgridDimensions);
+    this.createBoundaries(this.params, initialgridDimensions);
 
     // Subscribe to SIM parameter updates, not grid updates
     eventBus.on('simParamsUpdated', ({ simParams }) => {
-      // console.debug("BoundaryManager received simParamsUpdated event."); // Keep verbose logs off by default
-      // Need dimensions here - assume main provides a way to get current ones
+      if (this.debug.dimensions) console.log("BoundaryManager received simParamsUpdated event.");
       const dimensions = this.dimensionManager?.getDimensions();
       if (!dimensions) {
         console.error("BoundaryManager: Could not get dimensions to process simParams update.");
@@ -41,9 +38,8 @@ export class BoundaryManager {
       this.updateSimParams(simParams, dimensions); // Pass full simParams
     });
 
-    // --- ADD SUBSCRIPTION to gridParamsUpdated ---
     eventBus.on('gridParamsUpdated', ({ gridParams, dimensions }) => {
-      // console.debug("BoundaryManager received gridParamsUpdated event."); // Keep verbose logs off by default
+      if (this.debug.dimensions) console.log("BoundaryManager received gridParamsUpdated event."); // Keep verbose logs off by default
       if (!gridParams || !dimensions) {
         console.error("BoundaryManager: gridParamsUpdated event missing gridParams or dimensions.");
         return;
@@ -51,13 +47,11 @@ export class BoundaryManager {
       // Call the method that handles shape changes and updates internal grid params
       this.update(gridParams, dimensions);
     });
-    // --- END ADD SUBSCRIPTION ---
   }
 
-  _createBoundaries(params, dimensions) {
+  createBoundaries(params, dimensions) {
     const shape = params?.screen?.shape;
-    // ---> ADDED LOGGING HERE <---
-    console.log('[DEBUG] BoundaryManager._createBoundaries received shape:', shape);
+    if (this.debug.dimensions) console.log('BoundaryManager.createBoundaries received shape:', shape);
     if (!shape) {
       console.error(
         "BoundaryManager: Cannot create boundaries, params.screen.shape is missing."
@@ -66,46 +60,33 @@ export class BoundaryManager {
     }
     if (!dimensions) {
       console.error(
-        "BoundaryManager._createBoundaries: dimensions object is missing."
+        "BoundaryManager.createBoundaries: dimensions object is missing."
       );
       return;
     }
 
-    console.debug(`BoundaryManager: Creating boundaries for shape: ${shape}`);
+    if (this.debug.dimensions) console.log(`BoundaryManager: Creating boundaries for shape: ${shape}`);
 
     // Create Shape Boundary (coreGrid)
     if (shape === "circular") {
-      this.shapeBoundary = new CircularBoundaryShape(0, 0, 1); // Placeholder values, updated in _updateBoundaries
+      this.shapeBoundary = new CircularBoundaryShape(0, 0, 1, this.debug.boundary); // TODO: SCALE
+      this.physicsBoundary = new CircularBoundary({}, this.debug.boundary);
     } else if (shape === "rectangular") {
-      this.shapeBoundary = new RectangularBoundaryShape(0, 0, 1, 1); // Placeholder values
+      this.shapeBoundary = new RectangularBoundaryShape(0, 0, 1, 1, this.debug.boundary);
+      this.physicsBoundary = new RectangularBoundary({}, this.debug.boundary);
     } else {
       console.error(
         `BoundaryManager: Unknown shape type for Shape Boundary: ${shape}`
       );
       this.shapeBoundary = null;
-    }
-
-    // Create Physics Boundary (simulation)
-    // Using default constructor values for now (normalized 0-1 space)
-    if (shape === "circular") {
-      this.physicsBoundary = new CircularBoundary({});
-    } else if (shape === "rectangular") {
-      this.physicsBoundary = new RectangularBoundary({});
-    } else {
-      console.error(
-        `BoundaryManager: Unknown shape type for Physics Boundary: ${shape}`
-      );
       this.physicsBoundary = null;
     }
 
+
     if (this.shapeBoundary && this.physicsBoundary) {
-      // ---> ADDED LOGGING HERE <---
-      console.log('[DEBUG] BoundaryManager._createBoundaries created boundary of type:', this.physicsBoundary?.constructor?.name);
-      console.info(
-        `BoundaryManager: Successfully created ${shape} Shape and Physics boundaries.`
-      );
-      this._updateBoundaries(dimensions); // Perform initial update
-      // ---> ADDED EVENT EMISSION HERE <---
+      if (this.debug.dimensions) console.log('BoundaryManager.createBoundaries created boundary of type:', this.physicsBoundary?.constructor?.name);
+      if (this.debug.dimensions) console.log('BoundaryManager: Successfully created ${shape} Shape and Physics boundaries.');
+      this._updateBoundaries(dimensions);
       eventBus.emit('physicsBoundaryRecreated', { physicsBoundary: this.physicsBoundary });
     } else {
       console.error(
@@ -118,11 +99,8 @@ export class BoundaryManager {
     const oldShape = this.params?.screen?.shape;
     const newShape = params?.screen?.shape;
 
-    // --- BEGIN STEP 2: Add Detailed Logging ---
-    console.log(`BoundaryManager.update: Comparing shapes - Old: '${oldShape}', New: '${newShape}'`);
-    // ---> ADDED LOGGING HERE <---
-    console.log('[DEBUG] BoundaryManager.update received newShape:', newShape);
-    // --- END STEP 2 ---
+    if (this.debug.dimensions) console.log(`BoundaryManager.update: Comparing shapes - Old: '${oldShape}', New: '${newShape}'`);
+    if (this.debug.dimensions) console.log('[DEBUG] BoundaryManager.update received newShape:', newShape);
 
     if (!newShape) {
       console.error("BoundaryManager.update: params.screen.shape is missing.");
@@ -134,14 +112,13 @@ export class BoundaryManager {
     }
 
     if (oldShape !== newShape) {
-      console.info(
+      if (this.debug.dimensions) console.info(
         `BoundaryManager: Shape changed from ${oldShape} to ${newShape}. Recreating boundaries.`
       );
-      // ---> ADDED LOGGING HERE <---
-      console.log('[DEBUG] BoundaryManager.update entering _createBoundaries due to shape change.');
-      this._createBoundaries(params, dimensions);
+      if (this.debug.dimensions) console.log('[DEBUG] BoundaryManager.update entering createBoundaries due to shape change.');
+      this.createBoundaries(params, dimensions);
     } else {
-      console.debug(
+      if (this.debug.dimensions) console.log(
         "BoundaryManager: Shape unchanged, updating existing boundaries."
       );
       this._updateBoundaries(dimensions);
@@ -182,12 +159,13 @@ export class BoundaryManager {
       const baseRadius =
         Math.min(dimensions.renderWidth, dimensions.renderHeight) / 2;
       this.shapeBoundary.setRadius(baseRadius); // Let scale handle the final size
-      console.debug(
-        `BoundaryManager: Updated Circular Shape Boundary - Center: (${this.shapeBoundary.centerX}, ${this.shapeBoundary.centerY}), Radius: ${this.shapeBoundary.radius}, Scale: ${this.shapeBoundary.scale}`);
+      if (this.debug.dimensions) console.log(
+        `BoundaryManager: Updated Circular Shape Boundary - Center: (${this.shapeBoundary.centerX}, ${this.shapeBoundary.centerY}), Radius: ${this.shapeBoundary.radius}, Scale: ${this.shapeBoundary.scale}`
+      );
     } else if (this.shapeBoundary instanceof RectangularBoundaryShape) {
       this.shapeBoundary.width = dimensions.renderWidth;
       this.shapeBoundary.height = dimensions.renderHeight;
-      console.debug(
+      if (this.debug.dimensions) console.log(
         `BoundaryManager: Updated Rectangular Shape Boundary - Center: (${this.shapeBoundary.centerX}, ${this.shapeBoundary.centerY}), W: ${this.shapeBoundary.width}, H: ${this.shapeBoundary.height}, Scale: ${this.shapeBoundary.scale}`
       );
     }
@@ -200,22 +178,6 @@ export class BoundaryManager {
     if (this.physicsBoundary instanceof CircularBoundary) {
       this.physicsBoundary.radius = 0.5 * physicsBoundaryScale; // Base radius 0.5 scaled - Direct property access
     } else if (this.physicsBoundary instanceof RectangularBoundary) {
-      // Corrected logic: Scale normalized dimensions based on aspect ratio
-      // const physW = dimensions.physicalWidth;
-      // const physH = dimensions.physicalHeight;
-      // const maxDim = Math.max(physW, physH);
-      // if (maxDim === 0) { // Avoid division by zero
-      //   console.error("BoundaryManager: Physical dimensions are zero!");
-      //   return; // Or handle appropriately
-      // }
-      // const normW = physW / maxDim;
-      // const normH = physH / maxDim;
-      // const scaledWidth = normW * physicsBoundaryScale;
-      // const scaledHeight = normH * physicsBoundaryScale;
-
-      // this.physicsBoundary.width = scaledWidth;
-      // this.physicsBoundary.height = scaledHeight;
-
       const aspectRatio = dimensions.physicalWidth / dimensions.physicalHeight;
 
       // Calculate initial scaled dimensions (base size * scale)
@@ -252,8 +214,7 @@ export class BoundaryManager {
       this.physicsBoundary.maxX = this.physicsBoundary.centerX + this.physicsBoundary.halfWidth;
       this.physicsBoundary.minY = this.physicsBoundary.centerY - this.physicsBoundary.halfHeight;
       this.physicsBoundary.maxY = this.physicsBoundary.centerY + this.physicsBoundary.halfHeight;
-      // ---> ADDED LOGGING HERE <---
-      console.log(`[DEBUG] BoundaryManager - Rect Set: w=${this.physicsBoundary.width.toFixed(3)}, h=${this.physicsBoundary.height.toFixed(3)}, minX=${this.physicsBoundary.minX.toFixed(3)}, maxX=${this.physicsBoundary.maxX.toFixed(3)}, minY=${this.physicsBoundary.minY.toFixed(3)}, maxY=${this.physicsBoundary.maxY.toFixed(3)}`);
+      if (this.debug.dimensions) console.log(`BoundaryManager - Rect Set: w=${this.physicsBoundary.width.toFixed(3)}, h=${this.physicsBoundary.height.toFixed(3)}, minX=${this.physicsBoundary.minX.toFixed(3)}, maxX=${this.physicsBoundary.maxX.toFixed(3)}, minY=${this.physicsBoundary.minY.toFixed(3)}, maxY=${this.physicsBoundary.maxY.toFixed(3)}`);
     }
 
     // For now, just ensure its parameters reflect the intended normalized shape
@@ -276,7 +237,7 @@ export class BoundaryManager {
     // ---> ADDED Call to new method <---
     this._updatePhysicsProperties();
 
-    console.debug(
+    if (this.debug.dimensions) console.log(
       `BoundaryManager: Updated Physics Boundary type: ${this.physicsBoundary.getBoundaryType()}. Applied scale: ${physicsBoundaryScale}`
     );
   }
@@ -305,13 +266,17 @@ export class BoundaryManager {
     this.physicsBoundary.mode =
       this.simParams.boundary.mode ?? this.physicsBoundary.mode;
 
-    // console.debug( // Keep verbose logs off by default
+    // if (this.debug.dimensions ) console.log( // Keep verbose logs off by default
     //     `BoundaryManager: Applied physics properties: Repulsion=${this.physicsBoundary.boundaryRepulsion?.toFixed(2)}, Damping=${this.physicsBoundary.damping?.toFixed(2)}, Restitution=${this.physicsBoundary.cBoundaryRestitution?.toFixed(2)}, Mode=${this.physicsBoundary.mode}`
     // );
   }
 
   // New method to handle simParam updates specifically affecting the boundary
   updateSimParams(simParams, dimensions) {
+    if (this.debug.dimensions) {
+      console.log("BoundaryManager: Received simParams update:", simParams);
+      console.log("BoundaryManager: Current dimensions for update:", dimensions);
+    }
     if (!simParams || !simParams.boundary) {
       console.error("BoundaryManager.updateSimParams: Missing simParams or simParams.boundary.");
       return;
@@ -331,13 +296,13 @@ export class BoundaryManager {
     const scaleChanged = newScale !== this.previousScale;
 
     if (scaleChanged || this.previousScale === null) {
-      // console.debug(`BoundaryManager: Scale changed (or initial update). Old: ${this.previousScale}, New: ${newScale}. Recalculating boundaries.`);
+      // if (this.debug.dimensions ) console.log(`BoundaryManager: Scale changed (or initial update). Old: ${this.previousScale}, New: ${newScale}. Recalculating boundaries.`);
       this._updateBoundaries(dimensions); // Call geometry update logic ONLY if scale changed (now also updates physics props)
       this.previousScale = newScale; // Update tracked scale
     } else {
       // ---> REPLACED Conditional logic with direct call <---
       // Scale did not change, only update physics properties
-      // console.debug(`BoundaryManager: Scale unchanged (${newScale}). Updating physics properties directly.`);
+      // if (this.debug.dimensions ) console.log(`BoundaryManager: Scale unchanged (${newScale}). Updating physics properties directly.`);
       this._updatePhysicsProperties();
       // --- REMOVED old conditional block ---
       // if (this.physicsBoundary && simParams.boundary && oldSimParamsBoundary) {
@@ -348,7 +313,7 @@ export class BoundaryManager {
       //     if (simParams.boundary.hasOwnProperty(prop) && simParams.boundary[prop] !== oldSimParamsBoundary[prop]) {
       //       this.physicsBoundary[prop] = simParams.boundary[prop];
       //       physicsPropsChanged = true;
-      //       // console.debug(`BoundaryManager: Applied physics property ${prop} = ${simParams.boundary[prop]}`);
+      //       // if (this.debug.dimensions ) console.log(`BoundaryManager: Applied physics property ${prop} = ${simParams.boundary[prop]}`);
       //     }
       //   }
       // }

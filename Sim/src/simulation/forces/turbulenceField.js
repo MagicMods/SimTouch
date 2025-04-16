@@ -1,6 +1,6 @@
 import { eventBus } from '../../util/eventManager.js'; // Added import
 
-class TurbulenceField {
+export class TurbulenceField {
   constructor({
     strength = 4,
     scale = 3.0,
@@ -46,7 +46,7 @@ class TurbulenceField {
     biasSmoothing = 0.8,   // 0 = no smoothing, 1 = max smoothing
     biasTune = 1,       // Fine tuning of bias responsiveness
     biasSensitivity = 0.25, // Global sensitivity multiplier (0-1)
-  } = {}) {
+  } = {}, debugFlags) {
     if (
       !boundary ||
       typeof boundary.centerX !== "number" ||
@@ -166,7 +166,7 @@ class TurbulenceField {
     this.biasSpeedY = 0;
 
     // Add debug mode
-    this.debug = false;
+    this.debug = debugFlags;
 
     // Subscribe to parameter updates
     eventBus.on('simParamsUpdated', this.handleParamsUpdate.bind(this));
@@ -175,7 +175,7 @@ class TurbulenceField {
     eventBus.on('physicsBoundaryRecreated', ({ physicsBoundary }) => {
       if (physicsBoundary) {
         this.boundary = physicsBoundary;
-        console.log("TurbulenceField updated boundary reference.");
+        if (this.debug.turbulences) console.log("TurbulenceField updated boundary reference.");
       } else {
         console.error("TurbulenceField received null boundary on physicsBoundaryRecreated event.");
       }
@@ -230,7 +230,7 @@ class TurbulenceField {
       // For now, let's assume no specific update method is needed beyond what happens in `update` or `applyTurbulence`
       // If issues arise, we might need to add calls like `applyPatternSpecificOffset()` here.
     }
-    // console.log(`TurbulenceField updated params via event`);
+    // if(this.debug.turbulences) console.log (`TurbulenceField updated params via event`);
   }
 
   // Apply pattern-specific offset based on current pattern style
@@ -428,7 +428,7 @@ class TurbulenceField {
     }
 
     // Debug logging - randomly log some values to avoid flooding console
-    if (this.debug && Math.random() < 0.0001) {
+    if (this.debug.turbulence && Math.random() < 0.0001) {
       console.log(`Contrast ${this.contrast.toFixed(2)} applied:`,
         originalValue.toFixed(3), "->", value.toFixed(3));
     }
@@ -951,7 +951,7 @@ class TurbulenceField {
 
     // Debug: log to console if the field is inactive due to affectPosition being false
     if (this.debug && !this.affectPosition && Math.abs(this.strength) > 0.001) {
-      console.log('TurbulenceField has strength but affectPosition is false - no forces will be applied');
+      if (this.debug.turbulences) console.log('TurbulenceField has strength but affectPosition is false - no forces will be applied');
     }
 
     // Initialize with current velocities
@@ -1257,9 +1257,9 @@ class TurbulenceField {
 
   // Debug function to help diagnose rotation issues
   debugRotation() {
-    console.log("=== Turbulence Field Debug ===");
-    console.log("Boundary center:", this.boundary.centerX, this.boundary.centerY);
-    console.log("Current rotation:", this.rotation);
+    if (this.debug.turbulences) console.log("=== Turbulence Field Debug ===");
+    if (this.debug.turbulences) console.log("Boundary center:", this.boundary.centerX, this.boundary.centerY);
+    if (this.debug.turbulences) console.log("Current rotation:", this.rotation);
 
     // Test noise values at fixed points to verify rotation
     const testPoints = [
@@ -1270,10 +1270,10 @@ class TurbulenceField {
       { x: 0.5, y: 0.5 }  // Center
     ];
 
-    console.log("Testing noise values:");
+    if (this.debug.turbulences) console.log("Testing noise values:");
     testPoints.forEach(pt => {
       // Original coordinates
-      console.log(`Point (${pt.x}, ${pt.y}): ${this.noise2D(pt.x, pt.y)}`);
+      if (this.debug.turbulences) console.log(`Point (${pt.x}, ${pt.y}): ${this.noise2D(pt.x, pt.y)}`);
 
       // Compute what the rotated coordinates should be
       const centerX = this.boundary.centerX;
@@ -1285,10 +1285,10 @@ class TurbulenceField {
       const rx = tx * cos - ty * sin + centerX;
       const ry = tx * sin + ty * cos + centerY;
 
-      console.log(`Should rotate to (${rx.toFixed(3)}, ${ry.toFixed(3)})`);
+      if (this.debug.turbulences) console.log(`Should rotate to (${rx.toFixed(3)}, ${ry.toFixed(3)})`);
     });
 
-    console.log("=== End Debug ===");
+    if (this.debug.turbulences) console.log("=== End Debug ===");
   }
 
   resetBias() {
@@ -1315,7 +1315,7 @@ class TurbulenceField {
 
     // Log the sensitivity change if in debug mode
     if (this.debug) {
-      console.log(`Bias sensitivity set to ${(this.biasSensitivity * 100).toFixed(0)}%`);
+      if (this.debug.turbulences) console.log(`Bias sensitivity set to ${(this.biasSensitivity * 100).toFixed(0)}%`);
     }
 
     return this.biasSensitivity;
@@ -1350,14 +1350,14 @@ class TurbulenceField {
   // Add debug toggle method
   toggleDebug(enabled) {
     this.debug = !!enabled;
-    console.log(`Turbulence debug mode: ${this.debug ? 'ON' : 'OFF'}`);
+    if (this.debug.turbulences) console.log(`Turbulence debug mode: ${this.debug ? 'ON' : 'OFF'}`);
     return this.debug;
   }
 
   // Debug function to analyze pullFactor behavior
   debugPullFactor() {
-    console.log("=== Turbulence Pull Factor Analysis ===");
-    console.log(`Current pullFactor: ${this.pullFactor.toFixed(3)}`);
+    if (this.debug.turbulences) console.log("=== Turbulence Pull Factor Analysis ===");
+    if (this.debug.turbulences) console.log(`Current pullFactor: ${this.pullFactor.toFixed(3)}`);
 
     // Sample a test point at the center
     const centerX = this.boundary.centerX;
@@ -1376,8 +1376,8 @@ class TurbulenceField {
     // Get visualization color (0-255)
     const visualColor = Math.floor(((n + 1) * 0.5) * 255);
 
-    console.log(`Noise at center: ${n.toFixed(3)} (display: RGB ${visualColor},${visualColor},${visualColor})`);
-    console.log(`Gradient direction: X=${gradX.toFixed(3)}, Y=${gradY.toFixed(3)}`);
+    if (this.debug.turbulences) console.log(`Noise at center: ${n.toFixed(3)} (display: RGB ${visualColor},${visualColor},${visualColor})`);
+    if (this.debug.turbulences) console.log(`Gradient direction: X=${gradX.toFixed(3)}, Y=${gradY.toFixed(3)}`);
 
     // Show what direction particles would move
     let moveDir;
@@ -1389,9 +1389,7 @@ class TurbulenceField {
       moveDir = "TOWARD white (gradient direction)";
     }
 
-    console.log(`Particle movement: ${moveDir}`);
-    console.log("=== End Analysis ===");
+    if (this.debug.turbulences) console.log(`Particle movement: ${moveDir}`);
+    if (this.debug.turbulences) console.log("=== End Analysis ===");
   }
 }
-
-export { TurbulenceField };

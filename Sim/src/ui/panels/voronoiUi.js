@@ -5,6 +5,7 @@ import { eventBus } from '../../util/eventManager.js';
 export class VoronoiUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
+    this.debug = this.main.debugFlags;
     this.presetManager = null;
     this.presetControls = null;
     this.gui.title("Voronoi Field");
@@ -108,11 +109,11 @@ export class VoronoiUi extends BaseUi {
   }
 
   setData(data) {
-    console.log("VoronoiUi.setData called with:", data);
+    if (this.debug.voronoi) console.log("VoronoiUi.setData called with:", data);
 
     // Handle "None" preset case
     if (!data || data === "None") {
-      console.log("Resetting voronoi to default");
+      if (this.debug.voronoi) console.log("Resetting voronoi to default");
 
       // Properly reset using controllers
       this.voronoiStrengthController.setValue(0);
@@ -148,7 +149,7 @@ export class VoronoiUi extends BaseUi {
         const controller = controllerMap[key];
         if (controller && typeof controller.setValue === "function") {
           controller.setValue(value);
-          console.log(`Set ${key} to ${value}`);
+          if (this.debug.voronoi) console.log(`Set ${key} to ${value}`);
         }
       }
 

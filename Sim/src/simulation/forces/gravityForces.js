@@ -1,7 +1,8 @@
 import { eventBus } from '../../util/eventManager.js';
 
 export class GravityForces {
-  constructor(strength = 0) {
+  constructor(strength = 0, debugFlag) {
+    this.debugFlag = debugFlag;
     // Raw direction values (also represent magnitude)
     this.directionX = 0;
     // Initialize Y direction based on strength (legacy compatibility)
@@ -33,7 +34,7 @@ export class GravityForces {
       // Re-calculate strength and normalized direction internally
       this.updateMagnitude();
     }
-    // console.log(`GravityForces updated: dirX=${this.directionX}, dirY=${this.directionY}`);
+    if (this.debugFlag) console.log(`GravityForces updated: dirX=${this.directionX}, dirY=${this.directionY}`);
   }
 
   // Add method to calculate strength and normalized direction

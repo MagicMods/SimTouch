@@ -4,6 +4,7 @@ import { eventBus } from '../../util/eventManager.js';
 export class GravityUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
+    this.debugFlags = this.main.debugFlags;
     this.controls = {};
     this.gui.title("Gravity");
 

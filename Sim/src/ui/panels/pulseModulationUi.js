@@ -5,6 +5,7 @@ export class PulseModulationUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
     this.main = main;
+    this.debug = this.main.debugFlags;
     this.masterFrequency = 1.0;
     this.masterBpm = this.masterFrequency * 60; // Set BPM based on default frequency
 
@@ -250,10 +251,8 @@ export class PulseModulationUi extends BaseUi {
 
   // Initialize with preset manager
   initWithPresetManager(presetManager) {
-    console.log("PulseModulationUi initialized with preset manager");
-    if (presetManager) {
-      this.initPresetControls(presetManager);
-    }
+    if (this.debug.pulseMod) console.log("PulseModulationUi initialized with preset manager");
+    this.initPresetControls(presetManager);
   }
 
 
@@ -429,14 +428,14 @@ export class PulseModulationUi extends BaseUi {
               modulator.min = 0;
               modulator.max = modulator.selectorOptions?.length - 1 || 1;
             } else {
-              console.log(`Auto-ranging for target ${value}`);
+              if (this.debug.pulseMod) console.log(`Auto-ranging for target ${value}`);
               modulator.min = min;
               modulator.max = max;
             }
             minController.updateDisplay();
             maxController.updateDisplay();
           } else {
-            console.log(
+            if (this.debug.pulseMod) console.log(
               `Using preset values for target ${value}, updating only input ranges`
             );
           }
@@ -691,7 +690,7 @@ export class PulseModulationUi extends BaseUi {
   }
 
   clearAllModulators() {
-    console.log("PulseModulationUI: Clearing all modulators");
+    if (this.debug.pulseMod) console.log("PulseModulationUI: Clearing all modulators");
 
     try {
       // First, disable all existing modulators
@@ -828,7 +827,7 @@ export class PulseModulationUi extends BaseUi {
         );
         return false;
       }
-      console.log(`Loading ${data.modulators.length} modulators from preset`);
+      if (this.debug.pulseMod) console.log(`Loading ${data.modulators.length} modulators from preset`);
 
       this.clearAllModulators();
 
@@ -838,7 +837,7 @@ export class PulseModulationUi extends BaseUi {
       // Loop through each modulator in the preset data
       for (let i = 0; i < data.modulators.length; i++) {
         const modData = data.modulators[i];
-        console.log(
+        if (this.debug.pulseMod) console.log(
           `Creating modulator ${i + 1} with target: ${modData.targetName}`
         );
 
@@ -873,7 +872,7 @@ export class PulseModulationUi extends BaseUi {
           if (prop === "targetName" && modData[prop] !== undefined) {
             // Explicitly set the UI value for target dropdown
             controller.setValue(modData[prop]);
-            console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
+            if (this.debug.pulseMod) console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
           } else if (prop === "enabled" && modData[prop] !== undefined) {
             // Handle enabled separately with button UI
             modulator.enabled = modData[prop];
@@ -888,11 +887,11 @@ export class PulseModulationUi extends BaseUi {
                 modulator._uiElements.enableButton.style.borderColor = "#555";
               }
             }
-            console.log(`Set enabled to ${modData[prop]}`);
+            if (this.debug.pulseMod) console.log(`Set enabled to ${modData[prop]}`);
           } else if (prop === "beatDivision" && modData[prop] !== undefined) {
             // Set beat division if present in preset
             controller.setValue(modData[prop]);
-            console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
+            if (this.debug.pulseMod) console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
           } else if (prop === "sync" && modData[prop] !== undefined) {
             // Handle sync separately
             modulator.sync = modData[prop];
@@ -907,7 +906,7 @@ export class PulseModulationUi extends BaseUi {
                 modulator._uiElements.syncButton.style.borderColor = "#555";
               }
             }
-            console.log(`Set sync to ${modData[prop]}`);
+            if (this.debug.pulseMod) console.log(`Set sync to ${modData[prop]}`);
           }
           // Other properties are set normally on the modulator object
           else if (modData[prop] !== undefined) {
@@ -963,7 +962,7 @@ export class PulseModulationUi extends BaseUi {
           }
           modulator._loadingFromPreset = false;
 
-          console.log(
+          if (this.debug.pulseMod) console.log(
             `Set target ${modData.targetName} with range: ${modulator.min} - ${modulator.max}`
           );
         }
@@ -994,7 +993,7 @@ export class PulseModulationUi extends BaseUi {
       // Force refresh of UI controllers
       this.updateControllerDisplays();
 
-      console.log(
+      if (this.debug.pulseMod) console.log(
         `Successfully loaded ${data.modulators.length} modulators from preset`
       );
 
@@ -1027,7 +1026,7 @@ export class PulseModulationUi extends BaseUi {
     });
     this.calculateTapTempo();
 
-    console.log(`Triggered beat on ${syncedModulators.length} modulators`);
+    if (this.debug.pulseMod) console.log(`Triggered beat on ${syncedModulators.length} modulators`);
   }
 
   calculateTapTempo() {
@@ -1040,7 +1039,7 @@ export class PulseModulationUi extends BaseUi {
     // Set timeout to reset tap tempo counter after inactivity
     this.tapTempoTimeoutId = setTimeout(() => {
       this.tapTempoTimes = [];
-      console.log("Tap tempo reset due to inactivity");
+      if (this.debug.pulseMod) console.log("Tap tempo reset due to inactivity");
     }, this.tapTempoTimeoutDuration);
 
     this.tapTempoTimes.push(now);
@@ -1090,7 +1089,7 @@ export class PulseModulationUi extends BaseUi {
           this.bpmSliderElement.value = limitedBpm;
         }
 
-        console.log(`Tap tempo detected: ${limitedBpm} BPM`);
+        if (this.debug.pulseMod) console.log(`Tap tempo detected: ${limitedBpm} BPM`);
       }
     }
   }
@@ -1156,7 +1155,7 @@ export class PulseModulationUi extends BaseUi {
         }
       });
 
-      console.log(`Enabled target selection highlighting (${validTargetNames.length} valid targets available)`);
+      if (this.debug.pulseMod) console.log(`Enabled target selection highlighting (${validTargetNames.length} valid targets available)`);
     } else {
       // Remove the class from body
       document.body.classList.remove('pulse-target-selection-mode');
@@ -1167,7 +1166,7 @@ export class PulseModulationUi extends BaseUi {
         controller.removeAttribute('data-is-target');
       });
 
-      console.log('Disabled target selection highlighting');
+      if (this.debug.pulseMod) console.log('Disabled target selection highlighting');
     }
   }
 
@@ -1345,7 +1344,7 @@ export class PulseModulationUi extends BaseUi {
       return;
     }
 
-    console.log(`Removing modulator with target ${modulator.targetName}`);
+    if (this.debug.pulseMod) console.log(`Removing modulator with target ${modulator.targetName}`);
 
     // Reset to original value
     if (typeof modulator.resetToOriginal === "function") {
@@ -1370,5 +1369,12 @@ export class PulseModulationUi extends BaseUi {
 
     // Remove from our tracking array
     this.modulatorFolders.splice(index, 1);
+
+    // // Optionally trigger a UI update if needed
+    // if (this.modulatorManager) {
+    //   this.modulatorManager.removeModulator(index);
+    //   if (this.debug.pulseMod) console.log(`Removing modulator with target ${modulator.targetName}`);
+    // }
+    // this.updateControllerDisplays(); // Refresh UI after removal
   }
 }

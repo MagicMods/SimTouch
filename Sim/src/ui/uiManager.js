@@ -137,7 +137,7 @@ export class UiManager {
     };
 
     // Create the preset manager with all components
-    this.presetManager = new PresetManager(presetComponents);
+    this.presetManager = new PresetManager(presetComponents, this.main.debugFlags);
 
     // Initialize UI components with preset manager
     this.turbulenceUi.initWithPresetManager(this.presetManager);
@@ -147,6 +147,9 @@ export class UiManager {
     this.inputModUi.initWithPresetManager(this.presetManager);
     this.presetUi.initWithPresetManager(this.presetManager);
     this.randomizerUi.initWithPresetManager(this.presetManager);
+
+    // Finalize MasterPresetHandler initialization after all handlers are set
+    this.presetManager.handlers[PresetManager.TYPES.MASTER]?.finalizeInitialization();
   }
 
   // Update method for UiManager

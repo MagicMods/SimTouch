@@ -1,6 +1,6 @@
 import { BaseBoundary } from "./baseBoundary.js";
 
-class CircularBoundary extends BaseBoundary {
+export class CircularBoundary extends BaseBoundary {
   constructor({
     centerX = 0.5,
     centerY = 0.5,
@@ -10,6 +10,7 @@ class CircularBoundary extends BaseBoundary {
     boundaryRepulsion = 0.1,
     segments = 64,
     mode = "BOUNCE",
+    debugFlag,
   } = {}) {
     // Call the parent constructor with shared parameters
     super({
@@ -17,8 +18,9 @@ class CircularBoundary extends BaseBoundary {
       damping,
       boundaryRepulsion,
       mode,
+      // debugFlag,
     });
-
+    this.debugFlag = debugFlag;
     // Core parameters specific to circular boundary
     this.centerX = centerX;
     this.centerY = centerY;
@@ -258,5 +260,3 @@ class CircularBoundary extends BaseBoundary {
     }
   }
 }
-
-export { CircularBoundary };

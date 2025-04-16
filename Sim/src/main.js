@@ -26,7 +26,7 @@ import { ModulatorManager } from "./input/modulatorManager.js";
 import { socketManager } from "./network/socketManager.js";
 import { eventBus } from "./util/eventManager.js";
 
-class Main {
+export class Main {
   constructor() {
     this.canvas = document.getElementById("glCanvas");
     if (!this.canvas) throw new Error("Canvas not found");
@@ -159,38 +159,50 @@ class Main {
 
     // Define debug flags before components that need them
     this.debugFlags = {
-      debugVerification: false,
-      debugNoisePreview: false,
-      debugEventManager: false,
-      debugVoronoi: false,
-      debugTurbulence: false,
-      debugRandomizer: false,
-      debugPulseMod: false,
-      debugPreset: false,
-      debugParam: false,
-      debugOrganic: false,
-      debugNetwork: false,
-      debugInputs: false,
-      debugInputMod: false,
-      debugGridGen: false,
-      debugMain: false,
-      debugGrid: false,
-      debugBoundary: false,
-      debugParticles: false,
-      debugEmu: false,
-      debugServer: false,
-      debugCollision: false,
-      debugCore: false,
-      debugNeighbors: false,
-      debugSound: false,
-      debugState: false,
-      debugDimensions: false,
-      debugEvents: false
-    };
-    // Initialize eventBus debugging right after flags are defined
-    eventBus.initDebug(this.debugFlags.debugEvents);
+      main: false,
+      presets: false,
+      param: false,
 
-    // Define gridParams first
+      modManager: false,
+      inputMod: false,
+      pulseMod: false,
+
+      grid: false,
+      gridGeometry: false,
+      gridGenRenderer: false,
+      noisePreview: false,
+      gridRenderModes: false,
+      overlay: false,
+      gradients: false,
+      dimensions: false,
+      boundary: false,
+      boundaryShape: false,
+
+      particles: false,
+      core: false,
+      neighbors: false,
+      collision: false,
+      turbulence: false,
+      voronoi: false,
+      organic: false,
+      velocity: false,
+      pressure: false,
+      fluidFlip: false,
+      noise: false,
+
+      inputs: false,
+      emu: false,
+      server: false,
+      network: false,
+      sound: false,
+      state: false,
+      events: false,
+      verif: false,
+      randomizer: false,
+    };
+
+    eventBus.initDebug(this.debugFlags);
+
     this.gridParams = {
       screen: {
         width: 240,
@@ -240,7 +252,8 @@ class Main {
       this.gridParams.screen.height,
       this.gridParams.renderSize.maxRenderWidth,
       this.gridParams.renderSize.maxRenderHeight,
-      this.debugFlags.debugDimensions
+      this.debugFlags
+
     );
     this.applyCurrentDimensionsAndBoundary(); // Apply dimensions early
 
@@ -250,7 +263,7 @@ class Main {
       this.gridParams,
       initialDimensions,
       this.dimensionManager,
-      this.debugFlags.debugBoundary
+      this.debugFlags
     );
 
     // Get the physics boundary instance from the manager
@@ -260,19 +273,19 @@ class Main {
     }
 
     // Pass the physics boundary instance to other components that need it
-    this.turbulenceField = new TurbulenceField({ boundary: physicsBoundary });
-    this.voronoiField = new VoronoiField({ boundary: physicsBoundary });
+    this.turbulenceField = new TurbulenceField({ boundary: physicsBoundary }, this.debugFlags);
+    this.voronoiField = new VoronoiField({ boundary: physicsBoundary }, this.debugFlags);
 
     // Instantiate ParticleSystem, passing the boundary manager
     this.particleSystem = new ParticleSystem({
       turbulence: this.turbulenceField,
       voronoi: this.voronoiField,
-      boundaryManager: this.boundaryManager
-      // Use defaults for particleCount, timeStep etc. from simParams or ParticleSystem constructor
+      boundaryManager: this.boundaryManager,
+      debugFlags: this.debugFlags
     });
 
     // >>> MOVED: Instantiate GridGenRenderer *before* components that might reference it via main (e.g., MouseForces)
-    this.gridRenderModes = new GridRenderModes(this.gridParams, this.dimensionManager, this.boundaryManager, this.particleSystem);
+    this.gridRenderModes = new GridRenderModes(this.gridParams, this.dimensionManager, this.boundaryManager, this.particleSystem, this.debugFlags);
     this.gridGenRenderer = new GridGenRenderer(
       this.gl,
       this.shaderManager,
@@ -281,9 +294,9 @@ class Main {
       this.boundaryManager,
       this.particleSystem,
       this.gridRenderModes,
-      this.debugFlags.debugGridGen
+      this.debugFlags
     );
-    if (this.debugFlags.debugMain) console.log("Instantiated GridGenRenderer");
+    if (this.debugFlags.main) console.log("Instantiated GridGenRenderer");
 
     // Instantiate other components
     this.modulatorManager = new ModulatorManager(this.debugFlags);
@@ -291,10 +304,10 @@ class Main {
     // this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager, this.debugFlags);
 
     this.frame = 0;
-    this.mouseForces = new MouseForces();
+    this.mouseForces = new MouseForces(this.debugFlags);
     this.mouseForces.setMainReference(this); // Set direct reference to main
     this.mouseForces.setupMouseInteraction(this.canvas, this.particleSystem);
-    this.micForces = new MicInputForces();
+    this.micForces = new MicInputForces(this.debugFlags);
 
     // Attach mouseForces to particleSystem
     this.particleSystem.mouseForces = this.mouseForces;
@@ -302,13 +315,14 @@ class Main {
     // Create EmuForces instance with correct reference to gravity
     this.emuForces = new EmuForces({
       gravity: this.particleSystem.gravity, // Now particleSystem exists
+      debugFlags: this.debugFlags
     });
 
     this.externalInput = new ExternalInputConnector(
       this.mouseForces,
       this.emuForces,
       this.micForces,
-      this.debugFlags.debugInputs
+      this.debugFlags
     )
       .enable()
       .setSensitivity(0.002);
@@ -318,7 +332,7 @@ class Main {
     this.emuRenderer.hide();
 
     // Connect components directly without null checks
-    if (this.debugFlags.debugMain) console.log("Directly connecting turbulenceField to emuRenderer and emuForces");
+    if (this.debugFlags.main) console.log("Directly connecting turbulenceField to emuRenderer and emuForces");
     // Add direct reference to turbulenceField in emuForces
     this.externalInput.emuForces.turbulenceField = this.turbulenceField;
 
@@ -337,12 +351,12 @@ class Main {
       document.body,
       this.boundaryManager,
       this.canvas,
-      this.debugFlags.debugBoundary
+      this.debugFlags
     );
 
     // Subscribe main to Grid UI changes (assuming NewGridUi emits 'uiControlChanged')
     eventBus.on('uiControlChanged', this.handleGridUIChange.bind(this));
-    if (this.debugFlags.debugMain) console.log("Main subscribed to uiControlChanged events for Grid UI.");
+    if (this.debugFlags.main) console.log("Main subscribed to uiControlChanged events for Grid UI.");
 
   }
 
@@ -351,8 +365,8 @@ class Main {
       await this.shaderManager.init();
 
       // Instantiate ParticleRenderer AFTER shader manager is ready
-      this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager, this.debugFlags.debugParticles);
-      if (this.debugFlags.debugMain) console.log("Instantiated ParticleRenderer in init()");
+      this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager, this.debugFlags);
+      if (this.debugFlags.main) console.log("Instantiated ParticleRenderer in init()");
 
       // Get audio analyzer directly without null checks
       this.audioAnalyzer = this.micForces.analyzer;
@@ -372,6 +386,23 @@ class Main {
   }
 
   handleSimUIChange({ paramPath, value }) {
+    // --- BEGIN STEP 3: Add Debug Flags Handling ---
+    if (paramPath.startsWith('debugFlags.')) {
+      const flagName = paramPath.substring('debugFlags.'.length);
+      if (flagName in this.debugFlags) {
+        this.debugFlags[flagName] = value;
+        if (this.debugFlags.main || this.debugFlags.param)
+          console.log(`Debug flag updated via UI: ${flagName} = ${value}`);
+        // Optionally, emit a specific event if other modules need to react
+        // eventBus.emit('debugFlagChanged', { flagName, value });
+      } else {
+        console.warn(`handleSimUIChange received unknown debug flag: ${flagName}`);
+      }
+      return; // Handled debug flag, stop processing
+    }
+    // --- END STEP 3 ---
+
+    // Original logic for simParams
     const keys = paramPath.split('.');
     let current = this.simParams;
     for (let i = 0; i < keys.length - 1; i++) {
@@ -389,7 +420,7 @@ class Main {
       return;
     }
     current[keys[keys.length - 1]] = value;
-    if (this.debugFlags.debugMain) console.log(`SimParams updated via UI: ${paramPath} = ${value}`);
+    if (this.debugFlags.main) console.log(`SimParams updated via UI: ${paramPath} = ${value}`);
 
     eventBus.emit('simParamsUpdated', { simParams: this.simParams });
   }
@@ -403,7 +434,7 @@ class Main {
       return; // Ignore paths not starting with gridParams keys
     }
 
-    if (this.debugFlags.debugMain) console.log(`Grid UI Change Received: ${paramPath} =`, value);
+    if (this.debugFlags.main) console.log(`Grid UI Change Received: ${paramPath} =`, value);
     try {
       const parts = paramPath.split('.');
       let current = this.gridParams;
@@ -500,7 +531,7 @@ class Main {
       this.dimensionManager.applyCanvasStyle(this.canvas, 'rectangular');
     }
     this.dimensionManager.applyViewport(this.gl);
-    if (this.debugDimensions) console.info(`Applied canvas dimensions/settings via DimensionManager: ${this.dimensionManager.renderWidth}x${this.dimensionManager.renderHeight}`);
+    if (this.debugFlags.dimensions) console.info(`Applied canvas dimensions/settings via DimensionManager: ${this.dimensionManager.renderWidth}x${this.dimensionManager.renderHeight}`);
   }
 
   checkAndApplyDimensionChanges() {
@@ -515,7 +546,7 @@ class Main {
       this.gridParams.renderSize.maxRenderHeight
     );
     if (dimensionsChanged) {
-      if (this.debugFlags.debugMain) console.log("DimensionManager reported changes, applying updates...");
+      if (this.debugFlags.dimensions) console.log("DimensionManager reported changes, applying updates...");
       this.applyCurrentDimensionsAndBoundary();
     }
     return dimensionsChanged;
@@ -540,5 +571,3 @@ function rgbArrayToHex(rgb = [1, 1, 1]) {
 }
 
 window.onload = () => Main.create().catch(console.error);
-
-export { Main };

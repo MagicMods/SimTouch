@@ -4,6 +4,7 @@ import { PresetManager } from "../../presets/presetManager.js";
 export class InputModulationUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
+    this.debug = this.main.debugFlags;
 
     this.audioDevices = [];
     this.modulatorFolders = [];
@@ -131,7 +132,7 @@ export class InputModulationUi extends BaseUi {
 
   // Initialize with preset manager
   initWithPresetManager(presetManager) {
-    console.log("InputModulationUi initialized with preset manager");
+    if (this.debug.inputMod) console.log("InputModulationUi initialized with preset manager");
     if (presetManager) {
       this.initPresetControls(presetManager);
     }
@@ -142,7 +143,7 @@ export class InputModulationUi extends BaseUi {
 
   setModulatorManager(manager) {
     this.modulatorManager = manager;
-    console.log("ModulatorManager set in InputModulationUi");
+    if (this.debug.inputMod) console.log("ModulatorManager set in InputModulationUi");
   }
 
   addInputModulator() {
@@ -163,7 +164,7 @@ export class InputModulationUi extends BaseUi {
     modulator.inputSource = "mic";
     modulator.enabled = modulator.sensitivity > 0;
 
-    console.log("Creating new mic modulator:", modulator);
+    if (this.debug.inputMod) console.log("Creating new mic modulator:", modulator);
 
     const index = this.modulatorFolders.length;
     const folder = this.gui.addFolder(`Audio Modulator ${index + 1}`);
@@ -172,7 +173,7 @@ export class InputModulationUi extends BaseUi {
     this.modulatorFolders.push(folder);
 
     folder.open();
-    // console.log(`Created folder for modulator ${index + 1}`);
+    if (this.debug.inputMod) console.log(`Created folder for modulator ${index + 1}`);
 
     const controllers = {};
 
@@ -252,7 +253,7 @@ export class InputModulationUi extends BaseUi {
         if (value === "None") return;
 
         // Connect to target
-        console.log(`Setting target to ${value}`);
+        if (this.debug.inputMod) console.log(`Setting target to ${value}`);
         modulator.setTarget(value);
 
         // Update the folder name to include the target name
@@ -265,7 +266,7 @@ export class InputModulationUi extends BaseUi {
           targetInfo.min !== undefined &&
           targetInfo.max !== undefined
         ) {
-          console.log(`Auto-ranging for target ${value}`);
+          if (this.debug.inputMod) console.log(`Auto-ranging for target ${value}`);
 
           // Only update value ranges, not actual values if loading from preset
           if (!modulator._loadingFromPreset) {
@@ -335,7 +336,7 @@ export class InputModulationUi extends BaseUi {
 
         // Only reset if going from enabled to disabled
         if (wasEnabled && value === 0) {
-          console.log(`Sensitivity is 0, resetting ${modulator.targetName}`);
+          if (this.debug.inputMod) console.log(`Sensitivity is 0, resetting ${modulator.targetName}`);
           modulator.resetToOriginal();
         }
       });
@@ -376,12 +377,12 @@ export class InputModulationUi extends BaseUi {
       .add(
         {
           remove: () => {
-            console.log(
+            if (this.debug.inputMod) console.log(
               `Removing input modulator with target ${modulator.targetName}`
             );
 
             if (modulator && typeof modulator.resetToOriginal === "function") {
-              console.log(
+              if (this.debug.inputMod) console.log(
                 `Explicitly resetting ${modulator.targetName} to original value ${modulator.originalValue}`
               );
               modulator.resetToOriginal();
@@ -409,7 +410,7 @@ export class InputModulationUi extends BaseUi {
               this.modulatorFolders.splice(folderIndex, 1);
             }
 
-            console.log(`Removed input modulator folder`);
+            if (this.debug.inputMod) console.log(`Removed input modulator folder`);
           },
         },
         "remove"
@@ -422,7 +423,7 @@ export class InputModulationUi extends BaseUi {
 
     try {
       this.addVisualizationToModulator(modulator, folder);
-      console.log(`Added visualization to modulator ${index + 1}`);
+      if (this.debug.inputMod) console.log(`Added visualization to modulator ${index + 1}`);
     } catch (error) {
       console.error("Failed to add visualization to modulator:", error);
     }
@@ -447,7 +448,7 @@ export class InputModulationUi extends BaseUi {
         Array.isArray(this.modulatorFolders) &&
         this.modulatorFolders.length > 0
       ) {
-        console.log(
+        if (this.debug.inputMod) console.log(
           `InputModulationUi: Extracting data from ${this.modulatorFolders.length} folders`
         );
 
@@ -496,7 +497,7 @@ export class InputModulationUi extends BaseUi {
 
       // Fallback to modulatorManager if no folders or empty result
       if (modulators.length === 0 && this.modulatorManager) {
-        console.log(
+        if (this.debug.inputMod) console.log(
           "InputModulationUi: Falling back to modulatorManager for data"
         );
 
@@ -518,7 +519,7 @@ export class InputModulationUi extends BaseUi {
         modulators.push(...managerMods);
       }
 
-      console.log(
+      if (this.debug.inputMod) console.log(
         `InputModulationUi: Prepared input modulation data with ${modulators.length} modulators`
       );
 
@@ -543,7 +544,7 @@ export class InputModulationUi extends BaseUi {
 
   // Update the clearAllModulators method
   clearAllModulators() {
-    console.log("InputModulationUi: Clearing all modulators");
+    if (this.debug.inputMod) console.log("InputModulationUi: Clearing all modulators");
 
     try {
       // IMPORTANT FIX: Reset to original values FIRST
@@ -555,7 +556,7 @@ export class InputModulationUi extends BaseUi {
             try {
               // Try to reset to original value
               m.resetToOriginal();
-              console.log(`Resetting ${m.targetName || "unnamed"} to original value`);
+              if (this.debug.inputMod) console.log(`Resetting ${m.targetName || "unnamed"} to original value`);
             } catch (e) {
               // If resetToOriginal isn't available, just continue
               console.warn(`Failed to reset ${m.targetName || "unnamed"}:`, e);
@@ -660,7 +661,7 @@ export class InputModulationUi extends BaseUi {
 
               // // Log value for debugging when significant
               // if (bandValue > 0.1) {
-              //   console.log(
+              //   if (this.debug.inputMod) console.log(
               //     `Band ${modulator.frequencyBand} level: ${bandValue.toFixed(2)}`
               //   );
               // }
@@ -698,7 +699,7 @@ export class InputModulationUi extends BaseUi {
   enableDisableAudioInput(enabled) {
     if (!this.main.externalInput) return;
 
-    console.log(`Setting audio input ${enabled ? "enabled" : "disabled"}`);
+    if (this.debug.inputMod) console.log(`Setting audio input ${enabled ? "enabled" : "disabled"}`);
 
     // Store internal state
     this.audioInputEnabled = enabled;
@@ -761,7 +762,7 @@ export class InputModulationUi extends BaseUi {
         controller.options(options);
       }
 
-      // console.log(`Found ${audioInputDevices.length} audio input devices`);
+      // if (this.debug.inputMod) console.log(`Found ${audioInputDevices.length} audio input devices`);
     } catch (error) {
       console.error("Error enumerating audio devices:", error);
     }
@@ -770,7 +771,7 @@ export class InputModulationUi extends BaseUi {
   setAudioInputDevice(deviceId) {
     if (!this.main.externalInput) return;
 
-    console.log(`Setting audio input device to: ${deviceId}`);
+    if (this.debug.inputMod) console.log(`Setting audio input device to: ${deviceId}`);
     this.main.externalInput.setAudioInputDevice(deviceId);
   }
 
@@ -984,7 +985,7 @@ export class InputModulationUi extends BaseUi {
         return false;
       }
 
-      console.log(
+      if (this.debug.inputMod) console.log(
         `Loading ${data.modulators.length} input modulators from preset`
       );
 
@@ -997,7 +998,7 @@ export class InputModulationUi extends BaseUi {
       // Loop through each modulator in the preset data
       for (let i = 0; i < data.modulators.length; i++) {
         const modData = data.modulators[i];
-        console.log(
+        if (this.debug.inputMod) console.log(
           `Creating input modulator ${i + 1} with target: ${modData.targetName}`
         );
 
@@ -1023,15 +1024,15 @@ export class InputModulationUi extends BaseUi {
           if (prop === "targetName" && modData[prop] !== undefined) {
             // Explicitly set the UI value for target dropdown
             controller.setValue(modData[prop]);
-            console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
+            if (this.debug.inputMod) console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
           } else if (prop === "frequencyBand" && modData[prop] !== undefined) {
             // Set frequency band
             controller.setValue(modData[prop]);
-            console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
+            if (this.debug.inputMod) console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
           } else if (prop === "sensitivity" && modData[prop] !== undefined) {
             // Set sensitivity (acts as enable control)
             controller.setValue(modData[prop]);
-            console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
+            if (this.debug.inputMod) console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
           }
           // Other properties are set normally on the modulator object
           else if (modData[prop] !== undefined) {
@@ -1076,7 +1077,7 @@ export class InputModulationUi extends BaseUi {
       // Force refresh of UI controllers
       this.updateControllerDisplays();
 
-      console.log(
+      if (this.debug.inputMod) console.log(
         `Successfully loaded ${data.modulators.length} input modulators from preset`
       );
 
@@ -1113,7 +1114,7 @@ export class InputModulationUi extends BaseUi {
   toggleTargetSelectionMode(modulator) {
     // Exiting selection mode
     if (this.targetSelectionMode && this.activeModulator === modulator) {
-      console.log('Cancelling target selection mode');
+      if (this.debug.inputMod) console.log('Cancelling target selection mode');
       this.targetSelectionMode = false;
       this.activeModulator = null;
 
@@ -1131,7 +1132,7 @@ export class InputModulationUi extends BaseUi {
     }
     // Entering selection mode
     else if (modulator) {
-      console.log(`Entering target selection mode for modulator: ${modulator.targetName || 'New Modulator'}`);
+      if (this.debug.inputMod) console.log(`Entering target selection mode for modulator: ${modulator.targetName || 'New Modulator'}`);
 
       // If already in selection mode for another modulator, cancel that first
       if (this.targetSelectionMode && this.activeModulator) {
@@ -1159,7 +1160,7 @@ export class InputModulationUi extends BaseUi {
     // Called from elsewhere (e.g., handleTargetSelection) - just exit mode
     else {
       if (this.targetSelectionMode) {
-        console.log('Exiting target selection mode');
+        if (this.debug.inputMod) console.log('Exiting target selection mode');
 
         // Remove highlighting
         this.toggleTargetControlsHighlight(false);
@@ -1181,7 +1182,7 @@ export class InputModulationUi extends BaseUi {
   }
 
   handleTargetSelection = (e) => {
-    console.log('Target selection click event');
+    if (this.debug.inputMod) console.log('Target selection click event');
 
     if (!this.targetSelectionMode || !this.activeModulator) {
       return;
@@ -1192,7 +1193,7 @@ export class InputModulationUi extends BaseUi {
 
     // Check if the click is on the selection button itself - ignore it
     if (element === this.activeModulator._uiElements.targetSelectionButton) {
-      console.log('Clicked on the target selection button - ignoring');
+      if (this.debug.inputMod) console.log('Clicked on the target selection button - ignoring');
       return;
     }
 
@@ -1206,7 +1207,7 @@ export class InputModulationUi extends BaseUi {
 
     // Check if this is actually a valid target (has our data attribute)
     if (element.getAttribute('data-is-target') !== 'true') {
-      console.log('Clicked on non-target controller - ignoring');
+      if (this.debug.inputMod) console.log('Clicked on non-target controller - ignoring');
       return;
     }
 
@@ -1221,12 +1222,12 @@ export class InputModulationUi extends BaseUi {
       return;
     }
 
-    console.log('Selected target:', targetName);
+    if (this.debug.inputMod) console.log('Selected target:', targetName);
 
     // Get the controllers from the activeModulator
     const controllers = this.activeModulator.controllers;
     if (!controllers || !controllers.targetName) {
-      console.log('Could not find target controller in modulator');
+      if (this.debug.inputMod) console.log('Could not find target controller in modulator');
       this.toggleTargetSelectionMode(null);
       return;
     }
@@ -1279,7 +1280,7 @@ export class InputModulationUi extends BaseUi {
         }
       });
 
-      console.log(`Enabled target selection highlighting (${validTargetNames.length} valid targets available)`);
+      if (this.debug.inputMod) console.log(`Enabled target selection highlighting (${validTargetNames.length} valid targets available)`);
     } else {
       // Remove the class from body
       document.body.classList.remove('input-modulation-target-selection-mode');
@@ -1290,7 +1291,7 @@ export class InputModulationUi extends BaseUi {
         controller.removeAttribute('data-is-target');
       });
 
-      console.log('Disabled target selection highlighting');
+      if (this.debug.inputMod) console.log('Disabled target selection highlighting');
     }
   }
 

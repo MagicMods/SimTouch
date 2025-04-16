@@ -27,7 +27,9 @@ export class Gradients {
     c10,
   };
 
-  constructor(presetName = "c0") {
+  constructor(debugFlag, presetName = "c0") {
+
+    this.debugFlag = debugFlag;
     this.currentPreset = presetName;
     this.points = [];
     this.values = new Array(256).fill(0).map(() => ({ r: 0, g: 0, b: 0 }));
@@ -36,7 +38,7 @@ export class Gradients {
   }
 
   applyPreset(presetName) {
-    console.log(`>>> applyPreset called with presetName: ${typeof presetName}`, presetName);
+    if (this.debugFlag) console.log(`>>> applyPreset called with presetName: ${typeof presetName}`, presetName);
     if (!Gradients.PRESETS[presetName]) {
       console.warn(`Preset "${presetName}" not found, using default`);
       presetName = "c0";
@@ -51,8 +53,8 @@ export class Gradients {
 
     // If preset actually changed, send notification over socket
     if (oldPreset !== presetName) {
-      console.log(`>>> applyPreset calling sendGradientsUpdate`);
-      // this.sendGradientsUpdate(presetName);
+      if (this.debugFlag) console.log(`>>> applyPreset calling sendGradientsUpdate`);
+      this.sendGradientsUpdate(presetName);
     }
 
     return this.points;
@@ -90,7 +92,7 @@ export class Gradients {
     this.currentPreset = "custom"; // Use "custom" to indicate non-preset state
     this.update();
 
-    console.debug("setColorStops: Successfully applied custom color stops.");
+    console.log("setColorStops: Successfully applied custom color stops.");
     return true;
   }
 
@@ -98,11 +100,11 @@ export class Gradients {
   sendGradientsUpdate(presetName) {
     // Skip sending if using custom stops
     if (this.currentPreset === "custom") {
-      console.debug("sendGradientsUpdate: Skipping hardware sync for custom gradient.");
+      console.log("sendGradientsUpdate: Skipping hardware sync for custom gradient.");
       return false;
     }
     const presetIndex = this.getPresetIndex(presetName);
-    console.log(`>>> sendGradientsUpdate: presetName="${presetName}", calculated index: ${presetIndex}`);
+    if (this.debugFlag) console.log(`>>> sendGradientsUpdate: presetName="${presetName}", calculated index: ${presetIndex}`);
     // Check if presetIndex is valid before sending
     if (presetIndex === -1) {
       console.warn(`sendGradientsUpdate: Preset name "${presetName}" not found, cannot send update.`);

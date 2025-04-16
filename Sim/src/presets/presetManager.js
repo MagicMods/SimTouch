@@ -14,7 +14,10 @@ export class PresetManager {
     RANDOMIZER: "randomizer",
   };
 
-  constructor(uiComponents) {
+  constructor(uiComponents, debugFlags) {
+
+    this.debug = debugFlags;
+
     this.uiComponents = uiComponents;
     this.presetControls = {};
     this.eventListeners = {};
@@ -25,35 +28,40 @@ export class PresetManager {
         {
           Default: { controllers: {} },
         },
-        ["None"]
+        ["None"],
+        this.debug.presets
       ),
       [PresetManager.TYPES.VORONOI]: new SimplePresetHandler(
         "savedVoronoiPresets",
         {
           Default: { controllers: {} },
         },
-        ["None"]
+        ["None"],
+        this.debug.presets
       ),
       [PresetManager.TYPES.ORGANIC]: new SimplePresetHandler(
         "savedOrganicPresets",
         {
           Default: { controllers: {} },
         },
-        ["None"]
+        ["None"],
+        this.debug.presets
       ),
       [PresetManager.TYPES.PULSE]: new ModulatorPresetHandler(
         "savedPulsePresets",
         {
           None: { modulators: [] },
         },
-        ["None"]
+        ["None"],
+        this.debug.presets
       ),
       [PresetManager.TYPES.INPUT]: new ModulatorPresetHandler(
         "savedMicPresets",
         {
           None: { modulators: [] },
         },
-        ["None"]
+        ["None"],
+        this.debug.presets
       ),
       [PresetManager.TYPES.RANDOMIZER]: new RandomizerPresetHandler(
         "savedRandomizerPresets",
@@ -61,13 +69,15 @@ export class PresetManager {
           None: { paramTargets: {} },
           All: { paramTargets: {} }
         },
-        ["None", "All"]
+        ["None", "All"],
+        this.debug.presets
       ),
 
       [PresetManager.TYPES.MASTER]: new MasterPresetHandler(
         "savedPresets",
         { Default: {} },
-        ["Default"]
+        ["Default"],
+        this.debug.presets
       ),
     };
 
@@ -89,12 +99,11 @@ export class PresetManager {
   }
 
   createPresetControls(presetType, parentElement, options = {}) {
+    if (this.debug.presets) console.log(`Creating preset controls for type: ${presetType}`, this.handlers[presetType]);
     if (!parentElement || !presetType || !this.handlers[presetType]) {
       console.error(`Cannot create preset controls: Invalid parameters`);
       return null;
     }
-
-    console.log(`Creating preset controls for type: ${presetType}`, this.handlers[presetType]);
 
     const controlId = `${presetType}-${Date.now()}`;
 
@@ -119,7 +128,7 @@ export class PresetManager {
 
     presetSelect.addEventListener("change", (e) => {
       const value = e.target.value;
-      console.log(`Preset selector for ${presetType} changed to:`, value);
+      if (this.debug.presets) console.log(`Preset selector for ${presetType} changed to:`, value);
       this.loadPreset(presetType, value);
     });
 
@@ -173,25 +182,25 @@ export class PresetManager {
   }
 
   _handleSave(presetType) {
-    console.log(`Save requested for presetType: "${presetType}"`,
+    if (this.debug.presets) console.log(`Save requested for presetType: "${presetType}"`,
       `Handler:`, this.handlers[presetType] ? "exists" : "missing");
 
     // Get current preset name to pre-populate the prompt
     const currentPreset = this.getSelectedPreset(presetType);
-    console.log(`Current preset for ${presetType}:`, currentPreset);
+    if (this.debug.presets) console.log(`Current preset for ${presetType}:`, currentPreset);
 
     // Only use the current preset name as default if it's not "Default"
     const defaultValue = (currentPreset && currentPreset !== "Default") ? currentPreset : "";
     const presetName = prompt(`Enter ${presetType} preset name:`, defaultValue);
 
-    console.log(`User entered name: "${presetName}"`);
+    if (this.debug.presets) console.log(`User entered name: "${presetName}"`);
     if (!presetName) return;
 
     const uiComponent = this.getUIComponent(presetType);
-    console.log(`UI component for ${presetType}:`, uiComponent ? "found" : "missing");
+    if (this.debug.presets) console.log(`UI component for ${presetType}:`, uiComponent ? "found" : "missing");
 
     const success = this.savePreset(presetType, presetName);
-    console.log(`Save result for ${presetType} "${presetName}": ${success}`);
+    if (this.debug.presets) console.log(`Save result for ${presetType} "${presetName}": ${success}`);
 
     if (success) {
       this._updateAllPresetDropdowns(presetType);
@@ -299,7 +308,7 @@ export class PresetManager {
   }
 
   loadPreset(type, presetName) {
-    console.log(`Loading ${type} preset: ${presetName}`);
+    if (this.debug.presets) console.log(`Loading ${type} preset: ${presetName}`);
     const handler = this.getHandler(type);
     if (!handler) {
       console.warn(`No handler found for preset type ${type}`);
@@ -475,18 +484,6 @@ export class PresetManager {
     }
   }
 
-  setDebug(enabled) {
-    this.debug = !!enabled;
-
-    for (const type in this.handlers) {
-      if (
-        this.handlers[type] &&
-        typeof this.handlers[type].setDebug === "function"
-      ) {
-        this.handlers[type].setDebug(enabled);
-      }
-    }
-  }
 
   setVoronoiField(voronoiField) {
     const handler = this.getHandler(PresetManager.TYPES.VORONOI);

@@ -9,6 +9,7 @@ export class ParamUi extends BaseUi {
     this.presetManager = null;
     this.controls = {};
     this.gui.title("Parameters");
+    this.debug = this.main.debugFlags;
     this.initGlobalControls();
   }
 
@@ -27,7 +28,7 @@ export class ParamUi extends BaseUi {
         eventBus.emit('uiControlChanged', { paramPath: 'simulation.paused', value: intendedState });
         // Update button name based on intended state
         this.pauseButtonController.name(intendedState ? "Resume" : "Pause");
-        // console.log(`Simulation is ${intendedState ? "paused" : "running"}`);
+        if (this.debug.param) console.log(`Simulation is ${intendedState ? "paused" : "running"}`);
       },
     };
 
@@ -63,14 +64,14 @@ export class ParamUi extends BaseUi {
     this.fadeInSpeedController = this.gui.add(this.main.simParams.smoothing, "rateIn", 0.01, 0.5)
       .name("FadInSpd").onChange((value) => {
         eventBus.emit('uiControlChanged', { paramPath: 'smoothing.rateIn', value });
-      });
-    // .onFinishChange(() => console.log("Smoothing in:", smoothing.rateIn));
+      })
+      .onFinishChange(() => { if (this.debug.param) console.log("Smoothing in:", this.main.simParams.smoothing.rateIn); });
 
     this.fadeOutSpeedController = this.gui.add(this.main.simParams.smoothing, "rateOut", 0.01, 0.5)
       .name("FadOutSpd").onChange((value) => {
         eventBus.emit('uiControlChanged', { paramPath: 'smoothing.rateOut', value });
-      });
-    // .onFinishChange(() => console.log("Smoothing out:", smoothing.rateOut));
+      })
+      .onFinishChange(() => { if (this.debug.param) console.log("Smoothing out:", this.main.simParams.smoothing.rateOut); });
 
     this.timeStepController = this.gui.add(this.main.simParams.simulation, "timeStep", 0.001, 0.05, 0.001)
       .name("Time Step").onChange((value) => {
@@ -81,18 +82,18 @@ export class ParamUi extends BaseUi {
     this.timeScaleController = this.gui.add(this.main.simParams.simulation, "timeScale", 0, 4, 0.1)
       .name("SimSpeed").onChange((value) => {
         eventBus.emit('uiControlChanged', { paramPath: 'simulation.timeScale', value });
+      })
+      .onFinishChange((value) => {
+        if (this.debug.param) console.log(`Animation speed: ${value}x`);
       });
-    // .onFinishChange((value) => {
-    // console.log(`Animation speed: ${value}x`);
-    // });
 
     this.velocityDampingController = this.gui.add(this.main.simParams.simulation, "velocityDamping", 0.8, 1, 0.01)
       .name("VeloDamp").onChange((value) => {
         eventBus.emit('uiControlChanged', { paramPath: 'simulation.velocityDamping', value });
+      })
+      .onFinishChange((value) => {
+        if (this.debug.param) console.log(`Velocity damping set to ${value}`);
       });
-    // .onFinishChange((value) => {
-    //   console.log(`Velocity damping set to ${value}`);
-    // });
 
     this.maxVelocityController = this.gui.add(this.main.simParams.simulation, "maxVelocity", 0.01, 1, 0.01)
       .name("MaxVelocity").onChange((value) => {

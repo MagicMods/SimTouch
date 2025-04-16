@@ -1,6 +1,6 @@
 import { eventBus } from '../../util/eventManager.js'; // Added import
 
-class VoronoiField {
+export class VoronoiField {
   constructor({
     strength = 0,
     cellCount = 10,
@@ -11,7 +11,8 @@ class VoronoiField {
     timeOffset = Math.random() * 1000,
     decayRate = 0.99,
     pullMode = false,  // NEW: Pull particles to edges instead of pushing away
-  } = {}) {
+  } = {}, debugFlag) {
+    this.debugFlag = debugFlag;
     if (!boundary) {
       console.warn("VoronoiField: No boundary provided, using default");
       boundary = {
@@ -54,7 +55,7 @@ class VoronoiField {
     eventBus.on('physicsBoundaryRecreated', ({ physicsBoundary }) => {
       if (physicsBoundary) {
         this.boundary = physicsBoundary;
-        console.log("VoronoiField updated boundary reference.");
+        if (this.debugFlag) console.log("VoronoiField updated boundary reference.");
       } else {
         console.error("VoronoiField received null boundary on physicsBoundaryRecreated event.");
       }
@@ -79,11 +80,11 @@ class VoronoiField {
 
       // Check if cell count change requires cell regeneration
       if (this.cellCount !== previousCellCount && typeof this.regenerateCells === 'function') {
-        console.log(`VoronoiField: Cell count changed from ${previousCellCount} to ${this.cellCount}. Regenerating cells.`);
+        if (this.debugFlag) console.log(`VoronoiField: Cell count changed from ${previousCellCount} to ${this.cellCount}. Regenerating cells.`);
         this.regenerateCells();
       }
     }
-    // console.log(`VoronoiField updated params via event`);
+    // if(this.debugFlag) console.log (`VoronoiField updated params via event`);
   }
 
   initializeCells() {
@@ -109,7 +110,7 @@ class VoronoiField {
       // Generate at least 2 cells
       const actualCellCount = Math.max(2, this.cellCount);
 
-      // console.log(`Regenerating ${actualCellCount} Voronoi cells`);
+      // if(this.debugFlag) console.log (`Regenerating ${actualCellCount} Voronoi cells`);
 
       // Generate cells explicitly
       for (let i = 0; i < actualCellCount; i++) {
@@ -130,7 +131,7 @@ class VoronoiField {
         ]);
       }
 
-      // console.log(`Generated ${this.voronoiCenters.length} voronoi cells`);
+      // if(this.debugFlag) console.log (`Generated ${this.voronoiCenters.length} voronoi cells`);
     } catch (error) {
       console.error("Error initializing Voronoi cells:", error);
       // Fallback to minimal setup to prevent crashes
@@ -549,5 +550,3 @@ class VoronoiField {
     if (pullMode !== undefined) this.pullMode = pullMode;  // NEW: Set pullMode
   }
 }
-
-export { VoronoiField };

@@ -1,7 +1,12 @@
-class EventEmitter {
+class EventManager {
     constructor() {
         this._events = {}; // Use underscore for "private" convention
-        console.log("EventEmitter created"); // For debugging
+        this.debugFlags = {}; // Added initialization
+    }
+
+    // Added method to initialize debug flags
+    initDebug(debugFlags) {
+        this.debugFlags = debugFlags || {};
     }
 
     // Register a listener
@@ -10,7 +15,7 @@ class EventEmitter {
             this._events[eventName] = [];
         }
         this._events[eventName].push(listener);
-        // console.debug(`Listener added for: ${eventName}`);
+        // console.log(`Listener added for: ${eventName}`);
     }
 
     // Unregister a listener
@@ -19,12 +24,12 @@ class EventEmitter {
             return;
         }
         this._events[eventName] = this._events[eventName].filter(listener => listener !== listenerToRemove);
-        // console.debug(`Listener removed for: ${eventName}`);
+        // console.log(`Listener removed for: ${eventName}`);
     }
 
     // Emit an event to all registered listeners
     emit(eventName, data) {
-        // console.debug(`Emitting event: ${eventName}`, data);
+        if (this.debugFlags?.debugEvents) console.log(`Emitting event: ${eventName}`, data);
         if (!this._events[eventName]) {
             return; // No listeners for this event
         }
@@ -40,4 +45,4 @@ class EventEmitter {
     }
 }
 
-export const eventBus = new EventEmitter();
+export const eventBus = new EventManager();

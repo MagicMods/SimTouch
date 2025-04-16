@@ -2,11 +2,11 @@ import { SoundAnalyzer } from "../../sound/soundAnalyzer.js";
 import { SoundVisualizer } from "../../sound/soundVisualizer.js";
 
 export class MicInputForces {
-  constructor() {
+  constructor(debugFlag) {
     this.enabled = false;
     this.targetControllers = new Map();
     this.baselineAmplitude = 0.05; // Silent threshold
-
+    this.debugFlag = debugFlag;
     // Configuration
     this.sensitivity = 5.0;
     this.smoothing = 0.8;
@@ -57,7 +57,7 @@ export class MicInputForces {
 
       // Set flag
       this.enabled = true;
-      console.log("Microphone input enabled");
+      if (this.debugFlag) console.log("Microphone input enabled");
 
       // Show visualizer if it's supposed to be visible (default is true)
       if (this.visualizerVisible) {
@@ -88,7 +88,7 @@ export class MicInputForces {
     this.amplitude = 0;
     this.smoothedAmplitude = 0;
 
-    console.log("Microphone input disabled");
+    if (this.debugFlag) console.log("Microphone input disabled");
   }
 
   processAudioData(data) {
@@ -216,7 +216,7 @@ export class MicInputForces {
         frequencyBand: frequencyBand || "none",
       });
 
-      console.log("Added mic target:", {
+      if (this.debugFlag) console.log("Added mic target:", {
         min,
         max,
         sensitivity,
@@ -290,7 +290,7 @@ export class MicInputForces {
 
       // Remove from targetControllers map
       this.targetControllers.delete(controller);
-      console.log("Target removed from mic forces");
+      if (this.debugFlag) console.log("Target removed from mic forces");
     }
     return this;
   }
@@ -311,7 +311,7 @@ export class MicInputForces {
 
     // Clear the map
     this.targetControllers.clear();
-    console.log("All mic targets cleared");
+    if (this.debugFlag) console.log("All mic targets cleared");
     return this;
   }
 
@@ -334,7 +334,7 @@ export class MicInputForces {
       this.visualizer.updateOptions({ gain: value });
     }
 
-    console.log(`Global sensitivity set to ${value}`);
+    if (this.debugFlag) console.log(`Global sensitivity set to ${value}`);
     return this;
   }
 
@@ -394,7 +394,7 @@ export class MicInputForces {
     if (this.analyzer && this.analyzer.isEnabled) {
       this.analyzer.calibrate(1000, 1.2).then((baseline) => {
         this.baselineAmplitude = baseline;
-        console.log(`Microphone calibrated: baseline=${baseline.toFixed(4)}`);
+        if (this.debugFlag) console.log(`Microphone calibrated: baseline=${baseline.toFixed(4)}`);
       });
     }
     return this;

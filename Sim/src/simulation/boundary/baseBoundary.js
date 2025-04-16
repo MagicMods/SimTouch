@@ -1,4 +1,4 @@
-class BaseBoundary {
+export class BaseBoundary {
     constructor({
         cBoundaryRestitution = 0.8,
         damping = 0.95,
@@ -78,5 +78,3 @@ class BaseBoundary {
         throw new Error("Method 'getBoundaryDetails' must be implemented by derived class");
     }
 }
-
-export { BaseBoundary }; 

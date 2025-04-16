@@ -1,4 +1,4 @@
-class ShaderManager {
+export class ShaderManager {
   constructor(gl) {
     if (!gl) {
       throw new Error("WebGL context is required for ShaderManager");
@@ -36,7 +36,7 @@ class ShaderManager {
     if (this.currentProgram !== program.program) {
       this.gl.useProgram(program.program);
       this.currentProgram = program.program;
-      // console.log(`Using shader program: ${name}`);
+      // if (this.main.debugFlags.debugRenderer_GridGen) console.log(`Using shader program: ${name}`);
     }
 
     return program;
@@ -293,5 +293,3 @@ class ShaderManager {
     },
   };
 }
-
-export { ShaderManager };

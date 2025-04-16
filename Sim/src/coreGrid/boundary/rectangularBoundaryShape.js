@@ -1,13 +1,13 @@
 import { BaseBoundaryShape } from "./baseBoundaryShape.js";
 
 export class RectangularBoundaryShape extends BaseBoundaryShape {
-  constructor(centerX, centerY, width, height, scale = 1.0) {
+  constructor(centerX, centerY, width, height, scale = 1.0, debugFlag) {
     super(centerX, centerY, scale);
-
+    this.debugFlag = debugFlag;
     // Directly assign dimensions provided (validation/clamping done elsewhere if needed)
     this._width = width;
     this._height = height;
-    console.debug(
+    if (this.debugFlag) console.log(
       `RectangularBoundaryPs created with W: ${this._width}, H: ${this._height}`
     );
 
@@ -22,12 +22,12 @@ export class RectangularBoundaryShape extends BaseBoundaryShape {
   set width(value) {
     // Assume input value is valid and already processed/clamped if necessary upstream
     if (typeof value === "number" && this._width !== value) {
-      console.debug(
+      if (this.debugFlag) console.log(
         `RectangularBoundaryPs width changing from ${this._width} to ${value}`
       );
       this._width = value;
     } else if (typeof value !== "number") {
-      console.warn(
+      if (this.debugFlag) console.warn(
         `RectangularBoundaryPs received non-number for width: ${value}`
       );
     }
@@ -41,14 +41,14 @@ export class RectangularBoundaryShape extends BaseBoundaryShape {
   set height(value) {
     // Assume input value is valid and already processed/clamped if necessary upstream
     if (typeof value === "number" && this._height !== value) {
-      console.debug(
+      if (this.debugFlag) console.log(
         `RectangularBoundaryPs height changing from ${this._height} to ${value}`
       );
       this._height = value;
       // REMOVED: MIN_DIMENSION check
       // REMOVED: this.updateVertices();
     } else if (typeof value !== "number") {
-      console.warn(
+      if (this.debugFlag) console.warn(
         `RectangularBoundaryPs received non-number for height: ${value}`
       );
     }

@@ -1,9 +1,9 @@
-class PulseModulator {
-  constructor(manager) {
+export class PulseModulator {
+  constructor(manager, debugFlag) {
     if (!manager) {
       throw new Error("ModulatorManager is required for PulseModulator");
     }
-
+    this.debugFlag = debugFlag;
     this.manager = manager;
     this.enabled = true;
     this.targetName = "";
@@ -18,25 +18,22 @@ class PulseModulator {
     this.targetController = null;
     this.originalValue = null;
     this.currentPhase = 0;
-    this.isSelector = false; // Flag to indicate if target is a selector/dropdown
-    this.selectorOptions = []; // Array to store available options for selectors
-    this.beatDivision = "1"; // Beat division multiplier (1, 1/2, 1/4, 1/8, etc.)
-    this.currentIndex = 0; // Track current pattern index for selectors
-    this.direction = 1; // For selector loop mode: 1 = forward, -1 = backward
-    this.previousWaveType = null; // Store previous wave type when switching to/from selector
+    this.isSelector = false;
+    this.selectorOptions = [];
+    this.beatDivision = "1";
+    this.currentIndex = 0;
+    this.direction = 1;
+    this.previousWaveType = null;
 
-    // Standard wave types for continuous values
     this.continuousWaveTypes = ["sine", "square", "triangle", "sawtooth", "pulse", "random", "increment"];
-
-    // Wave types for selector targets
     this.selectorWaveTypes = ["forward", "backward", "loop"];
 
     // For special wave types
-    this._lastBeatTime = 0;  // Track when the last beat occurred
-    this._incrementValue = 0; // Current value for increment mode
-    this._incrementDirection = 1; // Direction for increment mode (1 = up, -1 = down)
-    this._randomValue = 0.5; // Current value for random mode
-    this._wasEnabled = false; // Track previous enabled state
+    this._lastBeatTime = 0;
+    this._incrementValue = 0;
+    this._incrementDirection = 1;
+    this._randomValue = 0.5;
+    this._wasEnabled = false;
   }
 
 
@@ -255,9 +252,7 @@ class PulseModulator {
         if (this.targetController.updateDisplay) {
           this.targetController.updateDisplay();
         }
-      } catch (e) {
-        console.warn("Could not reset target to original value:", e);
-      }
+      } catch (e) { console.warn("Could not reset target to original value:", e); }
     }
   }
 
@@ -433,7 +428,7 @@ class PulseModulator {
 
         // Safety check for NaN
         if (isNaN(normalizedValue)) {
-          console.log(`Wave calculation produced NaN for ${this.targetName}. Using default value.`);
+          console.warn(`Wave calculation produced NaN for ${this.targetName}. Using default value.`);
           normalizedValue = 0.5;
         }
 
@@ -460,10 +455,7 @@ class PulseModulator {
         this.targetController.setValue(targetValue);
       }
     } catch (e) {
-      console.error(
-        `Error in pulse modulator update for ${this.targetName}:`,
-        e
-      );
+      console.error(`Error in pulse modulator update for ${this.targetName}:`, e);
     }
 
     // Always increment time regardless of errors
@@ -600,4 +592,3 @@ class PulseModulator {
     }
   }
 }
-export { PulseModulator };

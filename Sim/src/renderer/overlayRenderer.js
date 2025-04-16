@@ -1,9 +1,10 @@
 export class OverlayManager {
-  constructor(canvasElement /*, dimensionManager */) {
+  constructor(canvasElement, debugFlag) {
     if (!canvasElement) {
       throw new Error("OverlayManager requires a canvas element.");
     }
     this.canvas = canvasElement;
+    this.debugFlag = debugFlag;
 
     this.textOverlay = null;
     this.centerOverlay = null;
@@ -30,13 +31,13 @@ export class OverlayManager {
         // Use class instead of inline style
         this.canvas.parentNode.classList.add("canvas-relative-container");
         // this.canvas.parentNode.style.position = "relative";
-        console.debug("Set canvas parent position to relative for overlay positioning.");
+        if (this.debugFlag) console.log("Set canvas parent position to relative for overlay positioning.");
       }
 
       this.canvas.parentNode.insertBefore(this.textOverlay, this.canvas.nextSibling);
       this.canvas.parentNode.insertBefore(this.centerOverlay, this.textOverlay); // Insert center before text
     } else {
-      console.error("Canvas parent node not found, cannot insert overlays.");
+      if (this.debugFlag) console.error("Canvas parent node not found, cannot insert overlays.");
     }
   }
 
@@ -87,7 +88,7 @@ export class OverlayManager {
       console.warn("OverlayManager.updateCellIndices: dimensions object missing.");
       return;
     }
-    console.debug("OverlayManager: Updating cell indices display");
+    if (this.debugFlag) console.log("OverlayManager: Updating cell indices display");
 
     // Step 6.3: Use passed dimensions object
     const renderWidth = dimensions.renderWidth;
@@ -141,7 +142,7 @@ export class OverlayManager {
       console.warn("OverlayManager.updateCellCenters: dimensions object missing.");
       return;
     }
-    // console.debug("OverlayManager: Updating cell centers display");
+    if (this.debugFlag) console.log("OverlayManager: Updating cell centers display");
 
     // Step 6.3: Use passed dimensions object
     const renderWidth = dimensions.renderWidth;
