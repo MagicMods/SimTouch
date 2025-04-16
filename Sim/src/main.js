@@ -37,131 +37,87 @@ class Main {
 
     this.shaderManager = new ShaderManager(this.gl);
 
-    // Define gridParams first
-    this.gridParams = {
-      screen: {
-        width: 240,
-        height: 240,
-        shape: "circular",
-      },
-      gridSpecs: {
-        targetCellCount: 341,
-        gap: 1,
-        aspectRatio: 1.0,
-        scale: 1.0,
-        allowCut: 3,
-        centerOffsetX: 0,
-        centerOffsetY: 0,
-      },
-      shadow: {
-        shadowIntensity: 0.17,
-        shadowThreshold: 0,
-        blurAmount: 0.23,
-      },
-      colors: {
-        gridBackgroundColor: [0.0, 0.0, 0.0], //rgb(0, 0, 0)
-        cellColor: [0.5, 0.5, 0.5], // Default gray #808080
-        gradientPreset: 'c0',
-      },
-      flags: {
-        showGridCells: true,
-        showIndices: false,
-        showCellCenters: false,
-        showBoundary: false,
-      },
-      renderSize: {
-        maxRenderWidth: 960,
-        maxRenderHeight: 960,
-      },
-      // Add default values for calculated stats (used by lil-gui .listen())
-      cellCount: 0,
-      cols: 0,
-      rows: 0,
-      calculatedCellWidth: 0,
-      calculatedCellHeight: 0,
-    };
-
     // Define simParams next, using default values
     this.simParams = {
       simulation: {
         paused: false,
-        timeStep: 1 / 60, // Default from ParticleSystem
-        timeScale: 1.0, // Default from ParticleSystem
-        velocityDamping: 0.98, // Default from ParticleSystem
-        maxVelocity: 1, // Default from ParticleSystem
-        picFlipRatio: 0, // Default from ParticleSystem
-        particleCount: 500, // Default from ParticleSystem
-        particleRadius: 0.01, // Default from ParticleSystem
-        restDensity: 2.0, // Default from ParticleSystem
+        timeStep: 1 / 60,
+        timeScale: 1.0,
+        velocityDamping: 0.98,
+        maxVelocity: 1,
+        picFlipRatio: 0,
+        particleCount: 500,
+        particleRadius: 0.01,
+        restDensity: 2.0,
       },
       boundary: {
-        mode: "BOUNCE", // Initial default
-        shape: "CIRCULAR", // Initial default
+        mode: "BOUNCE",
+        shape: "CIRCULAR",
         scale: 1.0,
         damping: 0.8,
         restitution: 1.0,
         repulsion: 0,
       },
       rendering: {
-        gridMode: "Proximity", // Default guess (was from gridRenderer)
-        maxDensity: 2.10 // Default from GridRenderer
+        gridMode: "Proximity",
+        maxDensity: 2.10
       },
       smoothing: {
-        rateIn: 0.1, // Default guess (was from gridRenderer.renderModes)
-        rateOut: 0.05 // Default guess (was from gridRenderer.renderModes)
+        rateIn: 0.1,
+        rateOut: 0.05
       },
       gravity: {
-        directionX: 0, // Default from GravityForces (via ParticleSystem)
-        directionY: 0  // Default from GravityForces (via ParticleSystem)
+        directionX: 0,
+        directionY: 0
       },
       collision: {
-        enabled: true, // Default from CollisionSystem
-        gridSize: 10, // Default from CollisionSystem
-        repulsion: 0.5, // Default from CollisionSystem
-        particleRestitution: 0.8, // Default from CollisionSystem
-        damping: 0.98, // Default from CollisionSystem
+        enabled: true,
+        gridSize: 10,
+        repulsion: 0.5,
+        particleRestitution: 0.8,
+        damping: 0.98,
       },
       turbulence: {
-        strength: 4, // Default from TurbulenceField
-        scale: 3.0, // Default from TurbulenceField
-        speed: 1.0, // Default from TurbulenceField
-        rotationSpeed: 0.0, // Default from TurbulenceField
-        rotation: 0.0, // Default from TurbulenceField
-        pullFactor: 1.0, // Default from TurbulenceField
-        affectPosition: false, // Default from TurbulenceField
-        scaleField: false, // Default from TurbulenceField
-        affectScale: false, // Default from TurbulenceField
-        minScale: 0.008, // Default from TurbulenceField
-        maxScale: 0.03, // Default from TurbulenceField
-        patternStyle: "Checkerboard", // Default from TurbulenceField
-        decayRate: 0.99, // Default from TurbulenceField
-        directionBiasX: 0, // Default from TurbulenceField
-        directionBiasY: 0, // Default from TurbulenceField
-        contrast: 0.5, // Default from TurbulenceField
-        biasStrength: 0.3, // Default from TurbulenceField
-        patternFrequency: 2.0, // Default from TurbulenceField
-        noiseSeed: Math.random() * 10000, // Default from TurbulenceField
-        separation: 0, // Default from TurbulenceField
-        domainWarp: 0, // Default from TurbulenceField
-        domainWarpSpeed: 0, // Default from TurbulenceField
-        symmetryAmount: 0.0, // Default from TurbulenceField
-        phase: 0.0, // Default from TurbulenceField
-        phaseSpeed: -1, // Default from TurbulenceField
-        blurAmount: 0.8, // Default from TurbulenceField
-        _displayBiasAccelX: 0, // Default internal state
-        _displayBiasAccelY: 0  // Default internal state
+        strength: 4,
+        scale: 3.0,
+        speed: 1.0,
+        rotationSpeed: 0.0,
+        rotation: 0.0,
+        pullFactor: 1.0,
+        affectPosition: false,
+        scaleField: false,
+        affectScale: false,
+        minScale: 0.008,
+        maxScale: 0.03,
+        patternStyle: "Checkerboard",
+        decayRate: 0.99,
+        directionBiasX: 0,
+        directionBiasY: 0,
+        contrast: 0.5,
+        biasStrength: 0.3,
+        patternFrequency: 2.0,
+        noiseSeed: Math.random() * 10000,
+        separation: 0,
+        domainWarp: 0,
+        domainWarpSpeed: 0,
+        symmetryAmount: 0.0,
+        phase: 0.0,
+        phaseSpeed: -1,
+        blurAmount: 0.8,
+        _displayBiasAccelX: 0,
+        _displayBiasAccelY: 0
       },
       voronoi: {
-        strength: 0, // Default from VoronoiField
-        edgeWidth: 0.3, // Default from VoronoiField
-        attractionFactor: 1.0, // Default from VoronoiField
-        cellCount: 10, // Default from VoronoiField
-        cellMovementSpeed: 0.2, // Default from VoronoiField
-        decayRate: 0.99, // Default from VoronoiField
-        velocityBlendFactor: 0.7, // Default from VoronoiField
-        pullMode: false // Default from VoronoiField
+        strength: 0,
+        edgeWidth: 0.3,
+        attractionFactor: 1.0,
+        cellCount: 10,
+        cellMovementSpeed: 0.2,
+        decayRate: 0.99,
+        velocityBlendFactor: 0.7,
+        pullMode: false
       },
-      organic: { // Defaults from OrganicBehavior
+      organic: {
         behavior: "None",
         globalForce: 0.1,
         globalRadius: 30,
@@ -190,15 +146,92 @@ class Main {
         },
       },
       particleRenderer: {
-        color: "#FFFFFF", // Default from ParticleRenderer config
-        opacity: 0.1, // Default from ParticleRenderer
+        color: "FFFFFF",
+        opacity: 0.1,
         showVelocityField: false,
       },
-      network: { // Defaults from socketManager
+      network: {
         enabled: false,
         debugSend: false,
         debugReceive: false
       }
+    };
+
+    // Define debug flags before components that need them
+    this.debugFlags = {
+      debugVerification: false,
+      debugNoisePreview: false,
+      debugEventManager: false,
+      debugVoronoi: false,
+      debugTurbulence: false,
+      debugRandomizer: false,
+      debugPulseMod: false,
+      debugPreset: false,
+      debugParam: false,
+      debugOrganic: false,
+      debugNetwork: false,
+      debugInputs: false,
+      debugInputMod: false,
+      debugGridGen: false,
+      debugMain: false,
+      debugGrid: false,
+      debugBoundary: false,
+      debugParticles: false,
+      debugEmu: false,
+      debugServer: false,
+      debugCollision: false,
+      debugCore: false,
+      debugNeighbors: false,
+      debugSound: false,
+      debugState: false,
+      debugDimensions: false,
+      debugEvents: false
+    };
+    // Initialize eventBus debugging right after flags are defined
+    eventBus.initDebug(this.debugFlags.debugEvents);
+
+    // Define gridParams first
+    this.gridParams = {
+      screen: {
+        width: 240,
+        height: 240,
+        shape: "circular",
+      },
+      gridSpecs: {
+        targetCellCount: 341,
+        gap: 1,
+        aspectRatio: 1.0,
+        scale: 1.0,
+        allowCut: 3,
+        centerOffsetX: 0,
+        centerOffsetY: 0,
+      },
+      shadow: {
+        shadowIntensity: 0.17,
+        shadowThreshold: 0,
+        blurAmount: 0.23,
+      },
+      colors: {
+        gridBackgroundColor: [0.0, 0.0, 0.0], //rgb(0, 0, 0)
+        cellColor: [0.5, 0.5, 0.5], // Default gray 808080
+        gradientPreset: 'c0',
+      },
+      flags: {
+        showGridCells: true,
+        showIndices: false,
+        showCellCenters: false,
+        showBoundary: false,
+      },
+      renderSize: {
+        maxRenderWidth: 960,
+        maxRenderHeight: 960,
+      },
+      // Add default values for calculated stats (used by lil-gui .listen())
+      cellCount: 0,
+      cols: 0,
+      rows: 0,
+      calculatedCellWidth: 0,
+      calculatedCellHeight: 0,
     };
 
     // Instantiate DimensionManager
@@ -206,16 +239,18 @@ class Main {
       this.gridParams.screen.width,
       this.gridParams.screen.height,
       this.gridParams.renderSize.maxRenderWidth,
-      this.gridParams.renderSize.maxRenderHeight
+      this.gridParams.renderSize.maxRenderHeight,
+      this.debugFlags.debugDimensions
     );
-    this.#applyCurrentDimensionsAndBoundary(); // Apply dimensions early
+    this.applyCurrentDimensionsAndBoundary(); // Apply dimensions early
 
     // Instantiate BoundaryManager
     const initialDimensions = this.dimensionManager.getDimensions();
     this.boundaryManager = new BoundaryManager(
       this.gridParams,
       initialDimensions,
-      this.dimensionManager
+      this.dimensionManager,
+      this.debugFlags.debugBoundary
     );
 
     // Get the physics boundary instance from the manager
@@ -236,10 +271,24 @@ class Main {
       // Use defaults for particleCount, timeStep etc. from simParams or ParticleSystem constructor
     });
 
+    // >>> MOVED: Instantiate GridGenRenderer *before* components that might reference it via main (e.g., MouseForces)
     this.gridRenderModes = new GridRenderModes(this.gridParams, this.dimensionManager, this.boundaryManager, this.particleSystem);
+    this.gridGenRenderer = new GridGenRenderer(
+      this.gl,
+      this.shaderManager,
+      this.gridParams,
+      this.dimensionManager,
+      this.boundaryManager,
+      this.particleSystem,
+      this.gridRenderModes,
+      this.debugFlags.debugGridGen
+    );
+    if (this.debugFlags.debugMain) console.log("Instantiated GridGenRenderer");
+
     // Instantiate other components
-    this.modulatorManager = new ModulatorManager();
-    this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager);
+    this.modulatorManager = new ModulatorManager(this.debugFlags);
+    // ParticleRenderer instantiation moved later, depends on ShaderManager init
+    // this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager, this.debugFlags);
 
     this.frame = 0;
     this.mouseForces = new MouseForces();
@@ -258,7 +307,8 @@ class Main {
     this.externalInput = new ExternalInputConnector(
       this.mouseForces,
       this.emuForces,
-      this.micForces
+      this.micForces,
+      this.debugFlags.debugInputs
     )
       .enable()
       .setSensitivity(0.002);
@@ -268,7 +318,7 @@ class Main {
     this.emuRenderer.hide();
 
     // Connect components directly without null checks
-    console.log("Directly connecting turbulenceField to emuRenderer and emuForces");
+    if (this.debugFlags.debugMain) console.log("Directly connecting turbulenceField to emuRenderer and emuForces");
     // Add direct reference to turbulenceField in emuForces
     this.externalInput.emuForces.turbulenceField = this.turbulenceField;
 
@@ -286,31 +336,23 @@ class Main {
     this.boundaryRenderer = new BoundaryRenderer(
       document.body,
       this.boundaryManager,
-      this.canvas
+      this.canvas,
+      this.debugFlags.debugBoundary
     );
-    this.gridGenRenderer = new GridGenRenderer(
-      this.gl,
-      this.shaderManager,
-      this.gridParams,
-      this.dimensionManager,
-      this.boundaryManager,
-      this.particleSystem,
-      this.gridRenderModes
-    );
-    console.log("Instantiated new Grid components (DimensionManager, BoundaryManager, BoundaryRenderer, GridGenRenderer)");
 
-    // --- BEGIN PLAN STEP 5 Action 4: Subscribe Grid UI Handler ---
     // Subscribe main to Grid UI changes (assuming NewGridUi emits 'uiControlChanged')
     eventBus.on('uiControlChanged', this.handleGridUIChange.bind(this));
-    console.log("Main subscribed to uiControlChanged events for Grid UI.");
-    // --- END STEP 1 ---
-    // TODO: Review if the existing subscription below needs modification or removal
-    // Subscribe main to UI changes using the correct method name 'on'
+    if (this.debugFlags.debugMain) console.log("Main subscribed to uiControlChanged events for Grid UI.");
+
   }
 
   async init() {
     try {
       await this.shaderManager.init();
+
+      // Instantiate ParticleRenderer AFTER shader manager is ready
+      this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager, this.debugFlags.debugParticles);
+      if (this.debugFlags.debugMain) console.log("Instantiated ParticleRenderer in init()");
 
       // Get audio analyzer directly without null checks
       this.audioAnalyzer = this.micForces.analyzer;
@@ -347,7 +389,7 @@ class Main {
       return;
     }
     current[keys[keys.length - 1]] = value;
-    console.log(`SimParams updated via UI: ${paramPath} = ${value}`);
+    if (this.debugFlags.debugMain) console.log(`SimParams updated via UI: ${paramPath} = ${value}`);
 
     eventBus.emit('simParamsUpdated', { simParams: this.simParams });
   }
@@ -357,12 +399,11 @@ class Main {
     const validGridPrefixes = ['screen', 'gridSpecs', 'shadow', 'colors', 'flags', 'renderSize'];
     const pathRoot = paramPath.split('.')[0];
     if (!validGridPrefixes.includes(pathRoot)) {
-      // console.debug(`handleGridUIChange received non-grid path: ${paramPath}. Ignoring.`);
+      // if (this.debugFlags.debugMain) console.log(`handleGridUIChange received non-grid path: ${paramPath}. Ignoring.`);
       return; // Ignore paths not starting with gridParams keys
     }
-    // --- END STEP 2 ---
 
-    console.log(`Grid UI Change Received: ${paramPath} =`, value);
+    if (this.debugFlags.debugMain) console.log(`Grid UI Change Received: ${paramPath} =`, value);
     try {
       const parts = paramPath.split('.');
       let current = this.gridParams;
@@ -446,7 +487,7 @@ class Main {
     });
   }
 
-  #applyCurrentDimensionsAndBoundary() {
+  applyCurrentDimensionsAndBoundary() {
     if (!this.canvas || !this.gl || !this.dimensionManager) {
       console.warn("_applyCurrentDimensionsAndBoundary called before canvas, GL context, or DimensionManager was ready.");
       return;
@@ -455,11 +496,11 @@ class Main {
     if (this.gridParams?.screen?.shape) {
       this.dimensionManager.applyCanvasStyle(this.canvas, this.gridParams.screen.shape);
     } else {
-      console.warn("#applyCurrentDimensionsAndBoundary: gridParams.screen.shape not available for styling.");
+      console.warn("applyCurrentDimensionsAndBoundary: gridParams.screen.shape not available for styling.");
       this.dimensionManager.applyCanvasStyle(this.canvas, 'rectangular');
     }
     this.dimensionManager.applyViewport(this.gl);
-    console.info(`Applied canvas dimensions/settings via DimensionManager: ${this.dimensionManager.renderWidth}x${this.dimensionManager.renderHeight}`);
+    if (this.debugDimensions) console.info(`Applied canvas dimensions/settings via DimensionManager: ${this.dimensionManager.renderWidth}x${this.dimensionManager.renderHeight}`);
   }
 
   checkAndApplyDimensionChanges() {
@@ -474,8 +515,8 @@ class Main {
       this.gridParams.renderSize.maxRenderHeight
     );
     if (dimensionsChanged) {
-      console.debug("DimensionManager reported changes, applying updates...");
-      this.#applyCurrentDimensionsAndBoundary();
+      if (this.debugFlags.debugMain) console.log("DimensionManager reported changes, applying updates...");
+      this.applyCurrentDimensionsAndBoundary();
     }
     return dimensionsChanged;
   }
@@ -485,7 +526,6 @@ class Main {
 
     if (this.dimensionManager) {
       eventBus.emit('gridParamsUpdated', { gridParams: this.gridParams, dimensions: this.dimensionManager.getDimensions() });
-      console.debug("Emitted gridParamsUpdated event.");
     } else {
       console.warn("setGridParams: DimensionManager not ready, cannot emit gridParamsUpdated event.");
     }
@@ -496,7 +536,7 @@ function rgbArrayToHex(rgb = [1, 1, 1]) {
   const r = Math.max(0, Math.min(255, Math.round(rgb[0] * 255)));
   const g = Math.max(0, Math.min(255, Math.round(rgb[1] * 255)));
   const b = Math.max(0, Math.min(255, Math.round(rgb[2] * 255)));
-  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+  return `${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
 }
 
 window.onload = () => Main.create().catch(console.error);

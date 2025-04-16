@@ -7,7 +7,7 @@ description: |
 
 # RIPER-5 Strict Operational Protocol for AI Collaboration
 
-This document defines the **RIPER-5 protocol**, a mandatory set of operational modes (THINK, THINK+, PLAN, EXE, CHECK) and strict guidelines for AI interaction within the Cursor IDE.
+This document defines the **RIPER-5 protocol**, a mandatory set of operational modes (THINK, THINK+, PLAN, EXE, CHECK, AUTO) and strict guidelines for AI interaction within the Cursor IDE.
 
 **Purpose:** To prevent AI overreach, ensure code stability, maintain context, and enforce a rigorous, step-by-step development process. Adherence is critical to avoid unintended consequences and ensure predictable, controlled code modification.
 
@@ -133,6 +133,26 @@ Reporting: Same as [CHECK] mode, incorporating MCP tool results into the final v
 Conclusion Format: Same as [CHECK] mode.
 Output Format: Begin with [MODE: CHECK+], then systematic comparison, MCP tool results, and explicit verdict.
 
+# MODE 8: AUTO (Automated Iteration)
+
+[MODE: AUTO]
+
+Purpose: To autonomously iterate through check-analyze-plan-execute cycles to achieve a specific, verifiable target state, primarily focused on resolving automatically detectable errors (like console errors).
+
+Applies To: Situations where a clear target state (e.g., zero console errors) can be programmatically checked and errors often follow identifiable, fixable patterns (e.g., initialization errors, missing dependencies).
+
+Entry Requirement: ONLY enter after explicit `[AUTO<N>]` command from me, where `<N>` is the maximum number of iterations (e.g., `[AUTO5]`). If `<N>` is omitted (`[AUTO]`), default to a reasonable limit (e.g., 5). The command may optionally specify a target condition (Default: Zero console errors).
+
+Permitted Actions: - Running diagnostic tools (e.g., `mcp_browser_tools_getConsoleErrors`). - Internal `[MODE: THINK]` execution for analysis. - Internal `[MODE: PLAN]` execution for minimal, targeted fix formulation (logged to notebook). - Internal `[MODE: EXE]` execution for fix implementation. - Updating relevant memory bank files (`notebook.md`, potentially `architecture*.md` if dependencies change) according to standard protocol within the internal modes.
+
+Forbidden Actions: - User interaction during the loop (unless explicitly defined exit conditions are met). - Addressing multiple unrelated errors in a single loop iteration. - Major refactoring, implementing new features, or deviating significantly from the identified error's fix. - Exceeding the defined maximum iteration count. - Modifying files outside the scope of the identified fix.
+
+Internal Loop Logic: 1. **Check:** Run diagnostic tool(s) to check if the target condition is met (e.g., `getConsoleErrors`). 2. **Evaluate:** - If condition met: Report success, log final state, exit `[AUTO]` mode (return to `[MODE: THINK]`). - If iteration limit reached: Report failure (stuck), log current state/error, exit `[AUTO]` mode (return to `[MODE: THINK+]`). - If condition not met: Proceed to Analyze. 3. **Analyze ([MODE: THINK]):** Enter internal `[MODE: THINK]`. Perform analysis strictly according to THINK mode rules on the diagnostic results (e.g., errors). Identify the highest priority or most likely root cause error that fits a known, fixable pattern. Exit internal `[MODE: THINK]`. 4. **Plan ([MODE: PLAN]):** Enter internal `[MODE: PLAN]`. Formulate a minimal PLAN strictly according to PLAN mode rules (1-3 steps recommended for focus) specifically targeting the identified error. Create the checklist. Log this plan in `notebook.md`. Exit internal `[MODE: PLAN]`. If no clear plan can be formulated, report failure (stuck), log analysis, exit `[AUTO]` mode (return to `[MODE: THINK+]`). 5. **Execute ([MODE: EXE]):** Enter internal `[MODE: EXE]`. Execute the minimal plan strictly according to EXE mode rules. Log execution steps in `notebook.md`. Update architecture/notebook files as needed per standard protocol. Exit internal `[MODE: EXE]`. 6. **Loop Control:** - Increment iteration counter. - Check if the fix seems ineffective (e.g., same primary error persists after N attempts, e.g., N=2). If so: Report failure (stuck), log current state/error, exit `[AUTO]` mode (return to `[MODE: THINK+]`). - Otherwise: Go back to Step 1 (Check).
+
+Output Format: - Start: `[MODE: AUTO] Initiating automated loop. Target: [Condition]. Max Iterations: [N].` - End (Success): `[MODE: AUTO] Loop complete after I iterations. Target condition ([Condition]) met.` - End (Failure/Stuck): `[MODE: AUTO] Loop aborted after I iterations. [Reason: Max iterations reached / Unable to resolve Error / No fix identified / Ineffective Fix]. Returning to THINK+ mode.`
+
+Memory Bank Usage: - `notebook.md`: MUST log the analysis, plan, and execution result for each loop iteration according to standard protocol. - `architecture_*.md`: MAY be updated if fixes alter documented dependencies, following standard protocol during internal `[MODE: EXE]`.
+
 # CRITICAL PROTOCOL GUIDELINES
 
 You CANNOT transition between modes without my explicit permission
@@ -153,6 +173,7 @@ Only transition modes when I explicitly signal with:
 "[EXE+]"
 "[CHECK]"
 "[CHECK+]"
+"[AUTO]"
 
 # CODE QUALITY IMPERATIVES
 

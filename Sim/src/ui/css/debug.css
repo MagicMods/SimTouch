@@ -1,0 +1,11 @@
+.boolean-button-container {
+  display: grid;
+  gap: 0px;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.boolean-button-container button {
+  margin: 0;
+  /* width: 25%; */
+  /* width: calc(25% - 10px) !important; */
+}

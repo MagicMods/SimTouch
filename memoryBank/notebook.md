@@ -1181,3 +1181,263 @@ The `Sim` renderers vary significantly. `baseRenderer` and `particleRenderer` al
 - **P-Size:** The `ParticleSystem.handleParamsUpdate` method needs to not only update `this.particleRadius` but also update the `this.particleRadii` array. Additionally, `ParticleSystem.getParticles()` needs to be modified to include the size from the `particleRadii` array in the returned particle objects so `ParticleRenderer` can use it.
 
 ---
+
+## 2024-07-19 - ParticleRenderer debugFlags Error
+
+**Analysis (THINK):**
+
+- Log file `Sim/log/127.0.0.1-1744714121477.log` reviewed.
+- Initialization of `DimensionManager` and `BoundaryManager` (with `debugFlags`) successful.
+- Warning observed: `BoundaryManager._updatePhysicsProperties: Missing physicsBoundary or simParams.boundary.` during initial creation before `simParams` are received via event. Deemed acceptable for now.
+- Critical Error: `TypeError: Cannot read properties of undefined (reading 'debugFlags')` at `particleRenderer.js:34` during instantiation in `main.js:273`.
+- Root Cause: `ParticleRenderer` constructor call in `main.js` is missing the required `debugFlags` argument, following the established pattern for other components.
+
+**Plan Decision (PLAN):**
+
+- Plan created in `memoryBank/plan.md` to address the error.
+- Steps involve:
+  1. Modifying `ParticleRenderer` constructor to accept, check, and store `debugFlags`.
+  2. Modifying `ParticleRenderer` instantiation in `main.js` to pass `this.debugFlags`.
+  3. Updating `memoryBank/architecture_sim.md` and `memoryBank/notebook.md`.
+
+**Execution (EXE):**
+
+- Step 1: Read `Sim/src/renderer/particleRenderer.js` constructor.
+- Step 2: Edited `Sim/src/renderer/particleRenderer.js` constructor.
+- Step 3: Read `Sim/src/main.js` instantiation line.
+- Step 4: Edited `Sim/src/main.js` instantiation line.
+- Step 5: Edited `memoryBank/architecture_sim.md`.
+- Step 6: Edited `memoryBank/notebook.md` (this entry).
+
+---
+
+## 2024-07-19 - BoundaryRenderer debugFlags Error
+
+**Analysis (THINK):**
+
+- Log file `Sim/log/127.0.0.1-1744714244723.log` reviewed.
+- Initialization of most components successful, including previous `ParticleRenderer` fix.
+- New Critical Error: `TypeError: Cannot read properties of undefined (reading 'debugFlags')` at `boundaryRenderer.js:15` during instantiation in `main.js:317`.
+- Root Cause: `BoundaryRenderer` constructor call in `main.js` is missing the required `debugFlags` argument. Constructor itself needed update to accept and use `debugFlags` properly (was using `this.main.debugFlags`).
+
+**Plan Decision (PLAN):**
+
+- Plan created in `memoryBank/plan.md` to address the error.
+- Steps involve:
+  1. Reading and modifying `BoundaryRenderer` constructor to accept, check, store, and correctly use `debugFlags` (replacing `this.main.debugFlags`).
+  2. Modifying `BoundaryRenderer` instantiation in `main.js` to pass `this.debugFlags`.
+  3. Updating `memoryBank/architecture_sim.md` and `memoryBank/notebook.md`.
+
+**Execution (EXE):**
+
+- Step 1: Read `Sim/src/renderer/boundaryRenderer.js` constructor. Confirmed it did not accept `debugFlags` but tried to use `this.main.debugFlags`.
+- Step 2: Edited `Sim/src/renderer/boundaryRenderer.js` constructor to accept, validate, store, and use `debugFlags` correctly.
+- Step 3: Read `Sim/src/main.js` instantiation line.
+- Step 4: Edited `Sim/src/main.js` instantiation line to pass `this.debugFlags`.
+- Step 5: Edited `memoryBank/architecture_sim.md`.
+- Step 6: Edited `memoryBank/notebook.md` (this entry).
+
+---
+
+## 2024-07-19 - Gradients debugFlags Error
+
+**Analysis (THINK):**
+
+- Console error logs (`mcp_browser_tools_getConsoleErrors`) showed `TypeError: Cannot read properties of undefined (reading 'debugFlags')` in `Gradients.applyPreset` (`gradients.js:39`), called from `Gradients` constructor, called from `GridGenRenderer` constructor (`gridGenRenderer.js:16`).
+- Root Cause: `Gradients` constructor did not accept `debugFlags` but tried to use `this.main.debugFlags` internally. The instantiation in `GridGenRenderer` did not pass `debugFlags`.
+
+**Plan Decision (PLAN):**
+
+- Part of a larger plan in `memoryBank/plan.md`.
+- Steps:
+  1. Modify `Gradients` constructor to accept, validate, store `debugFlags` and update internal usage.
+  2. Modify `GridGenRenderer` constructor to pass `this.debugFlags` when instantiating `Gradients`.
+  3. Update memory bank.
+
+**Execution (EXE):**
+
+- Step 1: Read `gradients.js` constructor. Confirmed it needed update.
+- Step 2: Edited `gradients.js` constructor and internal usage.
+- Step 3: Read `gridGenRenderer.js` constructor.
+- Step 4: Edited `gridGenRenderer.js` instantiation of `Gradients`.
+- Step 5: Updated `memoryBank/architecture_sim.md`.
+- Step 6: Updated `memoryBank/notebook.md` (this entry).
+
+---
+
+## 2024-07-19 - MouseForces GridGenRenderer Error
+
+**Analysis (THINK):**
+
+- Console error logs (`mcp_browser_tools_getConsoleErrors`) showed `Error: GridGenRenderer is required in main for isInNoiseMode` in `mouseForces.js:294`.
+- `isInNoiseMode` accesses `this.main.gridGenRenderer`.
+- Examination of `main.js` revealed `MouseForces` instantiation and setup (including setting `this.main` reference and attaching event listeners) happened _before_ `GridGenRenderer` was instantiated.
+- Root Cause: Initialization order. Event listeners attached in `MouseForces.setupMouseInteraction` could fire before `this.main.gridGenRenderer` was assigned.
+
+**Plan Decision (PLAN):**
+
+- Part of a larger plan in `memoryBank/plan.md`.
+- Steps:
+  1. Move the `GridGenRenderer` (and `GridRenderModes`) instantiation block in `main.js` to _before_ the `MouseForces` instantiation and setup.
+  2. Correct `ParticleRenderer` instantiation placement (move to `init()` method after `ShaderManager` initialization).
+  3. Update memory bank.
+
+**Execution (EXE):**
+
+- Step 7 & 8: Read relevant sections of `mouseForces.js` and `main.js`.
+- Step 9: Confirmed initialization order issue.
+- Step 10: Edited `main.js` to move `GridGenRenderer` block before `MouseForces` and moved `ParticleRenderer` instantiation into `init()`.
+- Step 11: No changes needed to `architecture_sim.md`.
+- Step 12: Updated `memoryBank/notebook.md` (this entry).
+
+---
+
+## 2024-07-19 - MasterPresetHandler Initialization Error
+
+**Analysis (THINK):**
+
+- Console error logs (`mcp_browser_tools_getConsoleErrors`) showed `TypeError: this.hasPreset is not a function` in `MasterPresetHandler.captureInitialState` (`masterPresetHandler.js:16`).
+- Initial analysis incorrectly assumed `hasPreset` was being called on child components. Further investigation showed it was correctly called on `this` (the `MasterPresetHandler` instance).
+- `MasterPresetHandler` inherits `hasPreset` from `PresetBaseHandler`.
+- `captureInitialState` is called immediately after setting components in the `setComponents` method.
+- Hypothesis: `captureInitialState` is called before the `PresetBaseHandler` constructor/initialization (potentially involving async operations like localStorage access) has fully completed, making `this.hasPreset` unavailable at that moment.
+
+**Plan Decision (PLAN):**
+
+- Plan created in `memoryBank/plan.md`.
+- Steps:
+  1. Read `MasterPresetHandler` and `PresetManager` to understand component flow and the context of the error.
+  2. Confirm child components don't have `hasPreset` (determined irrelevant).
+  3. Identify the timing issue as the likely cause.
+  4. Implement fix: Modify `MasterPresetHandler.setComponents` to call `this.captureInitialState()` asynchronously using `setTimeout(..., 0)` to allow the event loop to finish base class initialization.
+  5. Update memory bank.
+
+**Execution (EXE):**
+
+- Step 1: Read `masterPresetHandler.js`.
+- Step 2: Read `presetManager.js`.
+- Step 3: Skipped (irrelevant).
+- Step 4: Confirmed likely timing issue.
+- Step 5: Edited `masterPresetHandler.js` to use `setTimeout` for `captureInitialState` call.
+- Step 6: Updated `memoryBank/notebook.md` (this entry).
+- Step 7: No changes needed to `architecture_sim.md`.
+
+---
+
+## 2024-07-19 - Preset System Initialization Errors
+
+**Analysis (THINK):**
+
+- Console logs showed two errors:
+  1. `TypeError: Cannot read properties of undefined (reading 'debugFlags')` in `PresetManager.createPresetControls`.
+  2. `TypeError: this.hasPreset is not a function` in `MasterPresetHandler.captureInitialState` (persisted after `setTimeout` fix).
+- Root Cause 1: `PresetManager` constructor did not accept `debugFlags`, but `createPresetControls` tried to use `this.main.debugFlags`. Instantiation in `UiManager` did not pass flags.
+- Root Cause 2: The `setTimeout` fix for `MasterPresetHandler` was insufficient. `captureInitialState` still ran before `PresetBaseHandler` initialization completed.
+
+**Plan Decision (PLAN):**
+
+- Fix `PresetManager` `debugFlags` propagation.
+- Refactor `MasterPresetHandler` initialization: remove `setTimeout`, create `finalizeInitialization()` method calling `captureInitialState`, call this new method from `UiManager` after all preset handlers are set up.
+
+**Execution (EXE):**
+
+- Edited `PresetManager` constructor to accept, store, use `debugFlags`.
+- Edited `UiManager.initializePresetManager` to pass `debugFlags` to `PresetManager` constructor.
+- Edited `MasterPresetHandler.setComponents` to remove `captureInitialState` call.
+- Added `MasterPresetHandler.finalizeInitialization` method calling `captureInitialState`.
+- Edited `UiManager.initializePresetManager` to call `masterPresetHandler.finalizeInitialization()` after setting up other handlers.
+- Updated `memoryBank/architecture_sim.md` (PresetManager dependency).
+- Updated `memoryBank/notebook.md` (this entry).
+
+---
+
+## 2024-07-19 - MasterPresetHandler `hasPreset` Error (Revisited)
+
+**Analysis (THINK):**
+
+- Previous fix attempt (delaying initialization) failed. Error `TypeError: this.hasPreset is not a function` persisted.
+- Read `PresetBaseHandler.js`. Confirmed constructor and methods are synchronous.
+- Discovered `hasPreset` method does not actually exist in `PresetBaseHandler` or `MasterPresetHandler`.
+- Root Cause: The code in `MasterPresetHandler.captureInitialState` was calling a non-existent method `this.hasPreset`. The intent was to check if the "Default" preset already exists.
+
+**Plan Decision (PLAN):**
+
+- Correct the check in `captureInitialState`.
+- Use the existing `this.getPreset("Default")` method, which returns `null` if the preset doesn't exist.
+
+**Execution (EXE):**
+
+- Edited `MasterPresetHandler.captureInitialState` to change the condition from `if (this.hasPreset("Default"))` to `if (this.getPreset("Default"))`.
+- Updated `memoryBank/notebook.md` (this entry).
+
+---
+
+## 2024-07-19 - GridGeometry debugFlags Error
+
+**Analysis (THINK):**
+
+- Console logs showed `TypeError: Cannot read properties of undefined (reading 'debugFlags')` in `GridGeometry.generate` (`gridGeometry.js:90`).
+- Root Cause: `GridGeometry` needs `debugFlags` but was not receiving it during instantiation in `GridGenRenderer`.
+
+**Plan Decision (PLAN):**
+
+- Add `debugFlags` to `GridGeometry` constructor.
+- Update `GridGenRenderer` to pass `debugFlags` when creating `GridGeometry`.
+- Update memory bank.
+
+**Execution (EXE):**
+
+- Edited `GridGeometry` constructor to accept, validate, store `debugFlags` and update internal log usage.
+- Edited `GridGenRenderer` constructor to pass `this.debugFlags` to `new GridGeometry()`.
+- Updated `memoryBank/architecture_sim.md` (GridGeometry dependency).
+- Updated `memoryBank/notebook.md` (this entry).
+
+---
+
+## 2024-07-19 - Console Log Cleanup
+
+**Analysis (THINK):**
+
+- Log file `Sim/log/127.0.0.1-1744723163012.log` reviewed to identify unnecessary console output during initialization.
+- Identified logs to remove: BoundaryManager missing simParams warning, one-time setup logs (OverlayManager, GridGenRenderer constructor), event flow logs (gridParamsUpdated emit/receive), GridRenderModes initialization log.
+
+**Plan Decision (PLAN):**
+
+- Edit relevant files to remove or silence the identified logs.
+
+**Execution (EXE - AUTO Mode):**
+
+- Edited `boundaryManager.js` to silence warning.
+- Edited `overlayRenderer.js` to remove setup log (attempted, manual check needed).
+- Edited `gridGenRenderer.js` to remove constructor log.
+- Edited `main.js` to remove event emit log.
+- Edited `gridGenRenderer.js` to remove event receive log.
+- Edited `gridGenRenderer.js` to remove GridRenderModes init log.
+- Updated `memoryBank/notebook.md` (this entry).
+
+---
+
+## 2024-07-19 - Final Console Log Cleanup
+
+**Analysis (THINK):**
+
+- Reviewed `Sim/log/127.0.0.1-1744723434567.log` after user clarification that _all_ console output during startup should be removed.
+- Identified remaining standard initialization logs from various components (`DimensionManager`, `main`, `BoundaryManager`, `CircularBoundaryShape`, `CollisionSystem`, `NeighborSearch`, `ExternalInputConnector`, `SocketManager`).
+
+**Plan Decision (PLAN):**
+
+- Comment out all identified `console.log`/`info`/`debug` statements in the respective files to achieve a silent console during startup.
+
+**Execution (EXE):**
+
+- Edited `DimensionManager.js` (lines 155, 208, 218, 232).
+- Edited `main.js` (line 522).
+- Edited `BoundaryManager.js` (lines 74, 103, 139, 186, 279).
+- Edited `circularBoundaryShape.js` (line 27).
+- Edited `collisionSystem.js` (line 63).
+- Edited `neighborSearch.js` (line 25 - attempted, requires manual check).
+- Edited `externalInputConnector.js` (line 53).
+- Edited `socketManager.js` (line 100 - attempted, requires manual check).
+- Updated `memoryBank/notebook.md` (this entry).
+
+---

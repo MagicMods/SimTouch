@@ -53,7 +53,7 @@
 
 #lil-gui-name-118 + .widget input[type="text"] {
   pointer-events: none !important;
-  color: rgb(255, 0, 0) !important;
+  color: rgb(255, 255, 255) !important;
   font-weight: 700;
   background-color: rgb(5, 5, 5) !important;
 }

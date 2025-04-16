@@ -87,6 +87,42 @@ This document describes the Sim project's characteristics and the strategy for m
 4.  Update `main.js` to instantiate and connect the migrated components correctly.
 5.  Ensure existing `Sim` renderers (`particleRenderer`, `debugRenderer`) function correctly with the new structure (e.g., using the migrated `ShaderManager`).
 
+## Core Components & Dependencies
+
+- **`main.js`**: Entry point, orchestrates initialization, main loop.
+  - Dependencies: `ShaderManager`, `DimensionManager`, `BoundaryManager`, `ParticleSystem`, `GridGenRenderer`, `ParticleRenderer`, `BoundaryRenderer`, `UiManager`, `ExternalInputConnector`, etc.
+  - Manages global state objects: `gridParams`, `simParams`, `debugFlags`.
+- **`DimensionManager`**: Manages canvas physical and render dimensions.
+  - Dependencies: `gridParams.screen`, `gridParams.renderSize`.
+- **`BoundaryManager`**: Manages `ShapeBoundary` (render) and `PhysicsBoundary` (simulation).
+  - Dependencies: `initialgridParams`, `initialgridDimensions`, `dimensionManager`, `debugFlags`. Subscribes to `simParamsUpdated`, `gridParamsUpdated`.
+- **`GridGenRenderer`**: Renders the grid based on modes.
+  - Dependencies: `gl`, `shaderManager`, `gridParams`, `dimensionManager`, `boundaryManager`, `particleSystem`, `gridRenderModes`, `debugFlags`.
+  - Instantiates: `GridGeometry` (requires `debugFlags`), `OverlayManager`, `Gradients` (requires `debugFlags`).
+- **`ParticleRenderer`**: Renders particles.
+  - Dependencies: `gl`, `shaderManager`, `debugFlags`. Subscribes to `simParamsUpdated`.
+- **`BoundaryRenderer`**: Renders physics boundary using DOM overlay.
+  - Dependencies: `containerElement`, `boundaryManager`, `canvasElement`, `debugFlags`. Subscribes to `simParamsUpdated`.
+- **`ParticleSystem`**: Core simulation logic, manages particles and forces.
+  - Dependencies: `turbulenceField`, `voronoiField`, `boundaryManager`, `simParams`, `mouseForces`.
+- **`UiManager`**: Handles UI creation and interaction (uses `lil-gui`).
+  - Dependencies: `main` instance (for `simParams`, `gridParams`, `debugFlags`).
+  - Instantiates: `PresetManager` (requires UI components, `debugFlags`), various UI panels.
+  - Panels: `SimUi`, `GridUi`, `DebugUi`, `PresetsUi`, `ParamUi`, etc.
+- **`eventBus`**: Centralized event management.
+
+## Key Architectural Principles
+
+- **Dependency Injection:** Pass necessary dependencies (managers, params, `debugFlags`) during instantiation.
+- **Event-Driven Updates:** Use `eventBus` (`simParamsUpdated`, `gridParamsUpdated`, `uiControlChanged`) for cross-component communication and state synchronization.
+- **Parameter Objects:** Use `gridParams` and `simParams` for configuration, managed by `main.js` and updated via `eventBus`.
+- **Separation of Concerns:**
+  - `coreGrid`: Geometry, dimensions, boundaries (shape/render).
+  - `simulation`: Physics, forces, particles, boundaries (physics).
+  - `renderer`: WebGL drawing logic (grid, particles, boundaries).
+  - `ui`: User interface elements.
+- **Debug Flags:** Centralized `debugFlags` object in `main.js` passed down to components for conditional logging.
+
 ```mermaid
 graph TD
     subgraph "Sim Project Target Architecture"
