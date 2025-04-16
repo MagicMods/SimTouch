@@ -27,9 +27,9 @@ export class Gradients {
     c10,
   };
 
-  constructor(debugFlag, presetName = "c0") {
+  constructor(debugFlags, presetName = "c0") {
 
-    this.debugFlag = debugFlag;
+    this.debug = debugFlags;
     this.currentPreset = presetName;
     this.points = [];
     this.values = new Array(256).fill(0).map(() => ({ r: 0, g: 0, b: 0 }));
@@ -38,7 +38,7 @@ export class Gradients {
   }
 
   applyPreset(presetName) {
-    if (this.debugFlag) console.log(`>>> applyPreset called with presetName: ${typeof presetName}`, presetName);
+    if (this.debug.gradients) console.log(`>>> applyPreset called with presetName: ${typeof presetName}`, presetName);
     if (!Gradients.PRESETS[presetName]) {
       console.warn(`Preset "${presetName}" not found, using default`);
       presetName = "c0";
@@ -53,7 +53,7 @@ export class Gradients {
 
     // If preset actually changed, send notification over socket
     if (oldPreset !== presetName) {
-      if (this.debugFlag) console.log(`>>> applyPreset calling sendGradientsUpdate`);
+      if (this.debug.gradients) console.log(`>>> applyPreset calling sendGradientsUpdate`);
       this.sendGradientsUpdate(presetName);
     }
 
@@ -104,7 +104,7 @@ export class Gradients {
       return false;
     }
     const presetIndex = this.getPresetIndex(presetName);
-    if (this.debugFlag) console.log(`>>> sendGradientsUpdate: presetName="${presetName}", calculated index: ${presetIndex}`);
+    if (this.debug.gradients) console.log(`>>> sendGradientsUpdate: presetName="${presetName}", calculated index: ${presetIndex}`);
     // Check if presetIndex is valid before sending
     if (presetIndex === -1) {
       console.warn(`sendGradientsUpdate: Preset name "${presetName}" not found, cannot send update.`);

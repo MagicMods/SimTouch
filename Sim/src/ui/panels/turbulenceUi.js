@@ -440,29 +440,29 @@ export class TurbulenceUi extends BaseUi {
 
     // Force animation to start for the initial selected pattern
     // Make sure to stagger these calls to avoid race conditions
-    setTimeout(() => {
-      if (this.previewManager) {
-        // Force refresh the selected pattern
-        this.previewManager.refreshSelectedPreview();
+    // setTimeout(() => {
+    if (this.previewManager) {
+      // Force refresh the selected pattern
+      this.previewManager.refreshSelectedPreview();
 
-        // Make sure visibility is correctly detected
-        this.previewManager.checkParentFolderVisibility();
-        this.previewManager.ensureRefreshLoopStarted();
-      }
-    }, 100);
+      // Make sure visibility is correctly detected
+      this.previewManager.checkParentFolderVisibility();
+      this.previewManager.ensureRefreshLoopStarted();
+    }
+    // }, 100);
 
     // Do another check slightly later in case anything was still initializing
-    setTimeout(() => {
-      if (this.previewManager && this.previewManager.selectedPattern) {
-        // Force it to refresh one more time
-        this.previewManager.refreshSelectedPreview();
+    // setTimeout(() => {
+    if (this.previewManager && this.previewManager.selectedPattern) {
+      // Force it to refresh one more time
+      this.previewManager.refreshSelectedPreview();
 
-        // Force the animation loop to start if needed
-        if (!this.previewManager.animationFrameId && this.previewManager.isVisible) {
-          this.previewManager.startRefreshLoop();
-        }
+      // Force the animation loop to start if needed
+      if (!this.previewManager.animationFrameId && this.previewManager.isVisible) {
+        this.previewManager.startRefreshLoop();
       }
-    }, 300);
+    }
+    // }, 300);
 
     // Set performance profile based on estimated device capability
     // This is a simple heuristic and could be improved
@@ -501,7 +501,7 @@ export class TurbulenceUi extends BaseUi {
 
     // Add symmetry amount control
     this.turbulenceSymmetryController = patternControlsFolder.add(turbulenceParams, "symmetryAmount", 0, 1, 0.01)
-      .name("T-Symetry");
+      .name("T-Symmetry");
 
     // Pattern frequency control (always visible)
     this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulenceParams, "patternFrequency", 0.01, 4, 0.01)
@@ -695,7 +695,7 @@ export class TurbulenceUi extends BaseUi {
     if (this.turbulencePatternFrequencyController) targets["T-Freq"] = this.turbulencePatternFrequencyController;
     if (this.turbulencePhaseController) targets["T-PhaseSp"] = this.turbulencePhaseController;
     if (this.turbulenceStaticPhaseController) targets["T-Phase"] = this.turbulenceStaticPhaseController;
-    if (this.turbulenceSymmetryController) targets["T-Symetry"] = this.turbulenceSymmetryController;
+    if (this.turbulenceSymmetryController) targets["T-Symmetry"] = this.turbulenceSymmetryController;
     if (this.turbulenceBlurController) targets["T-Blur"] = this.turbulenceBlurController;
 
     if (this.turbulenceOffsetXController) targets["T-OffsetX"] = this.turbulenceOffsetXController;
