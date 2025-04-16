@@ -17,18 +17,39 @@ export class ParticleUi extends BaseUi {
   initParticleControls() {
     // Store controllers as class properties with clear naming
     this.particleCountController = this.gui
-      .add(this.main.simParams.simulation, "particleCount", 0, 1500, 1)
-      .name("P-Count")
-      .onChange((value) => {
-        eventBus.emit('uiControlChanged', { paramPath: 'simulation.particleCount', value });
-      });
+      .add(this.main.simParams.simulation, "particleCount", 0, 1500, 1).name("P-Count")
+      .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'simulation.particleCount', value }); });
 
     this.particleSizeController = this.gui
-      .add(this.main.simParams.simulation, "particleRadius", 0.002, 0.03, 0.001)
-      .name("P-Size")
-      .onChange((value) => {
-        eventBus.emit('uiControlChanged', { paramPath: 'simulation.particleRadius', value });
+      .add(this.main.simParams.simulation, "particleRadius", 0.002, 0.03, 0.001).name("P-Size")
+      .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'simulation.particleRadius', value }); });
+
+    this.velocityDampingController = this.gui.add(this.main.simParams.simulation, "velocityDamping", 0.8, 1, 0.01)
+      .name("P-VeloDamp").onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'simulation.velocityDamping', value });
+      })
+      .onFinishChange((value) => {
+        if (this.debug.param) console.log(`Velocity damping set to ${value}`);
       });
+
+    this.maxVelocityController = this.gui.add(this.main.simParams.simulation, "maxVelocity", 0.01, 1, 0.01)
+      .name("P-MaxVelo").onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'simulation.maxVelocity', value });
+      });
+
+
+
+    this.ratioPicFlip = this.gui.add(this.main.simParams.simulation, "picFlipRatio", 0, 1, 0.01)
+      .name("PicFlipRatio").onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'simulation.picFlipRatio', value });
+      });
+
+    this.velocityDampingController.domElement.style.marginTop = "10px";
+
+
+
+
+
 
     // Bind Opacity to simParams
     this.particleOpacityController = this.gui
@@ -87,9 +108,12 @@ export class ParticleUi extends BaseUi {
     const targets = {};
     if (this.particleCountController) targets["P-Count"] = this.particleCountController;
     if (this.particleSizeController) targets["P-Size"] = this.particleSizeController;
-    // Update targets for opacity and color
+
     if (this.particleOpacityController) targets["P-Opacity"] = this.particleOpacityController;
     if (this.particleColorController) targets["P-Color"] = this.particleColorController; // Add color target
+    if (this.velocityDampingController) targets["P-VeloDamp"] = this.velocityDampingController;
+    if (this.maxVelocityController) targets["P-MaxVelo"] = this.maxVelocityController;
+    if (this.ratioPicFlip) targets["PicFlipRatio"] = this.ratioPicFlip;
     return targets;
   }
 
@@ -164,5 +188,9 @@ export class ParticleUi extends BaseUi {
     safeUpdateDisplay(this.particleCountController);
     safeUpdateDisplay(this.particleOpacityController);
     safeUpdateDisplay(this.particleColorController);
+    safeUpdateDisplay(this.velocityDampingController);
+    safeUpdateDisplay(this.maxVelocityController);
+    safeUpdateDisplay(this.restDensityController);
+    safeUpdateDisplay(this.ratioPicFlip);
   }
 }

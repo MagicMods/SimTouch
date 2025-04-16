@@ -87,30 +87,7 @@ export class ParamUi extends BaseUi {
         if (this.debug.param) console.log(`Animation speed: ${value}x`);
       });
 
-    this.velocityDampingController = this.gui.add(this.main.simParams.simulation, "velocityDamping", 0.8, 1, 0.01)
-      .name("VeloDamp").onChange((value) => {
-        eventBus.emit('uiControlChanged', { paramPath: 'simulation.velocityDamping', value });
-      })
-      .onFinishChange((value) => {
-        if (this.debug.param) console.log(`Velocity damping set to ${value}`);
-      });
 
-    this.maxVelocityController = this.gui.add(this.main.simParams.simulation, "maxVelocity", 0.01, 1, 0.01)
-      .name("MaxVelocity").onChange((value) => {
-        eventBus.emit('uiControlChanged', { paramPath: 'simulation.maxVelocity', value });
-      });
-
-    this.restDensityController = this.gui.add(this.main.simParams.simulation, "restDensity", 0, 10, 0.1)
-      .name("RestDensity").onChange((value) => {
-        eventBus.emit('uiControlChanged', { paramPath: 'simulation.restDensity', value });
-      });
-
-    this.ratioPicFlip = this.gui.add(this.main.simParams.simulation, "picFlipRatio", 0, 1, 0.01)
-      .name("PicFlipRatio").onChange((value) => {
-        eventBus.emit('uiControlChanged', { paramPath: 'simulation.picFlipRatio', value });
-      });
-
-    this.velocityDampingController.domElement.style.marginTop = "10px";
 
   }
   //#endregion
@@ -118,15 +95,12 @@ export class ParamUi extends BaseUi {
   getControlTargets() {
     const targets = {};
     if (this.fieldTypeController) targets["Mode"] = this.fieldTypeController;
-    if (this.boundaryModeController) targets["Boundary"] = this.boundaryModeController;
     if (this.maxDensityController) targets["Density"] = this.maxDensityController;
     if (this.fadeInSpeedController) targets["FadInSpd"] = this.fadeInSpeedController;
     if (this.fadeOutSpeedController) targets["FadOutSpd"] = this.fadeOutSpeedController;
     if (this.timeStepController) targets["Time Step"] = this.timeStepController;
     if (this.timeScaleController) targets["SimSpeed"] = this.timeScaleController;
-    if (this.velocityDampingController) targets["VeloDamp"] = this.velocityDampingController;
-    if (this.maxVelocityController) targets["MaxVelocity"] = this.maxVelocityController;
-    if (this.ratioPicFlip) targets["PicFlipRatio"] = this.ratioPicFlip;
+
     return targets;
   }
 
@@ -182,7 +156,11 @@ export class ParamUi extends BaseUi {
     };
 
     // Update render mode controllers
-    safeUpdateDisplay(this.renderModeController);
-    safeUpdateDisplay(this.particleRenderModeController);
+    safeUpdateDisplay(this.fieldTypeController);
+    safeUpdateDisplay(this.maxDensityController);
+    safeUpdateDisplay(this.fadeInSpeedController);
+    safeUpdateDisplay(this.fadeOutSpeedController);
+    safeUpdateDisplay(this.timeStepController);
+    safeUpdateDisplay(this.timeScaleController);
   }
 }

@@ -131,6 +131,10 @@ export class BoundaryUi extends BaseUi {
     const targets = {};
 
     // Common controls
+    if (this.boundaryModeController)
+      targets["B-Mode"] = this.boundaryModeController;
+    if (this.boundaryScaleController)
+      targets["B-Scale"] = this.boundaryScaleController;
     if (this.boundaryRepulsionController)
       targets["B-Repulse"] = this.boundaryRepulsionController;
     if (this.boundaryFrictionController)

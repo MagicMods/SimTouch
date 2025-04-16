@@ -29,7 +29,10 @@ export class CollisionUi extends BaseUi {
     this.collisionBounceController = this.gui.add(this.main.simParams.collision, "particleRestitution", 0.0, 1.0, 0.05).name("C-Bounce")
       .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'collision.particleRestitution', value }); });
 
-
+    this.restDensityController = this.gui.add(this.main.simParams.simulation, "restDensity", 0, 10, 0.1).name("C-RestDens")
+      .onChange((value) => {
+        eventBus.emit('uiControlChanged', { paramPath: 'simulation.restDensity', value });
+      });
 
 
 
@@ -37,16 +40,13 @@ export class CollisionUi extends BaseUi {
 
   getControlTargets() {
     const targets = {};
+    if (this.collisionRepulsionController) targets["C-Repulse"] = this.collisionRepulsionController;
+    if (this.collisionGridSizeController) targets["C-GridSize"] = this.collisionGridSizeController;
+    if (this.collisionDampingController) targets["C-Damping"] = this.collisionDampingController;
+    if (this.collisionBounceController) targets["C-Bounce"] = this.collisionBounceController;
+    if (this.restDensityController) targets["C-RestDens"] = this.restDensityController;
 
-    // Update targets list
-    if (this.collisionEnabledController)
-      targets["C-Enabled"] = this.collisionEnabledController;
-    if (this.collisionGridSizeController)
-      targets["C-GridSize"] = this.collisionGridSizeController;
-    if (this.collisionRepulsionController)
-      targets["C-Repulse"] = this.collisionRepulsionController;
-    if (this.collisionBounceController)
-      targets["C-Bounce"] = this.collisionBounceController;
+
 
     return targets;
   }
@@ -104,9 +104,10 @@ export class CollisionUi extends BaseUi {
     };
 
     // Update relevant collision controllers
-    safeUpdateDisplay(this.collisionEnabledController);
     safeUpdateDisplay(this.collisionGridSizeController);
     safeUpdateDisplay(this.collisionRepulsionController);
     safeUpdateDisplay(this.collisionBounceController);
+    safeUpdateDisplay(this.restDensityController);
+    safeUpdateDisplay(this.collisionDampingController);
   }
 }

@@ -427,11 +427,11 @@ export class TurbulenceField {
       value = 1.0 / (1.0 + Math.exp(-centered * sepFactor));
     }
 
-    // Debug logging - randomly log some values to avoid flooding console
-    if (this.debug.turbulence && Math.random() < 0.0001) {
-      console.log(`Contrast ${this.contrast.toFixed(2)} applied:`,
-        originalValue.toFixed(3), "->", value.toFixed(3));
-    }
+    // // Debug logging - randomly log some values to avoid flooding console
+    // if (this.debug.turbulence && Math.random() < 0.0001) {
+    //   console.log(`Contrast ${this.contrast.toFixed(2)} applied:`,
+    //     originalValue.toFixed(3), "->", value.toFixed(3));
+    // }
 
     return Math.max(0, Math.min(1, value)); // Clamp to [0,1] range to be safe
   }
