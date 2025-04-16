@@ -1440,3 +1440,19 @@ The `Sim` renderers vary significantly. `baseRenderer` and `particleRenderer` al
 - Updated `memoryBank/notebook.md` (this entry).
 
 ---
+
+## Fix Turbulence UI Preset Toggle State (YYYY-MM-DD)
+
+**Issue:** Turbulence toggle buttons (Affect Position, Affect Scale Field, Affect Size) updated their visual state when a preset was loaded, but the underlying simulation state (`simParams` and consequently `TurbulenceField` via `handleParamsUpdate`) was not updated, leading to inconsistent behavior.
+
+**Analysis:** The `setValue` wrappers for these toggles within `TurbulenceUi.getControlTargets` (used by the preset system's `setData` method) directly modified the `turbulenceField` instance and the button's class, but did not emit the `uiControlChanged` event like manual button clicks do. This prevented the change from propagating through the standard event -> `simParams` -> `handleParamsUpdate` pathway.
+
+**Fix:** Modified the `setValue` functions within the toggle wrappers (`T-AfPosition`, `T-AfScaleF`, `T-AfScale`) in `Sim/src/ui/panels/turbulenceUi.js`:
+
+- Removed the direct modification of `turbulenceField` properties (`affectPosition`, `scaleField`, `affectScale`).
+- Added emission of the `uiControlChanged` event with the appropriate `paramPath` and `value`.
+- Kept the logic to update the button's visual state (`classList.toggle`) directly.
+
+**Outcome:** Preset loading for these toggles now uses the same event-driven mechanism as manual clicks, ensuring the `simParams` state is updated correctly and the simulation behaves consistently with the UI.
+
+---

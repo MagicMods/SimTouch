@@ -637,20 +637,24 @@ export class TurbulenceUi extends BaseUi {
       targets["T-AfPosition"] = {
         getValue: () => turbulence.affectPosition,
         setValue: (value) => {
-          turbulence.affectPosition = Boolean(value);
+          const boolValue = Boolean(value); // Ensure boolean for consistency
           if (this.positionButton) {
-            this.positionButton.classList.toggle("active", turbulence.affectPosition);
+            this.positionButton.classList.toggle("active", boolValue);
           }
+          // ADDED: Emit event
+          eventBus.emit('uiControlChanged', { paramPath: 'turbulence.affectPosition', value: boolValue });
         }
       };
 
       targets["T-AfScaleF"] = {
         getValue: () => turbulence.scaleField,
         setValue: (value) => {
-          turbulence.scaleField = Boolean(value);
+          const boolValue = Boolean(value); // Ensure boolean
           if (this.fieldButton) {
-            this.fieldButton.classList.toggle("active", turbulence.scaleField);
+            this.fieldButton.classList.toggle("active", boolValue);
           }
+          // ADDED: Emit event
+          eventBus.emit('uiControlChanged', { paramPath: 'turbulence.scaleField', value: boolValue });
         }
       };
 
@@ -658,14 +662,16 @@ export class TurbulenceUi extends BaseUi {
       targets["T-AfScale"] = {
         getValue: () => turbulence.affectScale,
         setValue: (value) => {
-          turbulence.affectScale = Boolean(value);
+          const boolValue = Boolean(value); // Ensure boolean
           if (this.scaleButton) {
-            this.scaleButton.classList.toggle("active", turbulence.affectScale);
+            this.scaleButton.classList.toggle("active", boolValue);
           }
+          // ADDED: Emit event
+          eventBus.emit('uiControlChanged', { paramPath: 'turbulence.affectScale', value: boolValue });
 
-          // Update folder visibility when value changes
+          // Keep existing folder visibility logic
           if (this.scaleRangeFolder) {
-            if (turbulence.affectScale) {
+            if (boolValue) { // Use consistent boolean value
               this.scaleRangeFolder.open();
             } else {
               this.scaleRangeFolder.close();
