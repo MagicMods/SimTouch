@@ -344,21 +344,6 @@ export class ParticleSystem {
       this.particles[i * 2] += this.velocitiesX[i] * dt;
       this.particles[i * 2 + 1] += this.velocitiesY[i] * dt;
 
-      // After updating position, check if particle escaped and recover
-      // if (isNaN(this.particles[i * 2]) ||
-      //   isNaN(this.particles[i * 2 + 1]) ||
-      //   this.particles[i * 2] < 0 ||
-      //   this.particles[i * 2] > 1 ||
-      //   this.particles[i * 2 + 1] < 0 ||
-      //   this.particles[i * 2 + 1] > 1) {
-
-      //   // Reset escaped particle to center with zero velocity
-      //   this.particles[i * 2] = 0.5;
-      //   this.particles[i * 2 + 1] = 0.5;
-      //   this.velocitiesX[i] = 0;
-      //   this.velocitiesY[i] = 0;
-      //   if(this.debug.particles) console.log("Recovered escaped particle");
-      // }
     }
 
     // Apply velocity clamping to ensure max velocity is respected

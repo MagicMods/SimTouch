@@ -935,16 +935,6 @@ export class TurbulenceField {
     };
   }
 
-  // Ensure the turbulence field is properly configured to affect particles
-  ensureAffectPosition() {
-    if (!this.affectPosition && Math.abs(this.strength) > 0.001 && this.pullFactor !== 0) {
-      console.warn('TurbulenceField: Auto-enabling affectPosition since strength and pullFactor are non-zero');
-      this.affectPosition = true;
-      return true;
-    }
-    return false;
-  }
-
   applyTurbulence(position, velocity, dt, particleIndex, system) {
     const [x, y] = position;
     const [vx, vy] = velocity;
@@ -964,8 +954,6 @@ export class TurbulenceField {
     }
 
     try {
-      // Auto-enable affectPosition if needed (for better user experience)
-      this.ensureAffectPosition();
 
       // APPLY DIRECTION BIAS FIRST - this should work in either mode
       // Scale direction bias by strength and apply it consistently
@@ -1059,7 +1047,7 @@ export class TurbulenceField {
       }
 
       // Apply particle radius scaling if enabled - works the same in either mode
-      if (this.affectScale && system?.particleRadii) {
+      if (this.affectScale && system.particleRadii) {
         const n1 = this.noise2D(x, y, this.time, true); // Now uses normalized coordinate processing
         // Use minScale and maxScale as direct size values, not scaling factors
         // Ensure the size is at least minScale and at most maxScale
@@ -1304,10 +1292,7 @@ export class TurbulenceField {
     this.biasSpeedY = 0;
   }
 
-  /**
-   * Adjust the sensitivity of the bias controls
-   * @param {number} sensitivity - Value from 0 to 1 where 1 is max sensitivity
-   */
+
   setBiasSensitivity(sensitivity) {
     // Clamp sensitivity to valid range
     const value = Math.max(0, Math.min(1, sensitivity || 0.25));
