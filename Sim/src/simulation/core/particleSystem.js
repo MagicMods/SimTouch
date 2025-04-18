@@ -4,6 +4,7 @@ import { CollisionSystem } from "../forces/collisionSystem.js";
 import { OrganicBehavior } from "../behaviors/organicBehavior.js";
 import { GravityForces } from "../forces/gravityForces.js";
 import { eventBus } from '../../util/eventManager.js';
+import { TickLog } from '../../util/tickLog.js';
 
 export class ParticleSystem {
   constructor({
@@ -44,12 +45,10 @@ export class ParticleSystem {
 
     // Debug flags
     this.debug = debugFlags;
-    // this.debugFlagVelocity = debugFlags.debugVelocity;
-    // this.debugFlagPressure = debugFlags.debugPressure;
-    // this.debugFlagBoundaries = debugFlags.debugBoundary;
-    // this.debugFlagFlipGrid = debugFlags.debugFlipGrid;
-    // this.debugFlagNoise = debugFlags.debugNoiseField;
     this.noiseFieldResolution = 20;
+
+    // Initialize TickLog for logging
+    this.logTick = new TickLog(1000, this.debug.particles);
 
     // Particle arrays
     this.particles = new Float32Array(particleCount * 2);
@@ -87,7 +86,7 @@ export class ParticleSystem {
       gridSize: 32,
       picFlipRatio: this.picFlipRatio,
       dt: timeStep,
-      boundary: initialBoundary, // Use initial boundary here
+      boundary: initialBoundary,
       restDensity: this.restDensity,
       gasConstant: this.gasConstant,
       particleSystem: this,
@@ -259,6 +258,12 @@ export class ParticleSystem {
 
     // Update positions
     this.updateParticles(dt);
+
+    // Update the log ticker
+    this.logTick.update();
+
+    // Emit event after step calculations are complete
+    // eventBus.emit('simulationStepComplete');
   }
 
   applyExternalForces(dt) {
@@ -435,13 +440,30 @@ export class ParticleSystem {
   getParticles() {
     // Return flat array of objects with x, y properties
     // This format is what ParticleRenderer expects
-    return Array.from({ length: this.numParticles }, (_, i) => ({
-      x: this.particles[i * 2],
-      y: this.particles[i * 2 + 1],
-      vx: this.velocitiesX[i],
-      vy: this.velocitiesY[i],
-      size: this.particleRadii[i] * this.renderScale,
-    }));
+    let shouldResetTick = false; // Flag to reset tick only once
+    const particlesData = Array.from({ length: this.numParticles }, (_, i) => {
+      const particleData = {
+        x: this.particles[i * 2],
+        y: this.particles[i * 2 + 1],
+        vx: this.velocitiesX[i],
+        vy: this.velocitiesY[i],
+        size: this.particleRadii[i] * this.renderScale,
+      };
+      // --- DEBUG LOG with TickLog ---
+      if (i < 9 && this.logTick.GetTick() && this.debug.particles) {
+        console.log(`ParticleSystem.getParticles - P[${i}] | Radius(raw): ${this.particleRadii[i].toFixed(6)} | Size(scaled): ${particleData.size.toFixed(3)}`);
+        shouldResetTick = true; // Mark that tick needs reset
+      }
+      // --- END DEBUG ---
+      return particleData;
+    });
+
+    // Reset tick outside the loop if needed
+    if (shouldResetTick) {
+      this.logTick.ResetTick();
+    }
+
+    return particlesData;
   }
 
   drawDebugGrid(renderer) {
@@ -534,7 +556,7 @@ export class ParticleSystem {
     // No need to update a local boundary instance here.
 
     // Optional: Log for verification
-    // if(this.debug.particles) console.log(`ParticleSystem updated params via event: timeStep=${this.timeStep}, damping=${this.velocityDamping}, ...`);
+    if (this.debug.particles) console.log(`ParticleSystem updated params via event: timeStep=${this.timeStep}, damping=${this.velocityDamping}, ...`);
   }
 }
 

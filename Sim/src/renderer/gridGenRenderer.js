@@ -389,33 +389,12 @@ export class GridGenRenderer extends BaseRenderer {
     gl.bindBuffer(gl.ARRAY_BUFFER, null);
   }
 
-  // New method to prepare instance data arrays (Matrices, Shadows) - Called when geometry changes
   prepareInstanceData(rectangles) {
-    // >>> MODIFIED: Uncomment and wrap log
+
     if (this.debug.gridGenRenderer) console.log(`prepareInstanceData Start: this.maxDensity = ${this.maxDensity}`); // Add log at method entry
-    // <<< END MODIFIED
+
     const gl = this.gl;
     const visibleRects = rectangles; // Use all rectangles passed from GridGeometry
-
-    // Ensure renderModes is available - STILL needed here for buffer sizing check?
-    // No, buffer size depends on visibleRects.length (numInstances)
-    // if (!this.renderModes) {
-    //   console.error("prepareInstanceData: this.renderModes is not initialized.");
-    //   this.instanceData.count = 0;
-    //   return;
-    // }
-    // Ensure particleSystem is available - Not needed here anymore
-    // if (!this.particleSystem) {
-    //   console.error("prepareInstanceData: this.particleSystem is not initialized.");
-    //   this.instanceData.count = 0;
-    //   return;
-    // }
-
-    // REMOVE // Get data values first - Moved to updateInstanceColors
-    // REMOVE const dataValues = this.renderModes ? this.renderModes.getValues(this.particleSystem) : null;
-    // REMOVE if (!dataValues) {
-    // REMOVE   console.warn("prepareInstanceData: dataValues not available from renderModes.");
-    // REMOVE }
 
     const numInstances = visibleRects.length;
     this.instanceData.count = numInstances;
@@ -454,18 +433,12 @@ export class GridGenRenderer extends BaseRenderer {
     const renderWidth = this.currentDimensions.renderWidth;
     const renderHeight = this.currentDimensions.renderHeight;
 
-    // REMOVE Gradient checks - Moved to updateInstanceColors
-    // REMOVE if (!this.gradient) { ... }
-    // REMOVE const gradientValues = this.gradient?.getValues();
-    // REMOVE if (!gradientValues) { ... }
 
     for (let i = 0; i < numInstances; i++) {
       const rect = visibleRects[i];
       const matrixOffset = i * 16;
-      // REMOVE const colorOffset = i * 4; // Color handled separately
       const shadowOffset = i * 3;
 
-      // 1. Calculate Transformation Matrix (Keep this)
       const matrix = mat4.create();
       const centerX = rect.x + rect.width / 2;
       const centerY = rect.y + rect.height / 2;
@@ -477,12 +450,6 @@ export class GridGenRenderer extends BaseRenderer {
       mat4.scale(matrix, matrix, [scaleX, scaleY, 1]);
       this.instanceData.matrices.set(matrix, matrixOffset);
 
-      // 2. REMOVE Color Calculation Logic - Moved to updateInstanceColors
-      // REMOVE let finalColor = ...
-      // REMOVE if (dataValues && gradientValues && ...) { ... }
-      // REMOVE this.instanceData.colors.set(finalColor, colorOffset);
-
-      // 3. Set Shadow Parameters (Keep this)
       this.instanceData.shadowParams[shadowOffset] = shadowIntensity;
       this.instanceData.shadowParams[shadowOffset + 1] = blurAmount;
       this.instanceData.shadowParams[shadowOffset + 2] = shadowThreshold;
@@ -491,9 +458,6 @@ export class GridGenRenderer extends BaseRenderer {
     // Upload data to GPU buffers (Matrices and Shadows ONLY)
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceMatrixBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, this.instanceData.matrices, gl.DYNAMIC_DRAW);
-
-    // REMOVE gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceColorBuffer);
-    // REMOVE gl.bufferData(gl.ARRAY_BUFFER, this.instanceData.colors, gl.DYNAMIC_DRAW);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.instanceShadowBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, this.instanceData.shadowParams, gl.DYNAMIC_DRAW);
@@ -689,21 +653,14 @@ export class GridGenRenderer extends BaseRenderer {
 
   // --- Add draw method for per-frame updates ---
   draw() {
-    // >>> MODIFIED: Uncomment and wrap log
     if (this.debug.gridGenRenderer) console.log(`GridGenRenderer.draw() called. showGridCells: ${this.grid?.flags?.showGridCells}`); // Keep log
-    // <<< END MODIFIED
-    // REMOVED: if (!this.grid?.flags?.showGridCells) return; // Skip if grid hidden (check flags exist)
 
-    // Ensure instance data is ready (check count)
     const numInstances = this.instanceData.count;
-    if (numInstances === 0) return; // Nothing to draw
+    if (numInstances === 0) return;
 
     // Update colors based on latest data (runs every frame)
     this.updateInstanceColors();
-
-    // >>> MODIFIED: Uncomment and wrap log
-    if (this.debug.gridGenRenderer) console.log(`GridGenRenderer.draw(): Calling renderCellsInstanced. Count: ${numInstances}`); // Keep log
-    // <<< END MODIFIED
+    if (this.debug.gridGenRenderer) console.log(`GridGenRenderer.draw(): Calling renderCellsInstanced. Count: ${numInstances}`);
 
     // Draw the instanced cells using pre-prepared data (including colors from prepareInstanceData)
     this.renderCellsInstanced();
@@ -729,16 +686,12 @@ export class GridGenRenderer extends BaseRenderer {
 
   // Add handler for simParams updates
   handleParamsUpdate({ simParams }) {
-    // >>> MODIFIED: Uncomment and wrap log
-    if (this.debug.gridGenRenderer) console.log('GridGenRenderer.handleParamsUpdate called'); // Log entry
-    // <<< END MODIFIED
-    if (!simParams) return; // Guard clause
+    if (this.debug.gridGenRenderer) console.log('GridGenRenderer.handleParamsUpdate called');
+    if (!simParams) return;
 
     if (simParams.rendering) {
       this.maxDensity = simParams.rendering.maxDensity ?? this.maxDensity;
-      // >>> MODIFIED: Uncomment and wrap log
-      if (this.debug.gridGenRenderer) console.log(`  Updated this.maxDensity to: ${this.maxDensity}`); // Log updated value
-      // <<< END MODIFIED
+      if (this.debug.gridGenRenderer) console.log(`  Updated this.maxDensity to: ${this.maxDensity}`);
       // Update render mode if needed
       if (this.renderModes && simParams.rendering.gridMode) {
         // Ensure the mode exists before assigning

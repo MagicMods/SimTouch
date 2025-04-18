@@ -15,7 +15,7 @@ class EventManager {
             this._events[eventName] = [];
         }
         this._events[eventName].push(listener);
-        // console.log(`Listener added for: ${eventName}`);
+        if (this.debugFlags.events) console.log(`Listener added for: ${eventName}`);
     }
 
     // Unregister a listener
@@ -24,12 +24,12 @@ class EventManager {
             return;
         }
         this._events[eventName] = this._events[eventName].filter(listener => listener !== listenerToRemove);
-        // console.log(`Listener removed for: ${eventName}`);
+        if (this.debugFlags.events) console.log(`Listener removed for: ${eventName}`);
     }
 
     // Emit an event to all registered listeners
     emit(eventName, data) {
-        if (this.debugFlags?.debugEvents) console.log(`Emitting event: ${eventName}`, data);
+        if (this.debugFlags.events) console.log(`Emitting event: ${eventName}`, data);
         if (!this._events[eventName]) {
             return; // No listeners for this event
         }

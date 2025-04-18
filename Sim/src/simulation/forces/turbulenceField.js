@@ -1,4 +1,5 @@
 import { eventBus } from '../../util/eventManager.js'; // Added import
+import { TickLog } from '../../util/tickLog.js'; // Reverted casing as requested
 
 export class TurbulenceField {
   constructor({
@@ -70,8 +71,8 @@ export class TurbulenceField {
     this.decayRate = decayRate;
 
     this.scaleField = false;
-    this.affectPosition = false;
-    this.affectScale = false;
+    this.affectPosition = true; // Set to true by default
+    this.affectScale = true; // Set to true by default to match the working version
     this.scaleStrength = 1.0;
 
     this.minScale = 0.008;
@@ -171,7 +172,7 @@ export class TurbulenceField {
     // Subscribe to parameter updates
     eventBus.on('simParamsUpdated', this.handleParamsUpdate.bind(this));
 
-    // ---> ADDED EVENT LISTENER HERE <---
+    // Subscribe to boundary updates
     eventBus.on('physicsBoundaryRecreated', ({ physicsBoundary }) => {
       if (physicsBoundary) {
         this.boundary = physicsBoundary;
@@ -180,6 +181,9 @@ export class TurbulenceField {
         console.error("TurbulenceField received null boundary on physicsBoundaryRecreated event.");
       }
     });
+
+    this.tick = new TickLog(1000, this.debug.turbulences);
+    this.debugRadiusData = []; // Initialize class member for debug data
   }
 
   // Add handler for simParams updates
@@ -939,22 +943,15 @@ export class TurbulenceField {
     const [x, y] = position;
     const [vx, vy] = velocity;
 
-    // Debug: log to console if the field is inactive due to affectPosition being false
-    if (this.debug && !this.affectPosition && Math.abs(this.strength) > 0.001) {
-      if (this.debug.turbulences) console.log('TurbulenceField has strength but affectPosition is false - no forces will be applied');
-    }
-
-    // Initialize with current velocities
     let newVx = vx * this.decayRate;
     let newVy = vy * this.decayRate;
 
-    // If strength is zero, we're done - just return the damped velocity
-    if (Math.abs(this.strength) < 0.001) {
+    // Even if strength is low, still process if we're affecting particle scale
+    if (Math.abs(this.strength) < 0.001 && !this.affectScale) {
       return [newVx, newVy];
     }
 
     try {
-
       // APPLY DIRECTION BIAS FIRST - this should work in either mode
       // Scale direction bias by strength and apply it consistently
       if ((this.directionBias[0] !== 0 || this.directionBias[1] !== 0) && this.affectPosition) {
@@ -1047,12 +1044,44 @@ export class TurbulenceField {
       }
 
       // Apply particle radius scaling if enabled - works the same in either mode
-      if (this.affectScale && system.particleRadii) {
-        const n1 = this.noise2D(x, y, this.time, true); // Now uses normalized coordinate processing
-        // Use minScale and maxScale as direct size values, not scaling factors
-        // Ensure the size is at least minScale and at most maxScale
+      if (this.affectScale && system?.particleRadii) {
+        // Now uses normalized coordinate processing
+        const n1 = this.noise2D(x, y, this.time, true);
+
+        // Use minScale and maxScale to determine the range of particle sizes
+        // n1 is a value between 0 and 1 from the noise function
         const particleSize = this.minScale + n1 * (this.maxScale - this.minScale);
-        system.particleRadii[particleIndex] = Math.max(this.minScale, Math.min(this.maxScale, particleSize));
+
+        // Ensure the size is within the valid range
+        const finalSize = Math.max(this.minScale, Math.min(this.maxScale, particleSize));
+
+        // Set the particle size for this specific particle
+        system.particleRadii[particleIndex] = finalSize;
+        // if (particleIndex === 0) {
+        //   system.particleRadii[particleIndex] = 0.01;
+        // }
+        // else if (particleIndex === 1) {
+        //   system.particleRadii[particleIndex] = 0.1;
+        // }
+        // else if (particleIndex === 2) {
+        //   system.particleRadii[particleIndex] = 0.1;
+        // } else if (particleIndex === 3) {
+        //   system.particleRadii[particleIndex] = 0.1;
+        // } else if (particleIndex === 4) {
+        //   system.particleRadii[particleIndex] = 0.1;
+        // }
+        // console.log("Particle sizes:", system.particleRadii[0], system.particleRadii[1], system.particleRadii[2], system.particleRadii[3], system.particleRadii[4]);
+        // Log sizes occasionally for debugging
+        // if (this.tick.GetTick() && particleIndex < 5 && this.debug.turbulences) {
+        //   // console.log(`TurbulenceField: Particle ${particleIndex} size set to ${finalSize} (raw noise: ${n1})`);
+        //   console.log("Particle sizes:", system.particleRadii[0], system.particleRadii[1], system.particleRadii[2], system.particleRadii[3], system.particleRadii[4]);
+        //   this.tick.ResetTick();
+        // }
+        if (this.tick.GetTick() && this.debug.turbulence) {
+          // console.log(`TurbulenceField: Particle ${particleIndex} size set to ${finalSize} (raw noise: ${n1})`);
+          console.log("Particle sizes:", system.particleRadii[0], system.particleRadii[1], system.particleRadii[2], system.particleRadii[3], system.particleRadii[4]);
+          this.tick.ResetTick();
+        }
       }
     } catch (err) {
       console.error("Error in turbulenceField.applyTurbulence:", err);
@@ -1101,6 +1130,8 @@ export class TurbulenceField {
       this._currentBiasOffsetX += this._biasVelocityX * dt * 60;
       this._currentBiasOffsetY += this._biasVelocityY * dt * 60;
     }
+
+    this.tick.update();
 
     // Shift phase values occasionally for variation
     if (Math.random() < 0.001) {

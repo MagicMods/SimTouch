@@ -11,8 +11,8 @@ export class ShaderManager {
   async init() {
 
     for (const [name, shaders] of Object.entries(ShaderManager.SHADERS)) {
-      const vertexSource = shaders.vert || shaders.vertex;
-      const fragmentSource = shaders.frag || shaders.fragment;
+      const vertexSource = shaders.vert;
+      const fragmentSource = shaders.frag;
 
       if (!vertexSource) {
         throw new Error(`Vertex shader source not provided for "${name}"`);
@@ -250,15 +250,12 @@ export class ShaderManager {
     particles: {
       vert: `
           attribute vec2 position;
-          attribute float size; // Add per-particle size attribute
-          uniform float pointSize; // Keep uniform for backward compatibility
+          attribute float size;
           
           void main() {
             vec2 clipSpace = (position * 2.0) - 1.0;
             gl_Position = vec4(clipSpace, 0.0, 1.0);
-            
-            // Use attribute size if available, fallback to uniform pointSize
-            gl_PointSize = size > 0.0 ? size : pointSize;
+            gl_PointSize = size;
           }
         `,
       frag: `

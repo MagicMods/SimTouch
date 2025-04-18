@@ -193,6 +193,11 @@
    - Benchmark before/after refactoring
    - Identify any performance regressions
    - Optimize critical paths as needed
+
+5. - [x] **Investigate and Fix Particle Size Rendering Bug:** (Added for current debugging task)
+   * Compare `main.js` and `ShaderManager.js` between `Sim` and `Sim copy`.
+   * Identify differences in GL state management or initialization order.
+   * Resolve the root cause preventing per-vertex `size` attribute from working in the main `Sim` renderer.
    </details>
    </details>
 

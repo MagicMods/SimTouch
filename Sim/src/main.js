@@ -25,6 +25,7 @@ import { GridRenderModes } from "./renderer/gridRenderModes.js";
 import { ModulatorManager } from "./input/modulatorManager.js";
 import { socketManager } from "./network/socketManager.js";
 import { eventBus } from "./util/eventManager.js";
+import { TickLog } from "./util/tickLog.js";
 
 export class Main {
   constructor() {
@@ -86,7 +87,7 @@ export class Main {
         pullFactor: 1.0,
         affectPosition: false,
         scaleField: false,
-        affectScale: false,
+        affectScale: true,
         minScale: 0.008,
         maxScale: 0.03,
         patternStyle: "Checkerboard",
@@ -284,7 +285,9 @@ export class Main {
       debugFlags: this.debugFlags
     });
 
-    // >>> MOVED: Instantiate GridGenRenderer *before* components that might reference it via main (e.g., MouseForces)
+    this.modulatorManager = new ModulatorManager(this.debugFlags);
+
+    this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager, this.debugFlags);
     this.gridRenderModes = new GridRenderModes(this.gridParams, this.dimensionManager, this.boundaryManager, this.particleSystem, this.debugFlags);
     this.gridGenRenderer = new GridGenRenderer(
       this.gl,
@@ -296,12 +299,8 @@ export class Main {
       this.gridRenderModes,
       this.debugFlags
     );
-    if (this.debugFlags.main) console.log("Instantiated GridGenRenderer");
 
-    // Instantiate other components
-    this.modulatorManager = new ModulatorManager(this.debugFlags);
-    // ParticleRenderer instantiation moved later, depends on ShaderManager init
-    // this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager, this.debugFlags);
+
 
     this.frame = 0;
     this.mouseForces = new MouseForces(this.debugFlags);
@@ -364,20 +363,17 @@ export class Main {
     try {
       await this.shaderManager.init();
 
-      // Instantiate ParticleRenderer AFTER shader manager is ready
-      this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager, this.debugFlags);
-      if (this.debugFlags.main) console.log("Instantiated ParticleRenderer in init()");
-
       // Get audio analyzer directly without null checks
       this.audioAnalyzer = this.micForces.analyzer;
 
       this.ui = new UiManager(this);
+      this.setGridParams(this.gridParams);
 
       eventBus.on('uiControlChanged', this.handleSimUIChange.bind(this));
       // eventBus.on('uiControlChanged', this.handleGridUIChange.bind(this));
 
       this.animate();
-      this.setGridParams(this.gridParams);
+
       return true;
     } catch (error) {
       console.error("Failed to initialize:", error);
@@ -483,7 +479,11 @@ export class Main {
 
     this.particleSystem.step();
     this.gridGenRenderer.draw();
-    this.particleRenderer.draw(this.particleSystem.getParticles()); // Temporarily disable
+    this.particleRenderer.draw(this.particleSystem.getParticles());
+    const error = this.gl.getError();
+    if (error) {
+      console.error("WebGL Error:", error);
+    }
 
     this.ui.update(this.particleSystem.timeStep);
     this.modulatorManager.update(this.particleSystem.timeStep);

@@ -28,7 +28,7 @@ export class ParticleRenderer extends BaseRenderer {
     this.shaderManager = shaderManager;
     this.debug = debugFlags;
     this.shaderType = "particles";
-    this.particleBuffer = gl.createBuffer();
+    this.positionBuffer = gl.createBuffer();
     this.sizeBuffer = gl.createBuffer();
     this.velocityLineBuffer = gl.createBuffer(); // Add buffer for velocity lines
     this.config = {
@@ -66,8 +66,6 @@ export class ParticleRenderer extends BaseRenderer {
         } else {
           console.warn(`Invalid hex color received: ${rendererParams.color}`);
         }
-        // The draw() method already reads this.config.color and this.particleOpacity
-        // and sets the uniform, so no explicit uniform update needed here.
       }
 
       // Update velocity field visibility
@@ -75,7 +73,6 @@ export class ParticleRenderer extends BaseRenderer {
         this.showVelocityField = rendererParams.showVelocityField;
       }
     }
-    // if (this.debug.particle) console.log(`ParticleRenderer updated params via event: opacity=${this.particleOpacity}, color=${this.config?.color}`);
   }
 
   draw(particles) {
@@ -87,73 +84,44 @@ export class ParticleRenderer extends BaseRenderer {
       return; // Nothing to draw, but not an error
     }
 
+    // Unbind any VAO to ensure clean attribute state
+    this.gl.bindVertexArray(null);
+
     const program = this.shaderManager.use(this.shaderType);
     if (!program) {
       throw new Error(`Failed to use shader "${this.shaderType}" for particle rendering`);
     }
 
-    // Default size as fallback
     const defaultSize = this.config.size;
 
     // Update position buffer
     const vertices = new Float32Array(particles.flatMap((p) => [p.x, p.y]));
-    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.particleBuffer);
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.positionBuffer);
     this.gl.bufferData(this.gl.ARRAY_BUFFER, vertices, this.gl.DYNAMIC_DRAW);
-
-    // Set up position attribute
     this.gl.enableVertexAttribArray(program.attributes.position);
-    this.gl.vertexAttribPointer(
-      program.attributes.position,
-      2,
-      this.gl.FLOAT,
-      false,
-      0,
-      0
-    );
+    this.gl.vertexAttribPointer(program.attributes.position, 2, this.gl.FLOAT, false, 0, 0);
 
-    // Check if shader has a size attribute (for individual particle sizes)
-    if (program.attributes.size !== undefined) {
-      // Extract individual sizes into a Float32Array
-      const sizes = new Float32Array(
-        particles.map((p) => p.size || defaultSize)
-      );
+    // Extract individual sizes into a Float32Array
+    const sizes = new Float32Array(particles.map((p) => Math.max(1.0, p.size || defaultSize)));
 
-      // Send size data to GPU
-      this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.sizeBuffer);
-      this.gl.bufferData(this.gl.ARRAY_BUFFER, sizes, this.gl.DYNAMIC_DRAW);
-
-      // Set up size attribute
-      this.gl.enableVertexAttribArray(program.attributes.size);
-      this.gl.vertexAttribPointer(
-        program.attributes.size,
-        1,
-        this.gl.FLOAT,
-        false,
-        0,
-        0
-      );
-    } else {
-      // Fallback to uniform pointSize (legacy mode)
-      const pointSize = particles[0].size || defaultSize;
-      this.gl.uniform1f(program.uniforms.pointSize, pointSize);
-    }
+    // Send size data to GPU
+    this.gl.bindBuffer(this.gl.ARRAY_BUFFER, this.sizeBuffer);
+    this.gl.bufferData(this.gl.ARRAY_BUFFER, sizes, this.gl.DYNAMIC_DRAW);
+    this.gl.enableVertexAttribArray(program.attributes.size);
+    this.gl.vertexAttribPointer(program.attributes.size, 1, this.gl.FLOAT, false, 0, 0);
+    // Explicitly set divisor to 0 for non-instanced attribute
+    this.gl.vertexAttribDivisor(program.attributes.size, 0);
 
     // Enable blending for transparent particles
     this.gl.enable(this.gl.BLEND);
     this.gl.blendFunc(this.gl.SRC_ALPHA, this.gl.ONE_MINUS_SRC_ALPHA);
 
     // Create color with opacity
-    const finalColor = [...this.config.color]; // Use spread to copy array
-    // Ensure alpha channel exists before setting opacity
-    if (finalColor.length < 4) finalColor[3] = 1.0;
-    finalColor[3] = this.particleOpacity; // Apply current opacity
+    const finalColor = [...this.config.color];
+    finalColor[3] = this.particleOpacity;
 
-    // Set particle color uniform with opacity
-    if (program && program.uniforms && program.uniforms.color) {
-      this.gl.uniform4fv(program.uniforms.color, finalColor);
-    } else {
-      // console.warn("'color' uniform not found in particle shader program.");
-    }
+    // // Set particle color uniform with opacity
+    this.gl.uniform4fv(program.uniforms.color, finalColor);
 
     // Draw the particles
     this.gl.drawArrays(this.gl.POINTS, 0, particles.length);
@@ -161,9 +129,7 @@ export class ParticleRenderer extends BaseRenderer {
     // Cleanup GL state
     this.gl.disable(this.gl.BLEND);
     this.gl.disableVertexAttribArray(program.attributes.position);
-    if (program.attributes.size !== undefined) {
-      this.gl.disableVertexAttribArray(program.attributes.size);
-    }
+    this.gl.disableVertexAttribArray(program.attributes.size);
 
     // --- START: Velocity Field Rendering ---
     if (this.showVelocityField && particles.length > 0) {
@@ -209,9 +175,9 @@ export class ParticleRenderer extends BaseRenderer {
   }
 
   dispose() {
-    if (this.particleBuffer) {
-      this.gl.deleteBuffer(this.particleBuffer);
-      this.particleBuffer = null;
+    if (this.positionBuffer) {
+      this.gl.deleteBuffer(this.positionBuffer);
+      this.positionBuffer = null;
     }
     if (this.sizeBuffer) {
       this.gl.deleteBuffer(this.sizeBuffer);
