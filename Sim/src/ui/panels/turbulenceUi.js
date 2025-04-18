@@ -143,8 +143,12 @@ export class TurbulenceUi extends BaseUi {
       eventBus.emit('uiControlChanged', { paramPath: 'turbulence.affectScale', value: newValue });
 
       // Keep reset particle sizes logic for now, triggered directly
+      // if (!newValue) {
+      //   turbulenceField.resetParticleSizes(this.main.particleSystem);
+      // }
+      // Emit event to reset particle size to base value when AffectScale is turned off
       if (!newValue) {
-        turbulenceField.resetParticleSizes(this.main.particleSystem);
+        eventBus.emit('uiControlChanged', { paramPath: 'simulation.particleRadius', value: this.main.simParams.simulation.particleRadius });
       }
 
       // Keep scale range folder toggle logic

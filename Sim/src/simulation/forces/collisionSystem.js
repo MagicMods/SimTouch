@@ -174,20 +174,20 @@ export class CollisionSystem {
     const dy = particles[j * 2 + 1] - particles[i * 2 + 1];
     const distSq = dx * dx + dy * dy;
 
-    // Fix missing reference - use a default radius if particleSystem is undefined
-    let radiusI = this.particleRadius;
-    let radiusJ = this.particleRadius;
+    let radiusI = this.particleRadius; // Default if no particle system
+    let radiusJ = this.particleRadius; // Default if no particle system
+    let densityFactor = 1.0; // Default density factor
 
-    // Only try to access particleRadii if the reference exists
-    if (this.particleSystem && this.particleSystem.particleRadii) {
-      radiusI = this.particleSystem.particleRadii[i];
-      radiusJ = this.particleSystem.particleRadii[j];
-    }
+    // Only try to access particleSystem properties if the reference exists
+    if (this.particleSystem) {
+      const affectScale = this.particleSystem.turbulence?.affectScale;
+      radiusI = affectScale ? this.particleSystem.particleRadii[i] : this.particleSystem.particleRadius;
+      radiusJ = affectScale ? this.particleSystem.particleRadii[j] : this.particleSystem.particleRadius;
 
-    // Access rest density from particleSystem reference
-    let densityFactor = 1.0;
-    if (this.particleSystem && this.particleSystem.restDensity) {
-      densityFactor = Math.max(0.5, Math.min(2.0, this.particleSystem.restDensity / 3));
+      // Access rest density from particleSystem reference
+      if (this.particleSystem.restDensity) {
+        densityFactor = Math.max(0.5, Math.min(2.0, this.particleSystem.restDensity / 3));
+      }
     }
 
     // Modify minimum separation distance based on rest density

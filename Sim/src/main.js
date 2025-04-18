@@ -87,7 +87,7 @@ export class Main {
         pullFactor: 1.0,
         affectPosition: false,
         scaleField: false,
-        affectScale: true,
+        affectScale: false,
         minScale: 0.008,
         maxScale: 0.03,
         patternStyle: "Checkerboard",

@@ -71,8 +71,8 @@ export class TurbulenceField {
     this.decayRate = decayRate;
 
     this.scaleField = false;
-    this.affectPosition = true; // Set to true by default
-    this.affectScale = true; // Set to true by default to match the working version
+    this.affectPosition = false; // Set to true by default
+    this.affectScale = false; // Set to true by default to match the working version
     this.scaleStrength = 1.0;
 
     this.minScale = 0.008;
@@ -1057,28 +1057,7 @@ export class TurbulenceField {
 
         // Set the particle size for this specific particle
         system.particleRadii[particleIndex] = finalSize;
-        // if (particleIndex === 0) {
-        //   system.particleRadii[particleIndex] = 0.01;
-        // }
-        // else if (particleIndex === 1) {
-        //   system.particleRadii[particleIndex] = 0.1;
-        // }
-        // else if (particleIndex === 2) {
-        //   system.particleRadii[particleIndex] = 0.1;
-        // } else if (particleIndex === 3) {
-        //   system.particleRadii[particleIndex] = 0.1;
-        // } else if (particleIndex === 4) {
-        //   system.particleRadii[particleIndex] = 0.1;
-        // }
-        // console.log("Particle sizes:", system.particleRadii[0], system.particleRadii[1], system.particleRadii[2], system.particleRadii[3], system.particleRadii[4]);
-        // Log sizes occasionally for debugging
-        // if (this.tick.GetTick() && particleIndex < 5 && this.debug.turbulences) {
-        //   // console.log(`TurbulenceField: Particle ${particleIndex} size set to ${finalSize} (raw noise: ${n1})`);
-        //   console.log("Particle sizes:", system.particleRadii[0], system.particleRadii[1], system.particleRadii[2], system.particleRadii[3], system.particleRadii[4]);
-        //   this.tick.ResetTick();
-        // }
         if (this.tick.GetTick() && this.debug.turbulence) {
-          // console.log(`TurbulenceField: Particle ${particleIndex} size set to ${finalSize} (raw noise: ${n1})`);
           console.log("Particle sizes:", system.particleRadii[0], system.particleRadii[1], system.particleRadii[2], system.particleRadii[3], system.particleRadii[4]);
           this.tick.ResetTick();
         }
@@ -1089,15 +1068,6 @@ export class TurbulenceField {
 
     return [newVx, newVy];
   }
-
-  // Add method to reset particle sizes
-  resetParticleSizes(system) {
-    if (system?.particleRadii) {
-      // Reset all particle sizes to the base particle radius
-      system.particleRadii.fill(system.particleRadius);
-    }
-  }
-
 
   update(dt) {
     // Update time variable with delta time

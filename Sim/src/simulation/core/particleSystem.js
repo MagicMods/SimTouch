@@ -366,10 +366,12 @@ export class ParticleSystem {
     );
 
     // Finally check boundary collisions for all particles
+    const affectScale = this.turbulence?.affectScale; // Check turbulence scale mode once before the loop
     for (let i = 0; i < this.numParticles; i++) {
       const position = [this.particles[i * 2], this.particles[i * 2 + 1]];
       const velocity = [this.velocitiesX[i], this.velocitiesY[i]];
-      const radius = this.particleRadii[i];
+      // Determine the correct radius for physics based on affectScale
+      const physicsRadius = affectScale ? this.particleRadii[i] : this.particleRadius;
 
       // Get current boundary from manager inside the loop
       const currentBoundary = this.boundaryManager.getPhysicsBoundary();
@@ -382,7 +384,7 @@ export class ParticleSystem {
       currentBoundary.resolveCollision( // Use currentBoundary
         position,
         velocity,
-        radius,
+        physicsRadius, // Use the correctly determined radius
         this.boundaryDamping
       );
 
@@ -441,13 +443,19 @@ export class ParticleSystem {
     // Return flat array of objects with x, y properties
     // This format is what ParticleRenderer expects
     let shouldResetTick = false; // Flag to reset tick only once
+    const affectScale = this.turbulence?.affectScale; // Check turbulence scale mode
+
     const particlesData = Array.from({ length: this.numParticles }, (_, i) => {
+      // Determine the correct radius based on affectScale
+      const rawRadius = affectScale ? this.particleRadii[i] : this.particleRadius;
+
       const particleData = {
         x: this.particles[i * 2],
         y: this.particles[i * 2 + 1],
         vx: this.velocitiesX[i],
         vy: this.velocitiesY[i],
-        size: this.particleRadii[i] * this.renderScale,
+        // Use the determined rawRadius for size calculation
+        size: rawRadius * this.renderScale,
       };
       // --- DEBUG LOG with TickLog ---
       if (i < 9 && this.logTick.GetTick() && this.debug.particles) {
