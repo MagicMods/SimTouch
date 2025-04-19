@@ -33,15 +33,12 @@ export class TickLog {
 
     GetTick() {
         if (this.tick) {
-            this.tick = false; // Reset immediately after confirming true
+            this.tick = false;
             return true;
         }
         return false;
     }
 
-    ResetTick() {
-        this.tick = false;
-    }
 }
 
 export const tickLog = new TickLog();
