@@ -73,7 +73,7 @@ export class Main {
       },
       collision: {
         enabled: true,
-        gridSize: 10,
+        gridSizeCollision: 10,
         repulsion: 0.5,
         particleRestitution: 0.8,
         damping: 0.98,

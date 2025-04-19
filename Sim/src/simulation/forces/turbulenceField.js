@@ -176,15 +176,86 @@ export class TurbulenceField {
     eventBus.on('physicsBoundaryRecreated', ({ physicsBoundary }) => {
       if (physicsBoundary) {
         this.boundary = physicsBoundary;
-        if (this.debug.turbulences) console.log("TurbulenceField updated boundary reference.");
+        if (this.debug.turbulence) console.log("TurbulenceField updated boundary reference.");
       } else {
         console.error("TurbulenceField received null boundary on physicsBoundaryRecreated event.");
       }
     });
 
-    this.tick = new TickLog(1000, this.debug.turbulences);
+    this.tick = new TickLog(1000, this.debug.turbulence);
+    this.tickCoordinates = new TickLog(1000, this.debug.turbulence);
     this.debugRadiusData = []; // Initialize class member for debug data
   }
+
+  // --- Start Aspect Ratio Correction ---
+  _getCorrectedNoiseCoordinates(nx, ny) {
+    // --- DEBUG LOGGING START ---
+    if (this.debug.turbulence && this.tickCoordinates.GetTick()) { // Log occasionally
+      const boundaryType = this.boundary ? this.boundary.getBoundaryType ? this.boundary.getBoundaryType() : 'NO TYPE METHOD' : 'NO BOUNDARY';
+      let detailsInfo = 'N/A';
+      if (this.boundary && this.boundary.getBoundaryDetails) {
+        try {
+          detailsInfo = JSON.stringify(this.boundary.getBoundaryDetails());
+        } catch (e) { detailsInfo = 'Error getting details'; }
+      }
+      console.log(`_getCorrectedNoiseCoordinates: BoundaryType='${boundaryType}', Details=${detailsInfo}`);
+    }
+    // --- DEBUG LOGGING END ---
+
+    if (!this.boundary || typeof this.boundary.getBoundaryType !== 'function' || !this.boundary.getBoundaryDetails) {
+      // console.warn("TurbulenceField: Boundary details unavailable for aspect ratio correction.");
+      return { nx, ny }; // Return uncorrected if boundary info missing
+    }
+
+    const boundaryType = this.boundary.getBoundaryType();
+
+    // No correction needed for circular boundaries as they are inherently aspect=1 within the normalized space
+    if (boundaryType === 'CIRCULAR') {
+      return { nx, ny };
+    }
+
+    if (boundaryType === 'RECTANGULAR') {
+      const details = this.boundary.getBoundaryDetails();
+
+      // Calculate aspect ratio based on the normalized boundary dimensions
+      const normalizedWidth = details.maxX - details.minX;
+      const normalizedHeight = details.maxY - details.minY;
+
+      if (!normalizedHeight || normalizedHeight === 0 || !normalizedWidth || normalizedWidth === 0) {
+        // --- DEBUG LOGGING START ---
+        if (this.debug && this.debug.turbulence) {
+          console.warn(`TurbulenceField: Boundary normalized height/width is zero or invalid (${normalizedWidth}x${normalizedHeight}), skipping aspect ratio correction.`);
+        }
+        // --- DEBUG LOGGING END ---
+        // console.warn("TurbulenceField: Boundary normalized height/width is zero, skipping aspect ratio correction.");
+        return { nx, ny }; // Avoid division by zero or invalid dimensions
+      }
+
+      const aspectRatio = normalizedWidth / normalizedHeight;
+
+      let corrected_nx = nx;
+      let corrected_ny = ny;
+
+      if (aspectRatio > 1) { // Wider than tall in normalized space
+        // Scale the X coordinate based on the aspect ratio relative to the center of the normalized space (0.5)
+        corrected_nx = (nx - details.minX) / normalizedWidth; // Re-normalize nx to 0-1 within the boundary
+        corrected_nx = (corrected_nx - 0.5) * aspectRatio + 0.5; // Apply aspect correction
+        corrected_nx = corrected_nx * normalizedWidth + details.minX; // Scale back to original boundary range
+      } else if (aspectRatio < 1) { // Taller than wide in normalized space
+        // Scale the Y coordinate based on the aspect ratio relative to the center of the normalized space (0.5)
+        corrected_ny = (ny - details.minY) / normalizedHeight; // Re-normalize ny to 0-1 within the boundary
+        corrected_ny = (corrected_ny - 0.5) * (1 / aspectRatio) + 0.5; // Apply aspect correction
+        corrected_ny = corrected_ny * normalizedHeight + details.minY; // Scale back to original boundary range
+      } // else aspectRatio is 1, use original coords
+
+      return { nx: corrected_nx, ny: corrected_ny };
+    } else {
+      // Unknown boundary type, return uncorrected
+      // console.warn(`TurbulenceField: Unknown boundary type '${boundaryType}' for aspect ratio correction.`);
+      return { nx, ny };
+    }
+  }
+  // --- End Aspect Ratio Correction ---
 
   // Add handler for simParams updates
   handleParamsUpdate({ simParams }) {
@@ -234,7 +305,7 @@ export class TurbulenceField {
       // For now, let's assume no specific update method is needed beyond what happens in `update` or `applyTurbulence`
       // If issues arise, we might need to add calls like `applyPatternSpecificOffset()` here.
     }
-    // if(this.debug.turbulences) console.log (`TurbulenceField updated params via event`);
+    // if(this.debug.turbulence) console.log (`TurbulenceField updated params via event`);
   }
 
   // Apply pattern-specific offset based on current pattern style
@@ -697,8 +768,13 @@ export class TurbulenceField {
   noise2D(x, y, time = this.time, applyBlur = false) {
     try {
 
+      // --- Apply aspect ratio correction to input coordinates ---
+      const { nx: corrected_x, ny: corrected_y } = this._getCorrectedNoiseCoordinates(x, y);
+      // --- End correction ---
+
       // 1. Process coordinates through the standardized pipeline
-      const [processedX, processedY, procCenterX, procCenterY] = this.processCoordinates(x, y, time);
+      // Use corrected coordinates from now on
+      const [processedX, processedY, procCenterX, procCenterY] = this.processCoordinates(corrected_x, corrected_y, time);
 
       // 2. Calculate base pattern using the processed coordinates
       // Add type checking for patternStyle
@@ -740,7 +816,8 @@ export class TurbulenceField {
       // 5. Apply blur if enabled and requested
       if (applyBlur && this.blurAmount > 0) {
         // Only do the expensive blur calculation if the blur amount is > 0
-        noise = this.applyBlur(x, y, noise, time);
+        // Pass the ORIGINAL x, y for blur sampling, but use corrected base value
+        noise = this.applyBlur(x, y, noise, time); // Pass original x,y
       }
 
       return noise;
@@ -777,13 +854,17 @@ export class TurbulenceField {
       const sampleX = x + Math.cos(angle) * sampleRadius;
       const sampleY = y + Math.sin(angle) * sampleRadius;
 
+      // --- Apply aspect ratio correction to sample coordinates ---
+      const { nx: corrected_sampleX, ny: corrected_sampleY } = this._getCorrectedNoiseCoordinates(sampleX, sampleY);
+      // --- End correction ---
+
       // Process the sample through the full pipeline except blur (to avoid recursion)
       const centerX = (this.boundary && typeof this.boundary.centerX === 'number') ? this.boundary.centerX : 0.5;
       const centerY = (this.boundary && typeof this.boundary.centerY === 'number') ? this.boundary.centerY : 0.5;
 
       // Process coordinates with the same order as processCoordinates
-      let px = sampleX;
-      let py = sampleY;
+      let px = corrected_sampleX;
+      let py = corrected_sampleY;
       [px, py] = this.applyRotation(px, py, centerX, centerY, this.rotation);
       [px, py] = this.applyScale(px, py, this.scale, centerX, centerY);
       [px, py] = this.applyDomainWarp(px, py, time, centerX, centerY);
@@ -1059,7 +1140,6 @@ export class TurbulenceField {
         system.particleRadii[particleIndex] = finalSize;
         if (this.tick.GetTick() && this.debug.turbulence) {
           console.log("Particle sizes:", system.particleRadii[0], system.particleRadii[1], system.particleRadii[2], system.particleRadii[3], system.particleRadii[4]);
-          this.tick.ResetTick();
         }
       }
     } catch (err) {
@@ -1100,8 +1180,6 @@ export class TurbulenceField {
       this._currentBiasOffsetX += this._biasVelocityX * dt * 60;
       this._currentBiasOffsetY += this._biasVelocityY * dt * 60;
     }
-
-    this.tick.update();
 
     // Shift phase values occasionally for variation
     if (Math.random() < 0.001) {
@@ -1246,9 +1324,9 @@ export class TurbulenceField {
 
   // Debug function to help diagnose rotation issues
   debugRotation() {
-    if (this.debug.turbulences) console.log("=== Turbulence Field Debug ===");
-    if (this.debug.turbulences) console.log("Boundary center:", this.boundary.centerX, this.boundary.centerY);
-    if (this.debug.turbulences) console.log("Current rotation:", this.rotation);
+    if (this.debug.turbulence) console.log("=== Turbulence Field Debug ===");
+    if (this.debug.turbulence) console.log("Boundary center:", this.boundary.centerX, this.boundary.centerY);
+    if (this.debug.turbulence) console.log("Current rotation:", this.rotation);
 
     // Test noise values at fixed points to verify rotation
     const testPoints = [
@@ -1259,10 +1337,10 @@ export class TurbulenceField {
       { x: 0.5, y: 0.5 }  // Center
     ];
 
-    if (this.debug.turbulences) console.log("Testing noise values:");
+    if (this.debug.turbulence) console.log("Testing noise values:");
     testPoints.forEach(pt => {
       // Original coordinates
-      if (this.debug.turbulences) console.log(`Point (${pt.x}, ${pt.y}): ${this.noise2D(pt.x, pt.y)}`);
+      if (this.debug.turbulence) console.log(`Point (${pt.x}, ${pt.y}): ${this.noise2D(pt.x, pt.y)}`);
 
       // Compute what the rotated coordinates should be
       const centerX = this.boundary.centerX;
@@ -1274,10 +1352,10 @@ export class TurbulenceField {
       const rx = tx * cos - ty * sin + centerX;
       const ry = tx * sin + ty * cos + centerY;
 
-      if (this.debug.turbulences) console.log(`Should rotate to (${rx.toFixed(3)}, ${ry.toFixed(3)})`);
+      if (this.debug.turbulence) console.log(`Should rotate to (${rx.toFixed(3)}, ${ry.toFixed(3)})`);
     });
 
-    if (this.debug.turbulences) console.log("=== End Debug ===");
+    if (this.debug.turbulence) console.log("=== End Debug ===");
   }
 
   resetBias() {
@@ -1301,7 +1379,7 @@ export class TurbulenceField {
 
     // Log the sensitivity change if in debug mode
     if (this.debug) {
-      if (this.debug.turbulences) console.log(`Bias sensitivity set to ${(this.biasSensitivity * 100).toFixed(0)}%`);
+      if (this.debug.turbulence) console.log(`Bias sensitivity set to ${(this.biasSensitivity * 100).toFixed(0)}%`);
     }
 
     return this.biasSensitivity;
@@ -1336,14 +1414,14 @@ export class TurbulenceField {
   // Add debug toggle method
   toggleDebug(enabled) {
     this.debug = !!enabled;
-    if (this.debug.turbulences) console.log(`Turbulence debug mode: ${this.debug ? 'ON' : 'OFF'}`);
+    if (this.debug.turbulence) console.log(`Turbulence debug mode: ${this.debug ? 'ON' : 'OFF'}`);
     return this.debug;
   }
 
   // Debug function to analyze pullFactor behavior
   debugPullFactor() {
-    if (this.debug.turbulences) console.log("=== Turbulence Pull Factor Analysis ===");
-    if (this.debug.turbulences) console.log(`Current pullFactor: ${this.pullFactor.toFixed(3)}`);
+    if (this.debug.turbulence) console.log("=== Turbulence Pull Factor Analysis ===");
+    if (this.debug.turbulence) console.log(`Current pullFactor: ${this.pullFactor.toFixed(3)}`);
 
     // Sample a test point at the center
     const centerX = this.boundary.centerX;
@@ -1362,8 +1440,8 @@ export class TurbulenceField {
     // Get visualization color (0-255)
     const visualColor = Math.floor(((n + 1) * 0.5) * 255);
 
-    if (this.debug.turbulences) console.log(`Noise at center: ${n.toFixed(3)} (display: RGB ${visualColor},${visualColor},${visualColor})`);
-    if (this.debug.turbulences) console.log(`Gradient direction: X=${gradX.toFixed(3)}, Y=${gradY.toFixed(3)}`);
+    if (this.debug.turbulence) console.log(`Noise at center: ${n.toFixed(3)} (display: RGB ${visualColor},${visualColor},${visualColor})`);
+    if (this.debug.turbulence) console.log(`Gradient direction: X=${gradX.toFixed(3)}, Y=${gradY.toFixed(3)}`);
 
     // Show what direction particles would move
     let moveDir;
@@ -1375,7 +1453,7 @@ export class TurbulenceField {
       moveDir = "TOWARD white (gradient direction)";
     }
 
-    if (this.debug.turbulences) console.log(`Particle movement: ${moveDir}`);
-    if (this.debug.turbulences) console.log("=== End Analysis ===");
+    if (this.debug.turbulence) console.log(`Particle movement: ${moveDir}`);
+    if (this.debug.turbulence) console.log("=== End Analysis ===");
   }
 }

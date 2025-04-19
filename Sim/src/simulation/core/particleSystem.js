@@ -83,7 +83,7 @@ export class ParticleSystem {
 
     // Then create FLIP system with boundary reference
     this.fluid = new FluidFLIP({
-      gridSize: 32,
+      gridSizeFlip: 32,
       picFlipRatio: this.picFlipRatio,
       dt: timeStep,
       boundary: initialBoundary,
@@ -259,8 +259,6 @@ export class ParticleSystem {
     // Update positions
     this.updateParticles(dt);
 
-    // Update the log ticker
-    this.logTick.update();
 
     // Emit event after step calculations are complete
     // eventBus.emit('simulationStepComplete');
@@ -442,7 +440,7 @@ export class ParticleSystem {
   getParticles() {
     // Return flat array of objects with x, y properties
     // This format is what ParticleRenderer expects
-    let shouldResetTick = false; // Flag to reset tick only once
+
     const affectScale = this.turbulence?.affectScale; // Check turbulence scale mode
 
     const particlesData = Array.from({ length: this.numParticles }, (_, i) => {
@@ -460,39 +458,13 @@ export class ParticleSystem {
       // --- DEBUG LOG with TickLog ---
       if (i < 9 && this.logTick.GetTick() && this.debug.particles) {
         console.log(`ParticleSystem.getParticles - P[${i}] | Radius(raw): ${this.particleRadii[i].toFixed(6)} | Size(scaled): ${particleData.size.toFixed(3)}`);
-        shouldResetTick = true; // Mark that tick needs reset
       }
       // --- END DEBUG ---
       return particleData;
     });
-
-    // Reset tick outside the loop if needed
-    if (shouldResetTick) {
-      this.logTick.ResetTick();
-    }
-
     return particlesData;
   }
 
-  drawDebugGrid(renderer) {
-    if (!this.debugEnabled) return;
-
-    const gridLines = [];
-
-    // Vertical lines
-    for (let i = 0; i <= this.gridSize; i++) {
-      const x = i * this.cellSize;
-      gridLines.push({ x, y: 0 }, { x, y: 1 });
-    }
-
-    // Horizontal lines
-    for (let i = 0; i <= this.gridSize; i++) {
-      const y = i * this.cellSize;
-      gridLines.push({ x: 0, y }, { x: 1, y });
-    }
-
-    renderer.draw(gridLines, [0.2, 0.2, 0.2, 0.5]);
-  }
 
   // Add method to change boundary mode
   setBoundaryMode(mode) {

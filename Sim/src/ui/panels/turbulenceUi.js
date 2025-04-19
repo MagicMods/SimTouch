@@ -786,7 +786,7 @@ export class TurbulenceUi extends BaseUi {
 
   setData(data) {
     if (!data || data === "None") {
-      if (this.debug.turbulences) console.log("Resetting turbulence to None preset");
+      if (this.debug.turbulence) console.log("Resetting turbulence to None preset");
       const targets = this.getControlTargets();
 
       // Reset all numerical values

@@ -1,6 +1,6 @@
 export class FluidFLIP {
   constructor({
-    gridSize = 64,
+    gridSizeFlip = 64,
     picFlipRatio = 0.95,
     dt = 1 / 60,
     iterations = 20,
@@ -11,8 +11,8 @@ export class FluidFLIP {
     debugFlag,
     ...params
   } = {}) {
-    this.gridSize = gridSize;
-    this.h = 1.0 / gridSize;
+    this.gridSizeFlip = gridSizeFlip;
+    this.h = 1.0 / this.gridSizeFlip;
     this.picFlipRatio = picFlipRatio;
     this.dt = dt;
     this.iterations = iterations;
@@ -22,7 +22,7 @@ export class FluidFLIP {
     this.particleSystem = particleSystem;
     this.debugFlag = debugFlag;
 
-    const size = gridSize * gridSize;
+    const size = this.gridSizeFlip * this.gridSizeFlip;
     this.u = new Array(size).fill(0);
     this.v = new Array(size).fill(0);
     this.newU = new Array(size).fill(0);
@@ -49,7 +49,7 @@ export class FluidFLIP {
   }
 
   initializeBoundary() {
-    const n = this.gridSize;
+    const n = this.gridSizeFlip;
     const h = this.h;
 
     if (!this.boundary) {
@@ -103,7 +103,7 @@ export class FluidFLIP {
   }
 
   transferToGrid(particles, velocitiesX, velocitiesY) {
-    const n = this.gridSize;
+    const n = this.gridSizeFlip;
     const h = this.h;
 
     // Reset grid velocities to zero first
@@ -149,7 +149,7 @@ export class FluidFLIP {
   }
 
   transferToParticles(particles, velocitiesX, velocitiesY) {
-    const n = this.gridSize;
+    const n = this.gridSizeFlip;
     const h = this.h;
 
     // Get dragged particle if any
@@ -243,7 +243,7 @@ export class FluidFLIP {
   }
 
   solveIncompressibility() {
-    const n = this.gridSize;
+    const n = this.gridSizeFlip;
     const h = this.h;
 
     // Compute divergence
@@ -387,7 +387,7 @@ export class FluidFLIP {
   }
 
   applyBoundaryConditions() {
-    const n = this.gridSize;
+    const n = this.gridSizeFlip;
     const h = this.h;
 
     // Softer boundary conditions
@@ -461,8 +461,8 @@ export class FluidFLIP {
 
   reset() {
     // Reset grid and pressure fields
-    this.velocityField = new Float32Array(this.gridSize * this.gridSize * 2);
-    this.pressureField = new Float32Array(this.gridSize * this.gridSize);
+    this.velocityField = new Float32Array(this.gridSizeFlip * this.gridSizeFlip * 2);
+    this.pressureField = new Float32Array(this.gridSizeFlip * this.gridSizeFlip);
   }
 
   // Simplify setParameters to only handle rest density
@@ -473,7 +473,7 @@ export class FluidFLIP {
 
   // Fix the interpolateVelocity function with proper boundary checking
   interpolateVelocity(x, y) {
-    const n = this.gridSize;
+    const n = this.gridSizeFlip;
     const h = this.h;
 
     // Force coordinates to stay well within grid bounds (2 cells in from edge)

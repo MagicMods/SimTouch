@@ -1,12 +1,22 @@
 export class TickLog {
-    constructor(timer, debugFlags) {
+    constructor(timer = 1000, debugFlags) {
         this.timer = timer;
-        this.tick = false;
-        this.lastTick = 0;
         this.debugFlags = debugFlags;
+        this.tick = false;
+        this.lastTick = Date.now();
+        this.intervalId = null;
+        this.start();
     }
 
-    update() {
+    start() {
+        if (this.intervalId !== null) {
+            return;
+        }
+        this.lastTick = Date.now();
+        this.intervalId = setInterval(() => this._internalUpdate(), this.timer);
+    }
+
+    _internalUpdate() {
         const now = Date.now();
         if (now - this.lastTick >= this.timer) {
             this.tick = true;
@@ -14,8 +24,19 @@ export class TickLog {
         }
     }
 
+    stop() {
+        if (this.intervalId !== null) {
+            clearInterval(this.intervalId);
+            this.intervalId = null;
+        }
+    }
+
     GetTick() {
-        return this.tick;
+        if (this.tick) {
+            this.tick = false; // Reset immediately after confirming true
+            return true;
+        }
+        return false;
     }
 
     ResetTick() {
