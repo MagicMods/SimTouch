@@ -8,8 +8,6 @@ export class BoundaryRenderer {
   #currentBoundaryType = null;
   boundaryManager = null;
   canvas = null;
-  #previousScale = null; // Track previous scale
-  #previousShowBoundary = null; // Track previous visibility flag
 
   constructor(containerElement, boundaryManager, canvasElement, debugFlags) {
     // if (!containerElement || !boundaryManager || !canvasElement || !debugFlag) {
@@ -21,6 +19,10 @@ export class BoundaryRenderer {
     this.canvas = canvasElement;
     this.db = debugFlags;
     this.showBoundary = false;
+    this._showBoundary = false;
+    this.previousScale = 1.0;
+    this.boundary = null;
+
 
     if (this.db.boundary) console.log("BoundaryRenderer: Constructor - Creating div");
 
@@ -37,8 +39,8 @@ export class BoundaryRenderer {
       const newScale = simParams.boundary.scale;
       const scaleChanged = newScale !== this.previousScale;
 
-      if (scaleChanged || this.previousScale === null) {
-        if (this.db.boundary) console.log(`BoundaryRenderer: Updating - ScaleChanged: ${scaleChanged}, ShowChanged: ${showChanged}, Initial: ${this.previousScale === null}`);
+      if (scaleChanged) {
+        if (this.db.boundary) console.log(`BoundaryRenderer: Updating - ScaleChanged: ${scaleChanged}, Initial: ${this.previousScale}`);
         this.update(physicsBoundary, this.canvas, this.showBoundary);
         this.previousScale = newScale;
       } else {
@@ -48,9 +50,22 @@ export class BoundaryRenderer {
 
     eventBus.on('gridParamsUpdated', ({ gridParams }) => {
       if (this.db.boundary) console.log("BoundaryRenderer received gridParamsUpdated event.");
+      var update = false;
+
       const physicsBoundary = this.boundaryManager.getPhysicsBoundary();
-      this.showBoundary = gridParams.flags.showBoundary;
-      this.update(physicsBoundary, this.canvas, this.showBoundary);
+      if (physicsBoundary !== this.boundary) {
+        this.boundary = physicsBoundary;
+        if (this.db.boundary) console.log("physicsBoundary change detected.");
+      }
+
+      if (gridParams.flags.showBoundary !== this.showBoundary || this.showBoundary) {
+        this.showBoundary = gridParams.flags.showBoundary;
+        if (this.db.boundary) console.log("showBoundary change detected.");
+        this.update(this.boundary, this.canvas, this.showBoundary);
+        if (this.db.boundary) console.log("BoundaryRenderer: DOM updated.");
+      } else {
+        if (this.db.boundary) console.log("BoundaryRenderer: No visual change detected (showBoundary). Skipping DOM update.");
+      }
     });
   }
 
