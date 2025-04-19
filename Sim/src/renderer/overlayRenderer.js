@@ -1,3 +1,5 @@
+import { eventBus } from "../util/eventManager.js";
+
 export class OverlayManager {
   constructor(canvasElement, debugFlags) {
     if (!canvasElement) {
@@ -10,7 +12,13 @@ export class OverlayManager {
     this.centerOverlay = null;
 
     this.#initOverlays(240, 240); // Use placeholder initial size
+
+    // eventBus.on('gridParamsUpdated', this.handleUpdate.bind(this));
   }
+
+  // handleUpdate({ dimensions }) {
+  //   this.updateDimensions(dimensions);
+  // }
 
   #initOverlays(initialWidth, initialHeight) {
     this.textOverlay = document.createElement("div");

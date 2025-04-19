@@ -426,7 +426,7 @@ export class Main {
     const validGridPrefixes = ['screen', 'gridSpecs', 'shadow', 'colors', 'flags', 'renderSize'];
     const pathRoot = paramPath.split('.')[0];
     if (!validGridPrefixes.includes(pathRoot)) {
-      // if (this.debugFlags.debugMain) console.log(`handleGridUIChange received non-grid path: ${paramPath}. Ignoring.`);
+      if (this.debugFlags.debugMain) console.log(`handleGridUIChange received non-grid path: ${paramPath}. Ignoring.`);
       return; // Ignore paths not starting with gridParams keys
     }
 

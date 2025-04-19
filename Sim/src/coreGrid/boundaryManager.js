@@ -217,26 +217,6 @@ export class BoundaryManager {
       if (this.debug.dimensions) console.log(`BoundaryManager - Rect Set: w=${this.physicsBoundary.width.toFixed(3)}, h=${this.physicsBoundary.height.toFixed(3)}, minX=${this.physicsBoundary.minX.toFixed(3)}, maxX=${this.physicsBoundary.maxX.toFixed(3)}, minY=${this.physicsBoundary.minY.toFixed(3)}, maxY=${this.physicsBoundary.maxY.toFixed(3)}`);
     }
 
-    // For now, just ensure its parameters reflect the intended normalized shape
-    // Defaults are likely okay (center 0.5, 0.5, radius 0.5 or width/height 0.8-1.0)
-    // Read from simParams now
-    // --- REMOVED Physics property updates from here, moved to _updatePhysicsProperties ---
-    // this.physicsBoundary.cBoundaryRestitution =
-    //   this.simParams?.boundary?.restitution ?? // Corrected: Use simParams.boundary.restitution
-    //   this.physicsBoundary.cBoundaryRestitution;
-    // this.physicsBoundary.damping =
-    //   this.simParams?.boundary?.damping ?? // Corrected: Use simParams.boundary.damping
-    //   this.physicsBoundary.damping;
-    // this.physicsBoundary.boundaryRepulsion =
-    //   this.simParams?.boundary?.repulsion ?? // Corrected: Use simParams.boundary.repulsion
-    //   this.physicsBoundary.boundaryRepulsion;
-    // this.physicsBoundary.mode =
-    //   this.simParams?.boundary?.mode ?? // Corrected: Use simParams.boundary.mode
-    //   this.physicsBoundary.mode;
-
-    // ---> ADDED Call to new method <---
-    this._updatePhysicsProperties();
-
     if (this.debug.dimensions) console.log(
       `BoundaryManager: Updated Physics Boundary type: ${this.physicsBoundary.getBoundaryType()}. Applied scale: ${physicsBoundaryScale}`
     );
@@ -297,27 +277,10 @@ export class BoundaryManager {
 
     if (scaleChanged || this.previousScale === null) {
       // if (this.debug.dimensions ) console.log(`BoundaryManager: Scale changed (or initial update). Old: ${this.previousScale}, New: ${newScale}. Recalculating boundaries.`);
-      this._updateBoundaries(dimensions); // Call geometry update logic ONLY if scale changed (now also updates physics props)
+      this._updateBoundaries(dimensions); // Call geometry update logic ONLY if scale changed
       this.previousScale = newScale; // Update tracked scale
-    } else {
-      // ---> REPLACED Conditional logic with direct call <---
-      // Scale did not change, only update physics properties
-      // if (this.debug.dimensions ) console.log(`BoundaryManager: Scale unchanged (${newScale}). Updating physics properties directly.`);
-      this._updatePhysicsProperties();
-      // --- REMOVED old conditional block ---
-      // if (this.physicsBoundary && simParams.boundary && oldSimParamsBoundary) {
-      //   const propsToCheck = ['damping', 'restitution', 'repulsion', 'mode'];
-      //   let physicsPropsChanged = false;
-      //   for (const prop of propsToCheck) {
-      //     // Check if property exists in new simParams and differs from old value
-      //     if (simParams.boundary.hasOwnProperty(prop) && simParams.boundary[prop] !== oldSimParamsBoundary[prop]) {
-      //       this.physicsBoundary[prop] = simParams.boundary[prop];
-      //       physicsPropsChanged = true;
-      //       // if (this.debug.dimensions ) console.log(`BoundaryManager: Applied physics property ${prop} = ${simParams.boundary[prop]}`);
-      //     }
-      //   }
-      // }
-      // --- END REMOVED old conditional block ---
     }
+    // Always apply physics properties after potential geometry update using the latest simParams
+    this._updatePhysicsProperties();
   }
 }
