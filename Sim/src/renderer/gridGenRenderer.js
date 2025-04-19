@@ -7,7 +7,7 @@ import { Gradients } from "../shaders/gradients.js";
 import { GridRenderModes, GridField } from "./gridRenderModes.js";
 
 export class GridGenRenderer extends BaseRenderer {
-  constructor(gl, shaderManager, gridConfig, dimensionManager, boundaryManager, particleSystem, gridRenderModes, debugFlags) {
+  constructor(gl, shaderManager, gridConfig, dimensionManager, boundaryManager, particleSystem, debugFlags) {
     super(gl, shaderManager);
 
     this.gl = gl;
@@ -258,6 +258,7 @@ export class GridGenRenderer extends BaseRenderer {
 
     // Update gridMap and notify GridRenderModes
     this.gridMap = this.createGridMap(generatedRectangles);
+    let modeChanged = false; // Track if mode was potentially set
     if (!this.renderModes) {
       this.renderModes = new GridRenderModes({
         gridParams: this.grid,        // Use updated internal grid
@@ -268,13 +269,23 @@ export class GridGenRenderer extends BaseRenderer {
         maxDensityRef: () => this.maxDensity, // CORRECTED: Pass internal maxDensity getter
         dimensions: this.currentDimensions // Pass current dimensions
       });
+      modeChanged = true; // Mode was set on creation
     } else {
+      const previousMode = this.renderModes.currentMode;
       this.renderModes.updateGrid({
         gridParams: this.grid,
         gridGeometry: this.gridGeometry,
         gridMap: this.gridMap,
         dimensions: dimensions // Pass updated dimensions
       });
+      // Check if mode was somehow altered during update (unlikely but safe)
+      if (this.renderModes.currentMode !== previousMode) modeChanged = true;
+    }
+
+    // Emit event *after* renderModes is ready and potentially updated
+    if (this.renderModes?.currentMode) {
+      eventBus.emit('gridRenderModeChanged', { mode: this.renderModes.currentMode });
+      if (this.debug.gridGenRenderer) console.log(`Emitted gridRenderModeChanged from updateGridGeometryAndRender: ${this.renderModes.currentMode}`);
     }
 
     // <<< Call prepareInstanceData AFTER renderModes is ready >>>
@@ -689,6 +700,7 @@ export class GridGenRenderer extends BaseRenderer {
     if (this.debug.gridGenRenderer) console.log('GridGenRenderer.handleParamsUpdate called');
     if (!simParams) return;
 
+    let modeChanged = false; // Track if mode actually changes
     if (simParams.rendering) {
       this.maxDensity = simParams.rendering.maxDensity ?? this.maxDensity;
       if (this.debug.gridGenRenderer) console.log(`  Updated this.maxDensity to: ${this.maxDensity}`);
@@ -697,8 +709,11 @@ export class GridGenRenderer extends BaseRenderer {
         // Ensure the mode exists before assigning
         const isValidMode = Object.values(this.renderModes.modes).includes(simParams.rendering.gridMode);
         if (isValidMode) {
-          this.renderModes.currentMode = simParams.rendering.gridMode;
-          if (this.debug.gridGenRenderer) console.log(`GridGenRenderer: Set render mode to ${this.renderModes.currentMode}`);
+          if (this.renderModes.currentMode !== simParams.rendering.gridMode) {
+            this.renderModes.currentMode = simParams.rendering.gridMode;
+            modeChanged = true; // Mode actually changed
+            if (this.debug.gridGenRenderer) console.log(`GridGenRenderer: Set render mode to ${this.renderModes.currentMode}`);
+          }
         } else {
           console.warn(`GridGenRenderer: Invalid gridMode received: ${simParams.rendering.gridMode}`);
         }
@@ -708,6 +723,12 @@ export class GridGenRenderer extends BaseRenderer {
     if (simParams?.smoothing && this.renderModes?.smoothing) {
       this.renderModes.smoothing.rateIn = simParams.smoothing.rateIn ?? this.renderModes.smoothing.rateIn;
       this.renderModes.smoothing.rateOut = simParams.smoothing.rateOut ?? this.renderModes.smoothing.rateOut;
+    }
+
+    // Emit event ONLY if the mode actually changed
+    if (modeChanged && this.renderModes?.currentMode) {
+      eventBus.emit('gridRenderModeChanged', { mode: this.renderModes.currentMode });
+      if (this.debug.gridGenRenderer) console.log(`Emitted gridRenderModeChanged from handleParamsUpdate: ${this.renderModes.currentMode}`);
     }
   }
 }

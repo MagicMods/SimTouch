@@ -1,3 +1,6 @@
+import { eventBus } from "../../util/eventManager.js"; // Import eventBus
+import { GridField } from "../../renderer/gridRenderModes.js"; // Import GridField
+
 export class MouseForces {
   constructor({
     impulseRadius = 1,
@@ -42,6 +45,14 @@ export class MouseForces {
     this.joystickX = 0;
     this.joystickY = 0;
     this.debugFlag = debugFlag;
+    this.isNoiseModeActive = false; // Initialize noise mode flag
+
+    // Listen for grid mode changes
+    eventBus.on('gridRenderModeChanged', ({ mode }) => {
+      this.isNoiseModeActive = (mode === GridField.NOISE);
+      // Optional: Log mode change for debugging
+      // if(this.debugFlag?.inputs) console.log(`MouseForces received grid mode: ${mode}, isNoiseModeActive: ${this.isNoiseModeActive}`);
+    });
   }
 
   // Set main instance reference
@@ -287,16 +298,8 @@ export class MouseForces {
   }
 
   isInNoiseMode() {
-    if (!this.main) {
-      throw new Error("Main reference is required for isInNoiseMode");
-    }
-
-    if (!this.main.gridGenRenderer) {
-      throw new Error("GridGenRenderer is required in main for isInNoiseMode");
-    }
-
-    const currentMode = this.main.gridRenderModes.currentMode;
-    return currentMode === "--- NOISE ---";
+    // Simply return the internal flag state
+    return this.isNoiseModeActive;
   }
 
   handleJoystick(pos) {

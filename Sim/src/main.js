@@ -288,7 +288,6 @@ export class Main {
     this.modulatorManager = new ModulatorManager(this.debugFlags);
 
     this.particleRenderer = new ParticleRenderer(this.gl, this.shaderManager, this.debugFlags);
-    this.gridRenderModes = new GridRenderModes(this.gridParams, this.dimensionManager, this.boundaryManager, this.particleSystem, this.debugFlags);
     this.gridGenRenderer = new GridGenRenderer(
       this.gl,
       this.shaderManager,
@@ -296,11 +295,8 @@ export class Main {
       this.dimensionManager,
       this.boundaryManager,
       this.particleSystem,
-      this.gridRenderModes,
       this.debugFlags
     );
-
-
 
     this.frame = 0;
     this.mouseForces = new MouseForces(this.debugFlags);
