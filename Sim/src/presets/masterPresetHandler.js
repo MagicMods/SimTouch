@@ -107,6 +107,7 @@ export class MasterPresetHandler extends PresetBaseHandler {
 
   applyPreset(presetName) {
     if (presetName === "Default") {
+      let success = true;
       if (this.db.presets) console.log("Applying Default master preset");
       // Special handling for Default: Reload initial state
       const defaultState = this.getPreset("Default");
@@ -117,7 +118,7 @@ export class MasterPresetHandler extends PresetBaseHandler {
         // TODO: Define what needs explicit resetting
 
         // After reset, apply the potentially modified 'Default' state
-        let success = true;
+
         try {
           Object.entries(defaultState).forEach(([key, data]) => {
             try {
