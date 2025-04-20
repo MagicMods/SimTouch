@@ -1,10 +1,11 @@
 import { BaseBoundaryShape } from "./baseBoundaryShape.js";
 
 export class CircularBoundaryShape extends BaseBoundaryShape {
-  constructor(centerX, centerY, radius, scale = 1.0, debugFlag) {
-    super(centerX, centerY, scale);
+  constructor(centerX, centerY, radius, scale = 1.0, debugFlags
+  ) {
+    super(centerX, centerY, scale, debugFlags);
     this.radius = radius;
-    this.debugFlag = debugFlag;
+    this.db = debugFlags;
   }
 
   isPointInside(x, y) {
@@ -24,7 +25,7 @@ export class CircularBoundaryShape extends BaseBoundaryShape {
     }
     if (this.radius !== newRadius) {
       this.radius = newRadius;
-      if (this.debugFlag) console.log(`CircularBoundaryShape: Radius updated to ${this.radius}`);
+      if (this.db.boundary) console.log(`CircularBoundaryShape: Radius updated to ${this.radius}`);
     }
   }
 
