@@ -4,9 +4,18 @@ import { eventBus } from '../../util/eventManager.js';
 // Define available screen types
 const SCREEN_TYPES = {
   "240x240 Rnd": { width: 240, height: 240, shape: "circular" },
+  "412x412 Rnd": { width: 412, height: 412, shape: "circular" },
+  "360x360 Rnd": { width: 360, height: 360, shape: "circular" },
   "480x480 Rnd": { width: 480, height: 480, shape: "circular" },
+  "72x420 Rect": { width: 72, height: 420, shape: "rectangular" },
   "170x320 Rect": { width: 170, height: 320, shape: "rectangular" },
+  "172x320 Rect": { width: 172, height: 320, shape: "rectangular" },
+  "240x280 Rect": { width: 240, height: 380, shape: "rectangular" },
   "320x170 Rect": { width: 320, height: 170, shape: "rectangular" },
+  "368x448 Rect": { width: 368, height: 448, shape: "rectangular" },
+  "480x480 Rect": { width: 480, height: 480, shape: "rectangular" },
+  "800x480 Rect": { width: 800, height: 480, shape: "rectangular" },
+  "1024x600 Rect": { width: 1024, height: 600, shape: "rectangular" },
   // Add more predefined types here as needed
 };
 
