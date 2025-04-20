@@ -246,9 +246,9 @@ export class BoundaryManager {
     this.physicsBoundary.mode =
       this.simParams.boundary.mode ?? this.physicsBoundary.mode;
 
-    // if (this.db.dimensions ) console.log( // Keep verbose logs off by default
-    //     `BoundaryManager: Applied physics properties: Repulsion=${this.physicsBoundary.boundaryRepulsion?.toFixed(2)}, Damping=${this.physicsBoundary.damping?.toFixed(2)}, Restitution=${this.physicsBoundary.cBoundaryRestitution?.toFixed(2)}, Mode=${this.physicsBoundary.mode}`
-    // );
+    if (this.db.bouncray) console.log( // Keep verbose logs off by default
+      `BoundaryManager: Applied physics properties: Repulsion=${this.physicsBoundary.boundaryRepulsion?.toFixed(2)}, Damping=${this.physicsBoundary.damping?.toFixed(2)}, Restitution=${this.physicsBoundary.cBoundaryRestitution?.toFixed(2)}, Mode=${this.physicsBoundary.mode}`
+    );
   }
 
   // New method to handle simParam updates specifically affecting the boundary

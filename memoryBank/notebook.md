@@ -1,42 +1,106 @@
-## Debug Log: Particle Size Rendering Issue (YYYY-MM-DD)
+## Analysis: C-Bounce & B-Bounce Effectiveness (2024-07-27)
 
-**Issue:** Particles are all rendered with the same size, corresponding to the size calculated for particle index 0, despite the `turbulenceField` correctly calculating and storing different radii in `particleSystem.particleRadii`.
+**Query:** User reported particle-particle (C-Bounce) and particle-boundary (B-Bounce) collisions seem ineffective.
 
-**Debugging Steps & Findings:**
+**[THINK] Analysis Findings:**
 
-1.  **Initial Check:** Confirmed the issue is visual rendering; collision diameters seemed correct.
-2.  **Data Path Verification:**
-    - Verified `particleSystem.getParticles()` calculates `p.size = particleRadii[i] * renderScale`.
-    - Logged `particleRadii` values after turbulence update; confirmed different radii are being calculated.
-    - Logged `p.size` values passed to `particleRenderer.js` and the `sizes` array created; confirmed different values matching scaled radii are passed to the renderer.
-3.  \*\*Shader Verification (`particles` shader in `Sim/src/shaders/shaderManager.js`):
-    - Confirmed shader uses `attribute float size;`.
-    - Confirmed shader assigns `size` to `gl_PointSize`.
-    - Dumped shader source at runtime to verify.
-4.  \*\*Attribute Setup Verification (`Sim/src/renderer/particleRenderer.js`):
-    - Confirmed correct attribute locations (`position`: 0, `size`: 1).
-    - Corrected order of buffer binding/`bufferData`/`vertexAttribPointer` calls. **Issue persisted.**
-    - Verified `size` attribute array was enabled before draw (`gl.getVertexAttrib`).
-    - Verified correct shader program was active (`gl.getParameter(gl.CURRENT_PROGRAM)`).
-5.  **VAO State Check:**
-    - Explicitly unbound VAOs (`gl.bindVertexArray(null)`) at the start of `particleRenderer.draw`. **Issue persisted.**
-    - Code search confirmed no active VAO usage in relevant renderers.
-6.  **Constant Attribute Test:**
-    - Disabled `size` attribute array and used `gl.vertexAttrib1f` to set a constant size.
-    - Result: All particles rendered at the constant size. **Proves pipeline works for constants.**
-7.  **`Sim copy` Comparison:**
-    - Analyzed `Sim copy/src/renderer/particleRenderer.js` (which worked), noting its conditional check for `program.attributes.size`.
-    - Modified `Sim copy` renderer to remove the conditional check, mirroring the main `Sim` renderer's logic.
-    - Result: The modified `Sim copy` renderer **still worked correctly**.
+**C-Bounce (`collisionSystem.js::resolveCollision`):**
 
-**Current Conclusion:** The rendering logic within `particleRenderer.js` and the data pipeline are likely correct. The failure in the main `Sim` application probably stems from external factors (global GL state, shader management differences, initialization order, etc.) interfering with the per-vertex attribute functionality.
+1.  **Detection:** Spatial grid used to optimize checks.
+2.  **Resolution Logic:**
+    - Calculates overlap based on particle radii (dynamic if `turbulence.affectScale` is true) and `restDensity` (which modifies minimum separation distance `minDist`).
+    - **Repulsion:** Applies a primary velocity change based on overlap (`Math.pow(overlap / minDist, 1.5) * this.repulsion`).
+    - **Restitution (Bounce):** Applied _only if_ particles are moving towards each other (`vn < 0`). Crucially, the restitution coefficient is _softened_ by overlap (`this.particleRestitution * (1.0 - overlap / minDist)`). Deep overlaps result in very little bounce.
+    - **Position Correction:** Minimal position correction applied only for significant overlaps (>10% of `minDist`).
+    - **Damping:** `collisionSystem.damping` exists but isn't applied directly in `resolveCollision`. Global damping occurs later in `particleSystem`.
+3.  **Potential Ineffectiveness Reasons:**
+    - Soft restitution leads to weak bounce with overlap.
+    - Repulsion force might dominate, pushing particles apart without a distinct "bounce".
+    - Density factor allows closer proximity at high densities, reducing interaction space.
+    - Global damping might reduce collision velocity effects quickly.
 
-**Resolution (YYYY-MM-DD):**
+**B-Bounce (`particleSystem.js::updateParticles` -> `boundaryManager` -> `boundary.resolveCollision`):**
 
-- **Hypothesis:** Global WebGL state related to attribute divisors, potentially set by the instanced drawing in `gridGenRenderer`, was not being reset correctly before `particleRenderer` draw calls, causing the non-instanced `size` attribute to behave like an instanced one (divisor=1).
-- **Fix:** Explicitly set the attribute divisor for the `size` attribute to 0 in `particleRenderer.js` immediately after the `vertexAttribPointer` call:
-  ```javascript
-  this.gl.vertexAttribPointer(program.attributes.size, 1, this.gl.FLOAT, false, 0, 0);
-  this.gl.vertexAttribDivisor(program.attributes.size, 0); // Explicitly set divisor to 0
-  ```
-- **Result:** This correctly forced the `size` attribute to be treated as per-vertex, resolving the issue. Particles now render with their individual sizes.
+1.  **Handling:** Occurs _after_ velocity updates, particle-particle collisions, and global damping.
+2.  **Process:**
+    - Iterates particles.
+    - Gets _current_ boundary object from `boundaryManager` for each particle.
+    - Calls `currentBoundary.resolveCollision(position, velocity, physicsRadius, this.boundaryDamping)`.
+    - `physicsRadius` depends on `turbulence.affectScale`.
+    - `boundaryDamping` (default 0.95 in `particleSystem`) is passed to the boundary's method.
+3.  **Potential Ineffectiveness Reasons:**
+    - **Logic Delegated:** Effectiveness depends entirely on the `resolveCollision` implementation within the specific boundary class (e.g., `CircularBoundary.js`, `RectangularBoundary.js`), which hasn't been reviewed yet.
+    - **Boundary Damping:** The `boundaryDamping` value directly controls energy loss at the boundary.
+    - **Order of Operations:** Collisions are checked after other physics steps may have already reduced particle velocity.
+
+**Next Steps:**
+
+1.  Inspect the `resolveCollision` method in the relevant boundary class(es).
+2.  Analyze the interplay and tuning of parameters: `repulsion`, `particleRestitution`, `restDensity`, `velocityDamping`, `boundaryDamping`.
+
+## Deep Analysis: C-Bounce & B-Bounce (UI to Physics) (2024-07-27)
+
+**Query:** Deep analysis of C-Bounce and B-Bounce effectiveness, from UI to applied physics.
+
+**[THINK] Analysis Findings:**
+
+**1. UI Controls & Parameter Flow:**
+
+- **Initialization:** Default parameters for simulation, collision, and boundary are set in `main.js` constructor within `simParams`.
+- **UI Binding (`boundaryUi.js`):** Controls for `B-Mode`, `B-Scale`, `B-Friction` (`boundary.damping`), `B-Bounce` (`boundary.restitution`), `B-Repulse` (`boundary.repulsion`) are bound to `main.simParams.boundary`.
+- **Collision UI:** UI controls for `collision.repulsion` and `collision.particleRestitution` were not located in the reviewed files (`boundaryUi.js`). Defaults are set in `main.js` (`repulsion: 0.5`, `particleRestitution: 0.8`).
+- **Event Handling:** UI changes emit `uiControlChanged` -> `main.js` updates `simParams` -> `main.js` emits `simParamsUpdated`.
+- **Propagation to Sim:** `ParticleSystem` and `CollisionSystem` listen for `simParamsUpdated` and update their internal states from `simParams.simulation.*` and `simParams.collision.*` respectively.
+- **CRITICAL Boundary Parameter Disconnect:**
+  - `BaseBoundary` (and its children) initializes its _own_ defaults: `cBoundaryRestitution = 0.8`, `damping = 0.95`, `boundaryRepulsion = 0.1`.
+  - `ParticleSystem` passes its `boundaryDamping` property (which is actually set by `simParams.simulation.velocityDamping`) to the boundary's `resolveCollision` as `externalDamping`.
+  - Boundary classes use this `externalDamping` for friction/damping, `this.cBoundaryRestitution` (internal default 0.8) for bounce, and `this.boundaryRepulsion` (internal default 0.1) for repulsion.
+  - **Conclusion:** The UI controls for `boundary.damping` (B-Friction), `boundary.restitution` (B-Bounce), and `boundary.repulsion` (B-Repulse) **DO NOT AFFECT** the boundary physics calculations. They modify `simParams.boundary`, but these values are not read or used by the `BaseBoundary` derived classes during collision resolution.
+
+**2. C-Bounce Physics (`collisionSystem.js::resolveCollision`):**
+
+- **Parameters Used:** `this.repulsion`, `this.particleRestitution` (from `simParams.collision`), `particleSystem.restDensity` (from `simParams.simulation`), `particleSystem.particleRadius`/`particleRadii` (from `simParams.simulation`).
+- **Logic:** Applies repulsion (`overlap^1.5 * repulsion`) and softened restitution bounce (`particleRestitution * (1 - overlap/minDist)` if `vn < 0`).
+- **Damping:** `collisionSystem.damping` (from `simParams.collision.damping`) is **NOT USED** in `resolveCollision`. Global `particleSystem.velocityDamping` (from `simParams.simulation.velocityDamping`) is applied later.
+- **Ineffectiveness Factors:** Soft restitution on overlap, potentially high repulsion force, reliance on later global damping.
+
+**3. B-Bounce Physics (`circularBoundary.js`/`rectangularBoundary.js`::`resolveCollision`):**
+
+- **Parameters Used:**
+  - `externalDamping`: Provided by `ParticleSystem`, value comes from `simParams.simulation.velocityDamping` (default 0.98).
+  - `this.cBoundaryRestitution`: Internal default `0.8` (from `BaseBoundary`). **Not** from `simParams.boundary.restitution`.
+  - `this.boundaryRepulsion`: Internal default `0.1` (from `BaseBoundary`). **Not** from `simParams.boundary.repulsion`.
+- **Logic (Circular):** Reflects normal velocity using `cBoundaryRestitution=0.8`, applies tangential friction using `externalDamping` (i.e., `velocityDamping`). Adds repulsion force near edge based on `boundaryRepulsion=0.1`.
+- **Logic (Rectangular):** Reflects perpendicular velocity component using `cBoundaryRestitution=0.8`, applies overall damping using `externalDamping` (i.e., `velocityDamping`). Adds repulsion force near edge based on `boundaryRepulsion=0.1`.
+- **Ineffectiveness Factors:**
+  - **Disconnected UI Parameters:** The primary reason. UI sliders for B-Bounce, B-Friction, B-Repulse have no effect.
+  - **Fixed Restitution:** Boundary bounce is fixed at 0.8.
+  - **Fixed Repulsion:** Boundary repulsion is fixed at a low 0.1.
+  - **Damping Source:** Boundary damping/friction uses the global particle `velocityDamping`.
+  - **Position Correction:** Minor push-in after collision might dampen rapid bounces.
+
+**Overall Conclusion:**
+
+- **C-Bounce:** Effectiveness depends on tuning `collision.particleRestitution`, `collision.repulsion`, and `simulation.velocityDamping`. Softening effect is inherent.
+- **B-Bounce:** **Likely ineffective and unresponsive to UI controls** due to the parameter disconnect. Boundary physics uses hardcoded defaults (restitution 0.8, repulsion 0.1) and global velocity damping.
+
+**Recommendation:** Fix the parameter flow for boundary physics to use the values from `simParams.boundary` set by the UI controls.
+
+## Deviation Analysis: C-Bounce Damping Implementation (2024-07-27)
+
+**Context:** After implementing the plan to apply `collisionSystem.damping` within `resolveCollision`.
+
+**Observed Behavior:** User reported particles lost free-moving behavior, even when global `simulation.velocityDamping` was set to 1.
+
+**[THINK] Failure Analysis:**
+
+1.  **Plan vs. Implementation:** The implementation correctly applied `this.damping` multiplicatively to velocities of particles `i` and `j` at the end of the `if (distSq < minDistSq)` block in `resolveCollision`.
+2.  **Root Cause:**
+    - The collision-specific `this.damping` (default 0.98) is now applied every time any two particles are closer than `minDist`.
+    - This occurs regardless of whether a bounce impulse is generated (`vn < 0`) or only repulsion is applied.
+    - In dense situations, a particle can trigger this check with multiple neighbors within a single `update` cycle.
+    - Consequently, a particle's velocity can be multiplied by `this.damping` (e.g., 0.98) _multiple times per frame_, leading to rapid velocity decay.
+    - This happens _before_ the global `simulation.velocityDamping` is applied once in `ParticleSystem`, making the collision damping the dominant (and excessive) factor.
+3.  **Conclusion:** The plan, while technically implemented correctly, resulted in unintended excessive damping due to the frequency and location of its application. Applying damping during every overlap check, potentially multiple times per particle, is too aggressive.
+
+**Recommendation:** Revert the change or significantly revise the approach for applying collision-specific damping (e.g., only during impulse calculation, or reconsider its necessity given global damping).

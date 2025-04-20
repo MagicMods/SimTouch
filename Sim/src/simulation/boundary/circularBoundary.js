@@ -104,8 +104,8 @@ export class CircularBoundary extends BaseBoundary {
     const ny = dy / dist;
 
     // Use provided damping if available, otherwise use internal damping
-    const effectiveDamping =
-      externalDamping !== null ? externalDamping : this.damping;
+    // const effectiveDamping = externalDamping !== null ? externalDamping : this.damping;
+    const effectiveDamping = this.damping;
 
     // Case 1: Collision - particle crosses boundary
     if (dist + particleRadius > this.radius) {
