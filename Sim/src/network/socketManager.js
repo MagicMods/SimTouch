@@ -51,6 +51,8 @@ class SocketManager {
       this.lastSentCommands[cmd.debounceKey] = { value: null, time: 0 };
     });
 
+    this.db;
+
     // Subscribe to parameter updates
     eventBus.on('simParamsUpdated', this.handleParamsUpdate.bind(this));
   }
@@ -67,11 +69,12 @@ class SocketManager {
 
       // Connect or disconnect if enable state changed
       if (this.enable !== previousEnable) {
-        if (this.debugSend) console.log(`SocketManager: Enable state changed to ${this.enable}.`);
+        if (this.db.network) console.log(`SocketManager: Enable state changed to ${this.enable}.`);
         if (this.enable) {
           // Connect only if not already connected or trying to connect
           if (!this.isConnected && !this.retryTimeout && this.ws?.readyState !== WebSocket.CONNECTING) {
             this.connect();
+
           }
         } else {
           // Disconnect if connected
@@ -97,7 +100,7 @@ class SocketManager {
 
     this.port = port;
     try {
-      if (this.debugSend) console.log(`Attempting WebSocket connection to ws://localhost:${port}`);
+      if (this.db.network) console.log(`Attempting WebSocket connection to ws://localhost:${port}`);
       if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
       if (this.connectTimeout) clearTimeout(this.connectTimeout);
 
@@ -109,6 +112,11 @@ class SocketManager {
     }
   }
 
+  setDebugFlags(debugFlags) {
+    this.db = debugFlags;
+  }
+
+
   send(data) {
     if (!this.ws) {
       return false;
@@ -118,7 +126,7 @@ class SocketManager {
       return false;
     }
 
-    if (this.debugSend) console.log("Sending message:", data);
+    if (this.db.network && this.debugSend) console.log("Sending message:", data);
 
     this.ws.send(data);
     return true;
@@ -130,7 +138,7 @@ class SocketManager {
     }
 
     this.ws.onopen = () => {
-      if (this.debugSend) console.log("WebSocket connection established");
+      if (this.db.network) console.log("WebSocket connection established");
       this.isConnected = true;
       this.retryCount = 0;
 
@@ -145,15 +153,15 @@ class SocketManager {
     };
 
     this.ws.onclose = () => {
-      if (this.debugSend) console.log("WebSocket connection closed");
+      if (this.db.network) console.log("WebSocket connection closed");
       this.isConnected = false;
 
       if (this.enable && this.retryCount < this.maxRetries) {
         this.retryCount++;
-        if (this.debugSend) console.log(`Retry attempt ${this.retryCount} of ${this.maxRetries}`);
-        this.retryTimeout = setTimeout(() => this.reconnect(), 5000);
+        if (this.db.network) console.log(`Retry attempt ${this.retryCount} of ${this.maxRetries}`);
+        this.retryTimeout = setTimeout(() => this.reconnect(), 3000);
       } else if (this.retryCount >= this.maxRetries) {
-        if (this.debugSend) console.log("Max retry attempts reached");
+        if (this.db.network) console.log("Max retry attempts reached");
       }
 
       // Notify all callbacks about disconnection
@@ -167,7 +175,7 @@ class SocketManager {
     };
 
     this.ws.onerror = (error) => {
-      if (this.debugSend) {
+      if (this.db.network) {
         console.error("WebSocket error:", error);
       }
       this.callbacks.forEach((cb) => cb({ type: "error", error }));
@@ -253,7 +261,7 @@ class SocketManager {
       return;
     }
 
-    if (this.debugSend) console.log("Closing WebSocket connection");
+    if (this.db.network) console.log("Closing WebSocket connection");
     this.ws.close();
     this.ws = null;
   }
@@ -296,7 +304,7 @@ class SocketManager {
 
   // Unified command sending system
   sendCommand(commandType, value) {
-    if (this.debugSend) console.log(`>>> sendCommand ENTERED with type: ${typeof commandType}`, commandType, ` | value: ${typeof value}`, value);
+    if (this.db.network) console.log(`>>> sendCommand ENTERED with type: ${typeof commandType}`, commandType, ` | value: ${typeof value}`, value);
     const command = SocketManager.COMMANDS[commandType];
     if (!command) {
       console.error(`Invalid command type: ${commandType}`);
@@ -333,7 +341,7 @@ class SocketManager {
         }
       }, 50);
 
-      if (this.debugSend) console.log(`Sending command ${commandType}:`, value);
+      if (this.db.network) console.log(`Sending command ${commandType}:`, value);
 
 
       return true;
@@ -343,7 +351,7 @@ class SocketManager {
 
   // Convenience methods for specific commands
   sendColor(value) {
-    if (this.debugSend) console.log(`>>> sendColor called with value: ${typeof value}`, value);
+    if (this.db.network) console.log(`>>> sendColor called with value: ${typeof value}`, value);
     return this.sendCommand("COLOR", value);
   }
 

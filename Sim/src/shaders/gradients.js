@@ -60,11 +60,6 @@ export class Gradients {
     return this.points;
   }
 
-  /**
-   * Sets the gradient points from a custom array of color stops.
-   * @param {Array<{pos: number, color: {r: number, g: number, b: number}}>} colorStopsArray - Array of color stops.
-   * @returns {boolean} True if successful, false otherwise.
-   */
   setColorStops(colorStopsArray) {
     // Validation
     if (!Array.isArray(colorStopsArray) || colorStopsArray.length < 2) {
@@ -110,8 +105,8 @@ export class Gradients {
       console.warn(`sendGradientsUpdate: Preset name "${presetName}" not found, cannot send update.`);
       return false;
     }
-    // return this.socket.sendColor(presetIndex);
-    return true;
+    return this.socket.sendColor(presetIndex);
+    // return true;
   }
 
   // Get the numeric index of a preset (c0=0, c1=1, etc.)

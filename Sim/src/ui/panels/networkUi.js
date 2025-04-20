@@ -6,7 +6,7 @@ import { eventBus } from '../../util/eventManager.js';
 export class NetworkUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-    this.debug = this.main.debugFlags;
+    this.db = this.main.debugFlags;
     this.gui.title("Network");
     this.initNetworkControls();
   }
@@ -18,6 +18,7 @@ export class NetworkUi extends BaseUi {
 
     // Create local control object
     const controls = {
+      enabled: networkParams.enabled,
       debugSend: socket.debugSend,
       debugReceive: socket.debugReceive,
     };
@@ -34,7 +35,7 @@ export class NetworkUi extends BaseUi {
 
     // Add Enable toggle
     this.networkEnabledController = this.gui
-      .add(networkParams, "enabled")
+      .add(controls, "enabled")
       .name("N-Enabled")
       .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'network.enabled', value }));
 
@@ -61,21 +62,21 @@ export class NetworkUi extends BaseUi {
       .add({ host: NetworkConfig.UDP_HOST }, "host")
       .name("UDP Host")
       .onChange((value) => {
-        if (this.debug.network) console.log(`Note: UDP host changes require server restart`);
+        if (this.db.network) console.log(`Note: UDP host changes require server restart`);
       });
 
     configFolder
       .add({ port: NetworkConfig.UDP_PORT }, "port", 1024, 65535, 1)
       .name("UDP Output Port")
       .onChange((value) => {
-        if (this.debug.network) console.log(`Note: UDP output port changes require server restart`);
+        if (this.db.network) console.log(`Note: UDP output port changes require server restart`);
       });
 
     configFolder
       .add({ port: NetworkConfig.UDP_INPUT_PORT }, "port", 1024, 65535, 1)
       .name("UDP Input Port")
       .onChange((value) => {
-        if (this.debug.network) console.log(`Note: UDP input port changes require server restart`);
+        if (this.db.network) console.log(`Note: UDP input port changes require server restart`);
       });
 
     configFolder

@@ -149,7 +149,7 @@ export class Main {
         showVelocityField: false,
       },
       network: {
-        enabled: false,
+        enabled: true,
         debugSend: false,
         debugReceive: false
       }
@@ -335,8 +335,10 @@ export class Main {
     // Also store main reference in emuRenderer
     this.emuRenderer.main = this;
 
-    socketManager.enable = false;
-    socketManager.connect();
+    const socket = socketManager;
+    socket.setDebugFlags(this.debugFlags);
+    socket.enable = true;
+    socket.connect();
 
     // Instantiate Renderers that depend on Managers
     this.boundaryRenderer = new BoundaryRenderer(

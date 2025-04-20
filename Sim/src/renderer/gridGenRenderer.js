@@ -5,6 +5,7 @@ import { OverlayManager } from "./overlayRenderer.js";
 import { eventBus } from '../util/eventManager.js';
 import { Gradients } from "../shaders/gradients.js";
 import { GridRenderModes, GridField } from "./gridRenderModes.js";
+import { socketManager } from "../network/socketManager.js";
 
 export class GridGenRenderer extends BaseRenderer {
   constructor(gl, shaderManager, gridConfig, dimensionManager, boundaryManager, particleSystem, debugFlags) {
@@ -102,6 +103,8 @@ export class GridGenRenderer extends BaseRenderer {
     // Initialize render modes and max density state
     this.renderModes = null;
     this.maxDensity = 4.0; // Default max density
+
+    this.socket = socketManager;
   }
 
   initBuffers() {
@@ -133,22 +136,19 @@ export class GridGenRenderer extends BaseRenderer {
 
     gl.bindBuffer(gl.ARRAY_BUFFER, null); // Unbind
 
-    // --- Add Particle Buffers ---
-    // this.particlePositionBuffer = gl.createBuffer(); // REMOVE
-    // this.particleSizeBuffer = gl.createBuffer(); // REMOVE
-    // --- End Add Particle Buffers ---
   }
 
-  // Update grid config, shape boundary, and physics boundary
-  setGrid(newGridConfig, shapeBoundary, physicsBoundary, dimensions) {
-    // >>> MODIFIED: Uncomment and wrap log
-    if (this.debug.gridGenRenderer) console.log("Renderer setGrid: Received gridConfig.shadow:", JSON.stringify(newGridConfig?.shadow));
-    // --- START REFACTOR ---
-    // // Remove this line: this.grid = newGridConfig;
+  sendGridData(byteArray) {
+    if (this.socket.isConnected) {
+      return this.socket.send(byteArray);
+    }
+    return false;
+  }
 
-    // Perform a deep update instead of replacing the object reference
-    // This ensures UI listeners bound via .listen() remain attached
-    // to the original object instance.
+  setGrid(newGridConfig, shapeBoundary, physicsBoundary, dimensions) {
+
+    if (this.debug.gridGenRenderer) console.log("Renderer setGrid: Received gridConfig.shadow:", JSON.stringify(newGridConfig?.shadow));
+
     if (newGridConfig) {
       // Update nested objects carefully
       if (newGridConfig.screen) Object.assign(this.grid.screen, newGridConfig.screen);
@@ -157,11 +157,8 @@ export class GridGenRenderer extends BaseRenderer {
       if (newGridConfig.colors) Object.assign(this.grid.colors, newGridConfig.colors);
       if (newGridConfig.flags) Object.assign(this.grid.flags, newGridConfig.flags);
       if (newGridConfig.renderSize) Object.assign(this.grid.renderSize, newGridConfig.renderSize);
-      // Note: Calculated properties like cellCount, cols, rows etc.
-      // will be updated later in updateGridGeometryAndRender
-      // directly on this same this.grid object instance.
     }
-    // --- END REFACTOR ---
+
 
     // Store other references (these can be replaced)
     this.shapeBoundary = shapeBoundary;
@@ -320,19 +317,6 @@ export class GridGenRenderer extends BaseRenderer {
     const renderHeight = dimensions.renderHeight;
     mat4.ortho(projectionMatrix, 0, renderWidth, 0, renderHeight, -1, 1);
 
-    // Draw physics boundary (if enabled)
-    if (this.grid.flags.showBoundary && this.physicsBoundary) {
-      // >>> MODIFIED: Uncomment and wrap log
-      if (this.debug.gridGenRenderer) console.log('Drawing physics boundary');
-      // <<< END MODIFIED
-      // this.physicsBoundary.drawBoundary(
-      //   this.gl,
-      //   projectionMatrix,
-      //   this.dimensionManager,
-      //   this.shaderManager
-      // );
-    }
-
     // --- Update Overlays ---
     if (this.grid.flags.showIndices) {
       this.overlayManager.updateCellIndices(rectangles, this.grid, dimensions);
@@ -345,31 +329,15 @@ export class GridGenRenderer extends BaseRenderer {
     } else {
       this.overlayManager.clearCellCenters();
     }
-
-    // --- Add Particle Drawing Logic ---
-    // REMOVE THIS ENTIRE BLOCK
-    // this._updateParticleData();
-    // const particleProg = this.shaderManager.use('particles');
-    // if (particleProg) { ... }
-    // --- End Add Particle Drawing Logic ---
-
-    // Draw Physics Boundary (If enabled)
-    // ... (existing physics boundary draw logic) ...
-
-    // Update Overlays
-    // ... (existing overlay update logic) ...
   }
 
   renderCellsInstanced() {
     const gl = this.gl;
     const instanceCount = this.instanceData.count;
 
-    // >>> MODIFIED: Uncomment and wrap log
-    if (this.debug.gridGenRenderer) console.log(`GridGenRenderer.renderCellsInstanced() called. Count: ${instanceCount}, showGridCells: ${this.grid?.flags?.showGridCells}`); // Add log
-    // <<< END MODIFIED
+    if (this.debug.gridGenRenderer) console.log(`GridGenRenderer.renderCellsInstanced() called. Count: ${instanceCount}, showGridCells: ${this.grid?.flags?.showGridCells}`);
 
     if (instanceCount === 0) return; // Nothing to draw
-    // REMOVED: if (!this.grid.flags.showGridCells) return; // Updated path: Skip drawing if grid is hidden
 
     const shaderInfo = this.shaderManager.use("gridCell");
     if (!shaderInfo) {
@@ -380,9 +348,7 @@ export class GridGenRenderer extends BaseRenderer {
     // --- Simplified Path (Removed diagnostic depth disable/enable) ---
     this.setupInstancedDrawing();
 
-    // >>> MODIFIED: Uncomment and wrap log
-    if (this.debug.gridGenRenderer) console.log(`GridGenRenderer.renderCellsInstanced(): About to call drawArraysInstanced. Count: ${instanceCount}`); // Add log
-    // <<< END MODIFIED
+    if (this.debug.gridGenRenderer) console.log(`GridGenRenderer.renderCellsInstanced(): About to call drawArraysInstanced. Count: ${instanceCount}`);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instanceCount);
 
     // --- Cleanup GL State --- 
@@ -402,10 +368,10 @@ export class GridGenRenderer extends BaseRenderer {
 
   prepareInstanceData(rectangles) {
 
-    if (this.debug.gridGenRenderer) console.log(`prepareInstanceData Start: this.maxDensity = ${this.maxDensity}`); // Add log at method entry
+    if (this.debug.gridGenRenderer) console.log(`prepareInstanceData Start: this.maxDensity = ${this.maxDensity}`);
 
     const gl = this.gl;
-    const visibleRects = rectangles; // Use all rectangles passed from GridGeometry
+    const visibleRects = rectangles;
 
     const numInstances = visibleRects.length;
     this.instanceData.count = numInstances;
@@ -491,6 +457,24 @@ export class GridGenRenderer extends BaseRenderer {
     // Get latest data values and gradient lookup
     // Fetch dataValues only if needed
     const dataValues = useDataColors ? this.renderModes.getValues(this.particleSystem) : null;
+
+    if (this.socket.isConnected) {
+      const byteArray = new Uint8Array(dataValues.length + 1);
+
+      // Set identifier byte (0) at the start
+      byteArray[0] = 0;
+
+      // Map values from [0,maxDensity] to [0,100], offset by 1 for identifier
+      for (let i = 0; i < dataValues.length; i++) {
+        const normalizedValue = Math.max(
+          0,
+          Math.min(1, dataValues[i] / this.maxDensity)
+        );
+        byteArray[i + 1] = Math.round(normalizedValue * 100);
+      }
+      this.sendGridData(byteArray);
+    }
+
     const gradientValues = this.gradient.getValues();
     const visibleRects = this.gridGeometry?.getGeometry()?.rectangles; // Need rectangles for index
 
