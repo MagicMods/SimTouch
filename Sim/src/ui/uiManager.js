@@ -55,8 +55,9 @@ export class UiManager {
     //Left UI
     this.paramUi = new ParamUi(this.main, this.leftContainer);
     this.particleUi = new ParticleUi(this.main, this.leftContainer);
-    this.gravityUi = new GravityUi(this.main, this.leftContainer);
     this.collisionUi = new CollisionUi(this.main, this.leftContainer);
+    this.gravityUi = new GravityUi(this.main, this.leftContainer);
+
     this.boundaryUi = new BoundaryUi(this.main, this.leftContainer);
     this.inputsUi = new InputsUi(this.main, this.leftContainer);
     this.networkUi = new NetworkUi(this.main, this.leftContainer);

@@ -350,7 +350,8 @@ export class Main {
     );
 
     // Subscribe main to Grid UI changes (assuming NewGridUi emits 'uiControlChanged')
-    eventBus.on('uiControlChanged', this.handleGridUIChange.bind(this));
+    eventBus.on('gridChanged', this.handleGridUIChange.bind(this));
+    eventBus.on('uiControlChanged', this.handleSimUIChange.bind(this));
     if (this.debugFlags.main) console.log("Main subscribed to uiControlChanged events for Grid UI.");
 
   }
@@ -364,9 +365,6 @@ export class Main {
 
       this.ui = new UiManager(this);
       this.setGridParams(this.gridParams);
-
-      eventBus.on('uiControlChanged', this.handleSimUIChange.bind(this));
-      // eventBus.on('uiControlChanged', this.handleGridUIChange.bind(this));
 
       this.animate();
 
@@ -402,17 +400,11 @@ export class Main {
         current[keys[i]] = {};
       }
       current = current[keys[i]];
-      if (!current) {
-        console.error(`Invalid paramPath structure: ${paramPath} at segment ${keys[i]}`);
-        return;
-      }
+      if (!current) { console.error(`Invalid paramPath structure: ${paramPath} at segment ${keys[i]}`); return; }
     }
-    if (!current) {
-      console.error(`Invalid paramPath structure before final assignment: ${paramPath}`);
-      return;
-    }
+    if (!current) { console.error(`Invalid paramPath structure before final assignment: ${paramPath}`); return; }
     current[keys[keys.length - 1]] = value;
-    if (this.debugFlags.main) console.log(`SimParams updated via UI: ${paramPath} = ${value}`);
+    if (this.debugFlags.events) console.log(`SimParams updated via UI: ${paramPath} = ${value}`);
 
     eventBus.emit('simParamsUpdated', { simParams: this.simParams });
   }
@@ -422,7 +414,7 @@ export class Main {
     const validGridPrefixes = ['screen', 'gridSpecs', 'shadow', 'colors', 'flags', 'renderSize'];
     const pathRoot = paramPath.split('.')[0];
     if (!validGridPrefixes.includes(pathRoot)) {
-      if (this.debugFlags.debugMain) console.log(`handleGridUIChange received non-grid path: ${paramPath}. Ignoring.`);
+      if (this.debugFlags.events) console.log(`handleGridUIChange received non-grid path: ${paramPath}. Ignoring.`);
       return; // Ignore paths not starting with gridParams keys
     }
 

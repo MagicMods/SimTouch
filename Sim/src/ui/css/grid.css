@@ -29,7 +29,7 @@
   margin-bottom: 0px !important;
 }
 
-#lil-gui-name-117 {
+#lil-gui-name-116 {
   /* display: none !important; */
   width: 81px !important;
 }
@@ -45,13 +45,13 @@
     display: none !important;
   } */
 
-  #lil-gui-name-118 {
+  #lil-gui-name-117 {
     display: none !important;
     width: 30px !important;
     pointer-events: none !important;
   }
 
-#lil-gui-name-118 + .widget input[type="text"] {
+#lil-gui-name-117 + .widget input[type="text"] {
   pointer-events: none !important;
   color: rgb(255, 255, 255) !important;
   font-weight: 700;

@@ -77,7 +77,7 @@ export class ParamUi extends BaseUi {
       .name("Time Step").onChange((value) => {
         eventBus.emit('uiControlChanged', { paramPath: 'simulation.timeStep', value });
       });
-    this.timeStepController.domElement.style.marginTop = "10px";
+    this.timeStepController.domElement.style.marginTop = "12px";
 
     this.timeScaleController = this.gui.add(this.main.simParams.simulation, "timeScale", 0, 4, 0.1)
       .name("SimSpeed").onChange((value) => {
@@ -86,8 +86,10 @@ export class ParamUi extends BaseUi {
       .onFinishChange((value) => {
         if (this.debug.param) console.log(`Animation speed: ${value}x`);
       });
+    this.timeScaleController.domElement.style.marginBottom = "12px";
 
-
+    this.ratioPicFlip = this.gui.add(this.main.simParams.simulation, "picFlipRatio", 0, 1, 0.01).name("PicFlipRatio")
+      .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'simulation.picFlipRatio', value }); });
 
   }
   //#endregion
@@ -100,6 +102,7 @@ export class ParamUi extends BaseUi {
     if (this.fadeOutSpeedController) targets["FadOutSpd"] = this.fadeOutSpeedController;
     if (this.timeStepController) targets["Time Step"] = this.timeStepController;
     if (this.timeScaleController) targets["SimSpeed"] = this.timeScaleController;
+    if (this.ratioPicFlip) targets["PicFlipRatio"] = this.ratioPicFlip;
 
     return targets;
   }
@@ -162,5 +165,6 @@ export class ParamUi extends BaseUi {
     safeUpdateDisplay(this.fadeOutSpeedController);
     safeUpdateDisplay(this.timeStepController);
     safeUpdateDisplay(this.timeScaleController);
+    safeUpdateDisplay(this.ratioPicFlip);
   }
 }

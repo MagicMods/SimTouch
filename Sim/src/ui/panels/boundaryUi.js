@@ -27,52 +27,23 @@ export class BoundaryUi extends BaseUi {
 
     // Add boundary mode control - BIND TO SIMPARAMS
 
-    this.boundaryModeController = this.gui
-      .add(this.main.simParams.boundary, "mode", { // Bind to simParams
-        Bounce: "BOUNCE",
-        Warp: "WARP",
-      })
-      .name("B-Mode")
-      .onChange((value) => {
-        eventBus.emit('uiControlChanged', { paramPath: 'boundary.mode', value });
-      });
+    this.boundaryModeController = this.gui.add(this.main.simParams.boundary, "mode", { Bounce: "BOUNCE", Warp: "WARP", }).name("B-Mode")
+      .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'boundary.mode', value }); });
+
     this.boundaryModeController.domElement.classList.add("full-width");
 
 
-    this.boundaryScaleController = this.gui
-      .add(this.main.simParams.boundary, "scale", 0.0, 1.2, 0.01)
-      .name("B-Scale")
-      .onChange((value) => {
-        eventBus.emit('uiControlChanged', { paramPath: 'boundary.scale', value });
-      });
+    this.boundaryScaleController = this.gui.add(this.main.simParams.boundary, "scale", 0.0, 1.2, 0.01).name("B-Scale")
+      .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'boundary.scale', value }); });
 
+    this.boundaryFrictionController = this.gui.add(this.main.simParams.boundary, "damping", 0.0, 1.0, 0.01).name("B-Friction")
+      .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'boundary.damping', value }); });
 
+    this.boundaryBounceController = this.gui.add(this.main.simParams.boundary, "restitution", 0.0, 1.0, 0.05).name("B-Bounce")
+      .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'boundary.restitution', value }); });
 
-    this.boundaryFrictionController = this.gui
-      .add(this.main.simParams.boundary, "damping", 0.0, 1.0, 0.01)
-      .name("B-Friction")
-      .onChange((value) => {
-        eventBus.emit('uiControlChanged', { paramPath: 'boundary.damping', value });
-      });
-
-
-
-    this.boundaryBounceController = this.gui
-      .add(this.main.simParams.boundary, "restitution", 0.0, 1.0, 0.05)
-      .name("B-Bounce")
-      .onChange((value) => {
-        eventBus.emit('uiControlChanged', { paramPath: 'boundary.restitution', value });
-      });
-
-
-
-    this.boundaryRepulsionController = this.gui
-      .add(this.main.simParams.boundary, "repulsion", 0.0, 1, 0.01)
-      .name("B-Repulse")
-      .onChange((value) => {
-        eventBus.emit('uiControlChanged', { paramPath: 'boundary.repulsion', value });
-      });
-
+    this.boundaryRepulsionController = this.gui.add(this.main.simParams.boundary, "repulsion", 0.0, 1, 0.01).name("B-Repulse")
+      .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'boundary.repulsion', value }); });
   }
 
   updateShapeControls() {
@@ -131,26 +102,18 @@ export class BoundaryUi extends BaseUi {
     const targets = {};
 
     // Common controls
-    if (this.boundaryModeController)
-      targets["B-Mode"] = this.boundaryModeController;
-    if (this.boundaryScaleController)
-      targets["B-Scale"] = this.boundaryScaleController;
-    if (this.boundaryRepulsionController)
-      targets["B-Repulse"] = this.boundaryRepulsionController;
-    if (this.boundaryFrictionController)
-      targets["B-Friction"] = this.boundaryFrictionController;
-    if (this.boundaryBounceController)
-      targets["B-Bounce"] = this.boundaryBounceController;
+    if (this.boundaryModeController) targets["B-Mode"] = this.boundaryModeController;
+    if (this.boundaryScaleController) targets["B-Scale"] = this.boundaryScaleController;
+    if (this.boundaryRepulsionController) targets["B-Repulse"] = this.boundaryRepulsionController;
+    if (this.boundaryFrictionController) targets["B-Friction"] = this.boundaryFrictionController;
+    if (this.boundaryBounceController) targets["B-Bounce"] = this.boundaryBounceController;
 
     // Type-specific controls - READ SHAPE FROM SIMPARAMS
     if (this.main.simParams.boundary.shape === this.boundaryTypes.CIRCULAR) {
-      if (this.boundarySizeController)
-        targets["Radius"] = this.boundarySizeController;
+      if (this.boundarySizeController) targets["Radius"] = this.boundarySizeController;
     } else {
-      if (this.boundaryWidthController)
-        targets["Width"] = this.boundaryWidthController;
-      if (this.boundaryHeightController)
-        targets["Height"] = this.boundaryHeightController;
+      if (this.boundaryWidthController) targets["Width"] = this.boundaryWidthController;
+      if (this.boundaryHeightController) targets["Height"] = this.boundaryHeightController;
     }
 
     return targets;

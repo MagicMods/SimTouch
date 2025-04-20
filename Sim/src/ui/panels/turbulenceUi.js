@@ -341,10 +341,6 @@ export class TurbulenceUi extends BaseUi {
     this.turbulenceSeparationController = patternControlsFolder.add(turbulenceParams, "separation", 0, 1).name("T-Quantize")
       .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'turbulence.separation', value }));
 
-    // Bind domainWarp (distortionScale) to simParams
-    this.turbulenceDomainWarpController = patternControlsFolder.add(turbulenceParams, "domainWarp", 0, 1).name("T-Distort")
-      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'turbulence.domainWarp', value }));
-
     // Bind patternFrequency to simParams
     this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulenceParams, "patternFrequency", 0.1, 10).name("T-Freq")
       .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'turbulence.patternFrequency', value }));
@@ -497,32 +493,40 @@ export class TurbulenceUi extends BaseUi {
 
     // Domain warp control
     this.turbulenceDomainWarpController = patternControlsFolder.add(turbulenceParams, "domainWarp", 0, 1)
-      .name("T-DomWarp");
+      .name("T-DomWarp")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'turbulence.domainWarp', value }));
 
     // Add domain warp speed control
     this.turbulenceDomainWarpSpeedController = patternControlsFolder.add(turbulenceParams, "domainWarpSpeed", 0, 2, 0.1)
-      .name("T-DomWarpSp");
+      .name("T-DomWarpSp")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'turbulence.domainWarpSpeed', value }));
 
     // Add symmetry amount control
     this.turbulenceSymmetryController = patternControlsFolder.add(turbulenceParams, "symmetryAmount", 0, 1, 0.01)
-      .name("T-Symmetry");
+      .name("T-Symmetry")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'turbulence.symmetryAmount', value }));
 
     // Pattern frequency control (always visible)
     this.turbulencePatternFrequencyController = patternControlsFolder.add(turbulenceParams, "patternFrequency", 0.01, 4, 0.01)
-      .name("T-Freq");
+      .name("T-Freq")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'turbulence.patternFrequency', value }));
 
     // Add static phase control
     this.turbulenceStaticPhaseController = patternControlsFolder.add(turbulenceParams, "phase", 0, 1, 0.01)
-      .name("T-Phase");
+      .name("T-Phase")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'turbulence.phase', value }));
 
     // Add phase speed control
     this.turbulencePhaseController = patternControlsFolder.add(turbulenceParams, "phaseSpeed", -1, 1, 0.1)
-      .name("T-PhaseSp");
+      .name("T-PhaseSp")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'turbulence.phaseSpeed', value }));
 
     // Add blur control
     this.turbulenceBlurController = patternControlsFolder.add(turbulenceParams, "blurAmount", 0, 2, 0.01)
       .name("T-Blur")
-      .onChange(() => {
+      .onChange((value) => {
+        // ADDED: Emit event
+        eventBus.emit('uiControlChanged', { paramPath: 'turbulence.blurAmount', value });
         // Refresh preview when blur amount changes
         if (this.previewManager) {
           this.previewManager.refreshSelectedPreview();

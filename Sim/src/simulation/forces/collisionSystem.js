@@ -41,6 +41,8 @@ export class CollisionSystem {
       this.gridSizeCollision = simParams.collision.gridSizeCollision ?? this.gridSizeCollision;
       this.repulsion = simParams.collision.repulsion ?? this.repulsion;
       this.particleRestitution = simParams.collision.particleRestitution ?? this.particleRestitution;
+      this.particleRadius = simParams.collision.particleRadius ?? this.particleRadius;
+      this.damping = simParams.collision.damping ?? this.damping;
 
       // Re-initialize grid if gridSize has changed
       if (this.gridSizeCollision !== previousGridSize && typeof this.initializeGrid === 'function') {

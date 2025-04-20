@@ -295,6 +295,14 @@ export class TurbulenceField {
       this.separation = turbulenceParams.separation ?? this.separation;
       this.domainWarp = turbulenceParams.domainWarp ?? this.domainWarp;
 
+      // ADDED: Update missing parameters
+      this.domainWarpSpeed = turbulenceParams.domainWarpSpeed ?? this.domainWarpSpeed;
+      this.symmetryAmount = turbulenceParams.symmetryAmount ?? this.symmetryAmount;
+      this.phase = turbulenceParams.phase ?? this.phase;
+      this.phaseSpeed = turbulenceParams.phaseSpeed ?? this.phaseSpeed;
+      this.blurAmount = turbulenceParams.blurAmount ?? this.blurAmount;
+      // END ADDED
+
       // Handle bias acceleration mapped from display properties
       if (turbulenceParams._displayBiasAccelX !== undefined) {
         this._biasAccelX = -turbulenceParams._displayBiasAccelX; // Invert back for internal use

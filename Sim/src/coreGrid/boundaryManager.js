@@ -172,7 +172,7 @@ export class BoundaryManager {
 
     // --- Update Physics Boundary (Normalized Coordinates - Initial Simple Update) ---
     // Read scale from internal simParams copy
-    const physicsBoundaryScale = this.simParams?.boundary?.scale ?? 1.1; // Use dynamic scale, default 1.1
+    const physicsBoundaryScale = this.simParams?.boundary?.scale ?? 1.0; // Use dynamic scale, default 1.1
 
     // Apply scale to dimensions
     if (this.physicsBoundary instanceof CircularBoundary) {

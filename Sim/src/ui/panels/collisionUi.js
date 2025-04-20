@@ -20,19 +20,14 @@ export class CollisionUi extends BaseUi {
     this.collisionRepulsionController = this.gui.add(this.main.simParams.collision, "repulsion", 0, 4, 0.01).name("C-Repulse")
       .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'collision.repulsion', value }); });
 
-    this.collisionGridSizeController = this.gui.add(this.main.simParams.collision, "gridSizeCollision", 8, 128, 1).name("C-GridSizeColl")
-      .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'collision.gridSizeCollision', value }); });
-
-    this.collisionDampingController = this.gui.add(this.main.simParams.collision, "damping", 8, 128, 1).name("C-Damping")
-      .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'collision.damping', value }); });
-
     this.collisionBounceController = this.gui.add(this.main.simParams.collision, "particleRestitution", 0.0, 1.0, 0.05).name("C-Bounce")
       .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'collision.particleRestitution', value }); });
 
+    this.collisionGridSizeController = this.gui.add(this.main.simParams.collision, "gridSizeCollision", 8, 128, 1).name("C-GridRez")
+      .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'collision.gridSizeCollision', value }); });
+
     this.restDensityController = this.gui.add(this.main.simParams.simulation, "restDensity", 0, 10, 0.1).name("C-RestDens")
-      .onChange((value) => {
-        eventBus.emit('uiControlChanged', { paramPath: 'simulation.restDensity', value });
-      });
+      .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'simulation.restDensity', value }); });
 
 
 
@@ -41,8 +36,7 @@ export class CollisionUi extends BaseUi {
   getControlTargets() {
     const targets = {};
     if (this.collisionRepulsionController) targets["C-Repulse"] = this.collisionRepulsionController;
-    if (this.collisionGridSizeController) targets["C-GridSizeColl"] = this.collisionGridSizeController;
-    if (this.collisionDampingController) targets["C-Damping"] = this.collisionDampingController;
+    if (this.collisionGridSizeController) targets["C-GridRez"] = this.collisionGridSizeController;
     if (this.collisionBounceController) targets["C-Bounce"] = this.collisionBounceController;
     if (this.restDensityController) targets["C-RestDens"] = this.restDensityController;
 
@@ -108,6 +102,5 @@ export class CollisionUi extends BaseUi {
     safeUpdateDisplay(this.collisionRepulsionController);
     safeUpdateDisplay(this.collisionBounceController);
     safeUpdateDisplay(this.restDensityController);
-    safeUpdateDisplay(this.collisionDampingController);
   }
 }

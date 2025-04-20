@@ -518,7 +518,7 @@ export class ParticleSystem {
 
 
       // Update FluidFLIP if restDensity changed
-      if (this.fluid && simParams.simulation.restDensity !== undefined) {
+      if (this.fluid && simParams.collision.restDensity !== undefined) {
         this.fluid.setParameters(this.restDensity);
       }
     }
