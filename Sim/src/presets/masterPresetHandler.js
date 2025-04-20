@@ -1,9 +1,9 @@
 import { PresetBaseHandler } from "./presetBaseHandler.js";
 
 export class MasterPresetHandler extends PresetBaseHandler {
-  constructor(storageKey, defaultPresets, protectedPresets, debugFlag) {
+  constructor(storageKey, defaultPresets, protectedPresets, debugFlags) {
     super(storageKey, defaultPresets, protectedPresets);
-    this.debugFlag = debugFlag;
+    this.db = debugFlags;
     this.uiComponents = {};
     this.initialState = null;
   }
@@ -21,23 +21,23 @@ export class MasterPresetHandler extends PresetBaseHandler {
 
   captureInitialState() {
     if (this.getPreset("Default")) return; // Don't overwrite if Default exists
-    if (this.debugFlag) console.log("Capturing initial UI state for Default preset");
+    if (this.db.presets) console.log("Capturing initial UI state for Default preset");
     const initialState = {};
     for (const key of Object.keys(this.uiComponents)) {
       const uiComponent = this.uiComponents[key];
       if (uiComponent && typeof uiComponent.getData === "function") {
         initialState[key] = uiComponent.getData();
-        if (this.debugFlag) console.log(`Captured initial state from ${key}`);
+        if (this.db.presets) console.log(`Captured initial state from ${key}`);
       } else {
         console.warn(`Could not capture initial state from ${key}`);
       }
     }
     this.savePreset("Default", initialState);
-    if (this.debugFlag) console.log("Initial state captured and saved as Default preset");
+    if (this.db.presets) console.log("Initial state captured and saved as Default preset");
   }
 
   applyDefaultPreset() {
-    if (this.debugFlag) console.log("Applying Default master preset");
+    if (this.db.presets) console.log("Applying Default master preset");
     let success = true;
 
     try {
@@ -51,7 +51,7 @@ export class MasterPresetHandler extends PresetBaseHandler {
               success = false;
             }
           } catch (error) {
-            console.error(`Error applying initial state to ${key}:`, error);
+            console.error(`Caught error applying initial state to component: ${key}`);
             success = false;
           }
         });
@@ -107,13 +107,13 @@ export class MasterPresetHandler extends PresetBaseHandler {
 
   applyPreset(presetName) {
     if (presetName === "Default") {
-      if (this.debugFlag) console.log("Applying Default master preset");
+      if (this.db.presets) console.log("Applying Default master preset");
       // Special handling for Default: Reload initial state
       const defaultState = this.getPreset("Default");
       if (defaultState) {
         // Add any specific reset logic here
         // Example: Reset simulation parameters or clear dynamic elements
-        if (this.debugFlag) console.log("Resetting critical components to defaults");
+        if (this.db.presets) console.log("Resetting critical components to defaults");
         // TODO: Define what needs explicit resetting
 
         // After reset, apply the potentially modified 'Default' state
@@ -128,7 +128,7 @@ export class MasterPresetHandler extends PresetBaseHandler {
                 success = false;
               }
             } catch (error) {
-              console.error(`Error applying initial state to ${key}:`, error);
+              console.error(`Caught error applying initial state to component: ${key}`);
               success = false;
             }
           });
@@ -139,20 +139,20 @@ export class MasterPresetHandler extends PresetBaseHandler {
 
         if (success) {
           this.selectedPreset = "Default";
-          if (this.debugFlag) console.log(`Successfully applied master preset: ${presetName}`);
+          if (this.db.presets) console.log(`Successfully applied master preset: ${presetName}`);
         }
       }
       return success;
     }
 
-    if (this.debugFlag) console.log("Loading Default master preset");
+    if (this.db.presets) console.log("Loading Default master preset");
     const preset = this.getPreset(presetName);
     if (!preset) {
       console.warn(`Preset not found: ${presetName}`);
       return false;
     }
 
-    if (this.debugFlag) console.log(`Applying master preset: ${presetName}`);
+    if (this.db.presets) console.log(`Applying master preset: ${presetName}`);
     let allSuccess = true;
 
     // Apply each part of the master preset
@@ -169,10 +169,10 @@ export class MasterPresetHandler extends PresetBaseHandler {
       const uiComponent = this.uiComponents[key];
       if (uiComponent && preset[key] && typeof uiComponent.setData === "function") {
         try {
-          if (this.debugFlag) console.log(`Applying preset to ${key}`);
+          if (this.db.presets) console.log(`Applying preset to ${key}`);
           const success = uiComponent.setData(preset[key]);
           if (!success) {
-            console.error(`Error applying preset to ${key}:`, error);
+            // console.error(`Failed applying preset data to component: ${key}`);
             allSuccess = false;
           }
         } catch (error) {
@@ -185,7 +185,7 @@ export class MasterPresetHandler extends PresetBaseHandler {
     // Special handling for modulator types using dedicated presets
     if (this.uiComponents.pulseModUi && preset.pulseModUi) {
       const pulsePresetData = preset.pulseModUi;
-      if (this.debugFlag) console.log("Applying pulse modulation preset");
+      if (this.db.presets) console.log("Applying pulse modulation preset");
       if (this.uiComponents.pulseModUi && typeof this.uiComponents.pulseModUi.setData === 'function') {
         this.uiComponents.pulseModUi.setData(pulsePresetData);
       }
@@ -193,7 +193,7 @@ export class MasterPresetHandler extends PresetBaseHandler {
 
     if (this.uiComponents.inputModUi && preset.inputModUi) {
       const inputPresetData = preset.inputModUi;
-      if (this.debugFlag) console.log("Applying input modulation preset");
+      if (this.db.presets) console.log("Applying input modulation preset");
       if (this.uiComponents.inputModUi && typeof this.uiComponents.inputModUi.setData === 'function') {
         this.uiComponents.inputModUi.setData(inputPresetData);
       }
@@ -201,7 +201,7 @@ export class MasterPresetHandler extends PresetBaseHandler {
 
     if (allSuccess) {
       this.selectedPreset = presetName;
-      if (this.debugFlag) console.log(`Successfully applied master preset: ${presetName}`);
+      if (this.db.presets) console.log(`Successfully applied master preset: ${presetName}`);
     }
 
     return allSuccess;
@@ -220,7 +220,7 @@ export class MasterPresetHandler extends PresetBaseHandler {
         if (uiComponent && typeof uiComponent.getData === "function") {
           try {
             data[key] = uiComponent.getData();
-            if (this.debugFlag) console.log(`Saved data from ${key}`);
+            if (this.db.presets) console.log(`Saved data from ${key}`);
           } catch (error) {
             console.error(`Error getting data from ${key}:`, error);
           }

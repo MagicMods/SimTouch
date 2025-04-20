@@ -150,7 +150,7 @@ export class UiManager {
     this.randomizerUi.initWithPresetManager(this.presetManager);
 
     // Finalize MasterPresetHandler initialization after all handlers are set
-    this.presetManager.handlers[PresetManager.TYPES.MASTER]?.finalizeInitialization();
+    this.presetManager.handlers[PresetManager.TYPES.MASTER].finalizeInitialization();
   }
 
   // Update method for UiManager
