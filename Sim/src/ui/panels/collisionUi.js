@@ -23,6 +23,8 @@ export class CollisionUi extends BaseUi {
     this.collisionBounceController = this.gui.add(this.main.simParams.collision, "particleRestitution", 0.0, 1.0, 0.05).name("C-Bounce")
       .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'collision.particleRestitution', value }); });
 
+    this.collisionBounceController.domElement.style.marginBottom = "12px";
+
     this.collisionGridSizeController = this.gui.add(this.main.simParams.collision, "gridSizeCollision", 8, 128, 1).name("C-GridRez")
       .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'collision.gridSizeCollision', value }); });
 
