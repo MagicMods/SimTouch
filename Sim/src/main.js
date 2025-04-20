@@ -6,8 +6,6 @@ import { VoronoiField } from "./simulation/forces/voronoiField.js";
 // CoreGrid   
 import { DimensionManager } from "./coreGrid/dimensionManager.js";
 import { BoundaryManager } from "./coreGrid/boundaryManager.js";
-import { CircularBoundary } from "./simulation/boundary/circularBoundary.js";
-import { RectangularBoundary } from "./simulation/boundary/rectangularBoundary.js";
 // UI
 import { UiManager } from "./ui/uiManager.js";
 // Input
@@ -20,7 +18,6 @@ import { MicInputForces } from "./simulation/forces/micForces.js";
 import { GridGenRenderer } from "./renderer/gridGenRenderer.js";
 import { BoundaryRenderer } from "./renderer/boundaryRenderer.js";
 import { ParticleRenderer } from "./renderer/particleRenderer.js";
-import { GridRenderModes } from "./renderer/gridRenderModes.js";
 // Network
 import { ModulatorManager } from "./input/modulatorManager.js";
 import { socketManager } from "./network/socketManager.js";
@@ -44,7 +41,7 @@ export class Main {
         paused: false,
         timeStep: 1 / 60,
         timeScale: 1.0,
-        velocityDamping: 0.98,
+        velocityDamping: 1.0,
         maxVelocity: 1,
         picFlipRatio: 0,
         particleCount: 500,

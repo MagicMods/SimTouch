@@ -818,10 +818,10 @@ export class TurbulenceField {
         noise *= this.amplitude;
       }
 
-      // 4. Apply contrast and separation as post-processing
-      noise = this.applyContrast((noise + 1) * 0.5, time);
-      // Convert back from [0,1] to [-1,1] range
-      noise = noise * 2 - 1;
+      // // 4. Apply contrast and separation as post-processing
+      // noise = this.applyContrast((noise + 1) * 0.5, time);
+      // // Convert back from [0,1] to [-1,1] range
+      // noise = noise * 2 - 1;
 
       // 5. Apply blur if enabled and requested
       if (applyBlur && this.blurAmount > 0) {

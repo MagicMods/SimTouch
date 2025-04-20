@@ -99,7 +99,7 @@ export class PresetManager {
   }
 
   createPresetControls(presetType, parentElement, options = {}) {
-    if (this.debugFlags) console.log(`Creating preset controls for type: ${presetType}`, this.handlers[presetType]);
+    if (this.debugFlags.presets) console.log(`Creating preset controls for type: ${presetType}`, this.handlers[presetType]);
     if (!parentElement || !presetType || !this.handlers[presetType]) {
       console.error(`Cannot create preset controls: Invalid parameters`);
       return null;
@@ -128,7 +128,7 @@ export class PresetManager {
 
     presetSelect.addEventListener("change", (e) => {
       const value = e.target.value;
-      if (this.debugFlags) console.log(`Preset selector for ${presetType} changed to:`, value);
+      if (this.debugFlags.presets) console.log(`Preset selector for ${presetType} changed to:`, value);
       this.loadPreset(presetType, value);
     });
 
@@ -182,25 +182,25 @@ export class PresetManager {
   }
 
   _handleSave(presetType) {
-    if (this.debugFlags) console.log(`Save requested for presetType: "${presetType}"`,
+    if (this.debugFlags.presets) console.log(`Save requested for presetType: "${presetType}"`,
       `Handler:`, this.handlers[presetType] ? "exists" : "missing");
 
     // Get current preset name to pre-populate the prompt
     const currentPreset = this.getSelectedPreset(presetType);
-    if (this.debugFlags) console.log(`Current preset for ${presetType}:`, currentPreset);
+    if (this.debugFlags.presets) console.log(`Current preset for ${presetType}:`, currentPreset);
 
     // Only use the current preset name as default if it's not "Default"
     const defaultValue = (currentPreset && currentPreset !== "Default") ? currentPreset : "";
     const presetName = prompt(`Enter ${presetType} preset name:`, defaultValue);
 
-    if (this.debugFlags) console.log(`User entered name: "${presetName}"`);
+    if (this.debugFlags.presets) console.log(`User entered name: "${presetName}"`);
     if (!presetName) return;
 
     const uiComponent = this.getUIComponent(presetType);
-    if (this.debugFlags) console.log(`UI component for ${presetType}:`, uiComponent ? "found" : "missing");
+    if (this.debugFlags.presets) console.log(`UI component for ${presetType}:`, uiComponent ? "found" : "missing");
 
     const success = this.savePreset(presetType, presetName);
-    if (this.debugFlags) console.log(`Save result for ${presetType} "${presetName}": ${success}`);
+    if (this.debugFlags.presets) console.log(`Save result for ${presetType} "${presetName}": ${success}`);
 
     if (success) {
       this._updateAllPresetDropdowns(presetType);
@@ -308,7 +308,7 @@ export class PresetManager {
   }
 
   loadPreset(type, presetName) {
-    if (this.debugFlags) console.log(`Loading ${type} preset: ${presetName}`);
+    if (this.debugFlags.presets) console.log(`Loading ${type} preset: ${presetName}`);
     const handler = this.getHandler(type);
     if (!handler) {
       console.warn(`No handler found for preset type ${type}`);

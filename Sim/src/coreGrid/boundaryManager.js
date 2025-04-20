@@ -29,7 +29,7 @@ export class BoundaryManager {
 
     // Subscribe to SIM parameter updates, not grid updates
     eventBus.on('simParamsUpdated', ({ simParams }) => {
-      if (this.db.dimensions) console.log("BoundaryManager received simParamsUpdated event.");
+      if (this.db.boundary) console.log("BoundaryManager received simParamsUpdated event.");
       const dimensions = this.dimensionManager?.getDimensions();
       if (!dimensions) {
         console.error("BoundaryManager: Could not get dimensions to process simParams update.");
@@ -39,7 +39,7 @@ export class BoundaryManager {
     });
 
     eventBus.on('gridParamsUpdated', ({ gridParams, dimensions }) => {
-      if (this.db.dimensions) console.log("BoundaryManager received gridParamsUpdated event."); // Keep verbose logs off by default
+      if (this.db.boundary) console.log("BoundaryManager received gridParamsUpdated event."); // Keep verbose logs off by default
       if (!gridParams || !dimensions) {
         console.error("BoundaryManager: gridParamsUpdated event missing gridParams or dimensions.");
         return;
@@ -51,7 +51,7 @@ export class BoundaryManager {
 
   createBoundaries(params, dimensions) {
     const shape = params?.screen?.shape;
-    if (this.db.dimensions) console.log('BoundaryManager.createBoundaries received shape:', shape);
+    if (this.db.boundary) console.log('BoundaryManager.createBoundaries received shape:', shape);
     if (!shape) {
       console.error(
         "BoundaryManager: Cannot create boundaries, params.screen.shape is missing."
@@ -65,7 +65,7 @@ export class BoundaryManager {
       return;
     }
 
-    if (this.db.dimensions) console.log(`BoundaryManager: Creating boundaries for shape: ${shape}`);
+    if (this.db.boundary) console.log(`BoundaryManager: Creating boundaries for shape: ${shape}`);
 
     // Create Shape Boundary (coreGrid)
     if (shape === "circular") {
@@ -84,8 +84,8 @@ export class BoundaryManager {
 
 
     if (this.shapeBoundary && this.physicsBoundary) {
-      if (this.db.dimensions) console.log('BoundaryManager.createBoundaries created boundary of type:', this.physicsBoundary?.constructor?.name);
-      if (this.db.dimensions) console.log('BoundaryManager: Successfully created ${shape} Shape and Physics boundaries.');
+      if (this.db.boundary) console.log('BoundaryManager.createBoundaries created boundary of type:', this.physicsBoundary?.constructor?.name);
+      if (this.db.boundary) console.log('BoundaryManager: Successfully created ${shape} Shape and Physics boundaries.');
       this._updateBoundaries(dimensions);
       eventBus.emit('physicsBoundaryRecreated', { physicsBoundary: this.physicsBoundary });
     } else {
@@ -99,8 +99,8 @@ export class BoundaryManager {
     const oldShape = this.params?.screen?.shape;
     const newShape = params?.screen?.shape;
 
-    if (this.db.dimensions) console.log(`BoundaryManager.update: Comparing shapes - Old: '${oldShape}', New: '${newShape}'`);
-    if (this.db.dimensions) console.log('[db] BoundaryManager.update received newShape:', newShape);
+    if (this.db.boundary) console.log(`BoundaryManager.update: Comparing shapes - Old: '${oldShape}', New: '${newShape}'`);
+    if (this.db.boundary) console.log('[db] BoundaryManager.update received newShape:', newShape);
 
     if (!newShape) {
       console.error("BoundaryManager.update: params.screen.shape is missing.");
@@ -112,13 +112,13 @@ export class BoundaryManager {
     }
 
     if (oldShape !== newShape) {
-      if (this.db.dimensions) console.info(
+      if (this.db.boundary) console.info(
         `BoundaryManager: Shape changed from ${oldShape} to ${newShape}. Recreating boundaries.`
       );
-      if (this.db.dimensions) console.log('[db] BoundaryManager.update entering createBoundaries due to shape change.');
+      if (this.db.boundary) console.log('[db] BoundaryManager.update entering createBoundaries due to shape change.');
       this.createBoundaries(params, dimensions);
     } else {
-      if (this.db.dimensions) console.log(
+      if (this.db.boundary) console.log(
         "BoundaryManager: Shape unchanged, updating existing boundaries."
       );
       this._updateBoundaries(dimensions);
@@ -159,13 +159,13 @@ export class BoundaryManager {
       const baseRadius =
         Math.min(dimensions.renderWidth, dimensions.renderHeight) / 2;
       this.shapeBoundary.setRadius(baseRadius); // Let scale handle the final size
-      if (this.db.dimensions) console.log(
+      if (this.db.boundary) console.log(
         `BoundaryManager: Updated Circular Shape Boundary - Center: (${this.shapeBoundary.centerX}, ${this.shapeBoundary.centerY}), Radius: ${this.shapeBoundary.radius}, Scale: ${this.shapeBoundary.scale}`
       );
     } else if (this.shapeBoundary instanceof RectangularBoundaryShape) {
       this.shapeBoundary.width = dimensions.renderWidth;
       this.shapeBoundary.height = dimensions.renderHeight;
-      if (this.db.dimensions) console.log(
+      if (this.db.boundary) console.log(
         `BoundaryManager: Updated Rectangular Shape Boundary - Center: (${this.shapeBoundary.centerX}, ${this.shapeBoundary.centerY}), W: ${this.shapeBoundary.width}, H: ${this.shapeBoundary.height}, Scale: ${this.shapeBoundary.scale}`
       );
     }
@@ -214,10 +214,10 @@ export class BoundaryManager {
       this.physicsBoundary.maxX = this.physicsBoundary.centerX + this.physicsBoundary.halfWidth;
       this.physicsBoundary.minY = this.physicsBoundary.centerY - this.physicsBoundary.halfHeight;
       this.physicsBoundary.maxY = this.physicsBoundary.centerY + this.physicsBoundary.halfHeight;
-      if (this.db.dimensions) console.log(`BoundaryManager - Rect Set: w=${this.physicsBoundary.width.toFixed(3)}, h=${this.physicsBoundary.height.toFixed(3)}, minX=${this.physicsBoundary.minX.toFixed(3)}, maxX=${this.physicsBoundary.maxX.toFixed(3)}, minY=${this.physicsBoundary.minY.toFixed(3)}, maxY=${this.physicsBoundary.maxY.toFixed(3)}`);
+      if (this.db.boundary) console.log(`BoundaryManager - Rect Set: w=${this.physicsBoundary.width.toFixed(3)}, h=${this.physicsBoundary.height.toFixed(3)}, minX=${this.physicsBoundary.minX.toFixed(3)}, maxX=${this.physicsBoundary.maxX.toFixed(3)}, minY=${this.physicsBoundary.minY.toFixed(3)}, maxY=${this.physicsBoundary.maxY.toFixed(3)}`);
     }
 
-    if (this.db.dimensions) console.log(
+    if (this.db.boundary) console.log(
       `BoundaryManager: Updated Physics Boundary type: ${this.physicsBoundary.getBoundaryType()}. Applied scale: ${physicsBoundaryScale}`
     );
   }
@@ -237,23 +237,19 @@ export class BoundaryManager {
       return;
     }
 
-    this.physicsBoundary.cBoundaryRestitution =
-      this.simParams.boundary.restitution ?? this.physicsBoundary.cBoundaryRestitution;
-    this.physicsBoundary.damping =
-      this.simParams.boundary.damping ?? this.physicsBoundary.damping;
-    this.physicsBoundary.boundaryRepulsion =
-      this.simParams.boundary.repulsion ?? this.physicsBoundary.boundaryRepulsion;
-    this.physicsBoundary.mode =
-      this.simParams.boundary.mode ?? this.physicsBoundary.mode;
+    this.physicsBoundary.cBoundaryRestitution = this.simParams.boundary.restitution ?? this.physicsBoundary.cBoundaryRestitution;
+    this.physicsBoundary.damping = this.simParams.boundary.damping ?? this.physicsBoundary.damping;
+    this.physicsBoundary.boundaryRepulsion = this.simParams.boundary.repulsion ?? this.physicsBoundary.boundaryRepulsion;
+    this.physicsBoundary.mode = this.simParams.boundary.mode ?? this.physicsBoundary.mode;
 
-    if (this.db.bouncray) console.log( // Keep verbose logs off by default
+    if (this.db.boundary) console.log( // Keep verbose logs off by default
       `BoundaryManager: Applied physics properties: Repulsion=${this.physicsBoundary.boundaryRepulsion?.toFixed(2)}, Damping=${this.physicsBoundary.damping?.toFixed(2)}, Restitution=${this.physicsBoundary.cBoundaryRestitution?.toFixed(2)}, Mode=${this.physicsBoundary.mode}`
     );
   }
 
   // New method to handle simParam updates specifically affecting the boundary
   updateSimParams(simParams, dimensions) {
-    if (this.db.dimensions) {
+    if (this.db.boundary) {
       console.log("BoundaryManager: Received simParams update:", simParams);
       console.log("BoundaryManager: Current dimensions for update:", dimensions);
     }
@@ -276,7 +272,7 @@ export class BoundaryManager {
     const scaleChanged = newScale !== this.previousScale;
 
     if (scaleChanged || this.previousScale === null) {
-      // if (this.db.dimensions ) console.log(`BoundaryManager: Scale changed (or initial update). Old: ${this.previousScale}, New: ${newScale}. Recalculating boundaries.`);
+      // if (this.db.boundary ) console.log(`BoundaryManager: Scale changed (or initial update). Old: ${this.previousScale}, New: ${newScale}. Recalculating boundaries.`);
       this._updateBoundaries(dimensions); // Call geometry update logic ONLY if scale changed
       this.previousScale = newScale; // Update tracked scale
     }
