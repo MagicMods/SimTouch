@@ -638,48 +638,38 @@ export class TurbulenceUi extends BaseUi {
   getControlTargets() {
     const targets = {};
     const turbulence = this.main.turbulenceField;
+    // Use simParams as the source of truth for button states
+    const turbulenceParams = this.main.simParams.turbulence;
 
     // Add toggle button wrappers that mimic controller interface
-    if (turbulence) {
+    if (turbulence && turbulenceParams) {
       // Position toggle wrapper
       targets["T-AfPosition"] = {
-        getValue: () => turbulence.affectPosition,
+        getValue: () => turbulenceParams.affectPosition, // Read from simParams
         setValue: (value) => {
-          const boolValue = Boolean(value); // Ensure boolean for consistency
-          if (this.positionButton) {
-            this.positionButton.classList.toggle("active", boolValue);
-          }
-          // ADDED: Emit event
-          eventBus.emit('uiControlChanged', { paramPath: 'turbulence.affectPosition', value: boolValue });
+          this.positionButton.classList.toggle("active", value);
+          eventBus.emit('uiControlChanged', { paramPath: 'turbulence.affectPosition', value: value });
         }
       };
 
       targets["T-AfScaleF"] = {
-        getValue: () => turbulence.scaleField,
+        getValue: () => turbulenceParams.scaleField, // Read from simParams
         setValue: (value) => {
-          const boolValue = Boolean(value); // Ensure boolean
-          if (this.fieldButton) {
-            this.fieldButton.classList.toggle("active", boolValue);
-          }
-          // ADDED: Emit event
-          eventBus.emit('uiControlChanged', { paramPath: 'turbulence.scaleField', value: boolValue });
+          this.fieldButton.classList.toggle("active", value);
+          eventBus.emit('uiControlChanged', { paramPath: 'turbulence.scaleField', value: value });
         }
       };
 
       // Scale toggle wrapper
       targets["T-AfScale"] = {
-        getValue: () => turbulence.affectScale,
+        getValue: () => turbulenceParams.affectScale, // Read from simParams
         setValue: (value) => {
-          const boolValue = Boolean(value); // Ensure boolean
-          if (this.scaleButton) {
-            this.scaleButton.classList.toggle("active", boolValue);
-          }
-          // ADDED: Emit event
-          eventBus.emit('uiControlChanged', { paramPath: 'turbulence.affectScale', value: boolValue });
+          this.scaleButton.classList.toggle("active", value);
+          eventBus.emit('uiControlChanged', { paramPath: 'turbulence.affectScale', value: value });
 
           // Keep existing folder visibility logic
           if (this.scaleRangeFolder) {
-            if (boolValue) { // Use consistent boolean value
+            if (value) { // Use consistent boolean value
               this.scaleRangeFolder.open();
             } else {
               this.scaleRangeFolder.close();
@@ -725,11 +715,13 @@ export class TurbulenceUi extends BaseUi {
   }
 
   updateControllerDisplays() {
-    const turbulence = this.main.turbulenceField;
-    if (turbulence) {
-      if (this.positionButton) { this.positionButton.classList.toggle("active", turbulence.affectPosition); }
-      if (this.fieldButton) { this.fieldButton.classList.toggle("active", turbulence.scaleField); }
-      if (this.scaleButton) { this.scaleButton.classList.toggle("active", turbulence.affectScale); }
+    const turbulence = this.main.turbulenceField; // Keep for other controllers if needed
+    const turbulenceParams = this.main.simParams.turbulence; // Use simParams for button states
+
+    if (turbulenceParams) { // Check if simParams.turbulence exists
+      // if (this.positionButton) { this.positionButton.classList.toggle("active", turbulenceParams.affectPosition); } // Read from simParams - REMOVED
+      // if (this.fieldButton) { this.fieldButton.classList.toggle("active", turbulenceParams.scaleField); } // Read from simParams - REMOVED
+      // if (this.scaleButton) { this.scaleButton.classList.toggle("active", turbulenceParams.affectScale); } // Read from simParams - REMOVED
     }
 
     const safeUpdateDisplay = (controller) => {
