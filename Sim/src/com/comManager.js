@@ -17,6 +17,7 @@ class ComManager {
         this.serial = serialManager;
         this.activeChannel = 'network'; // Default to network
         this.db = null;
+        this.shouldSendData = false;
 
         // Listen for channel changes from UI
         eventBus.on('comChannelChanged', this.setActiveChannel.bind(this));
@@ -32,7 +33,13 @@ class ComManager {
     // Make method async to await disconnect
     async setActiveChannel(channel) {
         // Validate channel
-        if (channel !== 'network' && channel !== 'serial') {
+        if (channel == 'sendData') {
+            this.shouldSendData = true;
+            return;
+        } else if (channel == 'stopData') {
+            this.shouldSendData = false;
+            return;
+        } else if (channel !== 'network' && channel !== 'serial') {
             console.warn(`ComManager: Invalid channel specified: ${channel}`);
             return;
         }
@@ -68,9 +75,20 @@ class ComManager {
                 if (this.db?.com) console.log("ComManager: Disconnecting Socket...");
                 this.socket.disconnect();
             }
-            // Note: Serial connection is triggered by user selecting a port in comUi,
+            // Note: Serial connection is triggered by selecting a port in comUi,
             // which calls serialManager.connect() directly.
             if (this.db?.com) console.log("ComManager: Switched to Serial channel. Waiting for user port selection/connection.");
+        }
+    }
+
+    sendData(value) {
+        if (this.shouldSendData) {
+            if (this.db?.comSR) console.log(`ComManager: Sending Data (${this.activeChannel}) = ${value}`);
+            if (this.activeChannel === 'network') {
+                return this.socket.sendData(value);
+            } else if (this.activeChannel === 'serial') {
+                return this.serial.sendData(value);
+            }
         }
     }
 
@@ -106,7 +124,6 @@ class ComManager {
         return false;
     }
 
-    // Optional: Method to check the active channel's connection status
     isConnected() {
         if (this.activeChannel === 'network') {
             return this.socket.isConnected;

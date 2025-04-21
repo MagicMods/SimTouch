@@ -1,6 +1,5 @@
 import { BaseUi } from "../baseUi.js";
 import { NetworkConfig } from "../../com/udp/networkConfig.js";
-import { SerialConfig } from "../../com/serial/serialConfig.js";
 import { socketManager } from "../../com/udp/socketManager.js";
 import { serialManager } from "../../com/serial/serialManager.js";
 import { eventBus } from '../../util/eventManager.js';
@@ -24,7 +23,7 @@ export class ComUi extends BaseUi {
 
     // Track folder states
     this.isNetworkFolderOpen = true;
-    this.isSerialFolderOpen = true;
+    this.isSerialFolderOpen = false;
 
     this.networkFolder = this.gui.addFolder("UDP");
     this.serialFolder = this.gui.addFolder("Serial");
@@ -48,12 +47,29 @@ export class ComUi extends BaseUi {
     this.networkFolder.open();
     this.serialFolder.close();
 
+    this.sendData = false;
+
+    const sendDataButton = document.createElement("button");
+    sendDataButton.textContent = "SendData";
+    sendDataButton.className = "toggle-button-big";
+    sendDataButton.addEventListener("click", () => {
+      this.sendData = !this.sendData;
+      // Update button state immediately for responsiveness
+      sendDataButton.classList.toggle("active", this.sendData);
+      // Emit event
+      eventBus.emit('comChannelChanged', this.sendData ? 'sendData' : 'stopData');
+    });
+
+    this.gui.domElement.appendChild(sendDataButton);
+
     this.initNetworkControls();
     this.initSerialControls();
 
     // Add event listeners for serial updates
     eventBus.on('serialPortsUpdated', this.handleSerialPortsUpdate.bind(this));
     eventBus.on('serialConnectionStatusChanged', this.handleSerialConnectionStatus.bind(this));
+
+    this.gui.close();
   }
 
   initNetworkControls() {

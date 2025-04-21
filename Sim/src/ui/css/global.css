@@ -54,15 +54,16 @@ canvas.emu-visualization {
 
 
 .lil-gui .title {
-  padding: 0px 10px;
+  padding: 0px 36px;
+  text-align: left;
 }
 
 .lil-gui.root>.children>.lil-gui>.title {
-  padding: 0px 20px;
+  padding: 0px 8px;
 }
 
 .lil-gui .lil-gui .lil-gui>.title {
-  padding: 0px 30px;
+  padding: 0px 12px;
 }
 
 .full-width .widget {
@@ -110,13 +111,6 @@ canvas.emu-visualization {
   }
 }
 
-/* Turbulence toggle buttons */
-.turbulence-toggle-buttons {
-  display: flex;
-  justify-content: space-between;
-  margin: 6px;
-  /* width: 100%; */
-}
 
 
 

@@ -57,12 +57,36 @@
   color: #aaa;
 }
 
+.toggle-button-big {
+  flex: 1;
+  margin: 0 2px;
+  /* padding: 4px 0; */
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 11px;
+  transition: background-color 0.2s;
+  background-color: #2c2c2c;
+  color: #aaa;
+  min-height: 30px;
+}
+
 .toggle-button.active {
   background-color: #ebac00;
   color: #000000;
 }
 
+.toggle-button-big.active {
+  background-color: #ebac00;
+  color: #000000;
+}
+
 .toggle-button.active:hover {
+  background-color: #ebac00;
+  color: #000000;
+}
+
+.toggle-button-big.active:hover {
   background-color: #ebac00;
   color: #000000;
 }
@@ -74,3 +98,12 @@
   margin: 8px 4px;
 }
 
+
+
+/* Turbulence toggle buttons */
+.turbulence-toggle-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin: 6px;
+  /* width: 100%; */
+}

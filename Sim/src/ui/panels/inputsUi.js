@@ -328,10 +328,8 @@ export class InputsUi extends BaseUi {
       }
     };
 
-    this.joystickInputFolder
-      .add(resetJoystickButton, "reset")
-      .name("Reset Joystick");
 
+    this.joystickInputFolder.add(resetJoystickButton, "reset").name("Reset Joystick");
     // Add X and Y position sliders
     const joystickPosition = {
       x: this.main.emuRenderer.joystickX / 10, // Convert from -10,10 to -1,1 range

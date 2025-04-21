@@ -335,6 +335,10 @@ class SerialManager {
         return this.sendCommand("POWER", value);
     }
 
+    sendData(value) {
+        return this.sendCommand("DATA", value);
+    }
+
     // --- Remove or comment out obsolete methods --- 
     // connect(port = "COM5") { ... } // Old connect
     // send(data) { ... } // Old send

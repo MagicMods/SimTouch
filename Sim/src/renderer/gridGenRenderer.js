@@ -5,7 +5,7 @@ import { OverlayManager } from "./overlayRenderer.js";
 import { eventBus } from '../util/eventManager.js';
 import { Gradients } from "../shaders/gradients.js";
 import { GridRenderModes, GridField } from "./gridRenderModes.js";
-import { socketManager } from "../com/udp/socketManager.js";
+import { comManager } from "../com/comManager.js";
 
 export class GridGenRenderer extends BaseRenderer {
   constructor(gl, shaderManager, gridConfig, dimensionManager, boundaryManager, particleSystem, debugFlags) {
@@ -104,7 +104,7 @@ export class GridGenRenderer extends BaseRenderer {
     this.renderModes = null;
     this.maxDensity = 4.0; // Default max density
 
-    this.socket = socketManager;
+    this.comManager = comManager;
   }
 
   initBuffers() {
@@ -138,12 +138,6 @@ export class GridGenRenderer extends BaseRenderer {
 
   }
 
-  sendGridData(byteArray) {
-    if (this.socket.isConnected) {
-      return this.socket.send(byteArray);
-    }
-    return false;
-  }
 
   setGrid(newGridConfig, shapeBoundary, physicsBoundary, dimensions) {
 
@@ -458,7 +452,7 @@ export class GridGenRenderer extends BaseRenderer {
     // Fetch dataValues only if needed
     const dataValues = useDataColors ? this.renderModes.getValues(this.particleSystem) : null;
 
-    if (this.socket.isConnected) {
+    if (this.comManager.shouldSendData) {
       const byteArray = new Uint8Array(dataValues.length + 1);
 
       // Set identifier byte (0) at the start
@@ -472,7 +466,7 @@ export class GridGenRenderer extends BaseRenderer {
         );
         byteArray[i + 1] = Math.round(normalizedValue * 100);
       }
-      this.sendGridData(byteArray);
+      this.comManager.sendData(byteArray);
     }
 
     const gradientValues = this.gradient.getValues();

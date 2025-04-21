@@ -79,7 +79,7 @@ class SocketManager {
     this.db = debugFlags;
   }
 
-  send(data) {
+  sendData(data) {
     if (!this.ws) {
       return false;
     }
