@@ -9,7 +9,7 @@ import c7 from "./Gradients/c7.js";
 import c8 from "./Gradients/c8.js";
 import c9 from "./Gradients/c9.js";
 import c10 from "./Gradients/c10.js";
-import { socketManager } from "../com/udp/socketManager.js";
+import { comManager } from "../com/comManager.js";
 
 export class Gradients {
   // Use FastLED palettes as presets
@@ -33,7 +33,7 @@ export class Gradients {
     this.currentPreset = presetName;
     this.points = [];
     this.values = new Array(256).fill(0).map(() => ({ r: 0, g: 0, b: 0 }));
-    this.socket = socketManager;
+    this.comManager = comManager;
     this.applyPreset(presetName);
   }
 
@@ -99,13 +99,14 @@ export class Gradients {
       return false;
     }
     const presetIndex = this.getPresetIndex(presetName);
-    if (this.debug.gradients) console.log(`>>> sendGradientsUpdate: presetName="${presetName}", calculated index: ${presetIndex}`);
+    const logPrefix = this.debug?.gradients ? ">>>" : "";
+    if (this.debug?.gradients) console.log(`${logPrefix} sendGradientsUpdate: presetName="${presetName}", calculated index: ${presetIndex}`);
     // Check if presetIndex is valid before sending
     if (presetIndex === -1) {
       console.warn(`sendGradientsUpdate: Preset name "${presetName}" not found, cannot send update.`);
       return false;
     }
-    return this.socket.sendColor(presetIndex);
+    return this.comManager.sendColor(presetIndex);
     // return true;
   }
 

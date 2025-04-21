@@ -22,6 +22,7 @@ import { ParticleRenderer } from "./renderer/particleRenderer.js";
 import { ModulatorManager } from "./input/modulatorManager.js";
 import { socketManager } from "./com/udp/socketManager.js";
 import { serialManager } from "./com/serial/serialManager.js";
+import { comManager } from "./com/comManager.js";
 import { eventBus } from "./util/eventManager.js";
 import { TickLog } from "./util/tickLog.js";
 
@@ -365,6 +366,14 @@ export class Main {
     eventBus.on('uiControlChanged', this.handleSimUIChange.bind(this));
     if (this.debugFlags.main) console.log("Main subscribed to uiControlChanged events for Grid UI.");
 
+    // Pass debug flags to managers
+    socketManager.setDebugFlags(this.debugFlags);
+    serialManager.setDebugFlags(this.debugFlags); // Assuming serialManager has this method
+    // Initialize comManager with debug flags
+    comManager.setDebugFlags(this.debugFlags);
+
+    // Initialize EmuRenderer early to render any initial data
+    // this.emuRenderer = new EmuRenderer(this.gl);
   }
 
   async init() {

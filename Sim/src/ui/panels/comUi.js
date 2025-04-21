@@ -4,6 +4,7 @@ import { SerialConfig } from "../../com/serial/serialConfig.js";
 import { socketManager } from "../../com/udp/socketManager.js";
 import { serialManager } from "../../com/serial/serialManager.js";
 import { eventBus } from '../../util/eventManager.js';
+import { comManager } from '../../com/comManager.js';
 
 export class ComUi extends BaseUi {
   constructor(main, container) {
@@ -20,11 +21,21 @@ export class ComUi extends BaseUi {
 
     // Mutual Exclusion for Network and Serial Folders
     this.networkFolder.onOpenClose(() => {
-      this.serialFolder.close();
+      if (this.networkFolder.domElement.classList.contains('lil-gui closed')) {
+        eventBus.emit('comChannelChanged', 'network');
+      } else {
+        this.serialFolder.close();
+        eventBus.emit('comChannelChanged', 'serial');
+      }
     });
 
     this.serialFolder.onOpenClose(() => {
-      this.networkFolder.close();
+      if (this.serialFolder.domElement.classList.contains('lil-gui closed')) {
+        eventBus.emit('comChannelChanged', 'serial');
+      } else {
+        this.networkFolder.close();
+        eventBus.emit('comChannelChanged', 'network');
+      }
     });
 
     // Ensure a defined initial state (e.g., network open, serial closed)
@@ -63,11 +74,11 @@ export class ComUi extends BaseUi {
       .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'network.enabled', value }));
 
     this.networkFolder.add({ brightness: 100 }, "brightness", 0, 100, 1).name("N-Brightness")
-      .onChange((value) => { socket.sendBrightness(value); });
+      .onChange((value) => { comManager.sendBrightness(value); });
 
     // Power control
     this.networkFolder.add({ power: 50 }, "power", 0, 100, 1).name("N-PowerMx")
-      .onChange((value) => { socket.sendPower(value); });
+      .onChange((value) => { comManager.sendPower(value); });
 
     // Create config folder for the rest
 
@@ -136,11 +147,11 @@ export class ComUi extends BaseUi {
       .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'serial.enabled', value }));
 
     this.serialFolder.add({ brightness: 100 }, "brightness", 0, 100, 1).name("N-Brightness")
-      .onChange((value) => { serial.sendBrightness(value); });
+      .onChange((value) => { comManager.sendBrightness(value); });
 
     // Power control
     this.serialFolder.add({ power: 50 }, "power", 0, 100, 1).name("N-PowerMx")
-      .onChange((value) => { serial.sendPower(value); });
+      .onChange((value) => { comManager.sendPower(value); });
 
     // Create config folder for the rest
 
