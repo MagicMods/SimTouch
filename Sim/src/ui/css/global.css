@@ -123,3 +123,11 @@ canvas.emu-visualization {
 .lil-gui .controller.option .widget, .lil-gui .controller.option select {
   color: #ffbb00 !important;
 }
+
+.noClick input[type="text"] {
+  pointer-events: none !important;
+  color: rgb(255, 255, 255) !important;
+  padding-left: 10px !important;
+  /* font-weight: 700; */
+  background-color: rgb(5, 5, 5) !important;
+}

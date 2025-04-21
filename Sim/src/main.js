@@ -166,47 +166,48 @@ export class Main {
     // Define debug flags before components that need them
     this.debugFlags = {
       main: false,
-      presets: false,
+      preset: false,
       param: false,
+      state: false,
+      events: false,
 
-      modManager: false,
-      inputMod: false,
-      pulseMod: false,
+      udp: false,
+      serial: false,
+      com: false,
+      comSR: false,
 
-      grid: false,
-      gridGeometry: false,
-      gridGenRenderer: false,
-      noisePreview: false,
-      gridRenderModes: false,
-      overlay: false,
-      gradients: false,
-      dimensions: false,
       boundary: false,
       boundaryShape: false,
+      dimensions: false,
+      gridGeometry: false,
+
+      grid: false,
+      gradients: false,
+      gridGenRenderer: false,
+      gridRenderModes: false,
 
       particles: false,
-      core: false,
-      neighbors: false,
+      fluidFlip: false,
+      velocity: false,
       collision: false,
+
+      neighbors: false,
       turbulence: false,
       voronoi: false,
       organic: false,
-      velocity: false,
-      pressure: false,
-      fluidFlip: false,
-      noise: false,
 
+      modManager: false,
+      pulseMod: false,
+      inputMod: false,
       inputs: false,
       emu: false,
-      server: false,
-      network: false,
-      serial: false,
 
-      sound: false,
-      state: false,
-      events: false,
-      verif: false,
       randomizer: false,
+      server: false,
+      sound: false,
+      overlay: false,
+
+      noisePrv: false,
     };
 
     eventBus.initDebug(this.debugFlags);
@@ -345,13 +346,10 @@ export class Main {
     // Also store main reference in emuRenderer
     this.emuRenderer.main = this;
 
-    const socket = socketManager;
-    socket.setDebugFlags(this.debugFlags);
-
-    const serial = serialManager;
-    serial.setDebugFlags(this.debugFlags);
-    socket.enable = true;
-    socket.connect();
+    // Pass debug flags before potentially using managers
+    socketManager.setDebugFlags(this.debugFlags);
+    serialManager.setDebugFlags(this.debugFlags);
+    comManager.setDebugFlags(this.debugFlags); // Initialize comManager with flags too
 
     // Instantiate Renderers that depend on Managers
     this.boundaryRenderer = new BoundaryRenderer(
@@ -366,14 +364,8 @@ export class Main {
     eventBus.on('uiControlChanged', this.handleSimUIChange.bind(this));
     if (this.debugFlags.main) console.log("Main subscribed to uiControlChanged events for Grid UI.");
 
-    // Pass debug flags to managers
-    socketManager.setDebugFlags(this.debugFlags);
-    serialManager.setDebugFlags(this.debugFlags); // Assuming serialManager has this method
-    // Initialize comManager with debug flags
-    comManager.setDebugFlags(this.debugFlags);
-
     // Initialize EmuRenderer early to render any initial data
-    // this.emuRenderer = new EmuRenderer(this.gl);
+    // this.emuRenderer = new EmuRenderer(this.gl); // Already instantiated earlier
   }
 
   async init() {

@@ -19,42 +19,49 @@ export class DebugUi extends BaseUi {
 
     // Configuration for ALL toggle buttons
     const toggleButtonsConfig = [
+      { text: "Udp", flag: "udp" },
+      { text: "Serial", flag: "serial" },
+      { text: "Com", flag: "com" },
+      { text: "Send/Rec", flag: "comSR" },
+
       { text: "Boundary", flag: "boundary" },
-      { text: "BoundShape", flag: "boundaryShape" },
-      { text: "Collision", flag: "collision" },
-      { text: "Core", flag: "core" },
+      { text: "Shapes", flag: "boundaryShape" },
       { text: "Dimensions", flag: "dimensions" },
-      { text: "Emu", flag: "emu" },
-      { text: "Events", flag: "events" },
-      { text: "Fluid", flag: "fluidFlip" },
-      { text: "Gradients", flag: "gradients" },
-      { text: "Grid", flag: "grid" },
-      { text: "GridGen", flag: "gridGenRenderer" },
       { text: "GridGeo", flag: "gridGeometry" },
+
+      { text: "Grid", flag: "grid" },
+      { text: "Gradient", flag: "gradients" },
+      { text: "GridGen", flag: "gridGenRenderer" },
       { text: "GridModes", flag: "gridRenderModes" },
+
+      { text: "Particles", flag: "particles" },
+      { text: "Fluid", flag: "fluidFlip" },
+      { text: "Velocity", flag: "velocity" },
+      { text: "Collision", flag: "collision" },
+
+      { text: "Neighbors", flag: "neighbors" },
+      { text: "Turb", flag: "turbulence" },
+      { text: "Voronoi", flag: "voronoi" },
+      { text: "Organic", flag: "organic" },
+
+      { text: "ModMgr", flag: "modManager" },
+      { text: "PulseM", flag: "pulseMod" },
       { text: "InputM", flag: "inputMod" },
       { text: "Inputs", flag: "inputs" },
-      { text: "Main", flag: "main" },
-      { text: "ModMgr", flag: "modManager" },
-      { text: "Neighbors", flag: "neighbors" },
-      { text: "Network", flag: "network" },
-      { text: "NoiseFld", flag: "noiseField" },
-      { text: "NoisePrv", flag: "noisePreview" },
-      { text: "Organic", flag: "organic" },
-      { text: "Overlay", flag: "overlay" },
-      { text: "Param", flag: "param" },
-      { text: "Particles", flag: "particles" },
-      { text: "Preset", flag: "preset" },
-      { text: "Pressure", flag: "pressure" },
-      { text: "PulseM", flag: "pulseMod" },
+      { text: "Emu", flag: "emu" },
+
       { text: "Rand", flag: "randomizer" },
       { text: "Server", flag: "server" },
       { text: "Sound", flag: "sound" },
+      { text: "Overlay", flag: "overlay" },
+
+      { text: "Param", flag: "param" },
       { text: "State", flag: "state" },
-      { text: "Turb", flag: "turbulence" },
-      { text: "Velocity", flag: "velocity" },
-      { text: "Verify", flag: "verification" },
-      { text: "Voronoi", flag: "voronoi" }
+      { text: "Events", flag: "events" },
+      { text: "Preset", flag: "preset" },
+
+      { text: "Main", flag: "main" },
+      { text: "NoisePrv", flag: "noisePrv" },
     ];
 
     // Create buttons from config

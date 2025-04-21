@@ -29,33 +29,25 @@
   margin-bottom: 0px !important;
 }
 
-#lil-gui-name-115 {
-  /* display: none !important; */
+.slider-dual-input-slider .name {
   width: 81px !important;
 }
 
-/* .lil-gui .controller .name {
-  General lil-gui label selector 
-  Potentially hide only within a specific container if needed
-}
-*/
 
-/* Or more specifically if it's in your custom container */
-/* .slider-cellCount-container .name {
-    display: none !important;
-  } */
-
-  #lil-gui-name-116 {
-    display: none !important;
-    width: 30px !important;
-    pointer-events: none !important;
-  }
-
-#lil-gui-name-116 + .widget input[type="text"] {
+.noClick-slider input[type="text"] {
   pointer-events: none !important;
   color: rgb(255, 255, 255) !important;
   font-weight: 700;
   background-color: rgb(5, 5, 5) !important;
+  max-width: 35px !important;
+}
+
+.noClick-slider {
+  padding-left: 6px !important;
+}
+
+.noClick-slider .name {
+  display: none !important;
 }
 
 .flex-container input[type="text"] {
@@ -65,10 +57,6 @@
   background-color: rgb(5, 5, 5) !important;
   padding-left: 14px;
   margin-left: 10px;
-}
-
-.slider-dual-input-slider .name {
-  width: 0px !important;
 }
 
 

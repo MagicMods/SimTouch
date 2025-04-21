@@ -30,20 +30,16 @@ class SerialManager {
     }
 
     constructor() {
-
+        this.db = null;
+        this.isApiSupported = ('serial' in navigator);
         this.isConnected = false;
-        this.callbacks = new Set();
-        this.mouseCallbacks = new Set();
+        this.isConnecting = false;
         this.enable = false;
-        this.debugSend = false;
-        this.debugReceive = false;
-        this.port = 5501;
-        this.retryCount = 0;
-        this.maxRetries = 3;
-        this.retryTimeout = null;
-        this.emuHandlers = [];
-        this.expectingBinaryData = false;
-        this.expectedBinaryLength = 0;
+        this.availablePorts = []; // Stores actual SerialPort objects
+        this.activePort = null;
+        this.portReader = null;
+        this.portWriter = null;
+        this.keepReading = false;
 
         // Initialize command state tracking
         this.lastSentCommands = {};
@@ -51,263 +47,301 @@ class SerialManager {
             this.lastSentCommands[cmd.debounceKey] = { value: null, time: 0 };
         });
 
-        this.db;
+        if (!this.isApiSupported) {
+            console.warn("SerialManager: Web Serial API not supported by this browser.");
+        }
 
         // Subscribe to parameter updates
         eventBus.on('simParamsUpdated', this.handleParamsUpdate.bind(this));
     }
 
+    setDebugFlags(debugFlags) {
+        this.db = debugFlags;
+        if (this.isApiSupported && this.db?.serial) {
+            console.log("SerialManager: Web Serial API is supported.");
+        } else if (this.db?.serial) {
+            console.log("SerialManager: Web Serial API is NOT supported.");
+        }
+    }
+
+    async getAvailablePortsInfo() {
+        if (!this.isApiSupported) return [];
+
+        try {
+            this.availablePorts = await navigator.serial.getPorts();
+            const portInfoArray = await Promise.all(this.availablePorts.map(async (port, index) => {
+                let portInfo = null;
+                try {
+                    portInfo = port.getInfo();
+                } catch (infoError) {
+                    if (this.db?.serial) console.warn(`Could not get info for port ${index}:`, infoError);
+                }
+                const name = `Port ${index}${portInfo ? ` (VID:${portInfo.usbVendorId} PID:${portInfo.usbProductId})` : ''}`;
+                return { id: index, name: name };
+            }));
+
+            if (this.db?.serial) console.log('Serial Ports Updated:', portInfoArray);
+            eventBus.emit('serialPortsUpdated', portInfoArray);
+            return portInfoArray;
+        } catch (error) {
+            console.error("Error getting serial ports:", error);
+            eventBus.emit('serialPortsUpdated', []);
+            return [];
+        }
+    }
+
+    async requestPort() {
+        if (!this.isApiSupported) return false;
+
+        try {
+            await navigator.serial.requestPort();
+            if (this.db?.serial) console.log("Serial port requested successfully.");
+            await this.getAvailablePortsInfo(); // Refresh list after request
+            return true;
+        } catch (error) {
+            if (error.name === 'NotFoundError' || error.name === 'NotAllowedError') {
+                if (this.db?.serial) console.log("User cancelled port selection or no port selected.");
+            } else {
+                console.error("Error requesting serial port:", error);
+            }
+            return false;
+        }
+    }
+
+    async connect(portId) {
+        if (!this.isApiSupported || typeof portId !== 'number' || portId < 0 || portId >= this.availablePorts.length) {
+            console.error(`SerialManager Connect: Invalid portId ${portId} or API not supported.`);
+            return false;
+        }
+        if (this.isConnecting) {
+            if (this.db?.serial) console.log("SerialManager Connect: Already attempting connection, request ignored.");
+            return false;
+        }
+
+        this.isConnecting = true;
+        const port = this.availablePorts[portId];
+
+        if (this.activePort === port && this.isConnected) {
+            if (this.db?.serial) console.log(`SerialManager Connect: Already connected to Port ${portId}.`);
+            this.isConnecting = false;
+            return true;
+        }
+
+        // Disconnect if a different port is active
+        if (this.activePort && this.activePort !== port) {
+            if (this.db?.serial) console.log(`SerialManager Connect: Disconnecting from previous port before connecting to Port ${portId}.`);
+            await this.disconnect();
+        }
+
+        try {
+            if (this.db?.serial) console.log(`SerialManager: Attempting to open Port ${portId}...`);
+            await port.open({ baudRate: 115200 }); // Common baud rate
+            this.activePort = port;
+            this.isConnected = true;
+            this.portReader = this.activePort.readable.getReader();
+            this.portWriter = this.activePort.writable.getWriter();
+            this.keepReading = true;
+            this.readLoop(); // Start reading in background
+
+            if (this.db?.serial) console.log(`SerialManager: Successfully connected to Port ${portId}.`);
+            eventBus.emit('serialConnectionStatusChanged', { connected: true, portId });
+            this.isConnecting = false;
+            return true;
+
+        } catch (error) {
+            console.error(`SerialManager: Error opening Port ${portId}:`, error);
+            this.activePort = null;
+            this.isConnected = false;
+            eventBus.emit('serialConnectionStatusChanged', { connected: false });
+            this.isConnecting = false;
+            return false;
+        }
+    }
+
+    async disconnect() {
+        if (!this.isApiSupported) return;
+        if (!this.activePort && !this.isConnected) {
+            if (this.db?.serial) console.log("SerialManager Disconnect: Already disconnected.");
+            return;
+        }
+        if (this.db?.serial) console.log(`SerialManager: Disconnecting from port...`);
+
+        this.keepReading = false; // Signal read loop to stop
+
+        // Release reader
+        if (this.portReader) {
+            try {
+                await this.portReader.cancel(); // Cancel pending reads
+                this.portReader.releaseLock();
+                if (this.db?.serial) console.log("Serial port reader cancelled and lock released.");
+            } catch (error) {
+                if (this.db?.serial) console.error("Error cancelling/releasing reader:", error);
+            }
+            this.portReader = null;
+        }
+
+        // Release writer
+        if (this.portWriter) {
+            try {
+                // Ensure the writer is closed before releasing the lock
+                if (this.activePort?.writable && !this.activePort.writable.locked) {
+                    await this.portWriter.close(); // Close the stream
+                    if (this.db?.serial) console.log("Serial port writer stream closed.");
+                } else if (this.portWriter.close) {
+                    // Fallback if direct stream access isn't feasible but close exists
+                    await this.portWriter.close();
+                    if (this.db?.serial) console.log("Serial port writer stream closed (fallback).");
+                }
+                this.portWriter.releaseLock();
+                if (this.db?.serial) console.log("Serial port writer lock released.");
+            } catch (error) {
+                // Ignore errors if the port is already closing
+                if (error.name !== 'InvalidStateError') { // Avoid logging expected errors on close
+                    if (this.db?.serial) console.error("Error closing/releasing writer:", error);
+                }
+            }
+            this.portWriter = null;
+        }
+
+        // Close the port
+        if (this.activePort) {
+            try {
+                await this.activePort.close();
+                if (this.db?.serial) console.log("Serial port closed.");
+            } catch (error) {
+                // Ignore errors if the port is already closing
+                if (error.name !== 'InvalidStateError') {
+                    if (this.db?.serial) console.error("Error closing serial port:", error);
+                }
+            }
+        }
+
+        const previouslyConnected = this.isConnected;
+        this.activePort = null;
+        this.isConnected = false;
+        this.isConnecting = false; // Ensure reset
+
+        // Only emit event if status actually changed
+        if (previouslyConnected) {
+            if (this.db?.serial) console.log("SerialManager: Disconnected. Emitting status change.");
+            eventBus.emit('serialConnectionStatusChanged', { connected: false });
+        }
+    }
+
+    async readLoop() {
+        if (!this.portReader) {
+            if (this.db?.serial) console.error("Read loop started without a reader.");
+            return;
+        }
+        if (this.db?.serial) console.log("Serial read loop starting...");
+
+        while (this.keepReading && this.isConnected) {
+            try {
+                const { value, done } = await this.portReader.read();
+                if (done) {
+                    if (this.db?.serial) console.log("Read loop finished (done signal).");
+                    this.keepReading = false;
+                    break; // Exit loop
+                }
+                if (value) {
+                    if (this.db?.serial && this.db?.comSR) console.log("Serial Received:", value); // Log raw Uint8Array
+                    // TODO: Process received data - parse commands, etc.
+                    // this.processMessage(value); // Placeholder for future parsing
+                }
+            } catch (error) {
+                console.error("Error during serial read:", error);
+                this.keepReading = false;
+                break; // Exit loop on error
+            }
+        }
+
+        if (this.db?.serial) console.log("Serial read loop exited.");
+        // Ensure cleanup happens if loop exits unexpectedly
+        if (this.isConnected) {
+            await this.disconnect();
+        }
+    }
+
     // Add handler for simParams updates
-    handleParamsUpdate({ simParams }) {
+    async handleParamsUpdate({ simParams }) {
         if (simParams?.serial) {
             const serialParams = simParams.serial;
-            const previousEnable = this.enable; // Store previous state
-
-            this.debugSend = serialParams.debugSend ?? this.debugSend;
-            this.debugReceive = serialParams.debugReceive ?? this.debugReceive;
+            const previousEnable = this.enable;
             this.enable = serialParams.enabled ?? this.enable;
 
-            // Connect or disconnect if enable state changed
             if (this.enable !== previousEnable) {
-                if (this.db.serial) console.log(`SerialManager: Enable state changed to ${this.enable}.`);
-                if (this.enable) {
-                    // Connect only if not already connected or trying to connect
-
-                } else {
-                    // Disconnect if connected
-
-                    // Also clear any pending retry timeouts if disabling
-                    if (this.retryTimeout) {
-                        clearTimeout(this.retryTimeout);
-                        this.retryTimeout = null;
-                        this.retryCount = 0; // Reset retries when manually disabled
-                    }
+                if (this.db?.serial) console.log(`SerialManager: Enable state changed to ${this.enable}.`);
+                if (!this.enable && this.isConnected) {
+                    if (this.db?.serial) console.log("SerialManager: Disabling via params, disconnecting port.");
+                    await this.disconnect();
                 }
             }
         }
     }
 
-    connect(port = "COM5") {
-        if (this.retryTimeout) {
-            clearTimeout(this.retryTimeout);
-            this.retryTimeout = null;
-        }
-
-        this.port = port;
-        try {
-            if (this.db.serial) console.log(`Attempting Serial connection to ${port}`);
-
-            if (this.connectTimeout) clearTimeout(this.connectTimeout);
-
-
-            this.setupHandlers();
-        } catch (err) {
-            console.error("Serial connection failed:", err);
-            this.isConnected = false;
-        }
-    }
-
-    setDebugFlags(debugFlags) {
-        this.db = debugFlags;
-    }
-
-
-    send(data) {
-        if (!this.isConnected) {
+    // Unified command sending system - refactored for Web Serial
+    async sendCommand(commandType, value) {
+        if (!this.isApiSupported || !this.isConnected || !this.portWriter) {
+            if (this.db?.serial && !this.isConnected) console.warn(`Serial Send: Failed - Not connected.`);
+            if (this.db?.serial && !this.portWriter) console.warn(`Serial Send: Failed - No writer available.`);
             return false;
         }
 
-
-        if (this.db.serial && this.debugSend) console.log("Sending message:", data);
-
-        // this.ws.send(data);
-        return true;
-    }
-
-    setupHandlers() {
-
-
-        // this.ws.onmessage = (event) => {
-        //     // Get the data
-        //     let data = event.data;
-
-        //     // If it's a blob, convert to ArrayBuffer
-        //     if (data instanceof Blob) {
-        //         const reader = new FileReader();
-        //         reader.onload = () => {
-        //             this.processMessage(reader.result);
-        //         };
-        //         reader.readAsArrayBuffer(data);
-        //     } else {
-        //         this.processMessage(data);
-        //     }
-        // };
-    }
-
-    addMessageHandler(callback) {
-        if (typeof callback !== 'function') {
-            throw new Error("Message handler must be a function");
-        }
-        this.callbacks.add(callback);
-        return this;
-    }
-
-    removeMessageHandler(callback) {
-        this.callbacks.delete(callback);
-        return this;
-    }
-
-    addMouseHandler(callback) {
-        if (typeof callback !== 'function') {
-            throw new Error("Mouse handler must be a function");
-        }
-        this.mouseCallbacks.add(callback);
-        return this;
-    }
-
-    removeMouseHandler(callback) {
-        this.mouseCallbacks.delete(callback);
-        return this;
-    }
-
-    addEmuHandler(callback) {
-        if (typeof callback !== 'function') {
-            throw new Error("EMU handler must be a function");
-        }
-        this.emuHandlers.push(callback);
-        return this;
-    }
-
-    removeEmuHandler(callback) {
-        this.emuHandlers = this.emuHandlers.filter((h) => h !== callback);
-        return this;
-    }
-
-    handleEmuData(data) {
-        if (!data) {
-            return;
-        }
-
-        if (this.emuHandlers.length === 0) {
-            return;
-        }
-
-        this.emuHandlers.forEach((handler) => handler(data));
-    }
-
-    reconnect() {
-        // if (this.ws) {
-        //     this.disconnect();
-        // }
-        // this.connect(this.port);
-    }
-
-    disconnect() {
-        // if (!this.ws) {
-        //     return;
-        // }
-
-        // if (this.db.network) console.log("Closing WebSocket connection");
-        // this.ws.close();
-        // this.ws = null;
-    }
-
-    processMessage(data) {
-        // If binary data
-        if (data instanceof ArrayBuffer) {
-            const byteLength = data.byteLength;
-
-            // Mouse data (4 bytes)
-            if (byteLength === 4) {
-                const view = new DataView(data);
-                const x = view.getInt16(0, true); // true = little endian
-                const y = view.getInt16(2, true);
-
-                // Notify mouse handlers
-                if (this.debugReceive) console.log(`Received mouse data: x=${x}, y=${y}`);
-                this.mouseCallbacks.forEach((callback) => callback(x, y));
-            }
-            // EMU data (24 bytes)
-            else if (byteLength === 13) {
-                // Notify EMU handlers directly with the binary data
-                if (this.debugReceive) console.log(`Received EMU data: ${byteLength} bytes`);
-
-                this.emuHandlers.forEach((handler) => handler(data));
-            } else if (byteLength === 12) {
-            } else if (byteLength === 16) {
-            }
-            return;
-        }
-
-        // For any other (non-binary) messages that might exist
-        try {
-            const jsonData = JSON.parse(data);
-            this.callbacks.forEach((cb) => cb(jsonData));
-        } catch (error) {
-            console.error("Error parsing WebSocket message:", error);
-        }
-    }
-
-    // Unified command sending system
-    sendCommand(commandType, value) {
-        if (this.db.network) console.log(`>>> sendCommand ENTERED with type: ${typeof commandType}`, commandType, ` | value: ${typeof value}`, value);
         const command = SerialManager.COMMANDS[commandType];
         if (!command) {
             console.error(`Invalid command type: ${commandType}`);
             return false;
         }
 
-        // Validate the value
         if (!command.validate(value)) {
             console.error(`Invalid value for command ${commandType}: ${value}`);
             return false;
         }
 
-        // Check debouncing
+        // Debouncing (optional but good practice)
         const now = Date.now();
         const lastSent = this.lastSentCommands[command.debounceKey];
-
-        if (lastSent.value === value && now - lastSent.time < 500) {
-            return false;
+        if (lastSent.value === value && now - lastSent.time < 100) { // Shorter debounce for serial? TBD
+            return false; // Debounced
         }
-
-        // Update last sent state
         this.lastSentCommands[command.debounceKey] = { value, time: now };
 
-        if (this.isConnected) {
-            const byteArray = new Uint8Array([command.index, value]);
+        // Format data as byte array [command_index, value]
+        const byteArray = new Uint8Array([command.index, value]);
 
-            // Send immediately
-            this.send(byteArray);
-
-            // Send again after a short delay for reliability
-            setTimeout(() => {
-                if (this.isConnected) {
-                    this.send(byteArray);
-                }
-            }, 50);
-
-            if (this.db.network) console.log(`Sending command ${commandType}:`, value);
-
-
+        try {
+            if (this.db?.serial && this.db?.comSR) console.log(`Serial Sending (${commandType}):`, byteArray);
+            await this.portWriter.write(byteArray);
             return true;
+        } catch (error) {
+            console.error("Error sending serial command:", error);
+            // Attempt to disconnect on write error, might indicate port issue
+            await this.disconnect();
+            return false;
         }
-        return false;
     }
 
     // Convenience methods for specific commands
     sendColor(value) {
-        if (this.db.network) console.log(`>>> sendColor called with value: ${typeof value}`, value);
+        // Note: sendCommand is now async
         return this.sendCommand("COLOR", value);
     }
 
     sendBrightness(value) {
-        return this.sendCommand(SerialManager.COMMANDS.BRIGHTNESS, value);
+        return this.sendCommand("BRIGHTNESS", value);
     }
 
     sendPower(value) {
-        return this.sendCommand(SerialManager.COMMANDS.POWER, value);
+        return this.sendCommand("POWER", value);
     }
+
+    // --- Remove or comment out obsolete methods --- 
+    // connect(port = "COM5") { ... } // Old connect
+    // send(data) { ... } // Old send
+    // setupHandlers() { ... } // Old handlers
+    // reconnect() { ... }
+    // processMessage(data) { ... } // Maybe reuse parts in readLoop later
+    // addMessageHandler, removeMessageHandler, addMouseHandler, removeMouseHandler, addEmuHandler, removeEmuHandler, handleEmuData (if not used by serial)
 }
 
 export const serialManager = SerialManager.getInstance();

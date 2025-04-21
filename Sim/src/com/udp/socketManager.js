@@ -34,9 +34,6 @@ class SocketManager {
     this.isConnected = false;
     this.callbacks = new Set();
     this.mouseCallbacks = new Set();
-    this.enable = false;
-    this.debugSend = false;
-    this.debugReceive = false;
     this.port = 5501;
     this.retryCount = 0;
     this.maxRetries = 3;
@@ -44,6 +41,7 @@ class SocketManager {
     this.emuHandlers = [];
     this.expectingBinaryData = false;
     this.expectedBinaryLength = 0;
+    this.explicitDisconnect = false;
 
     // Initialize command state tracking
     this.lastSentCommands = {};
@@ -51,45 +49,7 @@ class SocketManager {
       this.lastSentCommands[cmd.debounceKey] = { value: null, time: 0 };
     });
 
-    this.db;
-
-    // Subscribe to parameter updates
-    eventBus.on('simParamsUpdated', this.handleParamsUpdate.bind(this));
-  }
-
-  // Add handler for simParams updates
-  handleParamsUpdate({ simParams }) {
-    if (simParams?.network) {
-      const netParams = simParams.network;
-      const previousEnable = this.enable; // Store previous state
-
-      this.debugSend = netParams.debugSend ?? this.debugSend;
-      this.debugReceive = netParams.debugReceive ?? this.debugReceive;
-      this.enable = netParams.enabled ?? this.enable;
-
-      // Connect or disconnect if enable state changed
-      if (this.enable !== previousEnable) {
-        if (this.db.network) console.log(`SocketManager: Enable state changed to ${this.enable}.`);
-        if (this.enable) {
-          // Connect only if not already connected or trying to connect
-          if (!this.isConnected && !this.retryTimeout && this.ws?.readyState !== WebSocket.CONNECTING) {
-            this.connect();
-
-          }
-        } else {
-          // Disconnect if connected
-          if (this.isConnected || this.ws?.readyState === WebSocket.CONNECTING) {
-            this.disconnect();
-          }
-          // Also clear any pending retry timeouts if disabling
-          if (this.retryTimeout) {
-            clearTimeout(this.retryTimeout);
-            this.retryTimeout = null;
-            this.retryCount = 0; // Reset retries when manually disabled
-          }
-        }
-      }
-    }
+    this.db = null;
   }
 
   connect(port = 5501) {
@@ -98,11 +58,14 @@ class SocketManager {
       this.retryTimeout = null;
     }
 
+    if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) {
+      if (this.db?.udp) console.log(`SocketManager Connect: Already connected or connecting to ws://localhost:${this.port}. Ignoring call.`);
+      return;
+    }
+
     this.port = port;
     try {
-      if (this.db.network) console.log(`Attempting WebSocket connection to ws://localhost:${port}`);
-      if (this.ws && this.ws.readyState === WebSocket.OPEN) return;
-      if (this.connectTimeout) clearTimeout(this.connectTimeout);
+      if (this.db?.udp) console.log(`Attempting WebSocket connection to ws://localhost:${port}`);
 
       this.ws = new WebSocket(`ws://localhost:${port}`);
       this.setupHandlers();
@@ -116,7 +79,6 @@ class SocketManager {
     this.db = debugFlags;
   }
 
-
   send(data) {
     if (!this.ws) {
       return false;
@@ -126,7 +88,7 @@ class SocketManager {
       return false;
     }
 
-    if (this.db.network && this.debugSend) console.log("Sending message:", data);
+    if (this.db?.udp && this.db?.comSR) console.log("Socket Sending message:", data);
 
     this.ws.send(data);
     return true;
@@ -138,9 +100,13 @@ class SocketManager {
     }
 
     this.ws.onopen = () => {
-      if (this.db.network) console.log("WebSocket connection established");
+      if (this.db?.udp) console.log("WebSocket connection established");
       this.isConnected = true;
       this.retryCount = 0;
+      if (this.retryTimeout) {
+        clearTimeout(this.retryTimeout);
+        this.retryTimeout = null;
+      }
 
       // Notify all callbacks about connection
       this.callbacks.forEach((cb) => {
@@ -153,15 +119,23 @@ class SocketManager {
     };
 
     this.ws.onclose = () => {
-      if (this.db.network) console.log("WebSocket connection closed");
+      const wasConnected = this.isConnected;
+      if (this.db?.udp) console.log("WebSocket connection closed.", wasConnected ? "(Previously connected)" : "(Not connected)");
       this.isConnected = false;
+      this.ws = null;
 
-      if (this.enable && this.retryCount < this.maxRetries) {
-        this.retryCount++;
-        if (this.db.network) console.log(`Retry attempt ${this.retryCount} of ${this.maxRetries}`);
-        this.retryTimeout = setTimeout(() => this.reconnect(), 3000);
-      } else if (this.retryCount >= this.maxRetries) {
-        if (this.db.network) console.log("Max retry attempts reached");
+      if (this.explicitDisconnect) {
+        this.explicitDisconnect = false;
+        if (this.db?.udp) console.log("Skipping reconnect attempt due to explicit disconnect.");
+      } else {
+        if (wasConnected && !this.retryTimeout && this.retryCount < this.maxRetries) {
+          this.retryCount++;
+          if (this.db?.udp) console.log(`Retry attempt ${this.retryCount} of ${this.maxRetries} in 3 seconds...`);
+          this.retryTimeout = setTimeout(() => this.reconnect(), 3000);
+        } else if (wasConnected && this.retryCount >= this.maxRetries) {
+          if (this.db?.udp) console.log("Max retry attempts reached. Stopping automatic reconnection.");
+          this.retryCount = 0;
+        }
       }
 
       // Notify all callbacks about disconnection
@@ -175,17 +149,15 @@ class SocketManager {
     };
 
     this.ws.onerror = (error) => {
-      if (this.db.network) {
+      if (this.db?.udp) {
         console.error("WebSocket error:", error);
       }
       this.callbacks.forEach((cb) => cb({ type: "error", error }));
     };
 
     this.ws.onmessage = (event) => {
-      // Get the data
       let data = event.data;
 
-      // If it's a blob, convert to ArrayBuffer
       if (data instanceof Blob) {
         const reader = new FileReader();
         reader.onload = () => {
@@ -250,41 +222,49 @@ class SocketManager {
   }
 
   reconnect() {
-    if (this.ws) {
-      this.disconnect();
-    }
+    if (this.db?.udp) console.log("Attempting reconnect...");
     this.connect(this.port);
   }
 
   disconnect() {
+    if (this.retryTimeout) {
+      clearTimeout(this.retryTimeout);
+      this.retryTimeout = null;
+      this.retryCount = 0;
+      if (this.db?.udp) console.log("Cleared pending reconnect attempts due to explicit disconnect.");
+    }
+
     if (!this.ws) {
+      if (this.db?.udp) console.log("SocketManager Disconnect: Already disconnected or not initialized.");
       return;
     }
 
-    if (this.db.network) console.log("Closing WebSocket connection");
-    this.ws.close();
-    this.ws = null;
+    if (this.db?.udp) console.log("Closing WebSocket connection explicitly.");
+    try {
+      this.explicitDisconnect = true;
+      this.ws.close();
+    } catch (e) {
+      console.error("Error closing WebSocket:", e);
+      this.ws = null;
+      this.isConnected = false;
+      this.explicitDisconnect = false;
+      this.callbacks.forEach((cb) => cb({ type: "disconnect" }));
+    }
   }
 
   processMessage(data) {
-    // If binary data
     if (data instanceof ArrayBuffer) {
       const byteLength = data.byteLength;
 
-      // Mouse data (4 bytes)
       if (byteLength === 4) {
         const view = new DataView(data);
-        const x = view.getInt16(0, true); // true = little endian
+        const x = view.getInt16(0, true);
         const y = view.getInt16(2, true);
 
-        // Notify mouse handlers
-        if (this.debugReceive) console.log(`Received mouse data: x=${x}, y=${y}`);
+        if (this.db?.comSR) console.log(`Received mouse data: x=${x}, y=${y}`);
         this.mouseCallbacks.forEach((callback) => callback(x, y));
-      }
-      // EMU data (24 bytes)
-      else if (byteLength === 13) {
-        // Notify EMU handlers directly with the binary data
-        if (this.debugReceive) console.log(`Received EMU data: ${byteLength} bytes`);
+      } else if (byteLength === 13) {
+        if (this.db?.comSR) console.log(`Received EMU data: ${byteLength} bytes`);
 
         this.emuHandlers.forEach((handler) => handler(data));
       } else if (byteLength === 12) {
@@ -293,7 +273,6 @@ class SocketManager {
       return;
     }
 
-    // For any other (non-binary) messages that might exist
     try {
       const jsonData = JSON.parse(data);
       this.callbacks.forEach((cb) => cb(jsonData));
@@ -302,22 +281,19 @@ class SocketManager {
     }
   }
 
-  // Unified command sending system
   sendCommand(commandType, value) {
-    if (this.db.network) console.log(`>>> sendCommand ENTERED with type: ${typeof commandType}`, commandType, ` | value: ${typeof value}`, value);
+    if (this.db?.udp) console.log(`>>> Socket sendCommand ENTERED with type: ${typeof commandType}`, commandType, ` | value: ${typeof value}`, value);
     const command = SocketManager.COMMANDS[commandType];
     if (!command) {
       console.error(`Invalid command type: ${commandType}`);
       return false;
     }
 
-    // Validate the value
     if (!command.validate(value)) {
       console.error(`Invalid value for command ${commandType}: ${value}`);
       return false;
     }
 
-    // Check debouncing
     const now = Date.now();
     const lastSent = this.lastSentCommands[command.debounceKey];
 
@@ -325,42 +301,38 @@ class SocketManager {
       return false;
     }
 
-    // Update last sent state
     this.lastSentCommands[command.debounceKey] = { value, time: now };
 
     if (this.isConnected) {
       const byteArray = new Uint8Array([command.index, value]);
 
-      // Send immediately
       this.send(byteArray);
 
-      // Send again after a short delay for reliability
       setTimeout(() => {
         if (this.isConnected) {
           this.send(byteArray);
         }
       }, 50);
 
-      if (this.db.network) console.log(`Sending command ${commandType}:`, value);
-
+      if (this.db?.udp) console.log(`Sending command ${commandType}:`, value);
 
       return true;
     }
+    if (this.db?.udp) console.warn(`Socket sendCommand Failed: Not connected.`);
     return false;
   }
 
-  // Convenience methods for specific commands
   sendColor(value) {
-    if (this.db.network) console.log(`>>> sendColor called with value: ${typeof value}`, value);
+    if (this.db?.udp) console.log(`>>> Socket sendColor called with value: ${typeof value}`, value);
     return this.sendCommand("COLOR", value);
   }
 
   sendBrightness(value) {
-    return this.sendCommand(SocketManager.COMMANDS.BRIGHTNESS, value);
+    return this.sendCommand("BRIGHTNESS", value);
   }
 
   sendPower(value) {
-    return this.sendCommand(SocketManager.COMMANDS.POWER, value);
+    return this.sendCommand("POWER", value);
   }
 }
 

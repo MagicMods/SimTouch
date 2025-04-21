@@ -152,7 +152,7 @@ export class GridUi extends BaseUi {
     cellCountContainer.appendChild(this.targetCellCountCellsController.domElement);
 
     const totalCellsController = gridParamFolder.add(gridGenRenderer.grid, "cellCount").name("CellCount").listen();
-    totalCellsController.domElement.classList.add("slider-dual-input-input");
+    totalCellsController.domElement.classList.add("noClick-slider");
     cellCountContainer.appendChild(totalCellsController.domElement);
 
     const cellsContainer = gridParamFolder.domElement.querySelector(".children");

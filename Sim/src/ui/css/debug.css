@@ -9,3 +9,7 @@
   /* width: 25%; */
   /* width: calc(25% - 10px) !important; */
 }
+
+.boolean-button-container button {
+  border: 1px solid #404040;
+}

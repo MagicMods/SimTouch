@@ -29,7 +29,7 @@ export class Gradients {
 
   constructor(debugFlags, presetName = "c0") {
 
-    this.debug = debugFlags;
+    this.db = debugFlags;
     this.currentPreset = presetName;
     this.points = [];
     this.values = new Array(256).fill(0).map(() => ({ r: 0, g: 0, b: 0 }));
@@ -38,7 +38,7 @@ export class Gradients {
   }
 
   applyPreset(presetName) {
-    if (this.debug.gradients) console.log(`>>> applyPreset called with presetName: ${typeof presetName}`, presetName);
+    if (this.db.gradients) console.log(`>>> applyPreset called with presetName: ${typeof presetName}`, presetName);
     if (!Gradients.PRESETS[presetName]) {
       console.warn(`Preset "${presetName}" not found, using default`);
       presetName = "c0";
@@ -53,7 +53,7 @@ export class Gradients {
 
     // If preset actually changed, send notification over socket
     if (oldPreset !== presetName) {
-      if (this.debug.gradients) console.log(`>>> applyPreset calling sendGradientsUpdate`);
+      if (this.db.gradients) console.log(`>>> applyPreset calling sendGradientsUpdate`);
       this.sendGradientsUpdate(presetName);
     }
 
