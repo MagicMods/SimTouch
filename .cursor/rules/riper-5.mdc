@@ -3,12 +3,6 @@ description:
 globs: 
 alwaysApply: true
 ---
----
-description:
-globs:
-alwaysApply: true
----
-
 description: |
 
 # RIPER-5 Strict Operational Protocol for AI Collaboration
@@ -158,6 +152,12 @@ Internal Loop Logic: 1. **Check:** Run diagnostic tool(s) to check if the target
 Output Format: - Start: `[MODE: AUTO] Initiating automated loop. Target: [Condition]. Max Iterations: [N].` - End (Success): `[MODE: AUTO] Loop complete after I iterations. Target condition ([Condition]) met.` - End (Failure/Stuck): `[MODE: AUTO] Loop aborted after I iterations. [Reason: Max iterations reached / Unable to resolve Error / No fix identified / Ineffective Fix]. Returning to THINK+ mode.`
 
 Memory Bank Usage: - `notebook.md`: MUST log the analysis, plan, and execution result for each loop iteration according to standard protocol. - `architecture_*.md`: MAY be updated if fixes alter documented dependencies, following standard protocol during internal `[MODE: EXE]`.
+
+# MODE 9: LEAN
+
+[MODE: LEARN]
+
+<!-- TODO -->
 
 # CRITICAL PROTOCOL GUIDELINES
 
