@@ -187,14 +187,31 @@ export class CollisionSystem {
       radiusJ = affectScale ? this.particleSystem.particleRadii[j] : this.particleSystem.particleRadius;
 
       // Access rest density from particleSystem reference
-      if (this.particleSystem.restDensity) {
-        densityFactor = Math.max(0.5, Math.min(2.0, this.particleSystem.restDensity / 3));
-      }
+      // REMOVE START
+      // if (this.particleSystem.restDensity) {
+      //  densityFactor = Math.max(0.5, Math.min(2.0, this.particleSystem.restDensity / 3));
+      // }
+      // REMOVE END
     }
 
     // Modify minimum separation distance based on rest density
     // Higher density = particles should be closer (smaller minDist)
-    const minDist = (radiusI + radiusJ) * (1 / densityFactor);
+    // REPLACE START
+    // const minDist = (radiusI + radiusJ) * (1 / densityFactor);
+    // REPLACE END
+    // WITH START
+    // Calculate spacing multiplier based on rest density
+    // Default to 1 (edge-to-edge) if restDensity is unavailable or 0
+    let spacingMultiplier = 1.0;
+    if (this.particleSystem && typeof this.particleSystem.restDensity === 'number' && this.particleSystem.restDensity > 0) {
+      // Linear increase: At density 10, multiplier is 1.5 (gap = 0.5 * radius sum)
+      const scaleFactor = 0.05;
+      spacingMultiplier = 1.0 + (this.particleSystem.restDensity * scaleFactor);
+    }
+
+    // Calculate minimum separation distance using the multiplier
+    const minDist = (radiusI + radiusJ) * spacingMultiplier;
+    // WITH END
 
     const minDistSq = minDist * minDist;
 

@@ -28,7 +28,7 @@ export class CollisionUi extends BaseUi {
     this.collisionGridSizeController = this.gui.add(this.main.simParams.collision, "gridSizeCollision", 8, 128, 1).name("C-GridRez")
       .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'collision.gridSizeCollision', value }); });
 
-    this.restDensityController = this.gui.add(this.main.simParams.simulation, "restDensity", 0, 10, 0.1).name("C-RestDens")
+    this.restDensityController = this.gui.add(this.main.simParams.simulation, "restDensity", 0, 40, 0.1).name("C-RestDens")
       .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'simulation.restDensity', value }); });
 
 

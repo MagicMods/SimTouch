@@ -205,3 +205,19 @@
 
 <details>
 <summary>**Goal:** Fix Issue with collision system and turbulence Affect Scale</summary>
+
+IMPLEMENTATION CHECKLIST:
+
+1.  - [ ] **Modify `Sim/src/simulation/forces/collisionSystem.js`:**
+    * Navigate to the `resolveCollision` method.
+    * Locate and **delete** the lines calculating `densityFactor`.
+    * Locate the line calculating `minDist`.
+    * **Replace** it with the logic to calculate a new `spacingMultiplier = 1.0 + (this.particleSystem.restDensity * 0.05)` (with safety checks) and update `minDist = (radiusI + radiusJ) * spacingMultiplier`.
+2.  - [ ] **Modify `Sim/src/simulation/core/fluidFLIP.js`:**
+    * Navigate to the `transferToParticles` method.
+    * Locate and **delete** the `if` block calling `this.applyRestDensityEffect(...)`.
+    * Locate and **delete** the entire `applyRestDensityEffect` method definition.
+3.  - [ ] **Update Memory Bank:**
+        _ Append analysis notes to `memoryBank/notebook.md` (Done prior).
+        _ Add this plan to `memoryBank/plan.md` (This step). \* Update `memoryBank/architecture_sim.md` if necessary (Not deemed necessary for this change).
+    </details>

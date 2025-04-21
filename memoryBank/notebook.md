@@ -104,3 +104,45 @@
 3.  **Conclusion:** The plan, while technically implemented correctly, resulted in unintended excessive damping due to the frequency and location of its application. Applying damping during every overlap check, potentially multiple times per particle, is too aggressive.
 
 **Recommendation:** Revert the change or significantly revise the approach for applying collision-specific damping (e.g., only during impulse calculation, or reconsider its necessity given global damping).
+
+<!-- AI Collaboration Log -->
+
+### [Timestamp] - User Request: Modify `restDensity` Behavior
+
+User reported quirky behavior with `restDensity` affecting particle spacing:
+
+- `0`: Edge-to-edge collision (Correct)
+- `0.01`: Max spacing (Incorrect)
+- `2.9`: Edge-to-edge collision (Incorrect)
+- `> 2.9`: Overlap (Incorrect)
+
+Desired behavior:
+
+- `0`: Edge-to-edge collision
+- `> 0`: Increasing spacing, proportional to `restDensity`, max spacing at max density.
+
+### [MODE: THINK] - Analysis
+
+Reviewed `particleSystem.js`, `fluidFLIP.js`, `collisionSystem.js`, `collisionUi.js`, `main.js`.
+
+**Findings:**
+
+- `collisionSystem.js` calculates `minDist` using `densityFactor = max(0.5, min(2.0, restDensity / 3))`, then `minDist = (rI + rJ) * (1 / densityFactor)`. This _inversely_ scales spacing with density, causing the observed issue.
+- `fluidFLIP.js` has an `applyRestDensityEffect` that applies repulsion _inversely_ proportional to density (`restEffect = 1.0 / max(0.01, restDensity)`), potentially conflicting with the desired behavior.
+
+**Conclusion:** The primary issue is the `minDist` calculation in `CollisionSystem`. The `FluidFLIP` effect might also conflict.
+
+### [MODE: THINK+] - Brainstorming
+
+**Approach 1:** Modify only `CollisionSystem` to calculate `spacingMultiplier = 1.0 + (restDensity * scaleFactor)` and `minDist = (rI + rJ) * spacingMultiplier`. Chosen `scaleFactor = 0.05` for testing.
+**Approach 2:** Modify `CollisionSystem` (as above) AND remove the `applyRestDensityEffect` from `FluidFLIP` to eliminate conflicting logic.
+
+**Decision:** Proceed with Approach 2 for clarity and to ensure `CollisionSystem` is the sole driver of density-based spacing.
+
+### [MODE: PLAN] - Implementation Plan
+
+1.  **Modify `CollisionSystem.js`:** Replace `densityFactor` logic with new `spacingMultiplier` calculation (`1.0 + restDensity * 0.05`) and update `minDist` calculation.
+2.  **Modify `FluidFLIP.js`:** Remove the call to `applyRestDensityEffect` in `transferToParticles` and delete the `applyRestDensityEffect` method itself.
+3.  **Update Memory Bank:** Log analysis/plan in `notebook.md`, create plan in `plan.md`.
+
+Plan created in `memoryBank/plan.md`.

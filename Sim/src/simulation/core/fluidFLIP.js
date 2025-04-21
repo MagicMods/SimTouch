@@ -204,42 +204,6 @@ export class FluidFLIP {
       velocitiesX[i] = Math.max(-maxVelocity, Math.min(maxVelocity, velocitiesX[i]));
       velocitiesY[i] = Math.max(-maxVelocity, Math.min(maxVelocity, velocitiesY[i]));
     }
-    if (this.restDensity > 0.01) {
-      this.applyRestDensityEffect(particles, velocitiesX, velocitiesY);
-    }
-  }
-
-  applyRestDensityEffect(particles, velocitiesX, velocitiesY) {
-
-    const restEffect = 1.0 / Math.max(0.01, this.restDensity);
-    const repulsionStrength = 0.002 * restEffect;
-
-    // Apply mild repulsion based on rest density
-    for (let i = 0; i < particles.length / 2; i++) {
-      const x = particles[i * 2];
-      const y = particles[i * 2 + 1];
-
-      for (let j = i + 1; j < particles.length / 2; j++) {
-        const x2 = particles[j * 2];
-        const y2 = particles[j * 2 + 1];
-
-        const dx = x - x2;
-        const dy = y - y2;
-        const distSq = dx * dx + dy * dy;
-
-        if (distSq < 0.01) {
-          const dist = Math.sqrt(distSq);
-          const nx = dx / dist;
-          const ny = dy / dist;
-
-          // Apply repulsion proportional to rest density
-          velocitiesX[i] += nx * repulsionStrength;
-          velocitiesY[i] += ny * repulsionStrength;
-          velocitiesX[j] -= nx * repulsionStrength;
-          velocitiesY[j] -= ny * repulsionStrength;
-        }
-      }
-    }
   }
 
   solveIncompressibility() {
