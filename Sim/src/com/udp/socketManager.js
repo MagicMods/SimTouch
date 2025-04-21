@@ -1,4 +1,4 @@
-import { eventBus } from '../util/eventManager.js';
+import { eventBus } from '../../util/eventManager.js';
 
 class SocketManager {
   static instance;

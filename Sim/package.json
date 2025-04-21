@@ -6,10 +6,10 @@
   "main": "src/main.js",
   "scripts": {
     "start": "concurrently \"npm run server\" \"npm run client\"",
-    "server": "node src/network/server/server.js",
+    "server": "node src/com/udp/server/server.js",
     "client": "live-server src --port=8080 --no-browser",
     "dev": "npm run start"
-},
+  },
   "dependencies": {
     "cors": "^2.8.5",
     "gl-matrix": "3.4.3",

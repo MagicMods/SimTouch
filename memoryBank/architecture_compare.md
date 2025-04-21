@@ -235,7 +235,7 @@ graph LR
     - `ExternalInputConnector`: Listens for EMU/Mic data (likely via WebSockets or other means) and updates `EmuForces`/`MicForces`.
     - `ModulatorManager`: Purpose unclear from `main.js`, potentially related to modulating input signals.
 
-18. **Networking (`network/socketManager.js`):**
+18. **Networking (`com/udp/socketManager.js`):**
 
     - Handles WebSocket connections for potential external control or data synchronization.
 

@@ -2,7 +2,7 @@ import { TurbulenceUi } from "./panels/turbulenceUi.js";
 import { VoronoiUi } from "./panels/voronoiUi.js";
 import { OrganicUi } from "./panels/organicUi.js";
 import { PulseModulationUi } from "./panels/pulseModulationUi.js";
-import { NetworkUi } from "./panels/networkUi.js";
+import { ComUi } from "./panels/comUi.js";
 import { InputModulationUi } from "./panels/inputModulationUi.js";
 import { PresetUi } from "./panels/presetUi.js";
 import { PresetManager } from "../presets/presetManager.js";
@@ -32,7 +32,7 @@ export class UiManager {
     this.rightContainer = this.createContainer("right");
     this.pulseModContainer = this.createContainer("left-middle");
     this.presetContainer = this.createContainer("center");
-    this.networkContainer = this.createContainer("right-center");
+    // this.networkContainer = this.createContainer("right-center");
     this.inputModContainer = this.createContainer("right-middle");
 
     this.initializeUIComponents();
@@ -60,7 +60,7 @@ export class UiManager {
 
     this.boundaryUi = new BoundaryUi(this.main, this.leftContainer);
     this.inputsUi = new InputsUi(this.main, this.leftContainer);
-    this.networkUi = new NetworkUi(this.main, this.leftContainer);
+    this.comUi = new ComUi(this.main, this.leftContainer);
     this.debugUi = new DebugUi(this.main, this.leftContainer);
 
     // Right UI
@@ -174,7 +174,7 @@ export class UiManager {
     this.organicUi.dispose();
     this.pulseModUi.dispose();
     this.inputModUi.dispose();
-    this.networkUi.dispose();
+    this.comUi.dispose();
     this.presetUi.dispose();
     this.randomizerUi.dispose();
 

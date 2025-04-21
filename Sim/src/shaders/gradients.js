@@ -9,7 +9,7 @@ import c7 from "./Gradients/c7.js";
 import c8 from "./Gradients/c8.js";
 import c9 from "./Gradients/c9.js";
 import c10 from "./Gradients/c10.js";
-import { socketManager } from "../network/socketManager.js";
+import { socketManager } from "../com/udp/socketManager.js";
 
 export class Gradients {
   // Use FastLED palettes as presets

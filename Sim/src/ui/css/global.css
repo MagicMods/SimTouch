@@ -53,6 +53,17 @@ canvas.emu-visualization {
 }
 
 
+.lil-gui .title {
+  padding: 0px 10px;
+}
+
+.lil-gui.root>.children>.lil-gui>.title {
+  padding: 0px 20px;
+}
+
+.lil-gui .lil-gui .lil-gui>.title {
+  padding: 0px 30px;
+}
 
 .full-width .widget {
   width: 100% !important;

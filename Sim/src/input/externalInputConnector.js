@@ -1,4 +1,4 @@
-import { socketManager } from "../network/socketManager.js";
+import { socketManager } from "../com/udp/socketManager.js";
 
 export class ExternalInputConnector {
   constructor(mouseForces, emuForces = null, micForces = null, debugFlags) {

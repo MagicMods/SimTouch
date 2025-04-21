@@ -1,6 +1,6 @@
 import { BaseUi } from "../baseUi.js";
-import { NetworkConfig } from "../../network/networkConfig.js";
-import { socketManager } from "../../network/socketManager.js";
+import { NetworkConfig } from "../../com/udp/networkConfig.js";
+import { socketManager } from "../../com/udp/socketManager.js";
 import { eventBus } from '../../util/eventManager.js';
 
 export class NetworkUi extends BaseUi {

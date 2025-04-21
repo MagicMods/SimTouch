@@ -57,7 +57,7 @@ Then open your browser to <http://localhost:8080> to view the simulation.
   - `shaders/` - GLSL shader code
   - `input/` - Input handling (mouse, EMU, microphone)
   - `ui/` - User interface components
-  - `network/` - Socket-based networking
+  - `com/udp/` - Socket-based networking
 
 ## License
 

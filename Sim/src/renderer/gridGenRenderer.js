@@ -5,7 +5,7 @@ import { OverlayManager } from "./overlayRenderer.js";
 import { eventBus } from '../util/eventManager.js';
 import { Gradients } from "../shaders/gradients.js";
 import { GridRenderModes, GridField } from "./gridRenderModes.js";
-import { socketManager } from "../network/socketManager.js";
+import { socketManager } from "../com/udp/socketManager.js";
 
 export class GridGenRenderer extends BaseRenderer {
   constructor(gl, shaderManager, gridConfig, dimensionManager, boundaryManager, particleSystem, debugFlags) {

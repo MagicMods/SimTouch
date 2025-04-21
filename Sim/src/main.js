@@ -20,7 +20,8 @@ import { BoundaryRenderer } from "./renderer/boundaryRenderer.js";
 import { ParticleRenderer } from "./renderer/particleRenderer.js";
 // Network
 import { ModulatorManager } from "./input/modulatorManager.js";
-import { socketManager } from "./network/socketManager.js";
+import { socketManager } from "./com/udp/socketManager.js";
+import { serialManager } from "./com/serial/serialManager.js";
 import { eventBus } from "./util/eventManager.js";
 import { TickLog } from "./util/tickLog.js";
 
@@ -152,7 +153,13 @@ export class Main {
         enabled: true,
         debugSend: false,
         debugReceive: false
+      },
+      serial: {
+        enabled: true,
+        debugSend: false,
+        debugReceive: false
       }
+
     };
 
     // Define debug flags before components that need them
@@ -192,6 +199,8 @@ export class Main {
       emu: false,
       server: false,
       network: false,
+      serial: false,
+
       sound: false,
       state: false,
       events: false,
@@ -337,6 +346,9 @@ export class Main {
 
     const socket = socketManager;
     socket.setDebugFlags(this.debugFlags);
+
+    const serial = serialManager;
+    serial.setDebugFlags(this.debugFlags);
     socket.enable = true;
     socket.connect();
 
