@@ -33,11 +33,11 @@ export class ShaderManager {
       throw new Error(`Shader program '${name}' not found`);
     }
 
-    if (this.currentProgram !== program.program) {
-      this.gl.useProgram(program.program);
-      this.currentProgram = program.program;
-      // if (this.main.debugFlags.debugRenderer_GridGen) console.log(`Using shader program: ${name}`);
-    }
+    // if (this.currentProgram !== program.program) { // DEBUG: Force useProgram
+    this.gl.useProgram(program.program);
+    this.currentProgram = program.program;
+    // if (this.main.debugFlags.debugRenderer_GridGen) console.log(`Using shader program: ${name}`);
+    // } // DEBUG: Force useProgram
 
     return program;
   }
@@ -287,6 +287,26 @@ export class ShaderManager {
                 gl_FragColor = color;
             }
         `,
+    },
+    barGraph: {
+      vert: `
+        attribute vec2 position; // Base quad vertex (0 to 1)
+        attribute mat4 instanceMatrix; // Per-instance transform (Model-View-Projection)
+        attribute vec4 instanceColor;
+        varying vec4 vColor;
+        void main() {
+            // Instance matrix includes projection, position is 0->1 for base quad
+            gl_Position = instanceMatrix * vec4(position, 0.0, 1.0);
+            vColor = instanceColor;
+        }
+      `,
+      frag: `
+        precision mediump float;
+        varying vec4 vColor;
+        void main() {
+            gl_FragColor = vColor;
+        }
+      `
     },
   };
 }

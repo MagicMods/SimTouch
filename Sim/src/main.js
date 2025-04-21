@@ -209,6 +209,7 @@ export class Main {
       overlay: false,
 
       noisePrv: false,
+      dataViz: false,
     };
 
     eventBus.initDebug(this.debugFlags);
@@ -352,7 +353,7 @@ export class Main {
     socketManager.setDebugFlags(this.debugFlags);
     serialManager.setDebugFlags(this.debugFlags);
     comManager.setDebugFlags(this.debugFlags);
-    comManager.setDataVisualization(new DataVisualization(document.body, this));
+
     // Instantiate Renderers that depend on Managers
     this.boundaryRenderer = new BoundaryRenderer(
       document.body,
@@ -373,7 +374,9 @@ export class Main {
   async init() {
     try {
       await this.shaderManager.init();
-
+      const dataVis = new DataVisualization(document.body, this); // Instantiate without shared shaderManager
+      await dataVis.init(); // Initialize DataVisualization asynchronously
+      comManager.setDataVisualization(dataVis); // Pass the initialized instance
       // Get audio analyzer directly without null checks
       this.audioAnalyzer = this.micForces.analyzer;
 

@@ -62,6 +62,7 @@ export class DebugUi extends BaseUi {
 
       { text: "Main", flag: "main" },
       { text: "NoisePrv", flag: "noisePrv" },
+      { text: "DataViz", flag: "dataViz" },
     ];
 
     // Create buttons from config
