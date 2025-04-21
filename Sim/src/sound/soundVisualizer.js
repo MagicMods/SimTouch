@@ -103,7 +103,7 @@ export class SoundVisualizer {
       this.container.className = "sound-visualizer-container";
       this.container.style.position = "fixed";
       this.container.style.bottom = "20px";
-      this.container.style.left = "20px"; // Changed from 'right' to 'left'
+      this.container.style.right = "20px"; // Changed from 'right' to 'left'
       this.container.style.zIndex = "1000";
       this.container.style.borderRadius = "8px";
       this.container.style.overflow = "hidden";

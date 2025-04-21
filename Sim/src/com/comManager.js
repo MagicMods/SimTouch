@@ -19,8 +19,10 @@ class ComManager {
         this.db = null;
         this.shouldSendData = false;
 
+        // this.dataVisualization;
         // Listen for channel changes from UI
         eventBus.on('comChannelChanged', this.setActiveChannel.bind(this));
+
     }
 
     setDebugFlags(debugFlags) {
@@ -28,6 +30,11 @@ class ComManager {
         // Pass flags down to underlying managers
         this.socket.setDebugFlags(debugFlags);
         this.serial.setDebugFlags(debugFlags);
+    }
+
+    setDataVisualization(dataVisualization) {
+        this.dataVisualization = dataVisualization;
+        // console.log(this.dataVisualization);
     }
 
     // Make method async to await disconnect
@@ -81,15 +88,22 @@ class ComManager {
         }
     }
 
-    sendData(value) {
+    sendData(byteArray) {
         if (this.shouldSendData) {
-            if (this.db?.comSR) console.log(`ComManager: Sending Data (${this.activeChannel}) = ${value}`);
+            this.dataVisualization.updateData(byteArray);
+            // console.log(this.dataVisualization);
+            if (this.db?.comSR) console.log(`ComManager: Sending Data (${byteArray})`);
+            // console.log(this.dataVisualization);
+
             if (this.activeChannel === 'network') {
-                return this.socket.sendData(value);
+                return this.socket.sendData(byteArray);
             } else if (this.activeChannel === 'serial') {
-                return this.serial.sendData(value);
+                return this.serial.sendData(byteArray);
             }
         }
+
+
+
     }
 
     sendColor(value) {
@@ -97,8 +111,6 @@ class ComManager {
         if (this.activeChannel === 'network') {
             return this.socket.sendColor(value);
         } else if (this.activeChannel === 'serial') {
-            // Ensure serial send command is awaited if necessary (check serialManager)
-            // Assuming serialManager.sendColor handles async correctly if needed
             return this.serial.sendColor(value);
         }
         return false;
@@ -135,5 +147,3 @@ class ComManager {
 }
 
 export const comManager = ComManager.getInstance();
-
-

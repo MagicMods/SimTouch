@@ -14,6 +14,7 @@ import { ExternalInputConnector } from "./input/externalInputConnector.js";
 import { EmuForces } from "./simulation/forces/emuForces.js";
 import { EmuRenderer } from "./renderer/emuRenderer.js";
 import { MicInputForces } from "./simulation/forces/micForces.js";
+import { DataVisualization } from "./renderer/dataVisualization.js";
 // Renderer
 import { GridGenRenderer } from "./renderer/gridGenRenderer.js";
 import { BoundaryRenderer } from "./renderer/boundaryRenderer.js";
@@ -343,14 +344,15 @@ export class Main {
     if (this.externalInput.emuForces.simulation) {
       this.externalInput.emuForces.simulation.main = this;
     }
-    // Also store main reference in emuRenderer
-    this.emuRenderer.main = this;
+
+    // this.dataVisualization = new DataVisualization(document.body, this);
+    // this.dataVisualization.hide();
 
     // Pass debug flags before potentially using managers
     socketManager.setDebugFlags(this.debugFlags);
     serialManager.setDebugFlags(this.debugFlags);
-    comManager.setDebugFlags(this.debugFlags); // Initialize comManager with flags too
-
+    comManager.setDebugFlags(this.debugFlags);
+    comManager.setDataVisualization(new DataVisualization(document.body, this));
     // Instantiate Renderers that depend on Managers
     this.boundaryRenderer = new BoundaryRenderer(
       document.body,

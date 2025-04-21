@@ -10,7 +10,7 @@ export class DebugUi extends BaseUi {
     this.controls = {};
     this.gui.title("Debug");
     this.initDebugControls();
-    this.setupFolderObserver();
+    this.gui.close();
   }
 
   initDebugControls() {
@@ -98,15 +98,5 @@ export class DebugUi extends BaseUi {
     buttonContainerChildren.insertBefore(buttonContainer, buttonContainerChildren.firstChild);
   }
 
-  setupFolderObserver() {
 
-  }
-
-  updateDebugVisibility(enabled) {
-
-  }
-
-  updateDebugControllers() {
-
-  }
 }

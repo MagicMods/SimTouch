@@ -204,5 +204,4 @@
 # TODO list
 
 - Add Presets to Gridui
-- Add Serial
 - Add DataVisualization
