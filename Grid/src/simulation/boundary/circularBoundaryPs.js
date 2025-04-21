@@ -113,20 +113,22 @@ class CircularBoundaryPs extends BaseBoundaryPs {
     }
     // Case 2: Repulsion - particle is near but not colliding with boundary
     else if (this.boundaryRepulsion > 0) {
+      // Calculate effective repulsion using quadratic scaling
+      const effectiveRepulsion = this.boundaryRepulsion * this.boundaryRepulsion;
+
       // Calculate distance from particle edge to boundary
       const distanceToEdge = this.radius - (dist + particleRadius);
 
-      // Apply repulsion only when close to boundary (within 15% of radius)
-      const repulsionZone = this.radius * 0.15;
+      // Apply repulsion only when close to boundary (zone size scales quadratically with repulsion)
+      const repulsionZone = this.radius * effectiveRepulsion * 0.02;
 
       if (distanceToEdge < repulsionZone) {
         // Calculate repulsion strength (stronger as particle gets closer)
         // Map distance from 0 (at boundary) to 1 (at repulsion threshold)
         const normalizedDistance = 1.0 - distanceToEdge / repulsionZone;
 
-        // Use quadratic falloff for smoother effect
-        const repulsionStrength =
-          this.boundaryRepulsion * normalizedDistance * normalizedDistance;
+        // Use quadratic falloff for smoother effect, scaled by effectiveRepulsion
+        const repulsionStrength = effectiveRepulsion * normalizedDistance * normalizedDistance;
 
         // Apply repulsion force (inward direction = -nx, -ny)
         velocity[0] -= nx * repulsionStrength;
