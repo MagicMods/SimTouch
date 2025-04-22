@@ -172,12 +172,16 @@ export class InputModulationUi extends BaseUi {
     // Store the folder reference
     this.modulatorFolders.push(folder);
 
+    // Initialize controllers object on the modulator to store references
+    modulator.controllers = {};
+
     folder.open();
     if (this.debug.inputMod) console.log(`Created folder for modulator ${index + 1}`);
 
-    const controllers = {};
+    // Store controllers locally for setup, then assign to modulator.controllers
+    const localControllers = {};
 
-    controllers.frequencyBand = folder
+    localControllers.frequencyBand = folder
       .add(modulator, "frequencyBand", [
         "None",
         "Sub",
@@ -191,35 +195,33 @@ export class InputModulationUi extends BaseUi {
       ])
       .name("Frequency Band")
       .onChange((value) => {
-
-        const showCustom = value === "custom";
-
-        controllers.customFreq.show(showCustom);
-        controllers.customWidth.show(showCustom);
+        // Call the new helper method to handle visibility
+        this._updateCustomBandControlsVisibility(modulator, value);
 
         // Update visualizer marker if available
-        if (this.main.micForces && this.main.micForces.visualizer) {
+        if (this.main?.soundVisualizer) {
+          const showCustom = value === "Custom"; // Use correct case here too for consistency
           if (showCustom) {
-            this.main.micForces.visualizer.setCustomBandMarker(
+            this.main.soundVisualizer.setCustomBandMarker(
               modulator.customFreq,
               modulator.customWidth,
               true
             );
           } else {
-            this.main.micForces.visualizer.setCustomBandMarker(0, 0, false);
+            this.main.soundVisualizer.setCustomBandMarker(0, 0, false);
           }
         }
       });
 
-    controllers.frequencyBand.domElement.classList.add("full-width");
+    localControllers.frequencyBand.domElement.classList.add("full-width");
 
-    controllers.customFreq = folder
+    localControllers.customFreq = folder
       .add(modulator, "customFreq", 20, 20000, 10)
       .name("Freq Center (Hz)")
       .onChange((value) => {
         // Update visualizer if available
-        if (this.main.micForces.visualizer && modulator.frequencyBand === "Custom") {
-          this.main.micForces.visualizer.setCustomBandMarker(
+        if (this.main?.soundVisualizer && modulator.frequencyBand === "Custom") {
+          this.main.soundVisualizer.setCustomBandMarker(
             value,
             modulator.customWidth,
             true
@@ -227,13 +229,13 @@ export class InputModulationUi extends BaseUi {
         }
       });
 
-    controllers.customWidth = folder
+    localControllers.customWidth = folder
       .add(modulator, "customWidth", 10, 10000, 10)
       .name("Band Width (Hz)")
       .onChange((value) => {
         // Update visualizer if available
-        if (this.main.micForces.visualizer && modulator.frequencyBand === "Custom") {
-          this.main.micForces.visualizer.setCustomBandMarker(
+        if (this.main?.soundVisualizer && modulator.frequencyBand === "Custom") {
+          this.main.soundVisualizer.setCustomBandMarker(
             modulator.customFreq,
             value,
             true
@@ -241,11 +243,11 @@ export class InputModulationUi extends BaseUi {
         }
       });
 
-    controllers.customFreq.show(false);
-    controllers.customWidth.show(false);
+    localControllers.customFreq.show(false);
+    localControllers.customWidth.show(false);
 
     const targetNames = this.modulatorManager.getTargetNames();
-    controllers.targetName = folder
+    localControllers.targetName = folder
       .add(modulator, "targetName", ["None", ...targetNames])
       .name("Target")
       .onChange((value) => {
@@ -274,25 +276,25 @@ export class InputModulationUi extends BaseUi {
             modulator.max = targetInfo.max;
 
             // Update UI controls
-            if (controllers.min) controllers.min.setValue(targetInfo.min);
-            if (controllers.max) controllers.max.setValue(targetInfo.max);
+            if (localControllers.min) localControllers.min.setValue(targetInfo.min);
+            if (localControllers.max) localControllers.max.setValue(targetInfo.max);
           }
 
           // Always update ranges
-          if (controllers.min) {
-            controllers.min.min(targetInfo.min);
-            controllers.min.max(targetInfo.max);
+          if (localControllers.min) {
+            localControllers.min.min(targetInfo.min);
+            localControllers.min.max(targetInfo.max);
           }
 
-          if (controllers.max) {
-            controllers.max.min(targetInfo.min);
-            controllers.max.max(targetInfo.max);
+          if (localControllers.max) {
+            localControllers.max.min(targetInfo.min);
+            localControllers.max.max(targetInfo.max);
           }
         }
       });
 
-    controllers.targetName.domElement.classList.add("full-width");
-    controllers.targetName.domElement.style.paddingBottom = "5px";
+    localControllers.targetName.domElement.classList.add("full-width");
+    localControllers.targetName.domElement.style.paddingBottom = "5px";
 
     // Add target selection function to the modulator folder
     const addTargetSelectionUI = () => {
@@ -314,7 +316,7 @@ export class InputModulationUi extends BaseUi {
 
       // Add elements to folder
       const folderChildren = folder.domElement.querySelector('.children');
-      const targetControllerElement = controllers.targetName.domElement;
+      const targetControllerElement = localControllers.targetName.domElement;
       if (folderChildren && targetControllerElement) {
         folderChildren.insertBefore(controllerWrapper, targetControllerElement);
       }
@@ -327,7 +329,7 @@ export class InputModulationUi extends BaseUi {
     // Add the target selection UI
     addTargetSelectionUI();
 
-    controllers.sensitivity = folder
+    localControllers.sensitivity = folder
       .add(modulator, "sensitivity", 0, 1, 0.01)
       .name("Sensitivity")
       .onChange((value) => {
@@ -341,7 +343,7 @@ export class InputModulationUi extends BaseUi {
         }
       });
 
-    controllers.threshold = folder
+    localControllers.threshold = folder
       .add(modulator, "threshold", 0, 1, 0.01)
       .name("Threshold")
       .onChange((value) => {
@@ -349,31 +351,31 @@ export class InputModulationUi extends BaseUi {
         this.updateAllBandVisualizations();
       });
 
-    controllers.attack = folder
+    localControllers.attack = folder
       .add(modulator, "attack", 0, 0.99, 0.01)
       .name("Attack")
       .onChange(() => {
         this.updateAllBandVisualizations();
       });
 
-    controllers.release = folder
+    localControllers.release = folder
       .add(modulator, "release", 0, 0.99, 0.01)
       .name("Release")
       .onChange(() => {
         this.updateAllBandVisualizations();
       });
 
-    controllers.min = folder
+    localControllers.min = folder
       .add(modulator, "min", 0, 1, 0.01)
       .name("Min Value");
-    controllers.max = folder
+    localControllers.max = folder
       .add(modulator, "max", 0, 1, 0.01)
       .name("Max Value");
 
-    controllers.min.domElement.style.paddingTop = "5px";
-    controllers.max.domElement.style.paddingBottom = "5px";
+    localControllers.min.domElement.style.paddingTop = "5px";
+    localControllers.max.domElement.style.paddingBottom = "5px";
 
-    controllers.remove = folder
+    localControllers.remove = folder
       .add(
         {
           remove: () => {
@@ -416,7 +418,9 @@ export class InputModulationUi extends BaseUi {
         "remove"
       )
       .name("Remove");
-    modulator.controllers = controllers;
+
+    // Assign the created controllers to the modulator instance
+    modulator.controllers = localControllers;
 
     // Store a reference to the folder in the modulator for easier access
     modulator.folder = folder;
@@ -429,6 +433,20 @@ export class InputModulationUi extends BaseUi {
     }
 
     return modulator;
+  }
+
+  // NEW: Helper method to manage custom band control visibility
+  _updateCustomBandControlsVisibility(modulator, bandValue) {
+    if (!modulator || !modulator.controllers) return;
+
+    const showCustom = bandValue === "Custom"; // Use correct case
+
+    if (modulator.controllers.customFreq) {
+      modulator.controllers.customFreq.show(showCustom);
+    }
+    if (modulator.controllers.customWidth) {
+      modulator.controllers.customWidth.show(showCustom);
+    }
   }
 
   getModulatorsData() {
@@ -1040,6 +1058,16 @@ export class InputModulationUi extends BaseUi {
             // Set frequency band
             controller.setValue(modData[prop]);
             if (this.debug.inputMod) console.log(`Set UI controller for ${prop} to ${modData[prop]}`);
+            // >>> ADDED: Call visibility update after setting value from preset
+            this._updateCustomBandControlsVisibility(modulator, modData[prop]);
+            // >>> ADDED: Explicitly update visualizer marker state when loading preset
+            const showCustom = modData[prop] === "Custom";
+            if (this.main?.soundVisualizer) {
+              // Ensure customFreq/Width are taken from modData if available, else modulator defaults
+              const freq = modData.customFreq !== undefined ? modData.customFreq : modulator.customFreq;
+              const width = modData.customWidth !== undefined ? modData.customWidth : modulator.customWidth;
+              this.main.soundVisualizer.setCustomBandMarker(freq, width, showCustom);
+            }
           } else if (prop === "sensitivity" && modData[prop] !== undefined) {
             // Set sensitivity (acts as enable control)
             controller.setValue(modData[prop]);
@@ -1203,7 +1231,7 @@ export class InputModulationUi extends BaseUi {
     let element = e.target;
 
     // Check if the click is on the selection button itself - ignore it
-    if (element === this.activeModulator._uiElements.targetSelectionButton) {
+    if (this.activeModulator._uiElements && element === this.activeModulator._uiElements.targetSelectionButton) { // Add null check for safety
       if (this.debug.inputMod) console.log('Clicked on the target selection button - ignoring');
       return;
     }
@@ -1262,7 +1290,7 @@ export class InputModulationUi extends BaseUi {
     const button = modulator._uiElements.targetSelectionButton;
 
     if (button) {
-      button.style.backgroundColor = isActive ? '#ff4444' : '';
+      button.style.backgroundColor = isActive ? '#ff4444' : ''; // Use hex color for consistency
       button.textContent = isActive ? 'Cancel Selection' : 'Select Target';
     }
   }
