@@ -91,45 +91,39 @@ export class SoundVisualizer {
    * Initialize the visualizer
    */
   initialize() {
-    // Check if container already exists, if so, clean it up first
-    if (this.container) {
-      // If we already have a container, just clear its contents
-      while (this.container.firstChild) {
-        this.container.removeChild(this.container.firstChild);
-      }
-    } else {
-      // Create container if needed
-      this.container = document.createElement("div");
-      this.container.className = "sound-visualizer-container";
-      this.container.style.position = "fixed";
-      this.container.style.bottom = "20px";
-      this.container.style.right = "20px"; // Changed from 'right' to 'left'
-      this.container.style.zIndex = "1000";
-      this.container.style.borderRadius = "8px";
-      this.container.style.overflow = "hidden";
-      this.container.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.2)";
-      this.options.container.appendChild(this.container);
+    // Check if a container was provided in options
+    if (!this.options.container) {
+      console.error("SoundVisualizer: Container option is missing.");
+      return this;
     }
 
-    // Create canvas
+    // Store the provided container reference
+    this.container = this.options.container;
+
+    // Create canvas - Keep its creation internal
     this.canvas = document.createElement("canvas");
     this.canvas.className = "sound-visualizer-canvas";
     this.canvas.width = this.options.width;
     this.canvas.height = this.options.height;
-    this.canvas.style.display = "block";
-    this.container.appendChild(this.canvas);
+    this.canvas.style.display = "block"; // Start visible by default
+    this.container.appendChild(this.canvas); // Append to the provided container
 
     // Get drawing context
     this.ctx = this.canvas.getContext("2d");
 
-    // Add resize listener
-    window.addEventListener("resize", this.handleResize);
+    // Add resize listener (if resizing based on window is still desired)
+    // If it should only respect the container size, this might not be needed
+    // window.addEventListener("resize", this.handleResize);
 
     // Initialize the beat energy level
     if (this.options.analyzer && this.options.analyzer.beatDetection) {
       this.metrics.beatEnergy =
         this.options.analyzer.beatDetection.energyThreshold;
     }
+
+    // Set initial visibility state based on internal flag
+    this.isVisible = false; // Assume hidden initially, `show()` will set it true
+    this.canvas.style.display = 'none'; // Hide canvas initially
 
     return this;
   }
@@ -138,16 +132,21 @@ export class SoundVisualizer {
    */
   show() {
     if (!this.canvas) {
-      this.initialize();
+      console.warn("SoundVisualizer.show() called before initialization.");
+      // Optionally, call initialize here if that makes sense for your flow
+      // this.initialize(); 
+      return this;
     }
 
-    this.container.style.display = "block";
-    this.isVisible = true;
+    this.canvas.style.display = "block"; // Show the canvas element
+    this.isVisible = true; // Set internal visibility flag
 
-    // Start animation loop
-    this.lastFrameTime = performance.now();
-    this.frameCount = 0;
-    this.draw();
+    // Start animation loop only if not already running
+    if (!this.animationId) {
+      this.lastFrameTime = performance.now();
+      this.frameCount = 0;
+      this.draw(); // Start the drawing loop
+    }
 
     return this;
   }
@@ -156,11 +155,10 @@ export class SoundVisualizer {
    * Hide visualization
    */
   hide() {
-    if (this.container) {
-      this.container.style.display = "none";
+    if (this.canvas) {
+      this.canvas.style.display = "none"; // Hide the canvas element
     }
-
-    this.isVisible = false;
+    this.isVisible = false; // Set internal visibility flag
 
     // Stop animation loop
     if (this.animationId) {

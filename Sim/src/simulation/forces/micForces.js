@@ -1,32 +1,22 @@
 import { SoundAnalyzer } from "../../sound/soundAnalyzer.js";
-import { SoundVisualizer } from "../../sound/soundVisualizer.js";
 
 export class MicInputForces {
   constructor(debugFlag) {
     this.enabled = false;
     this.targetControllers = new Map();
-    this.baselineAmplitude = 0.05; // Silent threshold
+    this.baselineAmplitude = 0.01; // Silent threshold
     this.debugFlag = debugFlag;
     // Configuration
     this.sensitivity = 5.0;
     this.smoothing = 0.8;
-    this.fftSize = 2048;
+    this.fftSize = 4096;
 
     // Create analyzer with our settings
     this.analyzer = new SoundAnalyzer({
       fftSize: this.fftSize,
       smoothingTimeConstant: this.smoothing,
       minDecibels: -90,
-      maxDecibels: -10,
-    });
-
-    // Create visualizer (but don't show it yet)
-    this.visualizer = new SoundVisualizer({
-      analyzer: this.analyzer,
-      width: 320,
-      height: 240,
-      visualizations: ["spectrum", "waveform", "volume", "bands", "history"],
-      theme: "dark",
+      maxDecibels: -5,
     });
 
     // Audio data - exposed for compatibility with existing code
@@ -59,14 +49,10 @@ export class MicInputForces {
       this.enabled = true;
       if (this.debugFlag) console.log("Microphone input enabled");
 
-      // Show visualizer if it's supposed to be visible (default is true)
-      if (this.visualizerVisible) {
-        this.showVisualizer();
-      }
-
       return true;
     } catch (error) {
       console.error("Error enabling microphone:", error);
+      this.enabled = false;
       return false;
     }
   }
@@ -75,9 +61,6 @@ export class MicInputForces {
     if (!this.enabled) return;
 
     this.enabled = false;
-
-    // Hide visualizer
-    this.hideVisualizer();
 
     // Disable analyzer
     if (this.analyzer) {
@@ -157,38 +140,23 @@ export class MicInputForces {
 
   // Toggle visualizer visibility
   toggleVisualizer() {
-    if (this.visualizerVisible) {
-      this.hideVisualizer();
-    } else {
-      this.showVisualizer();
-    }
+    this.visualizerVisible = !this.visualizerVisible;
+    console.warn("MicInputForces.toggleVisualizer() called, but visualizer is now managed by main.js");
     return this.visualizerVisible;
   }
 
   // Show audio visualizer
   showVisualizer() {
-    if (!this.visualizer) return false;
-
-    // Only show if input is enabled
-    if (!this.enabled) {
-      // Just mark that we want it visible when enabled
-      this.visualizerVisible = true;
-      return false;
-    }
-
-    this.visualizer.initialize();
-    this.visualizer.show();
+    console.warn("MicInputForces.showVisualizer() called, but visualizer is now managed by main.js");
     this.visualizerVisible = true;
-    return true;
+    return false;
   }
 
   // Hide audio visualizer
   hideVisualizer() {
-    if (!this.visualizer) return false;
-
-    this.visualizer.hide();
+    console.warn("MicInputForces.hideVisualizer() called, but visualizer is now managed by main.js");
     this.visualizerVisible = false;
-    return true;
+    return false;
   }
 
   addTarget(
@@ -326,14 +294,6 @@ export class MicInputForces {
       }
     }
 
-    // Update visualizer ONLY if it exists AND has the method
-    if (
-      this.visualizer &&
-      typeof this.visualizer.updateOptions === "function"
-    ) {
-      this.visualizer.updateOptions({ gain: value });
-    }
-
     if (this.debugFlag) console.log(`Global sensitivity set to ${value}`);
     return this;
   }
@@ -376,18 +336,12 @@ export class MicInputForces {
 
   // Set visualizer theme
   setVisualizerTheme(theme) {
-    if (this.visualizer) {
-      this.visualizer.setTheme(theme);
-    }
-    return this;
+    console.warn("MicInputForces.setVisualizerTheme() called, but visualizer is now managed by main.js");
   }
 
   // Set which visualizations to display
   setVisualizations(types) {
-    if (this.visualizer) {
-      this.visualizer.setVisualizations(types);
-    }
-    return this;
+    console.warn("MicInputForces.setVisualizations() called, but visualizer is now managed by main.js");
   }
 
   calibrate() {

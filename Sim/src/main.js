@@ -15,6 +15,7 @@ import { EmuForces } from "./simulation/forces/emuForces.js";
 import { EmuRenderer } from "./renderer/emuRenderer.js";
 import { MicInputForces } from "./simulation/forces/micForces.js";
 import { DataVisualization } from "./renderer/dataVisualization.js";
+import { SoundVisualizer } from "./sound/soundVisualizer.js";
 // Renderer
 import { GridGenRenderer } from "./renderer/gridGenRenderer.js";
 import { BoundaryRenderer } from "./renderer/boundaryRenderer.js";
@@ -35,6 +36,12 @@ export class Main {
     // Create GL context with stencil buffer and store it locally
     this.gl = this.canvas.getContext("webgl2", { stencil: true });
     if (!this.gl) throw new Error("WebGL2 not supported");
+
+    // --- BEGIN STEP 2: Create Visualization Container --- 
+    this.vizuContainer = document.createElement('div');
+    this.vizuContainer.className = 'vizu-container';
+    document.body.appendChild(this.vizuContainer);
+    // --- END STEP 2 --- 
 
     this.shaderManager = new ShaderManager(this.gl);
 
@@ -332,10 +339,6 @@ export class Main {
       .enable()
       .setSensitivity(0.002);
 
-    // Create the visualizer AFTER externalInput is initialized
-    this.emuRenderer = new EmuRenderer(document.body, this.externalInput.emuForces, this);
-    this.emuRenderer.hide();
-
     // Connect components directly without null checks
     if (this.debugFlags.main) console.log("Directly connecting turbulenceField to emuRenderer and emuForces");
     // Add direct reference to turbulenceField in emuForces
@@ -345,9 +348,6 @@ export class Main {
     if (this.externalInput.emuForces.simulation) {
       this.externalInput.emuForces.simulation.main = this;
     }
-
-    // this.dataVisualization = new DataVisualization(document.body, this);
-    // this.dataVisualization.hide();
 
     // Pass debug flags before potentially using managers
     socketManager.setDebugFlags(this.debugFlags);
@@ -366,19 +366,35 @@ export class Main {
     eventBus.on('gridChanged', this.handleGridUIChange.bind(this));
     eventBus.on('uiControlChanged', this.handleSimUIChange.bind(this));
     if (this.debugFlags.main) console.log("Main subscribed to uiControlChanged events for Grid UI.");
-
-    // Initialize EmuRenderer early to render any initial data
-    // this.emuRenderer = new EmuRenderer(this.gl); // Already instantiated earlier
   }
 
   async init() {
     try {
       await this.shaderManager.init();
-      const dataVis = new DataVisualization(document.body, this); // Instantiate without shared shaderManager
+      const dataVis = new DataVisualization(this.vizuContainer, this);
       await dataVis.init(); // Initialize DataVisualization asynchronously
-      comManager.setDataVisualization(dataVis); // Pass the initialized instance
+      comManager.setDataVisualization(dataVis);
+
+      // --- Instantiate EmuRenderer here for desired order (Data -> Emu -> Sound) ---
+      this.emuRenderer = new EmuRenderer(this.vizuContainer, this.externalInput.emuForces, this);
+      this.emuRenderer.hide(); // Keep hidden initially
+      // --- End EmuRenderer Instantiation ---
+
       // Get audio analyzer directly without null checks
       this.audioAnalyzer = this.micForces.analyzer;
+
+      // Instantiate SoundVisualizer using the container and analyzer
+      this.soundVisualizer = new SoundVisualizer({
+        container: this.vizuContainer,
+        analyzer: this.audioAnalyzer,
+        width: 300, // Adjust as needed
+        height: 150, // Adjust as needed
+        visualizations: ['spectrum', 'volume', 'waveform', 'bands'], // Example: Show only two initially
+        showFps: this.debugFlags.sound // Tie FPS display to debug flag
+      });
+      this.soundVisualizer.initialize(); // Initialize SoundVisualizer
+      // Decide initial visibility (e.g., hide it)
+      // this.soundVisualizer.hide(); // Or .show() if needed initially
 
       this.ui = new UiManager(this);
       this.setGridParams(this.gridParams);

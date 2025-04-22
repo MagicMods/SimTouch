@@ -706,6 +706,17 @@ export class InputModulationUi extends BaseUi {
 
     if (enabled) {
       this.main.externalInput.enableMic();
+      // Show the main sound visualizer
+      if (this.main.soundVisualizer) {
+        this.main.soundVisualizer.show();
+      }
+    } else {
+      // Disable mic via external input connector
+      this.main.externalInput.disableMic();
+      // Hide the main sound visualizer
+      if (this.main.soundVisualizer) {
+        this.main.soundVisualizer.hide();
+      }
     }
   }
   addAudioDeviceSelector() {

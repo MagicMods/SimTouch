@@ -103,3 +103,40 @@
 .canvas-relative-container {
   position: relative;
 }
+
+/* Visualization Container */
+.vizu-container {
+  position: fixed; 
+  bottom: 30px;
+  left: 265px;
+  right: 265px;
+  height: 160px; 
+  display: flex;
+  justify-content: center;  
+  align-items: center; 
+  background-color: rgba(0, 0, 0, 0);  
+  z-index: 900;  
+  padding: 5px;
+  box-sizing: border-box;
+  overflow: hidden; 
+}
+
+/* Style direct children (canvases or wrapper divs) within the container */
+.vizu-container > canvas,
+.vizu-container > div { /* Target both canvas and potential wrapper divs */
+  margin: 0 20px; /* Add horizontal spacing between visualizations */
+  flex-shrink: 0; /* Prevent items from shrinking */
+  /* border: 1px solid rgba(255, 255, 255, 0.1); */ /* Optional: for debugging layout */
+}
+
+/* Specific styles for visualization canvases within the container */
+.vizu-container > .emu-visualization,
+.vizu-container > .data-visualization,
+.vizu-container > .sound-visualizer-canvas {
+  max-height: 100%; 
+  height: auto; 
+  position: static !important;
+  border-radius: 20px;
+  /* margin: 0 20px; */
+  /* background-color: rgba(0, 0, 0, 0) !important; */
+}
