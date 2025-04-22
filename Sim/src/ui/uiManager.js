@@ -49,6 +49,18 @@ export class UiManager {
         this.organicUi.updateOrganicFolders(value);
       }
     });
+
+    // DIV container for Visualizations
+    this.visualizationContainer = document.createElement("div");
+    this.visualizationContainer.className = "visualization-container";
+    document.body.appendChild(this.visualizationContainer);
+
+    // Create a canvas element for the visualization
+    this.visualizationCanvas = document.createElement("canvas");
+    this.visualizationCanvas.className = "visualization-canvas";
+    this.visualizationContainer.appendChild(this.visualizationCanvas);
+
+    // Create a canvas element for the visualization
   }
 
   initializeUIComponents() {

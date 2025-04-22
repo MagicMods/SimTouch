@@ -18,13 +18,6 @@ export class EmuRenderer {
     this.canvas.className = "emu-visualization";
     this.canvas.width = 150;
     this.canvas.height = 150;
-    this.canvas.style.position = "absolute";
-    this.canvas.style.bottom = "40px";
-    this.canvas.style.left = "50%";
-    this.canvas.style.transform = "translateX(-50%)";
-    this.canvas.style.background = "rgba(0, 0, 0, 0.5)";
-    this.canvas.style.borderRadius = "5px";
-    this.canvas.style.zIndex = "10";
     this.ctx = this.canvas.getContext("2d");
 
     container.appendChild(this.canvas);

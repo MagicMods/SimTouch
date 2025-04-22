@@ -20,12 +20,6 @@ canvas#glCanvas {
   box-shadow: 0px 0px 30px 0px;
 }
 
-canvas.emu-visualization {
-  background-color: #1a1a1a;
-  max-width: 100%;
-  max-height: 100%;
-  border-radius: 15% !important;
-}
 
 /* Override some lil-gui defaults */
 .lil-gui {
