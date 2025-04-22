@@ -42,6 +42,7 @@ export class SoundVisualizer {
     this.themes = {
       dark: {
         background: "#1a1a1a",
+        background: "#000000",
         primary: "#00ffcc",
         secondary: "#ff3366",
         tertiary: "#ffcc00",
@@ -102,7 +103,7 @@ export class SoundVisualizer {
 
     // Create canvas - Keep its creation internal
     this.canvas = document.createElement("canvas");
-    this.canvas.className = "sound-visualizer-canvas";
+    this.canvas.className = "sound-visualization";
     this.canvas.width = this.options.width;
     this.canvas.height = this.options.height;
     this.canvas.style.display = "block"; // Start visible by default
@@ -169,16 +170,10 @@ export class SoundVisualizer {
     return this;
   }
 
-  /**
-   * Toggle visibility
-   */
   toggle() {
     return this.isVisible ? this.hide() : this.show();
   }
 
-  /**
-   * Handle window resize events
-   */
   handleResize() {
     if (this.canvas && this.container) {
       // Only update if container dimensions have changed
@@ -195,9 +190,6 @@ export class SoundVisualizer {
     }
   }
 
-  /**
-   * Main drawing loop
-   */
   draw() {
     if (!this.isVisible || !this.ctx || !this.canvas) {
       this.animationId = null;
@@ -223,7 +215,7 @@ export class SoundVisualizer {
 
     // Draw visualizations
     let yOffset = 0;
-    const padding = 10;
+    const padding = 12;
     const analyzer = this.options.analyzer;
 
     // Only proceed if we have an analyzer with data
@@ -309,9 +301,7 @@ export class SoundVisualizer {
     // Request next frame
     this.animationId = requestAnimationFrame(this.draw);
   }
-  /**
-   * Draw frequency spectrum visualization
-   */
+
   drawSpectrum(yOffset, padding, height) {
     const analyzer = this.options.analyzer;
 
@@ -446,9 +436,7 @@ export class SoundVisualizer {
 
     return height + padding;
   }
-  /**
-   * Draw time domain waveform visualization
-   */
+
   drawWaveform(yOffset, padding, height) {
     const analyzer = this.options.analyzer;
 
@@ -503,9 +491,6 @@ export class SoundVisualizer {
     return height + padding;
   }
 
-  /**
-   * Draw volume level bar
-   */
   drawVolumeBar(yOffset, padding, height) {
     const analyzer = this.options.analyzer;
 
@@ -552,24 +537,21 @@ export class SoundVisualizer {
     this.ctx.lineTo(peakX, yOffset + padding + height);
     this.ctx.stroke();
 
-    // Draw volume value text
-    this.ctx.fillStyle = this.colors.text;
-    this.ctx.font = "12px sans-serif";
-    this.ctx.textAlign = "right";
-    this.ctx.fillText(
-      `Volume: ${(volume * 100).toFixed(1)}%`,
-      this.canvas.width - padding,
-      yOffset + padding + height / 2 + 4
-    );
+    // // Draw volume value text
+    // this.ctx.fillStyle = this.colors.text;
+    // this.ctx.font = "12px sans-serif";
+    // this.ctx.textAlign = "right";
+    // this.ctx.fillText(
+    //   `Volume: ${(volume * 100).toFixed(1)}%`,
+    //   this.canvas.width - padding,
+    //   yOffset + padding + height / 2 + 4
+    // );
 
     this.ctx.restore();
 
     return height + padding;
   }
 
-  /**
-   * Draw frequency bands visualization
-   */
   drawFrequencyBands(yOffset, padding, height) {
     const analyzer = this.options.analyzer;
 
@@ -630,9 +612,6 @@ export class SoundVisualizer {
     return height + padding;
   }
 
-  /**
-   * Draw volume history
-   */
   drawVolumeHistory(yOffset, padding, height) {
     const analyzer = this.options.analyzer;
 
@@ -696,9 +675,6 @@ export class SoundVisualizer {
     return height + padding;
   }
 
-  /**
-   * Draw beat indicator
-   */
   drawBeatIndicator() {
     this.ctx.save();
 
@@ -731,9 +707,6 @@ export class SoundVisualizer {
     this.ctx.restore();
   }
 
-  /**
-   * Draw FPS counter
-   */
   drawFpsCounter() {
     this.ctx.save();
 
@@ -747,9 +720,6 @@ export class SoundVisualizer {
     this.ctx.restore();
   }
 
-  /**
-   * Set color theme
-   */
   setTheme(themeName) {
     if (this.themes[themeName]) {
       this.options.theme = themeName;
@@ -760,17 +730,11 @@ export class SoundVisualizer {
     return this;
   }
 
-  /**
-   * Add a custom theme
-   */
   addTheme(name, colors) {
     this.themes[name] = { ...colors };
     return this;
   }
 
-  /**
-   * Set visualizations to show
-   */
   setVisualizations(types) {
     if (Array.isArray(types)) {
       this.options.visualizations = types;
@@ -778,9 +742,6 @@ export class SoundVisualizer {
     return this;
   }
 
-  /**
-   * Set container size
-   */
   setSize(width, height) {
     this.options.width = width;
     this.options.height = height;
@@ -793,12 +754,6 @@ export class SoundVisualizer {
     return this;
   }
 
-  /**
-   * Set custom frequency band marker
-   * @param {number} centerFreq - Center frequency in Hz
-   * @param {number} bandwidth - Bandwidth in Hz
-   * @param {boolean} enabled - Whether to show the marker
-   */
   setCustomBandMarker(centerFreq, bandwidth, enabled = true) {
     this.customBandMarker = {
       enabled: enabled,
@@ -808,9 +763,6 @@ export class SoundVisualizer {
     return this;
   }
 
-  /**
-   * Clean up resources
-   */
   dispose() {
     this.hide();
 

@@ -1,0 +1,13 @@
+/* Styles specific to the sound visualizer canvas */
+.sound-visualization {
+  display: block; 
+  max-height: 100%;
+  height: auto;
+  border-radius: 20px !important;
+  flex-shrink: 0;
+}
+
+/* Add a hidden state class */
+.sound-visualization.hidden {
+    display: none;
+}

@@ -1,11 +1,7 @@
 .data-visualization {
-    width: 30%;
+    width: 400px;
     height: 150px;
     background-color: rgba(0, 0, 0, 0.5);
     border-radius: 20px;
     z-index: 10;
-    position: absolute;
-    bottom: 40px;
-    left: 280px;
-    /* transform: translateX(-50%); */
 }

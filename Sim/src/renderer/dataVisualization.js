@@ -40,14 +40,11 @@ export class DataVisualization {
         this.instanceData = { matrices: null, colors: null, count: 0 };
 
         // Projection matrix for orthographic view
-        this.projectionMatrix = mat4.create(); // Assumes mat4 is available
+        this.projectionMatrix = mat4.create();
 
         // Initial visibility state
         this.isVisible = false;
-        this.canvas.style.display = 'none'; // Initially hide the canvas
-
-        // Setup VBOs, VAO, attributes
-        // this._initWebGLResources(); // Moved to async init()
+        this.canvas.style.display = 'none';
     }
 
     async init() {
@@ -56,8 +53,8 @@ export class DataVisualization {
             return false;
         }
         try {
-            await this.shaderManager.init(); // Initialize shaders using its own context
-            this._initWebGLResources(); // Setup buffers/VAO after shaders are ready
+            await this.shaderManager.init();
+            this._initWebGLResources();
             if (this.db.dataViz) console.log("DataVisualization initialized successfully.");
             return true;
         } catch (error) {
@@ -146,7 +143,7 @@ export class DataVisualization {
         if (!byteArray) {
             this.instanceData.count = 0;
             if (this.db.dataViz) console.log('No byteArray');
-            this.draw(); // Draw empty state
+            this.draw();
             return;
         }
 
@@ -154,7 +151,7 @@ export class DataVisualization {
         if (!(Array.isArray(byteArray) || ArrayBuffer.isView(byteArray))) {
             this.instanceData.count = 0;
             if (this.db.dataViz) console.log('Data is not an Array or TypedArray');
-            this.draw(); // Draw empty state
+            this.draw();
             return;
         }
 
@@ -162,7 +159,7 @@ export class DataVisualization {
         this.instanceData.count = numBars;
 
         if (numBars === 0) {
-            this.draw(); // Draw empty state
+            this.draw();
             return;
         }
 
@@ -170,7 +167,20 @@ export class DataVisualization {
         // Maps drawing coordinates (0, width) -> (-1, 1) and (0, height) -> (-1, 1)
         mat4.ortho(this.projectionMatrix, 0, this.canvas.width, 0, this.canvas.height, -1, 1);
 
-        const barWidth = this.canvas.width / numBars;
+        const barPadding = 1; // Desired padding between bars
+        const paddingX = 10;   // Padding on left/right edges
+        const paddingY = 10;   // Padding on top/bottom edges
+
+        const effectiveWidth = Math.max(0, this.canvas.width - 2 * paddingX);
+        const effectiveHeight = Math.max(0, this.canvas.height - 2 * paddingY);
+
+        // Calculate required padding and adjust if it exceeds available space
+        const requiredTotalPaddingWidth = Math.max(0, (numBars - 1) * barPadding);
+        const actualTotalPaddingWidth = (requiredTotalPaddingWidth >= effectiveWidth && numBars > 1) ? 0 : requiredTotalPaddingWidth;
+        const actualBarPadding = (numBars > 1) ? actualTotalPaddingWidth / (numBars - 1) : 0;
+
+        const totalBarAreaWidth = Math.max(0, effectiveWidth - actualTotalPaddingWidth); // Width available for bars within padded area
+        const actualBarWidth = (numBars > 0) ? totalBarAreaWidth / numBars : 0; // Width of each bar (allow sub-pixel)
 
         // Allocate typed arrays for instance data
         const matrices = new Float32Array(numBars * 16);
@@ -178,16 +188,17 @@ export class DataVisualization {
 
         for (let i = 0; i < numBars; i++) {
             const byteValue = byteArray[i];
-            // Scale byte value (0-255) to canvas height
-            const barHeight = (byteValue / 100) * this.canvas.height;
-            const xPos = i * barWidth;
+            // Scale byte value (0-100) to effective height
+            const barHeight = Math.max(0, (byteValue / 100) * effectiveHeight);
+            const xPos = paddingX + i * (actualBarWidth + actualBarPadding); // Calculate X position using actual padding
+            const yPos = paddingY; // Y position starts at the bottom edge padding
 
             // Calculate model matrix (scale and translate the base quad)
             const modelMatrix = mat4.create();
-            // Translate first to position the origin
-            mat4.translate(modelMatrix, modelMatrix, [xPos, 0, 0]);
+            // Translate first to position the origin at (xPos, yPos)
+            mat4.translate(modelMatrix, modelMatrix, [xPos, yPos, 0]);
             // Then scale the (0,0) to (1,1) quad
-            mat4.scale(modelMatrix, modelMatrix, [barWidth, barHeight, 1]);
+            mat4.scale(modelMatrix, modelMatrix, [actualBarWidth, barHeight, 1]);
 
             // Calculate final instance matrix (Projection * Model)
             const instanceMatrix = mat4.create();
@@ -214,14 +225,11 @@ export class DataVisualization {
 
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
-        // Trigger redraw
         this.draw();
     }
 
     draw() {
-        // --- Add visibility check --- 
         if (!this.isVisible) return;
-        // --- End visibility check ---
 
         if (this.db.dataViz) console.log('Context Lost Check (draw):', this.gl.isContextLost());
         const gl = this.gl;
@@ -276,15 +284,7 @@ export class DataVisualization {
         if (this.db.dataViz) console.log('GL Error [after VAO unbind]:', gl.getError());
     }
 
-    // Optional: Method to handle resize
-    resize(width, height) {
-        this.canvas.width = width;
-        this.canvas.height = height;
-        // Projection matrix needs update if canvas size changes
-        // We update it in updateData now, but could be done here if needed
-        // Also need gl.viewport update, which happens in draw()
-        this.draw();
-    }
+
 
     showDataViz(doShow) {
         if (doShow) {

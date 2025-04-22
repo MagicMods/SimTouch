@@ -37,15 +37,12 @@ export class Main {
     this.gl = this.canvas.getContext("webgl2", { stencil: true });
     if (!this.gl) throw new Error("WebGL2 not supported");
 
-    // --- BEGIN STEP 2: Create Visualization Container --- 
     this.vizuContainer = document.createElement('div');
     this.vizuContainer.className = 'vizu-container';
     document.body.appendChild(this.vizuContainer);
-    // --- END STEP 2 --- 
 
     this.shaderManager = new ShaderManager(this.gl);
 
-    // Define simParams next, using default values
     this.simParams = {
       simulation: {
         paused: false,
@@ -171,7 +168,6 @@ export class Main {
 
     };
 
-    // Define debug flags before components that need them
     this.debugFlags = {
       main: false,
       preset: false,
@@ -264,7 +260,7 @@ export class Main {
       calculatedCellHeight: 0,
     };
 
-    // Instantiate DimensionManager
+
     this.dimensionManager = new DimensionManager(
       this.gridParams.screen.width,
       this.gridParams.screen.height,
@@ -317,7 +313,7 @@ export class Main {
 
     this.frame = 0;
     this.mouseForces = new MouseForces(this.debugFlags);
-    this.mouseForces.setMainReference(this); // Set direct reference to main
+    this.mouseForces.setMainReference(this);
     this.mouseForces.setupMouseInteraction(this.canvas, this.particleSystem);
     this.micForces = new MicInputForces(this.debugFlags);
 
@@ -326,7 +322,7 @@ export class Main {
 
     // Create EmuForces instance with correct reference to gravity
     this.emuForces = new EmuForces({
-      gravity: this.particleSystem.gravity, // Now particleSystem exists
+      gravity: this.particleSystem.gravity,
       debugFlags: this.debugFlags
     });
 
@@ -337,9 +333,8 @@ export class Main {
       this.debugFlags
     )
       .enable()
-      .setSensitivity(0.002);
+      .setSensitivity(0.001);
 
-    // Connect components directly without null checks
     if (this.debugFlags.main) console.log("Directly connecting turbulenceField to emuRenderer and emuForces");
     // Add direct reference to turbulenceField in emuForces
     this.externalInput.emuForces.turbulenceField = this.turbulenceField;
@@ -349,7 +344,6 @@ export class Main {
       this.externalInput.emuForces.simulation.main = this;
     }
 
-    // Pass debug flags before potentially using managers
     socketManager.setDebugFlags(this.debugFlags);
     serialManager.setDebugFlags(this.debugFlags);
     comManager.setDebugFlags(this.debugFlags);
@@ -362,7 +356,6 @@ export class Main {
       this.debugFlags
     );
 
-    // Subscribe main to Grid UI changes (assuming NewGridUi emits 'uiControlChanged')
     eventBus.on('gridChanged', this.handleGridUIChange.bind(this));
     eventBus.on('uiControlChanged', this.handleSimUIChange.bind(this));
     if (this.debugFlags.main) console.log("Main subscribed to uiControlChanged events for Grid UI.");
@@ -371,35 +364,29 @@ export class Main {
   async init() {
     try {
       await this.shaderManager.init();
-      // Store DataVisualization instance on main
+
       this.dataVisualization = new DataVisualization(this.vizuContainer, this);
       await this.dataVisualization.init(); // Initialize DataVisualization asynchronously
-      comManager.setDataVisualization(this.dataVisualization); // Pass the instance
+      comManager.setDataVisualization(this.dataVisualization);
 
-      // --- Instantiate EmuRenderer here for desired order (Data -> Emu -> Sound) ---
       this.emuRenderer = new EmuRenderer(this.vizuContainer, this.externalInput.emuForces, this);
-      this.emuRenderer.hide(); // Keep hidden initially
-      // --- End EmuRenderer Instantiation ---
+      this.emuRenderer.hide();
 
-      // Get audio analyzer directly without null checks
       this.audioAnalyzer = this.micForces.analyzer;
 
-      // Instantiate SoundVisualizer using the container and analyzer
       this.soundVisualizer = new SoundVisualizer({
         container: this.vizuContainer,
         analyzer: this.audioAnalyzer,
-        width: 300, // Adjust as needed
-        height: 150, // Adjust as needed
-        visualizations: ['spectrum', 'volume', 'waveform', 'bands'], // Example: Show only two initially
-        showFps: this.debugFlags.sound // Tie FPS display to debug flag
+        width: 400,
+        height: 150,
+        visualizations: ['spectrum', 'volume', 'waveform', 'bands'],
+        showFps: false,
+        theme: 'dark'
       });
-      this.soundVisualizer.initialize(); // Initialize SoundVisualizer
-      // Decide initial visibility (e.g., hide it)
-      // this.soundVisualizer.hide(); // Or .show() if needed initially
+      this.soundVisualizer.initialize();
 
       this.ui = new UiManager(this);
       this.setGridParams(this.gridParams);
-
       this.animate();
 
       return true;
@@ -410,21 +397,19 @@ export class Main {
   }
 
   handleSimUIChange({ paramPath, value }) {
-    // --- BEGIN STEP 3: Add Debug Flags Handling ---
+
     if (paramPath.startsWith('debugFlags.')) {
       const flagName = paramPath.substring('debugFlags.'.length);
       if (flagName in this.debugFlags) {
         this.debugFlags[flagName] = value;
         if (this.debugFlags.main || this.debugFlags.param)
           console.log(`Debug flag updated via UI: ${flagName} = ${value}`);
-        // Optionally, emit a specific event if other modules need to react
         // eventBus.emit('debugFlagChanged', { flagName, value });
       } else {
         console.warn(`handleSimUIChange received unknown debug flag: ${flagName}`);
       }
-      return; // Handled debug flag, stop processing
+      return;
     }
-    // --- END STEP 3 ---
 
     // Original logic for simParams
     const keys = paramPath.split('.');
@@ -444,12 +429,11 @@ export class Main {
   }
 
   handleGridUIChange({ paramPath, value }) {
-    // --- BEGIN STEP 2: Add Path Validation ---
     const validGridPrefixes = ['screen', 'gridSpecs', 'shadow', 'colors', 'flags', 'renderSize'];
     const pathRoot = paramPath.split('.')[0];
     if (!validGridPrefixes.includes(pathRoot)) {
       if (this.debugFlags.events) console.log(`handleGridUIChange received non-grid path: ${paramPath}. Ignoring.`);
-      return; // Ignore paths not starting with gridParams keys
+      return;
     }
 
     if (this.debugFlags.main) console.log(`Grid UI Change Received: ${paramPath} =`, value);
@@ -478,7 +462,6 @@ export class Main {
           return;
         }
       }
-
       this.setGridParams(this.gridParams);
 
     } catch (error) {
