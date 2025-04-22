@@ -61,7 +61,7 @@ export class Main {
       boundary: {
         mode: "BOUNCE",
         shape: "CIRCULAR",
-        scale: 1.0,
+        scale: 1.03,
         damping: 0.8,
         restitution: 1.0,
         repulsion: 0,
@@ -94,7 +94,7 @@ export class Main {
         pullFactor: 1.0,
         affectPosition: false,
         scaleField: false,
-        affectScale: false,
+        affectScale: true,
         minScale: 0.008,
         maxScale: 0.03,
         patternStyle: "Checkerboard",
@@ -371,9 +371,10 @@ export class Main {
   async init() {
     try {
       await this.shaderManager.init();
-      const dataVis = new DataVisualization(this.vizuContainer, this);
-      await dataVis.init(); // Initialize DataVisualization asynchronously
-      comManager.setDataVisualization(dataVis);
+      // Store DataVisualization instance on main
+      this.dataVisualization = new DataVisualization(this.vizuContainer, this);
+      await this.dataVisualization.init(); // Initialize DataVisualization asynchronously
+      comManager.setDataVisualization(this.dataVisualization); // Pass the instance
 
       // --- Instantiate EmuRenderer here for desired order (Data -> Emu -> Sound) ---
       this.emuRenderer = new EmuRenderer(this.vizuContainer, this.externalInput.emuForces, this);

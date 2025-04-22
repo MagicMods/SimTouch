@@ -444,7 +444,7 @@ export class EmuRenderer {
     // Draw title
     ctx.fillStyle = "white";
     ctx.font = "10px Arial";
-    ctx.fillText("Joystick", centerX - 20, 20);
+    ctx.fillText("Gravity", centerX - 20, 20);
 
     // Draw boundary circle
     ctx.strokeStyle = "rgba(255, 255, 255, 0.5)";
@@ -463,7 +463,7 @@ export class EmuRenderer {
 
     // Calculate indicator position based on acceleration
     // Limiting to the radius of the circle
-    const scale = 10; // Scale factor to make small accelerations visible
+    const scale = 1; // Scale factor to make small accelerations visible
     const clamp = (value, min, max) => Math.min(Math.max(value, min), max);
 
     // Fix position calculation without axis swap

@@ -42,6 +42,10 @@ export class DataVisualization {
         // Projection matrix for orthographic view
         this.projectionMatrix = mat4.create(); // Assumes mat4 is available
 
+        // Initial visibility state
+        this.isVisible = false;
+        this.canvas.style.display = 'none'; // Initially hide the canvas
+
         // Setup VBOs, VAO, attributes
         // this._initWebGLResources(); // Moved to async init()
     }
@@ -193,7 +197,7 @@ export class DataVisualization {
             matrices.set(instanceMatrix, i * 16);
 
             // Set color data (e.g., white)
-            colors.set([1.0, 1.0, 1.0, 1.0], i * 4);
+            colors.set([1.0, 1.0, 1.0, 0.8], i * 4);
         }
 
         // Store and upload data to VBOs
@@ -215,6 +219,10 @@ export class DataVisualization {
     }
 
     draw() {
+        // --- Add visibility check --- 
+        if (!this.isVisible) return;
+        // --- End visibility check ---
+
         if (this.db.dataViz) console.log('Context Lost Check (draw):', this.gl.isContextLost());
         const gl = this.gl;
         const ext = this.ext;
@@ -277,6 +285,28 @@ export class DataVisualization {
         // Also need gl.viewport update, which happens in draw()
         this.draw();
     }
+
+    showDataViz(doShow) {
+        if (doShow) {
+            this.show();
+        } else {
+            this.hide();
+        }
+    }
+
+    show() {
+        if (!this.canvas) return;
+        this.isVisible = true;
+        this.canvas.style.display = 'block';
+        this.draw(); // Draw initial state if possible
+    }
+
+    hide() {
+        if (!this.canvas) return;
+        this.isVisible = false;
+        this.canvas.style.display = 'none';
+    }
+    // --- End show/hide methods ---
 
     // Optional: Cleanup resources
     dispose() {

@@ -14,6 +14,25 @@ export class ComUi extends BaseUi {
     this.db = this.main.debugFlags;
     this.gui.title("Com");
 
+    this.uiState = {
+      dataVizVisible: true
+    };
+    this.dataVisualization = this.main.dataVisualization;
+    // this.dataVisualization.showDataViz(this.uiState.dataVizVisible);
+
+    if (!this.dataVisualization && this.db.com) {
+      console.warn("ComUi: DataVisualization instance not found on main.");
+    }
+
+
+    this.gui.add(this.uiState, 'dataVizVisible')
+      .name('Show RX Data Viz')
+      .onChange(visible => {
+        this.dataVisualization.showDataViz(visible);
+      }
+      );
+
+
     // Serial UI State
     this.serialPortList = [];
     this.selectedSerialPortId = null; // Use null for "Select Port..."
@@ -54,8 +73,13 @@ export class ComUi extends BaseUi {
     sendDataButton.className = "toggle-button-big";
     sendDataButton.addEventListener("click", () => {
       this.sendData = !this.sendData;
-      // Update button state immediately for responsiveness
       sendDataButton.classList.toggle("active", this.sendData);
+      this.dataVisualization.showDataViz(this.sendData);
+      if (!this.sendData && this.dataVisualization) {
+
+        this.dataVisualization.updateData(null);
+      }
+
       // Emit event
       eventBus.emit('comChannelChanged', this.sendData ? 'sendData' : 'stopData');
     });
@@ -65,7 +89,6 @@ export class ComUi extends BaseUi {
     this.initNetworkControls();
     this.initSerialControls();
 
-    // Add event listeners for serial updates
     eventBus.on('serialPortsUpdated', this.handleSerialPortsUpdate.bind(this));
     eventBus.on('serialConnectionStatusChanged', this.handleSerialConnectionStatus.bind(this));
 

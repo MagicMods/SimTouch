@@ -257,7 +257,7 @@ export class GridUi extends BaseUi {
     statsFlexContainer.classList = "flex-container";
 
     const colsController = statsFolder.add(gridGenRenderer.grid, "cols").name("Columns").listen();
-    const rowsController = statsFolder.add(gridGenRenderer.grid, "rows").name("Rows").listen();
+    const rowsController = statsFolder.add(gridGenRenderer.grid, "rows").name("Rows     ").listen();
     const cellWidthController = statsFolder.add(gridGenRenderer.grid, "calculatedCellWidth").name("Cell pxW").listen();
     const cellHeightController = statsFolder.add(gridGenRenderer.grid, "calculatedCellHeight").name("Cell pxH").listen();
     const statsControllers = [colsController, rowsController, cellWidthController, cellHeightController];
