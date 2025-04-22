@@ -98,7 +98,7 @@ export class Main {
         minScale: 0.008,
         maxScale: 0.03,
         patternStyle: "Checkerboard",
-        decayRate: 0.99,
+        decayRate: 1.0,
         directionBiasX: 0,
         directionBiasY: 0,
         contrast: 0.5,

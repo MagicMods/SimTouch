@@ -330,16 +330,19 @@ export class InputsUi extends BaseUi {
 
 
     this.joystickInputFolder.add(resetJoystickButton, "reset").name("Reset Joystick");
-    // Add X and Y position sliders
+
+    this.sliderFolder = this.joystickInputFolder.addFolder("Controls");
+    this.sliderFolder.close();
+
+
     const joystickPosition = {
       x: this.main.emuRenderer.joystickX / 10, // Convert from -10,10 to -1,1 range
       y: this.main.emuRenderer.joystickY / 10
     };
 
+
     // Add X position slider
-    this.joystickXController = this.joystickInputFolder
-      .add(joystickPosition, "x", -1, 1, 0.01)
-      .name("J-X")
+    this.joystickXController = this.sliderFolder.add(joystickPosition, "x", -1, 1, 0.01).name("J-X")
       .onChange((value) => {
         if (this.main.emuRenderer) {
           // Update the joystick X position (scaled to -10,10 range)
@@ -364,9 +367,7 @@ export class InputsUi extends BaseUi {
       });
 
     // Add Y position slider
-    this.joystickYController = this.joystickInputFolder
-      .add(joystickPosition, "y", -1, 1, 0.01)
-      .name("J-Y")
+    this.joystickYController = this.sliderFolder.add(joystickPosition, "y", -1, 1, 0.01).name("J-Y")
       .onChange((value) => {
         if (this.main.emuRenderer) {
           // Update the joystick Y position (scaled to -10,10 range)
@@ -401,9 +402,7 @@ export class InputsUi extends BaseUi {
     };
 
     // Add spring strength slider
-    this.joystickInputFolder
-      .add(springControl, "strength", 0, 1, 0.01)
-      .name("J-SpringStrength")
+    this.sliderFolder.add(springControl, "strength", 0, 1, 0.01).name("J-SpringStrength")
       .onChange((value) => {
         if (this.main.emuRenderer) {
           this.main.emuRenderer.setSpringStrength(value);
@@ -414,7 +413,7 @@ export class InputsUi extends BaseUi {
     // Add gravity strength control to joystick folder
     if (this.main.externalInput && this.main.externalInput.emuForces) {
       const emuForces = this.main.externalInput.emuForces;
-      this.joystickGravityStrengthController = this.joystickInputFolder
+      this.joystickGravityStrengthController = this.sliderFolder
         .add(
           { multiplier: emuForces.accelGravityMultiplier || 1.0 },
           "multiplier",
@@ -433,7 +432,7 @@ export class InputsUi extends BaseUi {
     if (this.main && this.main.turbulenceField) {
       const turbulenceField = this.main.turbulenceField;
 
-      this.joystickBiasStrengthController = this.joystickInputFolder
+      this.joystickBiasStrengthController = this.sliderFolder
         .add(
           { strength: turbulenceField.biasStrength },
           "strength",
@@ -548,9 +547,6 @@ export class InputsUi extends BaseUi {
 
   getControlTargets() {
     const targets = {};
-
-    if (this.joystickXController) targets["J-X"] = this.joystickXController;
-    if (this.joystickYController) targets["J-Y"] = this.joystickYController;
 
     if (this.joystickGravityStrengthController) targets["J-G-Strength"] = this.joystickGravityStrengthController;
     if (this.joystickBiasStrengthController) targets["J-T-BiasStrength"] = this.joystickBiasStrengthController;
