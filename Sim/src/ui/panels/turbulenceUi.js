@@ -188,6 +188,9 @@ export class TurbulenceUi extends BaseUi {
     this.turbulenceSpeedController = this.gui.add(turbulenceParams, "speed", 0, 2).name("T-Speed")
       .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'turbulence.speed', value }));
 
+    this.turbulenceDecayRateController = this.gui.add(turbulenceParams, "decayRate", 0.9, 1).name("T-Decay")
+      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'turbulence.decayRate', value }));
+
     this.turbulencePullFactorController = this.gui.add(turbulenceParams, "pullFactor", -1, 1)
       .name("T-Pull Mode")
       .onChange((value) => {
@@ -310,9 +313,6 @@ export class TurbulenceUi extends BaseUi {
 
     this.turbulenceRotationSpeedController = patternControlsFolder.add(turbulenceParams, "rotationSpeed", 0, 1).name("T-RotSpd")
       .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'turbulence.rotationSpeed', value }));
-
-    this.turbulenceDecayRateController = patternControlsFolder.add(turbulenceParams, "decayRate", 0.9, 1).name("T-Decay")
-      .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'turbulence.decayRate', value }));
 
     // Restore XY bias controllers
     const biasFolder = this.gui.addFolder("Bias Controls");
