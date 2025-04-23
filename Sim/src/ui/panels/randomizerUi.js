@@ -261,7 +261,7 @@ export class RandomizerUi extends BaseUi {
       if (/^A-(Radius|Repulse|Attract|Threshold)$/i.test(targetName)) return "Organic Automata";
       if (/^Ch-(LinkDist|LinkStr|Align|Branch|MaxLinks|MaxLen|Repel)$/i.test(targetName)) return "Organic Chain";
       if (/^RS-(VeloTH|PosTH)$/i.test(targetName)) return "Rest State";
-      if (/^O-(Force|Radius)$/i.test(targetName)) return "Organic";
+      if (/^O-(Force|Radius|Behavior)$/i.test(targetName)) return "Organic";
       return "Other";
     };
 

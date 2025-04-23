@@ -195,7 +195,7 @@ export class OrganicUi extends BaseUi {
 
   getControlTargets() {
     const targets = {};
-
+    if (this.behaviorTypeController) targets["O-Behavior"] = this.behaviorTypeController;
     if (this.globalForceController) targets["O-Force"] = this.globalForceController;
     if (this.globalRadiusController) targets["O-Radius"] = this.globalRadiusController;
 
@@ -265,6 +265,7 @@ export class OrganicUi extends BaseUi {
       }
     };
 
+    safeUpdateDisplay(this.behaviorTypeController);
     safeUpdateDisplay(this.globalForceController);
     safeUpdateDisplay(this.globalRadiusController);
 

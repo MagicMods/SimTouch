@@ -20,7 +20,7 @@ export class MasterPresetHandler extends PresetBaseHandler {
   }
 
   captureInitialState() {
-    if (this.getPreset("Default")) return; // Don't overwrite if Default exists
+    // if (this.getPreset("Default")) return; // Don't overwrite if Default exists
     if (this.db.presets) console.log("Capturing initial UI state for Default preset");
     const initialState = {};
     for (const key of Object.keys(this.uiComponents)) {

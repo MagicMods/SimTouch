@@ -1,12 +1,12 @@
 export const GridField = {
   NOISE: "--- NOISE ---",
   PROXIMITY: "Proximity",
-  PROXIMITYB: "ProximityB",
-  DENSITY: "Density",
   VELOCITY: "Velocity",
   PRESSURE: "Pressure",
-  VORTICITY: "Vorticity",
   COLLISION: "Collision",
+  PROXIMITYB: "ProximityB",
+  DENSITY: "Density",
+  VORTICITY: "Vorticity",
   OVERLAP: "Overlap",
 };
 

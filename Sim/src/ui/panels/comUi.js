@@ -25,12 +25,25 @@ export class ComUi extends BaseUi {
     }
 
 
-    this.gui.add(this.uiState, 'dataVizVisible')
-      .name('Show RX Data Viz')
-      .onChange(visible => {
-        this.dataVisualization.showDataViz(visible);
-      }
-      );
+    // Communication Channel Selection
+    this.selectedChannel = 'network'; // Default channel
+    this.selectorController = this.gui.add(this, 'selectedChannel', { 'UDP': 'network', 'Serial': 'serial' })
+      .name('Channel')
+      .onChange(value => {
+        eventBus.emit('comChannelChanged', value);
+
+        if (value === 'network') {
+          this.networkFolder.open();
+          this.serialFolder.close();
+        } else {
+          this.serialFolder.open();
+          this.networkFolder.close();
+        }
+      });
+    this.selectorController.domElement.classList.add("full-width");
+
+    // Emit initial channel state AFTER setting the default
+    eventBus.emit('comChannelChanged', this.selectedChannel);
 
 
     // Serial UI State
@@ -47,17 +60,17 @@ export class ComUi extends BaseUi {
     this.networkFolder = this.gui.addFolder("UDP");
     this.serialFolder = this.gui.addFolder("Serial");
 
-    // Mutual Exclusion for Network and Serial Folders
+    // Mutual Exclusion for Network and Serial Folders (UI only now)
     this.networkFolder.onOpenClose(() => {
       if (!this.networkFolder._closed) {
-        eventBus.emit('comChannelChanged', 'network');
+        // eventBus.emit('comChannelChanged', 'network'); // REMOVED
         this.serialFolder.close();
       }
     });
 
     this.serialFolder.onOpenClose(() => {
       if (!this.serialFolder._closed) {
-        eventBus.emit('comChannelChanged', 'serial');
+        // eventBus.emit('comChannelChanged', 'serial'); // REMOVED
         this.networkFolder.close();
       }
     });
@@ -145,6 +158,15 @@ export class ComUi extends BaseUi {
       status.connection = socket.isConnected ? "Connected" : "Disconnected";
       statusController.updateDisplay();
     }, 1000);
+
+
+    this.gui.add(this.uiState, 'dataVizVisible')
+      .name('Show RX Data Viz')
+      .onChange(visible => {
+        this.dataVisualization.showDataViz(visible);
+      }
+      );
+
   }
 
   initSerialControls() {
