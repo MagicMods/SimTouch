@@ -32,7 +32,6 @@ export class UiManager {
     this.rightContainer = this.createContainer("right");
     this.pulseModContainer = this.createContainer("left-middle");
     this.presetContainer = this.createContainer("center");
-    // this.networkContainer = this.createContainer("right-center");
     this.inputModContainer = this.createContainer("right-middle");
 
     this.initializeUIComponents();

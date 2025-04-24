@@ -24,10 +24,10 @@ export class PresetBaseHandler {
   }
 
   savePreset(presetName, data) {
-    if (this.protectedPresets.includes(presetName)) {
-      console.warn(`Cannot overwrite protected preset: ${presetName}`);
-      return false;
-    }
+    // if (this.protectedPresets.includes(presetName)) {
+    //   console.warn(`Cannot overwrite protected preset: ${presetName}`);
+    //   return false;
+    // }
     this.presets[presetName] = data;
     this.saveToStorage();
     return true;

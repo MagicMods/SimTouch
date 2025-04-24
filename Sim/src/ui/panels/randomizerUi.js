@@ -636,7 +636,7 @@ export class RandomizerUi extends BaseUi {
   }
 
   getData() {
-    console.log("RandomizerUI: Getting data from controllers");
+    if (this.debug.randomizer) console.log("RandomizerUI: Getting data from controllers");
 
     // Make sure we're capturing the actual state
     const controllerState = {};
@@ -644,7 +644,7 @@ export class RandomizerUi extends BaseUi {
     // Loop through all our controller references
     for (const targetName in this.controllers) {
       controllerState[targetName] = this.controllers[targetName];
-      // console.log(`RandomizerUI: Saving state for "${targetName}": ${this.controllers[targetName]}`);
+      if (this.debug.randomizer) console.log(`RandomizerUI: Saving state for "${targetName}": ${this.controllers[targetName]}`);
     }
 
     return {

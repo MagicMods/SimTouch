@@ -43,8 +43,8 @@ export class GravityUi extends BaseUi {
     const targets = {};
 
     // Only include X and Y controllers
-    if (this.gravityXController) targets["G-X"] = this.gravityXController;
-    if (this.gravityYController) targets["G-Y"] = this.gravityYController;
+    targets["G-X"] = this.gravityXController;
+    targets["G-Y"] = this.gravityYController;
 
     return targets;
   }

@@ -812,43 +812,24 @@ export class InputModulationUi extends BaseUi {
   addVisualizationToModulator(modulator, folder) {
     // Create container for visualization
     const container = document.createElement("div");
-    container.style.marginTop = "10px";
-    container.style.marginBottom = "5px";
-    container.style.width = "100%";
-    container.style.height = "15px";
-    container.style.backgroundColor = "#333";
-    container.style.position = "relative";
-    container.style.borderRadius = "3px";
+    container.classList.add('modulator-vis-container');
 
     // Create visualization elements
     const bar = document.createElement("div");
-    bar.style.position = "absolute";
-    bar.style.left = "0";
-    bar.style.top = "0";
-    bar.style.height = "100%";
     bar.style.width = "0%";
     bar.style.backgroundColor = "#8f8";
-    bar.style.borderRadius = "3px";
+    bar.classList.add('modulator-vis-bar');
     container.appendChild(bar);
 
     // Create threshold marker (initially hidden)
     const thresholdMarker = document.createElement("div");
-    thresholdMarker.style.position = "absolute";
-    thresholdMarker.style.width = "2px";
-    thresholdMarker.style.height = "100%";
-    thresholdMarker.style.backgroundColor = "rgba(255, 255, 255, 0.7)";
-    thresholdMarker.style.zIndex = "2";
-    thresholdMarker.style.display = "none"; // Initially hidden
+    thresholdMarker.style.display = "none";
+    thresholdMarker.classList.add('modulator-vis-threshold');
     container.appendChild(thresholdMarker);
 
     const label = document.createElement("div");
-    label.style.position = "absolute";
-    label.style.width = "100%";
-    label.style.textAlign = "center";
-    label.style.color = "white";
-    label.style.fontSize = "10px";
-    label.style.lineHeight = "15px";
     label.textContent = "0%";
+    label.classList.add('modulator-vis-label');
     container.appendChild(label);
 
     // Store UI references

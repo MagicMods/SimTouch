@@ -37,10 +37,10 @@ export class CollisionUi extends BaseUi {
 
   getControlTargets() {
     const targets = {};
-    if (this.collisionRepulsionController) targets["C-Repulse"] = this.collisionRepulsionController;
-    if (this.collisionGridSizeController) targets["C-GridRez"] = this.collisionGridSizeController;
-    if (this.collisionBounceController) targets["C-Bounce"] = this.collisionBounceController;
-    if (this.restDensityController) targets["C-RestDens"] = this.restDensityController;
+    targets["C-Repulse"] = this.collisionRepulsionController;
+    targets["C-GridRez"] = this.collisionGridSizeController;
+    targets["C-Bounce"] = this.collisionBounceController;
+    targets["C-RestDens"] = this.restDensityController;
 
 
 

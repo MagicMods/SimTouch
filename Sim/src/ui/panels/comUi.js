@@ -1,5 +1,5 @@
 import { BaseUi } from "../baseUi.js";
-import { NetworkConfig } from "../../com/udp/networkConfig.js";
+import { UdpConfig } from "../../com/udp/udpConfig.js";
 import { socketManager } from "../../com/udp/socketManager.js";
 import { serialManager } from "../../com/serial/serialManager.js";
 import { eventBus } from '../../util/eventManager.js';
@@ -18,33 +18,67 @@ export class ComUi extends BaseUi {
       dataVizVisible: true
     };
     this.dataVisualization = this.main.dataVisualization;
-    // this.dataVisualization.showDataViz(this.uiState.dataVizVisible);
 
-    if (!this.dataVisualization && this.db.com) {
-      console.warn("ComUi: DataVisualization instance not found on main.");
-    }
+    // --- Top-Level Controls ---
+    this.selectedChannel = 'udp'; // Default channel
+    this.generalStatusText = 'Initializing...'; // New state for general status
 
+    // Send Data Button needs to be created and appended before controllers reference it for insertion
+    this.sendData = false;
+    const sendDataButton = document.createElement("button");
+    sendDataButton.textContent = "SendData";
+    sendDataButton.className = "toggle-button-big"; // Apply any necessary styling
+    // Event listener setup remains the same
+    sendDataButton.addEventListener("click", () => {
+      this.sendData = !this.sendData;
+      sendDataButton.classList.toggle("active", this.sendData);
+      this.dataVisualization.showDataViz(this.sendData);
+      if (!this.sendData && this.dataVisualization) {
+        this.dataVisualization.updateData(null);
+      }
+      eventBus.emit('comChannelChanged', this.sendData ? 'sendData' : 'stopData');
+    });
+    // Append the button FIRST, so it exists in the DOM for insertBefore
+    this.gui.domElement.appendChild(sendDataButton);
 
-    // Communication Channel Selection
-    this.selectedChannel = 'network'; // Default channel
-    this.selectorController = this.gui.add(this, 'selectedChannel', { 'UDP': 'network', 'Serial': 'serial' })
+    // Create controllers first
+    this.selectorController = this.gui.add(this, 'selectedChannel', { 'UDP': 'udp', 'Serial': 'serial' })
       .name('Channel')
       .onChange(value => {
         eventBus.emit('comChannelChanged', value);
-
-        if (value === 'network') {
-          this.networkFolder.open();
+        if (value === 'udp') {
+          this.udpFolder.open();
           this.serialFolder.close();
         } else {
           this.serialFolder.open();
-          this.networkFolder.close();
+          this.udpFolder.close();
         }
+        this.updateGeneralStatus();
       });
     this.selectorController.domElement.classList.add("full-width");
 
-    // Emit initial channel state AFTER setting the default
-    eventBus.emit('comChannelChanged', this.selectedChannel);
+    this.generalStatusController = this.gui.add(this, 'generalStatusText').name('Status').disable();
+    this.generalStatusController.domElement.classList.add("noClick");
+    // this.generalStatusController.domElement.style.marginBottom = "10px"; // Styling might be adjusted if needed
 
+    // Now, move the controllers' DOM elements outside the collapsible area,
+    // placing them before the SendData button
+    this.gui.domElement.insertBefore(this.selectorController.domElement, sendDataButton);
+    this.gui.domElement.insertBefore(this.generalStatusController.domElement, sendDataButton);
+
+    // Shared Sliders (remain inside collapsible area)
+    this.gui.add({ brightness: 100 }, "brightness", 0, 100, 1).name("Brightness")
+      .onChange((value) => { comManager.sendBrightness(value); });
+    this.gui.add({ power: 50 }, "power", 0, 100, 1).name("PowerMx")
+      .onChange((value) => { comManager.sendPower(value); });
+
+    // Finally, append the SendData button
+    this.gui.domElement.appendChild(sendDataButton);
+
+    // --- Folders ---
+    this.udpFolder = this.gui.addFolder("UDP");
+    this.serialFolder = this.gui.addFolder("Serial");
+    this.rxDataVizFolder = this.gui.addFolder("Data Visualization"); // New folder
 
     // Serial UI State
     this.serialPortList = [];
@@ -54,16 +88,13 @@ export class ComUi extends BaseUi {
     this.isSerialSupported = serialManager.isApiSupported; // Check support
 
     // Track folder states
-    this.isNetworkFolderOpen = true;
+    this.isUdpFolderOpen = true;
     this.isSerialFolderOpen = false;
 
-    this.networkFolder = this.gui.addFolder("UDP");
-    this.serialFolder = this.gui.addFolder("Serial");
-
-    // Mutual Exclusion for Network and Serial Folders (UI only now)
-    this.networkFolder.onOpenClose(() => {
-      if (!this.networkFolder._closed) {
-        // eventBus.emit('comChannelChanged', 'network'); // REMOVED
+    // Mutual Exclusion for Udp and Serial Folders (UI only now)
+    this.udpFolder.onOpenClose(() => {
+      if (!this.udpFolder._closed) {
+        // eventBus.emit('comChannelChanged', 'udp'); // REMOVED
         this.serialFolder.close();
       }
     });
@@ -71,36 +102,28 @@ export class ComUi extends BaseUi {
     this.serialFolder.onOpenClose(() => {
       if (!this.serialFolder._closed) {
         // eventBus.emit('comChannelChanged', 'serial'); // REMOVED
-        this.networkFolder.close();
+        this.udpFolder.close();
       }
     });
 
-    // Ensure a defined initial state (e.g., network open, serial closed)
-    this.networkFolder.open();
+    // Ensure a defined initial state (e.g., udp open, serial closed)
+    this.udpFolder.open();
     this.serialFolder.close();
 
-    this.sendData = false;
-
-    const sendDataButton = document.createElement("button");
-    sendDataButton.textContent = "SendData";
-    sendDataButton.className = "toggle-button-big";
-    sendDataButton.addEventListener("click", () => {
-      this.sendData = !this.sendData;
-      sendDataButton.classList.toggle("active", this.sendData);
-      this.dataVisualization.showDataViz(this.sendData);
-      if (!this.sendData && this.dataVisualization) {
-
-        this.dataVisualization.updateData(null);
-      }
-
-      // Emit event
-      eventBus.emit('comChannelChanged', this.sendData ? 'sendData' : 'stopData');
-    });
-
-    this.gui.domElement.appendChild(sendDataButton);
-
-    this.initNetworkControls();
+    // Initialize folder contents
+    this.initUdpControls();
     this.initSerialControls();
+    this.initRxDataVizControls(); // New init method
+
+    // Ensure correct initial folder visibility
+    if (this.selectedChannel === 'udp') {
+      this.udpFolder.open();
+      this.serialFolder.close();
+    } else {
+      this.serialFolder.open();
+      this.udpFolder.close();
+    }
+    this.updateGeneralStatus(); // Set initial general status
 
     eventBus.on('serialPortsUpdated', this.handleSerialPortsUpdate.bind(this));
     eventBus.on('serialConnectionStatusChanged', this.handleSerialConnectionStatus.bind(this));
@@ -108,72 +131,67 @@ export class ComUi extends BaseUi {
     this.gui.close();
   }
 
-  initNetworkControls() {
+  updateGeneralStatus() {
+    if (this.selectedChannel === 'udp') {
+      // Use socketManager state directly
+      this.generalStatusText = socketManager.isConnected ? "Connected" : "Disconnected";
+    } else if (this.selectedChannel === 'serial') {
+      // Use the specific serial status text
+      this.generalStatusText = this.serialStatusText;
+    } else {
+      this.generalStatusText = 'Unknown'; // Fallback
+    }
+
+    this.generalStatusController.updateDisplay();
+  }
+
+  initUdpControls() {
     const socket = socketManager;
     if (!socket) return;
 
-    // Add status display
-    const status = {
-      connection: "Disconnected",
-      lastMessage: "None",
-      messageCount: 0,
-    };
+    // UDP Specific Status display
+    const udpStatus = { connection: "Disconnected" };
+    const udpStatusController = this.udpFolder.add(udpStatus, "connection").name("Status").disable();
+    udpStatusController.domElement.classList.add("noClick");
 
-    // Status display (keep at top level)
-    const statusController = this.networkFolder.add(status, "connection").name("Status");
-    statusController.domElement.classList.add("noClick");
-    this.networkFolder.add({ brightness: 100 }, "brightness", 0, 100, 1).name("Brightness")
-      .onChange((value) => { comManager.sendBrightness(value); });
+    // Flattened Config Items
+    this.udpFolder.add({ host: UdpConfig.UDP_HOST }, "host").name("UDP Host")
+      .onChange((value) => { if (this.db.udp) console.log(`UDP HOST changes ${value}`); });
 
-    // Power control
-    this.networkFolder.add({ power: 50 }, "power", 0, 100, 1).name("PowerMx")
-      .onChange((value) => { comManager.sendPower(value); });
+    this.udpFolder.add({ port: UdpConfig.UDP_PORT }, "port", 1024, 65535, 1).name("UDP Output Port")
+      .onChange((value) => { if (this.db.udp) console.log(`UDP PORT changes ${value}`); });
 
-    // Create config folder for the rest
-    this.configNetworkFolder = this.networkFolder.addFolder("Config");
-    this.configNetworkFolder.open(false);
+    this.udpFolder.add({ port: UdpConfig.UDP_INPUT_PORT }, "port", 1024, 65535, 1).name("UDP Input Port")
+      .onChange((value) => { if (this.db.udp) console.log(`UDP input port changes ${value}`); });
 
-    // Move these controls into the config folder
-    this.configNetworkFolder.add({ host: NetworkConfig.UDP_HOST }, "host").name("UDP Host")
-      .onChange((value) => { if (this.db.network) console.log(`UDP HOST changes ${value}`); });
-
-    this.configNetworkFolder.add({ port: NetworkConfig.UDP_PORT }, "port", 1024, 65535, 1).name("UDP Output Port")
-      .onChange((value) => { if (this.db.network) console.log(`UDP PORT changes ${value}`); });
-
-    this.configNetworkFolder.add({ port: NetworkConfig.UDP_INPUT_PORT }, "port", 1024, 65535, 1).name("UDP Input Port")
-      .onChange((value) => { if (this.db.network) console.log(`UDP input port changes ${value}`); });
-
-    const lastMessageController = this.configNetworkFolder.add(status, "lastMessage").name("Last Input").disable();
-    const msgCountController = this.configNetworkFolder.add(status, "messageCount").name("Message Count").disable();
+    // UDP Input Tracking
+    const inputStatus = { lastMessage: "None", messageCount: 0 };
+    const lastMessageController = this.udpFolder.add(inputStatus, "lastMessage").name("Last Input").disable();
+    const msgCountController = this.udpFolder.add(inputStatus, "messageCount").name("Message Count").disable();
 
     // Track message count
     socket.addMouseHandler((x, y) => {
-      status.messageCount++;
-      status.lastMessage = `X: ${x}, Y: ${y}`;
+      inputStatus.messageCount++;
+      inputStatus.lastMessage = `X: ${x}, Y: ${y}`;
       lastMessageController.updateDisplay();
       msgCountController.updateDisplay();
     });
 
     setInterval(() => {
-      status.connection = socket.isConnected ? "Connected" : "Disconnected";
-      statusController.updateDisplay();
-    }, 1000);
-
-
-    this.gui.add(this.uiState, 'dataVizVisible')
-      .name('Show RX Data Viz')
-      .onChange(visible => {
-        this.dataVisualization.showDataViz(visible);
+      udpStatus.connection = socket.isConnected ? "Connected" : "Disconnected";
+      udpStatusController.updateDisplay();
+      // Also update general status if UDP is the selected channel
+      if (this.selectedChannel === 'udp') {
+        this.updateGeneralStatus();
       }
-      );
-
+    }, 1000);
   }
 
   initSerialControls() {
-    // Add Status Display (bound to reactive property)
-    this.statusController = this.serialFolder.add(this, 'serialStatusText').name("Status")
-    this.statusController.domElement.classList.add("noClick");
-    this.statusController.domElement.style.marginBottom = "10px"; // Keep styling
+    // Serial Specific Status Display (bound to reactive property)
+    this.serialStatusController = this.serialFolder.add(this, 'serialStatusText').name("Status").disable(); // Renamed controller variable
+    this.serialStatusController.domElement.classList.add("noClick");
+    this.serialStatusController.domElement.style.marginBottom = "10px";
 
     // Add API support dependent controls
     if (this.isSerialSupported) {
@@ -181,13 +199,20 @@ export class ComUi extends BaseUi {
     } else {
       this.serialFolder.add({ text: 'Web Serial not supported' }, 'text').name('Info').disable();
     }
+  }
 
-    // Keep Brightness/Power controls using comManager
-    this.serialFolder.add({ brightness: 100 }, "brightness", 0, 100, 1).name("Brightness")
-      .onChange((value) => { comManager.sendBrightness(value); });
-
-    this.serialFolder.add({ power: 50 }, "power", 0, 100, 1).name("PowerMx")
-      .onChange((value) => { comManager.sendPower(value); });
+  // New method to initialize controls in the RxDataViz folder
+  initRxDataVizControls() {
+    this.rxDataVizFolder.add(this.uiState, 'dataVizVisible')
+      .name('Show RX Data Viz')
+      .onChange(visible => {
+        this.dataVisualization.showDataViz(visible);
+        // Optional: Handle data clearing if needed when hiding
+        if (!visible && this.dataVisualization) {
+          // this.dataVisualization.updateData(null); // Decide if clearing is desired here
+        }
+      });
+    this.rxDataVizFolder.open(false); // Keep it closed by default? Or open? User preference. Let's start closed.
   }
 
   // --- Serial Helper Methods ---
@@ -217,9 +242,7 @@ export class ComUi extends BaseUi {
     // Add the request option
     options['[Request New Port...]'] = this.REQUEST_PORT_OPTION_ID;
 
-    this.serialPortDropdownController = this.serialFolder.add(this, 'selectedSerialPortId', options)
-      .name('Port')
-      .onChange(this.handleSerialPortChange.bind(this));
+    this.serialPortDropdownController = this.serialFolder.add(this, 'selectedSerialPortId', options).name('Port').onChange(this.handleSerialPortChange.bind(this));
     this.serialPortDropdownController.domElement.classList.add("full-width");
     // Set initial value correctly
     this.serialPortDropdownController.setValue(this.selectedSerialPortId); // Set to current state value
@@ -238,10 +261,8 @@ export class ComUi extends BaseUi {
       this.selectedSerialPortId = previousSelection;
       // Use setTimeout to ensure the dropdown updates visually after the request prompt potentially blocks
       setTimeout(() => {
-        if (this.serialPortDropdownController) {
-          this.serialPortDropdownController.setValue(this.selectedSerialPortId);
-          this.serialPortDropdownController.updateDisplay();
-        }
+        this.serialPortDropdownController.setValue(this.selectedSerialPortId);
+        this.serialPortDropdownController.updateDisplay();
       }, 0);
       return; // Don't proceed with connect/disconnect logic
     }
@@ -256,6 +277,9 @@ export class ComUi extends BaseUi {
       if (serialManager.isConnected) {
         if (this.db?.serial) console.log("UI: 'Select Port...' chosen, disconnecting.");
         await serialManager.disconnect();
+      } else {
+        // If already disconnected and "Select Port..." is chosen, still update status
+        this.handleSerialConnectionStatus({ connected: false, portId: null });
       }
     }
   }
@@ -273,31 +297,40 @@ export class ComUi extends BaseUi {
       if (!serialManager.isConnected) {
         this.selectedSerialPortId = null;
       }
+      // If connected port disappears, update status text? serialManager might handle this.
     }
     this.buildSerialDropdown(); // Rebuild with updated list and selection
   }
 
   handleSerialConnectionStatus({ connected, portId }) {
     if (this.db?.serial) console.log(`UI: Received serialConnectionStatusChanged: connected=${connected}, portId=${portId}`);
+    let portName = 'N/A';
     if (connected) {
       // Find the name corresponding to the portId
       const connectedPort = this.serialPortList.find(p => p.id === portId);
-      const portName = connectedPort ? connectedPort.name : `Port ${portId}`;
+      portName = connectedPort ? connectedPort.name : `Port ${portId}`;
       this.serialStatusText = `Connected (${portName})`;
       this.selectedSerialPortId = portId; // Ensure state matches
     } else {
       this.serialStatusText = 'Disconnected';
-      this.selectedSerialPortId = null; // Reset selection on disconnect
+      // Only reset selection if the disconnected port matches the current selection,
+      // or if portId is null (explicit disconnect). Avoid resetting if a different port disconnects.
+      if (portId === this.selectedSerialPortId || portId === null) {
+        this.selectedSerialPortId = null;
+      }
     }
 
     // Update UI elements
-    if (this.statusController) {
-      this.statusController.updateDisplay();
-    }
-    if (this.serialPortDropdownController) {
-      // Important: Update the controller's internal value AND the display
-      this.serialPortDropdownController.setValue(this.selectedSerialPortId);
+    this.serialStatusController.updateDisplay();
+    // Important: Update the controller's internal value AND the display
+    // Only update if the status change pertains to the selected port or is a general disconnect
+    if (portId === this.selectedSerialPortId || !connected) {
+      // Replace setValue with updateDisplay to prevent recursive onChange trigger
+      // this.serialPortDropdownController.setValue(this.selectedSerialPortId);
       this.serialPortDropdownController.updateDisplay();
     }
+
+    // Update the general status display
+    this.updateGeneralStatus();
   }
 }

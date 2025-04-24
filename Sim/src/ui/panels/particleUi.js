@@ -32,20 +32,12 @@ export class ParticleUi extends BaseUi {
 
     this.collisionDampingController.domElement.style.marginBottom = "12px";
 
-
-
-
-
-
     // Bind Opacity to simParams
     this.particleOpacityController = this.gui.add(this.main.simParams.particleRenderer, "opacity", 0.0, 1.0, 0.01).name("P-Opacity")
       .onChange(value => eventBus.emit('uiControlChanged', { paramPath: 'particleRenderer.opacity', value }));
 
-
     const colorContainer = document.createElement("div");
     colorContainer.classList = "particleColor-container";
-
-
 
     // Bind Color to simParams
     this.particleColorController = this.gui.addColor(this.main.simParams.particleRenderer, "color").name("P-Color")
@@ -92,13 +84,13 @@ export class ParticleUi extends BaseUi {
 
   getControlTargets() {
     const targets = {};
-    if (this.particleCountController) targets["P-Count"] = this.particleCountController;
-    if (this.particleSizeController) targets["P-Size"] = this.particleSizeController;
-    if (this.maxVelocityController) targets["P-VeloMax"] = this.maxVelocityController;
-    if (this.collisionDampingController) targets["P-VeloDamp"] = this.collisionDampingController;
+    targets["P-Count"] = this.particleCountController;
+    targets["P-Size"] = this.particleSizeController;
+    targets["P-VeloMax"] = this.maxVelocityController;
+    targets["P-VeloDamp"] = this.collisionDampingController;
 
-    if (this.particleOpacityController) targets["P-Opacity"] = this.particleOpacityController;
-    if (this.particleColorController) targets["P-Color"] = this.particleColorController;
+    targets["P-Opacity"] = this.particleOpacityController;
+    targets["P-Color"] = this.particleColorController;
     return targets;
   }
 

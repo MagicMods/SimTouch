@@ -96,13 +96,13 @@ export class ParamUi extends BaseUi {
 
   getControlTargets() {
     const targets = {};
-    if (this.fieldTypeController) targets["Mode"] = this.fieldTypeController;
-    if (this.maxDensityController) targets["Density"] = this.maxDensityController;
-    if (this.fadeInSpeedController) targets["FadInSpd"] = this.fadeInSpeedController;
-    if (this.fadeOutSpeedController) targets["FadOutSpd"] = this.fadeOutSpeedController;
-    if (this.timeStepController) targets["Time Step"] = this.timeStepController;
-    if (this.timeScaleController) targets["SimSpeed"] = this.timeScaleController;
-    if (this.ratioPicFlip) targets["PicFlipRatio"] = this.ratioPicFlip;
+    targets["Mode"] = this.fieldTypeController;
+    targets["Density"] = this.maxDensityController;
+    targets["FadInSpd"] = this.fadeInSpeedController;
+    targets["FadOutSpd"] = this.fadeOutSpeedController;
+    targets["Time Step"] = this.timeStepController;
+    targets["SimSpeed"] = this.timeScaleController;
+    targets["PicFlipRatio"] = this.ratioPicFlip;
 
     return targets;
   }

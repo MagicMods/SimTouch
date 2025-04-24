@@ -102,11 +102,11 @@ export class BoundaryUi extends BaseUi {
     const targets = {};
 
     // Common controls
-    if (this.boundaryModeController) targets["B-Mode"] = this.boundaryModeController;
-    if (this.boundaryScaleController) targets["B-Scale"] = this.boundaryScaleController;
-    if (this.boundaryRepulsionController) targets["B-Repulse"] = this.boundaryRepulsionController;
-    if (this.boundaryFrictionController) targets["B-Friction"] = this.boundaryFrictionController;
-    if (this.boundaryBounceController) targets["B-Bounce"] = this.boundaryBounceController;
+    targets["B-Mode"] = this.boundaryModeController;
+    targets["B-Scale"] = this.boundaryScaleController;
+    targets["B-Repulse"] = this.boundaryRepulsionController;
+    targets["B-Friction"] = this.boundaryFrictionController;
+    targets["B-Bounce"] = this.boundaryBounceController;
 
     // Type-specific controls - READ SHAPE FROM SIMPARAMS
     if (this.main.simParams.boundary.shape === this.boundaryTypes.CIRCULAR) {
@@ -115,7 +115,6 @@ export class BoundaryUi extends BaseUi {
       if (this.boundaryWidthController) targets["Width"] = this.boundaryWidthController;
       if (this.boundaryHeightController) targets["Height"] = this.boundaryHeightController;
     }
-
     return targets;
   }
 

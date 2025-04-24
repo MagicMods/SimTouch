@@ -279,16 +279,16 @@ export class GridUi extends BaseUi {
     const targets = {};
 
     // Screen configuration controls
-    if (this.screenTypeController) targets["Screen Type"] = this.screenTypeController;
-    if (this.centerOffsetXController) targets["Center X Offset"] = this.centerOffsetXController;
-    if (this.centerOffsetYController) targets["Center Y Offset"] = this.centerOffsetYController;
+    targets["Screen Type"] = this.screenTypeController;
+    targets["Center X Offset"] = this.centerOffsetXController;
+    targets["Center Y Offset"] = this.centerOffsetYController;
 
     // Grid controllers
-    if (this.targetCellCountCellsController) targets["Target Cells"] = this.targetCellCountCellsController;
-    if (this.gapController) targets["Grid Gap"] = this.gapController;
-    if (this.aspectRatioController) targets["Cell Ratio"] = this.aspectRatioController;
-    if (this.scaleController) targets["Grid Scale"] = this.scaleController;
-    if (this.allowCutController) targets["Allow Cut"] = this.allowCutController;
+    targets["Target Cells"] = this.targetCellCountCellsController;
+    targets["Grid Gap"] = this.gapController;
+    targets["Cell Ratio"] = this.aspectRatioController;
+    targets["Grid Scale"] = this.scaleController;
+    targets["Allow Cut"] = this.allowCutController;
 
     return targets;
   }
@@ -305,12 +305,10 @@ export class GridUi extends BaseUi {
       }
     };
 
-    // Update screen configuration controllers
     safeUpdateDisplay(this.screenTypeController);
     safeUpdateDisplay(this.centerOffsetXController);
     safeUpdateDisplay(this.centerOffsetYController);
 
-    // Update grid controllers
     safeUpdateDisplay(this.targetCellCountCellsController);
     safeUpdateDisplay(this.gapController);
     safeUpdateDisplay(this.aspectRatioController);
@@ -325,9 +323,9 @@ export class GridUi extends BaseUi {
     safeUpdateDisplay(this.totalCellsController);
   }
 
-  // Add this new method
+
   updateUIState(newGridParams) {
-    // --- START REFACTOR ---
+
     // Update properties of existing objects instead of replacing them
     if (newGridParams.screen) {
       Object.assign(this.uiGridParams.screen, newGridParams.screen);

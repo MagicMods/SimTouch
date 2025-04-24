@@ -786,14 +786,14 @@ export class TurbulenceUi extends BaseUi {
       const targets = this.getControlTargets();
 
       // Reset all numerical values
-      if (targets["T-Strength"]) targets["T-Strength"].setValue(0);
-      if (targets["T-DirX"]) targets["T-DirX"].setValue(0);
-      if (targets["T-DirY"]) targets["T-DirY"].setValue(0);
+      targets["T-Strength"].setValue(0);
+      targets["T-DirX"].setValue(0);
+      targets["T-DirY"].setValue(0);
 
       // Reset toggle buttons
-      if (targets["T-AfPosition"]) targets["T-AfPosition"].setValue(false);
-      if (targets["T-AfScaleF"]) targets["T-AfScaleF"].setValue(false);
-      if (targets["T-AfScale"]) targets["T-AfScale"].setValue(false);
+      targets["T-AfPosition"].setValue(false);
+      targets["T-AfScaleF"].setValue(false);
+      targets["T-AfScale"].setValue(false);
 
       this.updateControllerDisplays();
       // Reset bias when loading "None" preset
@@ -842,19 +842,10 @@ export class TurbulenceUi extends BaseUi {
     const turbulence = this.main.turbulenceField;
     if (!turbulence) return;
 
-    // Update UI for bias X and Y acceleration controllers if they exist
-    if (this.turbulenceBiasSpeedXController) {
-      this.turbulenceBiasSpeedXController.setValue(turbulence._displayBiasAccelX);
-    }
 
-    if (this.turbulenceBiasSpeedYController) {
-      this.turbulenceBiasSpeedYController.setValue(turbulence._displayBiasAccelY);
-    }
-
-    // Update friction controller if it exists
-    if (this.turbulenceBiasStrengthController) {
-      this.turbulenceBiasStrengthController.setValue(turbulence.biasStrength);
-    }
+    this.turbulenceBiasSpeedXController.setValue(turbulence._displayBiasAccelX);
+    this.turbulenceBiasSpeedYController.setValue(turbulence._displayBiasAccelY);
+    this.turbulenceBiasStrengthController.setValue(turbulence.biasStrength);
   }
 
   resetBias() {
