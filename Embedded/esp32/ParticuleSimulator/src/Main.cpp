@@ -53,9 +53,10 @@ void setup()
 
 #if DEBUG
   Serial.begin(115200);
-  Serial1.begin(115200);
-  // delay(250);
+
 #endif
+  Serial1.begin(115200);
+
   SetupUI();
   // #if DEBUG
   //   DebugConsole("DEBUG MODE => Waiting for Serial...");

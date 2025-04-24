@@ -15,7 +15,7 @@ class ComManager {
     constructor() {
         this.socket = socketManager;
         this.serial = serialManager;
-        this.activeChannel = 'network'; // Default to network
+        this.activeChannel = 'udp'; // Default to udp
         this.db = null;
         this.shouldSendData = false;
 
@@ -46,16 +46,16 @@ class ComManager {
         } else if (channel == 'stopData') {
             this.shouldSendData = false;
             return;
-        } else if (channel !== 'network' && channel !== 'serial') {
+        } else if (channel !== 'udp' && channel !== 'serial') {
             console.warn(`ComManager: Invalid channel specified: ${channel}`);
             return;
         }
 
         // Avoid redundant actions if channel is already active
         if (channel === this.activeChannel) {
-            // If it's network and not connected, try connecting (e.g., initial load)
-            if (channel === 'network' && !this.socket.isConnected) {
-                if (this.db?.com) console.log(`ComManager: Network channel already active, ensuring connection.`);
+            // If it's udp and not connected, try connecting (e.g., initial load)
+            if (channel === 'udp' && !this.socket.isConnected) {
+                if (this.db?.com) console.log(`ComManager: Udp channel already active, ensuring connection.`);
                 this.socket.connect();
             }
             // No action needed if serial is already active (connection handled by user)
@@ -67,7 +67,7 @@ class ComManager {
         if (this.db?.com) console.log(`ComManager: Active channel changed from ${oldChannel} to ${this.activeChannel}`);
 
         // Handle connection/disconnection based on new channel
-        if (this.activeChannel === 'network') {
+        if (this.activeChannel === 'udp') {
             // Disconnect Serial (if it was active and connected)
             if (oldChannel === 'serial' && this.serial.isConnected) {
                 if (this.db?.com) console.log("ComManager: Disconnecting Serial port...");
@@ -78,7 +78,7 @@ class ComManager {
             this.socket.connect();
         } else if (this.activeChannel === 'serial') {
             // Disconnect Socket (if it was active and connected)
-            if (oldChannel === 'network' && this.socket.isConnected) {
+            if (oldChannel === 'udp' && this.socket.isConnected) {
                 if (this.db?.com) console.log("ComManager: Disconnecting Socket...");
                 this.socket.disconnect();
             }
@@ -95,7 +95,7 @@ class ComManager {
             if (this.db?.comSR) console.log(`ComManager: Sending Data (${byteArray})`);
             // console.log(this.dataVisualization);
 
-            if (this.activeChannel === 'network') {
+            if (this.activeChannel === 'udp') {
                 return this.socket.sendData(byteArray);
             } else if (this.activeChannel === 'serial') {
                 return this.serial.sendData(byteArray);
@@ -108,7 +108,7 @@ class ComManager {
 
     sendColor(value) {
         if (this.db?.com) console.log(`ComManager: Sending Color (${this.activeChannel}) = ${value}`);
-        if (this.activeChannel === 'network') {
+        if (this.activeChannel === 'udp') {
             return this.socket.sendColor(value);
         } else if (this.activeChannel === 'serial') {
             return this.serial.sendColor(value);
@@ -118,7 +118,7 @@ class ComManager {
 
     sendBrightness(value) {
         if (this.db?.com) console.log(`ComManager: Sending Brightness (${this.activeChannel}) = ${value}`);
-        if (this.activeChannel === 'network') {
+        if (this.activeChannel === 'udp') {
             return this.socket.sendBrightness(value);
         } else if (this.activeChannel === 'serial') {
             return this.serial.sendBrightness(value);
@@ -128,7 +128,7 @@ class ComManager {
 
     sendPower(value) {
         if (this.db?.com) console.log(`ComManager: Sending Power (${this.activeChannel}) = ${value}`);
-        if (this.activeChannel === 'network') {
+        if (this.activeChannel === 'udp') {
             return this.socket.sendPower(value);
         } else if (this.activeChannel === 'serial') {
             return this.serial.sendPower(value);
@@ -137,7 +137,7 @@ class ComManager {
     }
 
     isConnected() {
-        if (this.activeChannel === 'network') {
+        if (this.activeChannel === 'udp') {
             return this.socket.isConnected;
         } else if (this.activeChannel === 'serial') {
             return this.serial.isConnected;

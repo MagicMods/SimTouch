@@ -20,7 +20,7 @@ import { SoundVisualizer } from "./sound/soundVisualizer.js";
 import { GridGenRenderer } from "./renderer/gridGenRenderer.js";
 import { BoundaryRenderer } from "./renderer/boundaryRenderer.js";
 import { ParticleRenderer } from "./renderer/particleRenderer.js";
-// Network
+// Udp
 import { ModulatorManager } from "./input/modulatorManager.js";
 import { socketManager } from "./com/udp/socketManager.js";
 import { serialManager } from "./com/serial/serialManager.js";
@@ -155,13 +155,13 @@ export class Main {
         opacity: 0.1,
         showVelocityField: false,
       },
-      network: {
-        enabled: true,
+      udp: {
+        enabled: false,
         debugSend: false,
         debugReceive: false
       },
       serial: {
-        enabled: true,
+        enabled: false,
         debugSend: false,
         debugReceive: false
       }

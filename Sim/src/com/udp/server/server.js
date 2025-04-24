@@ -1,10 +1,10 @@
 import { WebSocketServer } from "ws";
 import { createSocket } from "dgram";
-import { NetworkConfig } from "../networkConfig.js";
+import { UdpConfig } from "../udpConfig.js";
 
 
 export const startServer = () => {
-  console.log("Starting network servers...");
+  console.log("Starting udp servers...");
 
   // UDP client for sending data to external devices
   const udpClient = createSocket("udp4");
@@ -14,7 +14,7 @@ export const startServer = () => {
 
   // WebSocket server for browser client communication
   const wss = new WebSocketServer({
-    port: NetworkConfig.WEBSOCKET_PORT,
+    port: UdpConfig.WEBSOCKET_PORT,
   });
 
   // Set up UDP server to listen for incoming data
@@ -67,12 +67,12 @@ export const startServer = () => {
   });
 
   // Bind UDP server to input port
-  udpServer.bind(NetworkConfig.UDP_INPUT_PORT, NetworkConfig.UDP_INPUT_HOST);
+  udpServer.bind(UdpConfig.UDP_INPUT_PORT, UdpConfig.UDP_INPUT_HOST);
 
   // Rest of the WebSocket server setup
   wss.on("listening", () => {
     console.log(
-      `WebSocket server running on port ${NetworkConfig.WEBSOCKET_PORT}`
+      `WebSocket server running on port ${UdpConfig.WEBSOCKET_PORT}`
     );
   });
 
@@ -83,8 +83,8 @@ export const startServer = () => {
       const message = Buffer.from(data);
       udpClient.send(
         message,
-        NetworkConfig.UDP_PORT,
-        NetworkConfig.UDP_HOST,
+        UdpConfig.UDP_PORT,
+        UdpConfig.UDP_HOST,
         (err) => {
           if (err) {
             console.error("UDP send error:", err);

@@ -1,4 +1,4 @@
-export const NetworkConfig = {
+export const UdpConfig = {
   WEBSOCKET_PORT: 5501,
   UDP_PORT: 3000,
   UDP_HOST: "192.168.3.255",
