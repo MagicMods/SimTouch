@@ -23,7 +23,6 @@ export class ComUi extends BaseUi {
     this.selectedChannel = 'udp'; // Default channel
     this.generalStatusText = 'Initializing...'; // New state for general status
 
-    // Send Data Button needs to be created and appended before controllers reference it for insertion
     this.sendData = false;
     const sendDataButton = document.createElement("button");
     sendDataButton.textContent = "SendData";
@@ -38,7 +37,6 @@ export class ComUi extends BaseUi {
       }
       eventBus.emit('comChannelChanged', this.sendData ? 'sendData' : 'stopData');
     });
-    // Append the button FIRST, so it exists in the DOM for insertBefore
     this.gui.domElement.appendChild(sendDataButton);
 
     // Create controllers first
@@ -57,22 +55,17 @@ export class ComUi extends BaseUi {
       });
     this.selectorController.domElement.classList.add("full-width");
 
-    this.generalStatusController = this.gui.add(this, 'generalStatusText').name('Status').disable();
+    this.generalStatusController = this.gui.add(this, 'generalStatusText').name('Status');
     this.generalStatusController.domElement.classList.add("noClick");
-    // this.generalStatusController.domElement.style.marginBottom = "10px"; // Styling might be adjusted if needed
+    this.generalStatusController.domElement.style.marginTop = "0px"; // Styling might be adjusted if needed
 
-    // Now, move the controllers' DOM elements outside the collapsible area,
-    // placing them before the SendData button
     this.gui.domElement.insertBefore(this.selectorController.domElement, sendDataButton);
     this.gui.domElement.insertBefore(this.generalStatusController.domElement, sendDataButton);
 
     // Shared Sliders (remain inside collapsible area)
-    this.gui.add({ brightness: 100 }, "brightness", 0, 100, 1).name("Brightness")
-      .onChange((value) => { comManager.sendBrightness(value); });
-    this.gui.add({ power: 50 }, "power", 0, 100, 1).name("PowerMx")
-      .onChange((value) => { comManager.sendPower(value); });
+    this.gui.add({ brightness: 100 }, "brightness", 0, 100, 1).name("Brightness").onChange((value) => { comManager.sendBrightness(value); });
+    this.gui.add({ power: 50 }, "power", 0, 100, 1).name("PowerMx").onChange((value) => { comManager.sendPower(value); });
 
-    // Finally, append the SendData button
     this.gui.domElement.appendChild(sendDataButton);
 
     // --- Folders ---
@@ -189,9 +182,9 @@ export class ComUi extends BaseUi {
 
   initSerialControls() {
     // Serial Specific Status Display (bound to reactive property)
-    this.serialStatusController = this.serialFolder.add(this, 'serialStatusText').name("Status").disable(); // Renamed controller variable
-    this.serialStatusController.domElement.classList.add("noClick");
-    this.serialStatusController.domElement.style.marginBottom = "10px";
+    this.serialStatusController = this.serialFolder.add(this, 'serialStatusText').name("Status").disable();
+    // this.serialStatusController.domElement.classList.add("noClick");
+    // this.serialStatusController.domElement.style.marginBottom = "10px";
 
     // Add API support dependent controls
     if (this.isSerialSupported) {
@@ -244,6 +237,7 @@ export class ComUi extends BaseUi {
 
     this.serialPortDropdownController = this.serialFolder.add(this, 'selectedSerialPortId', options).name('Port').onChange(this.handleSerialPortChange.bind(this));
     this.serialPortDropdownController.domElement.classList.add("full-width");
+    this.serialPortDropdownController.domElement.style.marginTop = "0px";
     // Set initial value correctly
     this.serialPortDropdownController.setValue(this.selectedSerialPortId); // Set to current state value
     this.serialPortDropdownController.updateDisplay();

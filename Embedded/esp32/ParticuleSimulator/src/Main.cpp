@@ -104,7 +104,7 @@ void FromSim()
   }
   else
   {
-    packetSize = Serial1.available();
+    packetSize = Serial.available();
     if (!packetSize)
       return;
 

@@ -98,7 +98,7 @@ class ComManager {
             if (this.activeChannel === 'udp') {
                 return this.socket.sendData(byteArray);
             } else if (this.activeChannel === 'serial') {
-                return this.serial.sendData(byteArray);
+                return this.serial.sendRawData(byteArray);
             }
         }
 

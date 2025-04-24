@@ -335,11 +335,30 @@ class SerialManager {
         return this.sendCommand("POWER", value);
     }
 
-    sendData(value) {
-        return this.sendCommand("DATA", value);
+    async sendRawData(byteArray) {
+        if (!this.isApiSupported || !this.isConnected || !this.portWriter) {
+            if (this.db?.serial && !this.isConnected) console.warn(`Serial SendRawData: Failed - Not connected.`);
+            if (this.db?.serial && !this.portWriter) console.warn(`Serial SendRawData: Failed - No writer available.`);
+            return false;
+        }
+
+        if (!(byteArray instanceof Uint8Array)) {
+            console.error("Serial SendRawData: Failed - Data must be a Uint8Array.");
+            return false;
+        }
+
+        try {
+            if (this.db?.serial && this.db?.comSR) console.log(`Serial Sending Raw Data:`, byteArray);
+            await this.portWriter.write(byteArray);
+            return true;
+        } catch (error) {
+            console.error("Error sending serial raw data:", error);
+            // Do not automatically disconnect, just report failure
+            return false;
+        }
     }
 
-    // --- Remove or comment out obsolete methods --- 
+    // --- Remove or comment out obsolete methods ---
     // connect(port = "COM5") { ... } // Old connect
     // send(data) { ... } // Old send
     // setupHandlers() { ... } // Old handlers
