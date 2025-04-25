@@ -144,7 +144,7 @@ export class GridUi extends BaseUi {
     const cellsContainer = gridParamFolder.domElement.querySelector(".children");
     cellsContainer.appendChild(cellCountContainer);
 
-    this.gapController = gridParamFolder.add(gridSpecs, "gap", 0, 20, 1).name("Grid Gap")
+    this.gapController = gridParamFolder.add(gridSpecs, "gap", 0, 8, 1).name("Grid Gap")
       .onChange(() => { eventBus.emit('gridChanged', { paramPath: 'gridSpecs.gap', value: this.uiGridParams.gridSpecs.gap }); });
 
     this.aspectRatioController = gridParamFolder.add(gridSpecs, "aspectRatio", 0.2, 5, 0.01).name("Cell Ratio")

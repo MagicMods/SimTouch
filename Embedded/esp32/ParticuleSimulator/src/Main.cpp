@@ -1,4 +1,3 @@
-// Wemos LOLIN32 _ MH ET LIVE ESP32MiniKit
 #include <Arduino.h>
 #include "Main.h"
 #include "WifUdp.h"
@@ -92,16 +91,13 @@ void ProcessIncomingData()
   int max = packetSize > 40 ? 40 : packetSize;
   for (int i = 0; i < max; i++)
   {
-    // Using String::format if available or snprintf to append formatted data
     message += String(packetBuffer[i], DEC);
     if (i < (packetSize - 1))
-    {
       message += ".";
-    }
   }
   message += ".[...]";
-  // Finally, log the constructed message. Note: log_d does not directly support String objects.
   log_d("%s", message.c_str());
+
 #endif
 
   SimGraph(packetBuffer + 2);

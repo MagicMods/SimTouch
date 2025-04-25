@@ -122,8 +122,10 @@ export class GridGeometry {
       const visualScaledH_ = Math.max(6, Math.round(scaledH_ * renderScale)); // Visual cell H
 
       // Calculate step distance including gap (from gridSpecs)
-      const stepX = visualScaledW_ + gridParams.gridSpecs.gap; // Updated path
-      const stepY = visualScaledH_ + gridParams.gridSpecs.gap; // Updated path
+      // Corrected: Scale the gap by renderScale before adding to VISUAL dimensions
+      const scaledGap = gridParams.gridSpecs.gap * renderScale;
+      const stepX = visualScaledW_ + scaledGap;
+      const stepY = visualScaledH_ + scaledGap;
 
       if (stepX <= 0 || stepY <= 0) {
         console.warn("Skipping grid calculation due to zero or negative step size", { stepX, stepY });
@@ -239,6 +241,7 @@ export class GridGeometry {
                 bestVisualCellH = visualScaledH_;
                 bestCols = cols; // Store cols/rows calculated for this cellH
                 bestRows = rows;
+                // Corrected: Store step calculated from VISUAL dimensions + SCALED gap
                 bestStepX = stepX;
                 bestStepY = stepY;
                 bestValidCount = currentValidCount; // Store the count achieved
@@ -269,6 +272,7 @@ export class GridGeometry {
         bestVisualCellH = visualScaledH_;
         bestCols = cols;
         bestRows = rows;
+        // Corrected: Store step calculated from VISUAL dimensions + SCALED gap
         bestStepX = stepX;
         bestStepY = stepY;
         bestValidCount = currentValidCount;
