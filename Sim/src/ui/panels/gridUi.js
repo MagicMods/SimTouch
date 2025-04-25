@@ -102,9 +102,7 @@ export class GridUi extends BaseUi {
 
     // --- SCREEN CONFIGURATION ---
 
-    this.screenTypeController = screenFolder
-      .add(this.uiState, "selectedScreen", Object.keys(SCREEN_TYPES))
-      .name("Screen Type")
+    this.screenTypeController = screenFolder.add(this.uiState, "selectedScreen", Object.keys(SCREEN_TYPES)).name("Screen Type")
       .onChange((value) => {
         const selectedSpec = SCREEN_TYPES[value];
         if (!selectedSpec) {
@@ -121,19 +119,11 @@ export class GridUi extends BaseUi {
 
     const offsetFolder = screenFolder.addFolder("Center Offset");
 
-    this.centerOffsetXController = offsetFolder
-      .add(this.uiGridParams.gridSpecs, "centerOffsetX", -100, 100, 1) // Updated path
-      .name("X Offset")
-      .onChange(() => {
-        eventBus.emit('gridChanged', { paramPath: 'gridSpecs.centerOffsetX', value: this.uiGridParams.gridSpecs.centerOffsetX });
-      });
+    this.centerOffsetXController = offsetFolder.add(this.uiGridParams.gridSpecs, "centerOffsetX", -100, 100, 1).name("X Offset")
+      .onChange(() => { eventBus.emit('gridChanged', { paramPath: 'gridSpecs.centerOffsetX', value: this.uiGridParams.gridSpecs.centerOffsetX }); });
 
-    this.centerOffsetYController = offsetFolder
-      .add(this.uiGridParams.gridSpecs, "centerOffsetY", -100, 100, 1) // Updated path
-      .name("Y Offset")
-      .onChange(() => {
-        eventBus.emit('gridChanged', { paramPath: 'gridSpecs.centerOffsetY', value: this.uiGridParams.gridSpecs.centerOffsetY });
-      });
+    this.centerOffsetYController = offsetFolder.add(this.uiGridParams.gridSpecs, "centerOffsetY", -100, 100, 1).name("Y Offset")
+      .onChange(() => { eventBus.emit('gridChanged', { paramPath: 'gridSpecs.centerOffsetY', value: this.uiGridParams.gridSpecs.centerOffsetY }); });
 
     // --- GRID PARAMETERS ---
 
@@ -142,12 +132,8 @@ export class GridUi extends BaseUi {
     const cellCountContainer = document.createElement("div");
     cellCountContainer.classList = "slider-cellCount-container";
 
-    this.targetCellCountCellsController = gridParamFolder
-      .add(gridSpecs, "targetCellCount", 1, 1000, 1) // Bind to gridSpecs.targetCellCount
-      .name("TargetCells")
-      .onChange(() => {
-        eventBus.emit('gridChanged', { paramPath: 'gridSpecs.targetCellCount', value: this.uiGridParams.gridSpecs.targetCellCount });
-      });
+    this.targetCellCountCellsController = gridParamFolder.add(gridSpecs, "targetCellCount", 1, 1200, 1).name("TargetCells")
+      .onChange(() => { eventBus.emit('gridChanged', { paramPath: 'gridSpecs.targetCellCount', value: this.uiGridParams.gridSpecs.targetCellCount }); });
     this.targetCellCountCellsController.domElement.classList.add("slider-dual-input-slider");
     cellCountContainer.appendChild(this.targetCellCountCellsController.domElement);
 
@@ -158,55 +144,27 @@ export class GridUi extends BaseUi {
     const cellsContainer = gridParamFolder.domElement.querySelector(".children");
     cellsContainer.appendChild(cellCountContainer);
 
-    this.gapController = gridParamFolder
-      .add(gridSpecs, "gap", 0, 20, 1) // Bind to gridSpecs.gap
-      .name("Grid Gap")
-      .onChange(() => {
-        eventBus.emit('gridChanged', { paramPath: 'gridSpecs.gap', value: this.uiGridParams.gridSpecs.gap });
-      });
+    this.gapController = gridParamFolder.add(gridSpecs, "gap", 0, 20, 1).name("Grid Gap")
+      .onChange(() => { eventBus.emit('gridChanged', { paramPath: 'gridSpecs.gap', value: this.uiGridParams.gridSpecs.gap }); });
 
-    this.aspectRatioController = gridParamFolder
-      .add(gridSpecs, "aspectRatio", 0.2, 5, 0.01) // Bind to gridSpecs.aspectRatio
-      .name("Cell Ratio")
-      .onChange(() => {
-        eventBus.emit('gridChanged', { paramPath: 'gridSpecs.aspectRatio', value: this.uiGridParams.gridSpecs.aspectRatio });
-      });
+    this.aspectRatioController = gridParamFolder.add(gridSpecs, "aspectRatio", 0.2, 5, 0.01).name("Cell Ratio")
+      .onChange(() => { eventBus.emit('gridChanged', { paramPath: 'gridSpecs.aspectRatio', value: this.uiGridParams.gridSpecs.aspectRatio }); });
 
-    this.scaleController = gridParamFolder
-      .add(gridSpecs, "scale", 0.5, 1, 0.001) // Bind to gridSpecs.scale
-      .name("Grid Scale")
-      .onChange(() => {
-        eventBus.emit('gridChanged', { paramPath: 'gridSpecs.scale', value: this.uiGridParams.gridSpecs.scale });
-      });
+    this.scaleController = gridParamFolder.add(gridSpecs, "scale", 0.5, 1, 0.001).name("Grid Scale")
+      .onChange(() => { eventBus.emit('gridChanged', { paramPath: 'gridSpecs.scale', value: this.uiGridParams.gridSpecs.scale }); });
 
     // Add allowCut parameter - Bind to gridSpecs.allowCut
-    this.allowCutController = gridParamFolder
-      .add(this.uiGridParams.gridSpecs, "allowCut", 0, 3, 1) // Bind to uiGridParams
-      .name("Allow Cut")
-      .onChange(() => {
-        eventBus.emit('gridChanged', { paramPath: 'gridSpecs.allowCut', value: this.uiGridParams.gridSpecs.allowCut });
-      });
+    this.allowCutController = gridParamFolder.add(this.uiGridParams.gridSpecs, "allowCut", 0, 3, 1).name("Allow Cut")
+      .onChange(() => { eventBus.emit('gridChanged', { paramPath: 'gridSpecs.allowCut', value: this.uiGridParams.gridSpecs.allowCut }); });
 
-    this.shadowIntensityController = shadowFolder
-      .add(this.uiGridParams.shadow, "shadowIntensity", 0, 1, 0.01) // Bind to uiGridParams
-      .name("Intensity")
-      .onChange(() => {
-        eventBus.emit('gridChanged', { paramPath: 'shadow.shadowIntensity', value: this.uiGridParams.shadow.shadowIntensity });
-      });
+    this.shadowIntensityController = shadowFolder.add(this.uiGridParams.shadow, "shadowIntensity", 0, 1, 0.01).name("Intensity")
+      .onChange(() => { eventBus.emit('gridChanged', { paramPath: 'shadow.shadowIntensity', value: this.uiGridParams.shadow.shadowIntensity }); });
 
-    this.shadowThresholdController = shadowFolder
-      .add(this.uiGridParams.shadow, "shadowThreshold", 0, 0.5, 0.01) // Bind to uiGridParams
-      .name("Threshold")
-      .onChange(() => {
-        eventBus.emit('gridChanged', { paramPath: 'shadow.shadowThreshold', value: this.uiGridParams.shadow.shadowThreshold });
-      });
+    this.shadowThresholdController = shadowFolder.add(this.uiGridParams.shadow, "shadowThreshold", 0, 0.5, 0.01).name("Threshold")
+      .onChange(() => { eventBus.emit('gridChanged', { paramPath: 'shadow.shadowThreshold', value: this.uiGridParams.shadow.shadowThreshold }); });
 
-    this.blurAmountController = shadowFolder
-      .add(this.uiGridParams.shadow, "blurAmount", 0, 1, 0.01) // Bind to uiGridParams
-      .name("Blur")
-      .onChange(() => {
-        eventBus.emit('gridChanged', { paramPath: 'shadow.blurAmount', value: this.uiGridParams.shadow.blurAmount });
-      });
+    this.blurAmountController = shadowFolder.add(this.uiGridParams.shadow, "blurAmount", 0, 1, 0.01).name("Blur")
+      .onChange(() => { eventBus.emit('gridChanged', { paramPath: 'shadow.blurAmount', value: this.uiGridParams.shadow.blurAmount }); });
 
     // --- DISPLAY OPTIONS ---
 
@@ -243,7 +201,6 @@ export class GridUi extends BaseUi {
         // Notify change via event
         eventBus.emit('gridChanged', { paramPath: 'flags.' + flagName, value: this.uiGridParams.flags[flagName] });
       });
-
       buttonContainer.appendChild(button);
     });
 

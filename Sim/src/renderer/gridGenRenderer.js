@@ -453,20 +453,34 @@ export class GridGenRenderer extends BaseRenderer {
     const dataValues = useDataColors ? this.renderModes.getValues(this.particleSystem) : null;
 
     if (this.comManager.shouldSendData) {
-      const byteArray = new Uint8Array(dataValues.length + 1);
+      // Create Uint8Array for cell values only
+      let cellValueArray = null; // NEW: Declare variable
 
-      // Set identifier byte (0) at the start
-      byteArray[0] = 0;
-
-      // Map values from [0,maxDensity] to [0,100], offset by 1 for identifier
-      for (let i = 0; i < dataValues.length; i++) {
-        const normalizedValue = Math.max(
-          0,
-          Math.min(1, dataValues[i] / this.maxDensity)
-        );
-        byteArray[i + 1] = Math.round(normalizedValue * 100);
+      // Map values from [0,maxDensity] to [0,100]
+      if (useDataColors) {
+        // Map values from [0,maxDensity] to [0,100] if using data colors
+        cellValueArray = new Uint8Array(dataValues.length);
+        for (let i = 0; i < dataValues.length; i++) {
+          const normalizedValue = Math.max(
+            0,
+            Math.min(1, dataValues[i] / this.maxDensity)
+          );
+          cellValueArray[i] = Math.round(normalizedValue * 100);
+        }
+      } else {
+        // Generate data based on index (gradient spread) if not using data colors
+        cellValueArray = new Uint8Array(numInstances);
+        for (let i = 0; i < numInstances; i++) {
+          const normalizedValue = numInstances > 1 ? i / (numInstances - 1) : 0;
+          cellValueArray[i] = Math.round(normalizedValue * 100);
+        }
       }
-      this.comManager.sendData(byteArray);
+
+      // Get the current theme index
+      const themeIndex = this.gradient.getPresetIndex(this.gradient.getCurrentPreset());
+
+      // Send cell values and theme index to ComManager
+      this.comManager.sendData(cellValueArray, themeIndex);
     }
 
     const gradientValues = this.gradient.getValues();

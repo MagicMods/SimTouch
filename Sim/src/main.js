@@ -260,6 +260,8 @@ export class Main {
       calculatedCellHeight: 0,
     };
 
+    // Pass gridParams reference to ComManager
+    comManager.setGridParamsRef(this.gridParams);
 
     this.dimensionManager = new DimensionManager(
       this.gridParams.screen.width,

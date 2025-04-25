@@ -9,12 +9,6 @@
 #include "Acc.h"
 #include "FastLED.h"
 
-#define PIXEL_COUNT 341
-#define SCREEN_WIDTH 240
-#define SCREEN_HEIGHT 240
-#define GAP 1
-#define SCALE 1.0f
-
 uint8_t BRIGHTNESS_LED = 255;
 uint8_t BRIGHTNESS_POWMX = 255;
 int colorPaletteIdx = 0;
@@ -39,8 +33,7 @@ bool DEMO = false;
 
 bool SEND_DATA = false;
 
-byte packetBuffer[PIXEL_COUNT + 1];
-byte simBuffer[PIXEL_COUNT];
+byte packetBuffer[BUFFER_SIZE];
 
 bool SIM_FLAG = false;
 
@@ -50,48 +43,25 @@ bool SIM_FLAG = false;
 
 void setup()
 {
-
-#if DEBUG
-  Serial.begin(115200);
-
+  Serial.begin(250000);
+#if WIFI
+  SetupWifi();
 #endif
-  Serial1.begin(115200);
 
   SetupUI();
-  // #if DEBUG
-  //   DebugConsole("DEBUG MODE => Waiting for Serial...");
-  // #endif
-  // SetupFastLed();
-
-  SetupWifi();
-
-  // #if DEBUG
-  //   SetupCpuLoad();
-  // #endif
-  // pinMode(4, OUTPUT);
-  // pinMode(2, OUTPUT);
-  // digitalWrite(4, LOW);
-  log_d("sketch size : %d kb\r\n", ESP.getSketchSize() / 1024);
-  log_d("Free sketch size : %d kb\r\n", ESP.getFreeSketchSpace() / 1024);
-  log_d("flash size : %d kb\r\n", ESP.getFlashChipSize() / 1024);
-  log_d("Total heap: %d kb\r\n", ESP.getHeapSize() / 1024);
-  log_d("Free heap: %d kb\r\n", ESP.getFreeHeap() / 1024);
-  log_d("Total PSRAM: %d kb\r\n", ESP.getPsramSize() / 1024);
-  log_d("Free PSRAM: %d kb\r\n", ESP.getFreePsram() / 1024);
 }
 
 void loop()
 {
   LoopAcc();
-  // EVERY_N_MILLISECONDS(1000) { TimerResetArray(); }
+  EVERY_N_MILLISECONDS(1000) { TimerResetArray(); }
   // EVERY_N_MILLISECONDS(275) { Cpu(); }
   EVERY_N_MILLISECONDS(1000 / 60) { UiLoop(); }
 
-  FromSim();
-  SimGraph(simBuffer, PIXEL_COUNT, SCREEN_WIDTH, SCREEN_HEIGHT, GAP, SCALE);
+  ProcessIncomingData();
 }
 
-void FromSim()
+void ProcessIncomingData()
 {
   int packetSize = 0;
   if (WIFI)
@@ -111,9 +81,15 @@ void FromSim()
     Serial.readBytes(packetBuffer, packetSize);
   }
 
+  if (GetPayloadSize(packetBuffer) != packetSize)
+  {
+    log_e("Payload size mismatch: %d != %d", GetPayloadSize(packetBuffer), packetSize);
+    return;
+  }
+
 #if DEBUG_NET_STREAM
   String message = String(packetSize) + " => ";
-  int max = packetSize > 20 ? 20 : packetSize;
+  int max = packetSize > 40 ? 40 : packetSize;
   for (int i = 0; i < max; i++)
   {
     // Using String::format if available or snprintf to append formatted data
@@ -128,36 +104,33 @@ void FromSim()
   log_d("%s", message.c_str());
 #endif
 
-  if (packetSize <= PIXEL_COUNT + 1)
-  {
-    switch (packetSize)
-    {
-    case 2: // COM
-    {
-      ProcessComSim(packetBuffer);
-    }
-    break;
-    case PIXEL_COUNT + 1:
-    {
-      memcpy(simBuffer, packetBuffer + 1, PIXEL_COUNT);
-      ARRAY_RESETTED = false;
-    }
-    break;
-    default:
-    {
-      log_e("IN OUT OF RANGE => %d", packetSize);
-    }
-    break;
-    }
-    // if (POWER_ON)
-    // {
-    //   FastLED.show();
-    // }
-  }
+  SimGraph(packetBuffer + 2);
+
+  ARRAY_RESETTED = false;
+  // if (POWER_ON)
+  // {
+  //   FastLED.show();
+  // }
 }
 
 void TimerResetArray()
 {
+  if (ARRAY_RESETTED)
+  {
+    ResetArray();
+    ClearScreen();
+  }
+  else
+  {
+    ARRAY_RESETTED = true;
+  }
+}
+
+void ResetArray()
+{
+  memset(packetBuffer, 0, BUFFER_SIZE);
+  ClearScreen();
+  ARRAY_RESETTED = true;
 }
 
 int GetColorPaletteIdx()
@@ -171,8 +144,7 @@ void SetColorPaletteIdx(int idx)
   log_v("Colour Set: %d", colorPaletteIdx);
 }
 
-void ResetArray()
+int GetPayloadSize(byte buffer[])
 {
-  memset(packetBuffer, 0, PIXEL_COUNT + 1);
-  ARRAY_RESETTED = true;
+  return (buffer[0]) | buffer[1] << 8;
 }

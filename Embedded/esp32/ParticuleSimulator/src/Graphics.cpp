@@ -11,6 +11,39 @@
 #include "CST816S.h"
 #include "Palettes.h"
 #include "FastLED.h"
+#include <stdint.h> // For fixed-width types
+
+// Define structure matching the 23-byte header layout
+// Use __attribute__((packed)) to prevent compiler padding
+struct __attribute__((packed)) PacketHeader
+{
+  uint8_t roundRect;     // Offset 0
+  uint16_t screenWidth;  // Offset 1 (LE)
+  uint16_t screenHeight; // Offset 3 (LE)
+  uint16_t cellCount;    // Offset 5 (LE)
+  uint8_t gridGap;       // Offset 7
+  float cellRatio;       // Offset 8 (LE)
+  uint8_t allowCut;      // Offset 12 (prev 16)
+  uint8_t cols;          // Offset 13 (prev 17)
+  uint8_t rows;          // Offset 14 (prev 18)
+  uint8_t cellW;         // Offset 15 (prev 19)
+  uint8_t cellH;         // Offset 16 (prev 20)
+  uint8_t theme;         // Offset 17 (prev 21)
+  uint8_t brightness;    // Offset 18 (prev 22)
+};
+
+// Runtime check for struct size (can't use static_assert in older C++ versions potentially used by Arduino)
+// This check now validates against the new size (19) implicitly via sizeof()
+void CheckHeaderSize()
+{
+  // Updated expected size implicitly via sizeof(PacketHeader) change
+  const size_t EXPECTED_HEADER_SIZE = 19;
+  if (sizeof(PacketHeader) != EXPECTED_HEADER_SIZE)
+  {
+    log_e("CRITICAL ERROR: PacketHeader size mismatch! Expected %d, got %d", EXPECTED_HEADER_SIZE, sizeof(PacketHeader));
+    // Consider halting or other error handling here
+  }
+}
 
 CST816S touch(PIN_I2C_SDA, PIN_I2C_SCL, PIN_TP_RST, PIN_TP_INT); //  sda, scl, rst, irq of T-DisplayS3 Touch.
 
@@ -179,6 +212,7 @@ void SetupUI()
   indev_drv.read_cb = lv_touchpad_read;
   lv_indev_drv_register(&indev_drv);
 
+  tft.fillScreen(TFT_BLACK);
   log_v("Ui INIT DONE");
 }
 
@@ -226,50 +260,200 @@ void SetDisplayBrightness(uint8_t newBrightness)
   //   ledcWrite(0, uint32_t(newBrightness));
 }
 
-void SimGraph(byte byteArray[], int nbrPixels, int screenWidth, int screenHeight, int gap, float scale)
+// Refactored to process the new network payload using a struct overlay
+void SimGraph(const uint8_t *payload)
 {
-  const int center = screenWidth / 2;
-  const int radius = center * scale;
+  // --- Cast payload to header struct ---
+  // Assumes payload points to the start of the header (after length bytes)
+  // Assumes ESP32 is little-endian, matching sender
+  const PacketHeader *header = reinterpret_cast<const PacketHeader *>(payload);
 
-  // Use the same cell dimensions as in JS
-  int cellWidth = 10;
-  int cellHeight = 10;
+  // --- Debug Log: Print parsed header values ---
+  log_d("SimGraph Parsed Header: Rect=%d SW=%d SH=%d Cnt=%d Gap=%d CR=%.2f Cut=%d Cols=%d Rows=%d CW=%d CH=%d Thm=%d Bri=%d",
+        header->roundRect,
+        header->screenWidth,
+        header->screenHeight,
+        header->cellCount,
+        header->gridGap,
+        header->cellRatio,
+        header->allowCut,
+        header->cols,
+        header->rows,
+        header->cellW,
+        header->cellH,
+        header->theme,
+        header->brightness);
+  // --- End Debug Log ---
 
-  // Match the JavaScript algorithm
-  int moduleCount = 0;
-  int maxCols = radius / (cellWidth + gap);
-  int maxRows = radius / (cellHeight + gap);
+  // --- Detect Grid Spec Change & Clear Screen ---
+  static bool first_run = true;
+  static uint8_t prev_roundRect = 2; // Init impossible value
+  static uint16_t prev_screenWidth = 0;
+  static uint16_t prev_screenHeight = 0;
+  static uint16_t prev_cellCount = 0;
+  static uint8_t prev_gridGap = 255;
+  static float prev_cellRatio = -1.0f;
+  static uint8_t prev_allowCut = 255;
+  static uint8_t prev_cols = 0;
+  static uint8_t prev_rows = 0;
+  static uint8_t prev_cellW = 0;
+  static uint8_t prev_cellH = 0;
 
-  // Similar algorithm to generateRectangles in JavaScript
-  for (int r = -maxRows; r <= maxRows && moduleCount < 342; r++)
+  // Check if any spec affecting geometry/layout changed
+  bool spec_changed = first_run ||
+                      prev_roundRect != header->roundRect ||
+                      prev_screenWidth != header->screenWidth ||
+                      prev_screenHeight != header->screenHeight ||
+                      // prev_cellCount != header->cellCount || // Cell count change alone might not require full clear?
+                      prev_gridGap != header->gridGap ||
+                      abs(prev_cellRatio - header->cellRatio) > 0.001f ||
+                      prev_allowCut != header->allowCut ||
+                      prev_cols != header->cols ||
+                      prev_rows != header->rows ||
+                      prev_cellW != header->cellW ||
+                      prev_cellH != header->cellH;
+
+  if (spec_changed)
   {
-    for (int c = -maxCols; c <= maxCols && moduleCount < 342; c++)
+    log_d("Grid spec changed, clearing screen.");
+    tft.fillScreen(TFT_BLACK);
+    first_run = false;
+    // Update all previous values
+    prev_roundRect = header->roundRect;
+    prev_screenWidth = header->screenWidth;
+    prev_screenHeight = header->screenHeight;
+    prev_cellCount = header->cellCount; // Still update even if not triggering clear
+    prev_gridGap = header->gridGap;
+    prev_cellRatio = header->cellRatio;
+    prev_allowCut = header->allowCut;
+    prev_cols = header->cols;
+    prev_rows = header->rows;
+    prev_cellW = header->cellW;
+    prev_cellH = header->cellH;
+  }
+  // --- End Grid Spec Change Check ---
+
+  // Perform runtime size check once (or periodically if needed)
+  static bool headerSizeChecked = false;
+  if (!headerSizeChecked)
+  {
+    CheckHeaderSize();
+    headerSizeChecked = true;
+  }
+
+  // --- Validation ---
+  // Access fields via header pointer
+  if (SCREEN_WIDTH != header->screenWidth || SCREEN_HEIGHT != header->screenHeight)
+  {
+    log_e("SimGraph Error: Received dimensions (%dx%d) mismatch device dimensions (%dx%d)",
+          header->screenWidth, header->screenHeight, SCREEN_WIDTH, SCREEN_HEIGHT);
+    return;
+  }
+
+  // --- Cell Data Setup ---
+  const uint8_t *cellValues = payload + sizeof(PacketHeader); // Offset by struct size
+  uint16_t numCellsToDraw = header->cellCount;                // Use value from header struct
+
+  // Ensure theme index is valid (using header->theme)
+  uint8_t theme = header->theme;
+  if (theme >= 11)
+  {
+    log_w("SimGraph Warning: Received invalid theme index %d. Using theme 0.", theme);
+    theme = 0;
+  }
+
+  // --- Drawing ---
+  // tft.fillScreen(TFT_BLACK); // Ensure this is removed/commented
+
+  uint16_t currentCellIndex = 0;
+  float centerX = screenWidth / 2.0f;
+  float centerY = screenHeight / 2.0f;
+  // Use values from header struct
+  float radius = centerX; // Radius is now just half the screen width
+
+  // Loop through potential grid positions based on header cols/rows
+  // Swap loops: Outer is now 'c', inner is now 'r'
+  for (int c = -header->cols / 2; c <= header->cols / 2; ++c) // Outer loop: Columns
+  {
+    for (int r = -header->rows / 2; r <= header->rows / 2; ++r) // Inner loop: Rows
     {
-      int dx = c * (cellWidth + gap);
-      int dy = r * (cellHeight + gap);
+      // Calculate center offsets for this potential cell using header values
+      // dx depends on c, dy depends on r (CONFIRMED)
+      float dx = c * (header->cellW + header->gridGap);
+      float dy = r * (header->cellH + header->gridGap);
 
-      // Check if point is within circle
-      if (sqrt(dx * dx + dy * dy) <= radius)
+      // Check if this position is within the boundary defined by header
+      bool inBounds;
+      if (header->allowCut != 0)
       {
-        // First calculate mirrored coordinates
-        int origX = center - dx - cellWidth / 2;  // Mirrored X (fixed from before)
-        int origY = center + dy - cellHeight / 2; // Normal Y
+        // Original check (center point in radius) - allows partial cells
+        inBounds = header->roundRect
+                       ? (sqrt(dx * dx + dy * dy) <= radius)
+                       : (abs(dx) <= radius && abs(dy) <= radius);
+      }
+      else
+      {
+        // Stricter check (entire cell must be within bounds) - disallows partial cells
+        float halfW = header->cellW / 2.0f;
+        float halfH = header->cellH / 2.0f;
+        if (header->roundRect)
+        {
+          // Check all 4 corners against radius for circular boundary (approximation)
+          bool corner1_in = sqrt(pow(dx - halfW, 2) + pow(dy - halfH, 2)) <= radius;
+          bool corner2_in = sqrt(pow(dx + halfW, 2) + pow(dy - halfH, 2)) <= radius;
+          bool corner3_in = sqrt(pow(dx - halfW, 2) + pow(dy + halfH, 2)) <= radius;
+          bool corner4_in = sqrt(pow(dx + halfW, 2) + pow(dy + halfH, 2)) <= radius;
+          inBounds = corner1_in && corner2_in && corner3_in && corner4_in;
+        }
+        else
+        {
+          // Check all 4 edges against radius for rectangular boundary
+          inBounds = (abs(dx) + halfW <= radius) && (abs(dy) + halfH <= radius);
+        }
+      }
 
-        // Then rotate 90 degrees counterclockwise
-        int cursorX = origY;
-        int cursorY = screenWidth - origX - cellWidth;
+      if (inBounds)
+      {
+        // If this position is valid, check if we still need to draw cells
+        if (currentCellIndex >= numCellsToDraw)
+        {
+          // Optimization: If we found all cells, no need to check remaining grid positions
+          // This break exits the INNER loop (rows) for the current column.
+          // The outer loop will continue to the next column. This is correct.
+          break;
+        }
 
-        uint32_t colSpeed;
-        uint32_t colDir;
+        uint8_t cellValue = cellValues[currentCellIndex]; // Get value for this valid cell
 
-        colSpeed = CRGB_UINT32(byteArray[moduleCount + 1]);
+        // --- Add Index Logging for Value 100 ---
+        if (cellValue == 100)
+        {
+          log_d("Index with value 100 found: idx=%d (c=%d, r=%d)", currentCellIndex, c, r);
+        }
 
-        // Swap width and height for the rotated rectangle
-        tft.fillRect(cursorX, cursorY, cellHeight, cellWidth, colSpeed);
-        moduleCount++;
+        // Get color from palette using validated theme
+        CRGB rgbColor = ColorFromPalette(Palettes[theme], cellValue, 255, NOBLEND);
+        uint32_t fillColor = CRGBToUint32(rgbColor); // Convert to TFT format
+
+        // Calculate final screen coordinates (using header values)
+        int screenX = (int)(centerX + dx - header->cellW / 2.0f);
+        int screenY = (int)(centerY + dy - header->cellH / 2.0f);
+
+        // Draw the cell (using header values)
+        tft.fillRect(screenX, screenY, header->cellW, header->cellH, fillColor);
+
+        currentCellIndex++; // Move to the next cell value
       }
     }
+    // Break outer loop (columns) if all cells drawn
+    // CONFIRMED: This break still correctly exits the outer loop.
+    if (currentCellIndex >= numCellsToDraw)
+    {
+      break;
+    }
   }
+
+  // No specific cleanup needed here
 }
 
 void ColorBridge(uint8_t _)
@@ -304,4 +488,9 @@ uint32_t CRGBToUint32(const CRGB &color)
 uint32_t CRGB_UINT32(CRGB color)
 {
   return (((color[0] & 0xF8) << 8) | ((color[1] & 0xFC) << 3) | (color[2] >> 3));
+}
+
+void ClearScreen()
+{
+  tft.fillScreen(TFT_BLACK);
 }

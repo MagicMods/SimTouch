@@ -16,10 +16,10 @@ export class ParticleUi extends BaseUi {
   //#region Particle
   initParticleControls() {
     // Store controllers as class properties with clear naming
-    this.particleCountController = this.gui.add(this.main.simParams.simulation, "particleCount", 0, 1500, 1).name("P-Count")
+    this.particleCountController = this.gui.add(this.main.simParams.simulation, "particleCount", 1, 1500, 1).name("P-Count")
       .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'simulation.particleCount', value }); });
 
-    this.particleSizeController = this.gui.add(this.main.simParams.simulation, "particleRadius", 0.002, 0.03, 0.001).name("P-Size")
+    this.particleSizeController = this.gui.add(this.main.simParams.simulation, "particleRadius", 0.002, 0.05, 0.001).name("P-Size")
       .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'simulation.particleRadius', value }); });
 
     this.particleSizeController.domElement.style.marginBottom = "12px";

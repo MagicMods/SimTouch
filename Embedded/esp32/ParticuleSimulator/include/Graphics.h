@@ -6,7 +6,8 @@
 void SetupUI();
 void UiLoop();
 
-void SimGraph(byte byteArray[], int nbrPixels, int screenWidth, int screenHeight, int gap, float scale);
+void SimGraph(const uint8_t *payload);
+int GetPayloadSize(uint8_t buffer[]);
 uint32_t rainbow(uint8_t hue);
 void RectGraph(int selector);
 
@@ -30,7 +31,5 @@ int Distance(uint16_t x, uint16_t y, int centerX, int centerY);
 uint32_t CRGBToUint32(const CRGB &color);
 
 uint32_t CRGB_UINT32(CRGB color);
-
-void TouchGraph(uint16_t x, uint16_t y, int scale);
 uint32_t ColorValue(uint8_t value);
 #endif

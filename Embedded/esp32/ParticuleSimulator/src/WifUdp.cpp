@@ -13,8 +13,8 @@ WiFiUDP udp;
 
 // List of desired SSIDs
 
-static const char *ssid_AP = "Svibe_Suit";
-static const char *pass_AP = "Maoartland00";
+static const char *ssid_AP = "SimTouchScreen";
+static const char *pass_AP = "MagicMods";
 
 const int channel = 1;        // WiFi Channel number between 1 and 13
 const bool hide_SSID = false; // To disable SSID broadcast -> SSID will not appear in a basic WiFi scan
@@ -49,68 +49,15 @@ bool UNITY_INIT = false;
 #define COM_BRIGHTNESS 7
 #define COM_POWERMX 8
 
-struct Logins
-{
-  String ssid;
-  String password;
-};
-
-Logins desiredNetworks[] = {
-    {"SvibeHub", "Maoartland00"}
-    // ,{"MagicMods", "Maoartland00"}
-};
-
 void SetupWifi()
 {
   log_v("WIFI INIT");
   WiFi.setSleep(false);
   WiFi.onEvent(WiFiEvent);
   WiFi.disconnect();
-
   StartAP();
-
   udp.begin(udpListenPort);
-
   log_v("WIFI Initialised");
-}
-
-void CheckAvailableNetworks()
-{
-  int numNetworks = WiFi.scanNetworks();
-  if (numNetworks == 0)
-  {
-    log_v("No Networks found");
-    return;
-  }
-
-  log_v("Available networks:");
-  for (int i = 0; i < numNetworks; i++)
-  {
-    String ssid = WiFi.SSID(i);
-    // log_v(ssid);
-
-    // Check if the SSID is in the list of desired networks
-    if (IsDesiredNetwork(ssid))
-    {
-      // log_v("Connecting to : " + ssid);
-      WiFi.mode(WIFI_MODE_STA);
-      WiFi.begin(ssid.c_str(), desiredNetworks[i].password.c_str());
-      if (WiFi.waitForConnectResult() != WL_CONNECTED)
-      {
-        log_v("Connection FAILED!");
-        WiFi.disconnect();
-      }
-      else
-      {
-        log_v("Connection successful!");
-      }
-      break;
-    }
-    else
-    {
-      log_v("No Network Desired");
-    }
-  }
 }
 
 void StartAP()
@@ -118,29 +65,10 @@ void StartAP()
   WiFi.mode(WIFI_MODE_AP);
   WiFi.softAPsetHostname("Svibe_Suit");
   log_v("AP => Svibe_Suit");
-  // WiFi.softAPConfig(localIP, gateway, subnet);
-  // WiFi.softAP(ssid_AP, pass_AP, 11, 0, 3);
   WiFi.softAPConfig(localIP, gateway, subnet);
   WiFi.softAP(ssid_AP, pass_AP, 11, 0);
-  // log_v("ESPMAC: " + WiFi.softAPmacAddress());
-  // log_v("AP IP: " + WiFi.softAPIP().toString());
-
   WiFi.status() ? log_v("WIFI OK!") : log_v("WIFI INIT FAILED!");
 }
-
-bool IsDesiredNetwork(String ssid)
-{
-  for (int i = 0; i < sizeof(desiredNetworks) / sizeof(desiredNetworks[0]); i++)
-  {
-    if (ssid.equals(desiredNetworks[i].ssid))
-    {
-      return true;
-    }
-  }
-
-  return false;
-}
-
 ///////////////////////////////////////////////////////////
 
 ///////////////////    UPD   /////////////////////////
