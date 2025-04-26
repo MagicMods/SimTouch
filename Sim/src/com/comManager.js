@@ -157,7 +157,7 @@ class ComManager {
                 };
 
                 // Add log to check calculated values
-                console.log(`ComManager Debug - Calculated Meta -> cols: ${meta.cols}, rows: ${meta.rows}, cellW: ${meta.cellW}, cellH: ${meta.cellH}`);
+                if (this.db?.com) console.log(`ComManager Debug - Calculated Meta -> cols: ${meta.cols}, rows: ${meta.rows}, cellW: ${meta.cellW}, cellH: ${meta.cellH}`);
 
                 // Populate Header Buffer (Order: RoundRect(u8), ScreenWidth(u16), ScreenHeight(u16), CellCount(u16), GridGap(u8), CellRatio(f32), AllowCut(u8), Cols(u8), Rows(u8), CellW(u8), CellH(u8), Theme(u8), Brightness(u8))
                 let offset = 0;
@@ -181,7 +181,7 @@ class ComManager {
             }
 
             // Log the raw header bytes after population
-            console.log("ComManager Debug - Generated headerBytes:", headerBytes);
+            if (this.db?.com) console.log("ComManager Debug - Generated headerBytes:", headerBytes);
 
             // --- Calculate Sizes and Total Length ---
             const headerSize = headerBytes.length; // Should be 19
@@ -216,16 +216,6 @@ class ComManager {
             }
         }
         return false; // Return false if shouldSendData is false
-    }
-
-    sendColor(value) {
-        if (this.db?.com) console.log(`ComManager: Sending Color (${this.activeChannel}) = ${value}`);
-        if (this.activeChannel === 'udp') {
-            return this.socket.sendColor(value);
-        } else if (this.activeChannel === 'serial') {
-            return this.serial.sendColor(value);
-        }
-        return false;
     }
 
     sendBrightness(value) {

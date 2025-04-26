@@ -54,7 +54,6 @@ export class Gradients {
     // If preset actually changed, send notification over socket
     if (oldPreset !== presetName) {
       if (this.db.gradients) console.log(`>>> applyPreset calling sendGradientsUpdate`);
-      this.sendGradientsUpdate(presetName);
     }
 
     return this.points;
@@ -91,24 +90,7 @@ export class Gradients {
     return true;
   }
 
-  // Send Gradients update to hardware over WebSocket
-  sendGradientsUpdate(presetName) {
-    // Skip sending if using custom stops
-    if (this.currentPreset === "custom") {
-      console.log("sendGradientsUpdate: Skipping hardware sync for custom gradient.");
-      return false;
-    }
-    const presetIndex = this.getPresetIndex(presetName);
-    const logPrefix = this.debug?.gradients ? ">>>" : "";
-    if (this.debug?.gradients) console.log(`${logPrefix} sendGradientsUpdate: presetName="${presetName}", calculated index: ${presetIndex}`);
-    // Check if presetIndex is valid before sending
-    if (presetIndex === -1) {
-      console.warn(`sendGradientsUpdate: Preset name "${presetName}" not found, cannot send update.`);
-      return false;
-    }
-    return this.comManager.sendColor(presetIndex);
-    // return true;
-  }
+
 
   // Get the numeric index of a preset (c0=0, c1=1, etc.)
   getPresetIndex(presetName) {

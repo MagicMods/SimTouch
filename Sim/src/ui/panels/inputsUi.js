@@ -548,6 +548,8 @@ export class InputsUi extends BaseUi {
   getControlTargets() {
     const targets = {};
 
+    targets["J-X"] = this.joystickXController;
+    targets["J-Y"] = this.joystickYController;
     targets["J-G-Strength"] = this.joystickGravityStrengthController;
     targets["J-T-BiasStrength"] = this.joystickBiasStrengthController;
 

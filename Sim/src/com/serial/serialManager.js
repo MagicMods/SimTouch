@@ -5,11 +5,6 @@ class SerialManager {
 
     // Command types and their validation rules
     static COMMANDS = {
-        COLOR: {
-            index: 6,
-            validate: (value) => typeof value === 'number' && value >= 0 && value <= 255,
-            debounceKey: 'color'
-        },
         BRIGHTNESS: {
             index: 7,
             validate: (value) => typeof value === 'number' && value >= 0 && value <= 100,
@@ -321,19 +316,6 @@ class SerialManager {
         }
     }
 
-    // Convenience methods for specific commands
-    sendColor(value) {
-        // Note: sendCommand is now async
-        return this.sendCommand("COLOR", value);
-    }
-
-    sendBrightness(value) {
-        return this.sendCommand("BRIGHTNESS", value);
-    }
-
-    sendPower(value) {
-        return this.sendCommand("POWER", value);
-    }
 
     async sendRawData(byteArray) {
         if (!this.isApiSupported || !this.isConnected || !this.portWriter) {
@@ -357,14 +339,6 @@ class SerialManager {
             return false;
         }
     }
-
-    // --- Remove or comment out obsolete methods ---
-    // connect(port = "COM5") { ... } // Old connect
-    // send(data) { ... } // Old send
-    // setupHandlers() { ... } // Old handlers
-    // reconnect() { ... }
-    // processMessage(data) { ... } // Maybe reuse parts in readLoop later
-    // addMessageHandler, removeMessageHandler, addMouseHandler, removeMouseHandler, addEmuHandler, removeEmuHandler, handleEmuData (if not used by serial)
 }
 
 export const serialManager = SerialManager.getInstance();

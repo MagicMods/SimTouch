@@ -321,19 +321,6 @@ class SocketManager {
     if (this.db?.udp) console.warn(`Socket sendCommand Failed: Not connected.`);
     return false;
   }
-
-  sendColor(value) {
-    if (this.db?.udp) console.log(`>>> Socket sendColor called with value: ${typeof value}`, value);
-    return this.sendCommand("COLOR", value);
-  }
-
-  sendBrightness(value) {
-    return this.sendCommand("BRIGHTNESS", value);
-  }
-
-  sendPower(value) {
-    return this.sendCommand("POWER", value);
-  }
 }
 
 export const socketManager = SocketManager.getInstance();
