@@ -54,13 +54,11 @@ export class GravityUi extends BaseUi {
     const controllers = {};
     const targets = this.getControlTargets();
 
-    // Extract values from controllers to create a serializable object
     for (const [key, controller] of Object.entries(targets)) {
       if (controller && typeof controller.getValue === "function") {
         controllers[key] = controller.getValue();
       }
     }
-
     return { controllers };
   }
 
@@ -104,7 +102,7 @@ export class GravityUi extends BaseUi {
     // Only update X and Y controllers
     safeUpdateDisplay(this.gravityXController);
     safeUpdateDisplay(this.gravityYController);
-    safeUpdateDisplay(this.gravityEnabledController);
+    // safeUpdateDisplay(this.gravityEnabledController);
   }
 
   // Clean up when UI is destroyed

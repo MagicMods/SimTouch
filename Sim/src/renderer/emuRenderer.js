@@ -306,7 +306,7 @@ export class EmuRenderer {
 
       const name = label.textContent.trim();
 
-      if (name === 'T-BiasX') {
+      if (name === 'T-BiasX Spd') {
         // Check if display property exists
         if (typeof turbulenceField._displayBiasAccelX !== 'undefined') {
           input.value = turbulenceField._displayBiasAccelX.toFixed(2);
@@ -319,7 +319,7 @@ export class EmuRenderer {
         const event = new Event('change', { bubbles: true });
         input.dispatchEvent(event);
       }
-      else if (name === 'T-BiasY') {
+      else if (name === 'T-BiasY Spd') {
         // Check if display property exists
         if (typeof turbulenceField._displayBiasAccelY !== 'undefined') {
           input.value = turbulenceField._displayBiasAccelY.toFixed(2);

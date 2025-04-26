@@ -10,6 +10,62 @@ export class InputsUi extends BaseUi {
     this.controls = {};
     this.gui.title("Inputs");
 
+    // --- Create Toggle Buttons ---
+    const buttonContainer = document.createElement("div");
+    buttonContainer.className = "input-toggle-buttons"; // Use a relevant class name
+    this.buttonContainer = buttonContainer; // Store reference if needed later
+
+    // External Input Button
+    const externalButton = document.createElement("button");
+    externalButton.textContent = "Touch Input";
+    externalButton.className = "toggle-button";
+    const isExternalEnabled = this.main.particleSystem.mouseForces.externalInputEnabled;
+    if (isExternalEnabled) externalButton.classList.add("active");
+    externalButton.addEventListener("click", () => {
+      const isActive = externalButton.classList.contains("active");
+      const newState = !isActive;
+      externalButton.classList.toggle("active", newState);
+      if (newState) {
+        this.main.externalInput.enable();
+      } else {
+        this.main.externalInput.disable();
+      }
+    });
+    buttonContainer.appendChild(externalButton);
+    this.externalInputButton = externalButton;
+
+    // EMU Input Button (Conditional)
+    if (this.main.externalInput && this.main.externalInput.emuForces) {
+      const emuButton = document.createElement("button");
+      emuButton.textContent = "EMU Input";
+      emuButton.className = "toggle-button";
+      const isEmuEnabled = this.main.externalInput.emuForces.enabled;
+      if (isEmuEnabled) emuButton.classList.add("active");
+      emuButton.addEventListener("click", () => {
+        const isActive = emuButton.classList.contains("active");
+        const newState = !isActive;
+        emuButton.classList.toggle("active", newState);
+        if (newState) {
+          this.main.externalInput.enableEmu();
+        } else {
+          this.main.externalInput.disableEmu();
+        }
+      });
+      buttonContainer.appendChild(emuButton);
+      this.emuInputButton = emuButton;
+    }
+
+    // Insert buttons before folders
+    const guiChildren = this.gui.domElement.querySelector(".children");
+    if (guiChildren) {
+      guiChildren.insertBefore(buttonContainer, guiChildren.firstChild);
+    } else {
+      console.warn("Could not find GUI children container to insert buttons.");
+      // Fallback: Append to the main gui element if children not found
+      this.gui.domElement.appendChild(buttonContainer);
+    }
+    // --- End Toggle Buttons ---
+
     this.mouseInputFolder = this.gui.addFolder("Mouse Input");
     this.joystickInputFolder = this.gui.addFolder("Joystick Controls");
     this.emuInputFolder = this.gui.addFolder("EMU Input");
@@ -170,18 +226,6 @@ export class InputsUi extends BaseUi {
     const externalInput = this.main.externalInput;
     const mouseForces = this.main.particleSystem.mouseForces;
 
-    // External input enable/disable
-    this.externalInputFolder
-      .add({ enabled: mouseForces.externalInputEnabled }, "enabled")
-      .name("Enable External Input")
-      .onChange((value) => {
-        if (value) {
-          externalInput.enable();
-        } else {
-          externalInput.disable();
-        }
-      });
-
     // Create a persistent button type object
     const buttonTypeControl = {
       type: mouseForces.externalMouseState.button,
@@ -256,18 +300,6 @@ export class InputsUi extends BaseUi {
 
     const externalInput = this.main.externalInput;
     const emuForces = externalInput.emuForces;
-
-    // EMU input enable/disable
-    this.emuInputFolder
-      .add({ enabled: false }, "enabled")
-      .name("Enable EMU Input")
-      .onChange((value) => {
-        if (value) {
-          externalInput.enableEmu();
-        } else {
-          externalInput.disableEmu();
-        }
-      });
 
     // Accel sensitivity
     this.emuInputFolder
@@ -552,6 +584,27 @@ export class InputsUi extends BaseUi {
     targets["J-Y"] = this.joystickYController;
     targets["J-G-Strength"] = this.joystickGravityStrengthController;
     targets["J-T-BiasStrength"] = this.joystickBiasStrengthController;
+
+    // Add wrappers for toggle buttons
+    targets["Enable External"] = {
+      getValue: () => this.main.particleSystem.mouseForces.externalInputEnabled,
+      setValue: (value) => {
+        if (this.externalInputButton) this.externalInputButton.classList.toggle("active", value);
+        if (value) this.main.externalInput.enable();
+        else this.main.externalInput.disable();
+      }
+    };
+
+    if (this.main.externalInput?.emuForces) {
+      targets["Enable EMU"] = {
+        getValue: () => this.main.externalInput.emuForces.enabled,
+        setValue: (value) => {
+          if (this.emuInputButton) this.emuInputButton.classList.toggle("active", value);
+          if (value) this.main.externalInput.enableEmu();
+          else this.main.externalInput.disableEmu();
+        }
+      };
+    }
 
     return targets;
   }
