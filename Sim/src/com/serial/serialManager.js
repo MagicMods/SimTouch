@@ -35,7 +35,11 @@ class SerialManager {
         this.portReader = null;
         this.portWriter = null;
         this.keepReading = false;
-
+        this.lastConnectedPortId = null;
+        this.isRequestingPort = false;
+        this.baudRate = 250000;
+        this.lastConnectAttemptTime = 0;
+        this.connectAttemptCooldown = 2000;
         // Initialize command state tracking
         this.lastSentCommands = {};
         Object.values(SerialManager.COMMANDS).forEach(cmd => {
@@ -88,19 +92,29 @@ class SerialManager {
     async requestPort() {
         if (!this.isApiSupported) return false;
 
+        if (this.isRequestingPort) {
+            if (this.db?.serial) console.log("SerialManager: Port request already in progress.");
+            return false;
+        }
+
+        this.isRequestingPort = true;
+        let success = false;
         try {
             await navigator.serial.requestPort();
             if (this.db?.serial) console.log("Serial port requested successfully.");
             await this.getAvailablePortsInfo(); // Refresh list after request
-            return true;
+            success = true;
         } catch (error) {
             if (error.name === 'NotFoundError' || error.name === 'NotAllowedError') {
                 if (this.db?.serial) console.log("User cancelled port selection or no port selected.");
             } else {
                 console.error("Error requesting serial port:", error);
             }
-            return false;
+            success = false;
+        } finally {
+            this.isRequestingPort = false;
         }
+        return success;
     }
 
     async connect(portId) {
@@ -112,6 +126,17 @@ class SerialManager {
             if (this.db?.serial) console.log("SerialManager Connect: Already attempting connection, request ignored.");
             return false;
         }
+
+        // Step 5 & 6: Add cooldown check logic
+        const now = Date.now();
+        if ((now - this.lastConnectAttemptTime) < this.connectAttemptCooldown) {
+            // if (this.db?.serial) console.log("SerialManager Connect: Throttled due to recent failed attempt.");
+            return false; // Exit if within cooldown period
+        }
+        // Update attempt time *before* trying to connect
+        this.lastConnectAttemptTime = now;
+
+        this.isRequestingPort = false;
 
         this.isConnecting = true;
         const port = this.availablePorts[portId];
@@ -130,13 +155,14 @@ class SerialManager {
 
         try {
             if (this.db?.serial) console.log(`SerialManager: Attempting to open Port ${portId}...`);
-            await port.open({ baudRate: 115200 }); // Common baud rate
+            await port.open({ baudRate: this.baudRate });
             this.activePort = port;
             this.isConnected = true;
             this.portReader = this.activePort.readable.getReader();
             this.portWriter = this.activePort.writable.getWriter();
             this.keepReading = true;
             this.readLoop(); // Start reading in background
+            this.lastConnectedPortId = portId;
 
             if (this.db?.serial) console.log(`SerialManager: Successfully connected to Port ${portId}.`);
             eventBus.emit('serialConnectionStatusChanged', { connected: true, portId });
@@ -149,6 +175,7 @@ class SerialManager {
             this.isConnected = false;
             eventBus.emit('serialConnectionStatusChanged', { connected: false });
             this.isConnecting = false;
+            this.lastConnectAttemptTime = Date.now(); // Step 7: Update time on connect failure
             return false;
         }
     }
@@ -215,6 +242,7 @@ class SerialManager {
         this.activePort = null;
         this.isConnected = false;
         this.isConnecting = false; // Ensure reset
+        this.isRequestingPort = false; // Step 3: Add flag reset here
 
         // Only emit event if status actually changed
         if (previouslyConnected) {
@@ -338,6 +366,10 @@ class SerialManager {
             // Do not automatically disconnect, just report failure
             return false;
         }
+    }
+
+    getLastConnectedPortId() {
+        return this.lastConnectedPortId;
     }
 }
 

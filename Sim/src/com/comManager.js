@@ -20,9 +20,17 @@ class ComManager {
         this.shouldSendData = false;
         this.gridParamsRef = null; // Add reference holder
         this.dataVisualization = null; // Initialize explicitly
+        this.hasWarnedSelectSerialPort = false; // Step 1: Add flag
 
         // Listen for channel changes from UI
         eventBus.on('comChannelChanged', this.setActiveChannel.bind(this));
+
+        // Step 2: Add event listener
+        eventBus.on('serialConnectionStatusChanged', ({ connected }) => {
+            if (connected) {
+                this.hasWarnedSelectSerialPort = false; // Reset flag on successful connection
+            }
+        });
     }
 
     // Method to set the gridParams reference
@@ -45,6 +53,9 @@ class ComManager {
 
     // Make method async to await disconnect
     async setActiveChannel(channel) {
+        // Step 3: Reset flag
+        this.hasWarnedSelectSerialPort = false;
+
         // Validate channel
         if (channel == 'sendData') {
             this.shouldSendData = true;
@@ -105,10 +116,21 @@ class ComManager {
                     this.socket.connect(); // Initiate reconnect attempt
                     return false; // Fail current send
                 } else if (this.activeChannel === 'serial') {
-                    console.warn("ComManager: Serial disconnected. Manual reconnection required via UI. Current send failed.");
+                    const lastPortId = this.serial.getLastConnectedPortId();
+                    if (lastPortId !== null) {
+                        console.warn(`ComManager: Serial disconnected. Attempting reconnect to last port (ID: ${lastPortId})... Current send failed.`);
+                        this.serial.connect(lastPortId); // Don't await
+                    } else {
+                        // Step 4: Check flag and log conditionally
+                        if (!this.hasWarnedSelectSerialPort) {
+                            console.warn("ComManager: Serial disconnected. Please select a port via the UI to connect.");
+                            this.hasWarnedSelectSerialPort = true; // Set flag after warning
+                        }
+                    }
                     return false; // Fail current send
                 } else {
                     console.warn(`ComManager: Active channel '${this.activeChannel}' is disconnected. Cannot send.`);
+
                     return false; // Fail current send
                 }
             }
