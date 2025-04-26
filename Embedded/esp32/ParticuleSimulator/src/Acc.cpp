@@ -200,7 +200,7 @@ void LoopAcc()
 {
 
     // Only process when data is ready
-    if (qmi.getDataReady() && SIM_FLAG)
+    if (qmi.getDataReady() && SEND_EMU)
     {
         // Read sensor data
         qmi.getAccelerometer(acc.x, acc.y, acc.z);

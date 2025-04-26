@@ -263,15 +263,14 @@ export class OrganicForces {
     force.x *= this.forceDamping;
     force.y *= this.forceDamping;
 
-    if (this.debug.organic) {
-      console.log(`Applied automata force: (${force.x.toFixed(3)}, ${force.y.toFixed(3)})`);
-    }
+    if (this.debug.organic) console.log(`Applied automata force: (${force.x.toFixed(3)}, ${force.y.toFixed(3)})`);
+
   }
 
   calculateChainForces(particle, neighbors, force, params) {
     if (!neighbors.length) return;
 
-    console.log("CHAIN FORCES:", {
+    if (this.debug.organic) console.log("CHAIN FORCES:", {
       particleIndex: particle.index,
       neighbors: neighbors.length,
       params: params

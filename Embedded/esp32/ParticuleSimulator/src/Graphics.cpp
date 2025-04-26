@@ -32,6 +32,21 @@ struct __attribute__((packed)) PacketHeader
   uint8_t brightness;
 };
 
+// --- Detect Grid Spec Change & Clear Screen ---
+bool first_run = true;
+uint8_t prev_roundRect = 2;
+uint16_t prev_screenWidth = 0;
+uint16_t prev_screenHeight = 0;
+uint16_t prev_cellCount = 0;
+uint8_t prev_gridGap = 255;
+float prev_cellRatio = -1.0f;
+uint8_t prev_allowCut = 255;
+uint8_t prev_cols = 0;
+uint8_t prev_rows = 0;
+uint8_t prev_cellW = 0;
+uint8_t prev_cellH = 0;
+
+int colorPaletteIdx = 0;
 void CheckHeaderSize()
 {
   const size_t EXPECTED_HEADER_SIZE = 19;
@@ -253,7 +268,7 @@ void SimGraph(const uint8_t *payload)
 {
   // --- Cast payload to header struct ---
   const PacketHeader *header = reinterpret_cast<const PacketHeader *>(payload);
-  log_d("SimGraph Parsed Header: Rect=%d SW=%d SH=%d Cnt=%d Gap=%d CR=%.2f Cut=%d Cols=%d Rows=%d CW=%d CH=%d Thm=%d Bri=%d",
+  log_d("SimGraph Parsed Header: Round=%d SW=%d SH=%d Cnt=%d Gap=%d CR=%.2f Cut=%d Cols=%d Rows=%d CW=%d CH=%d Thm=%d Bri=%d",
         header->roundRect,
         header->screenWidth,
         header->screenHeight,
@@ -267,20 +282,6 @@ void SimGraph(const uint8_t *payload)
         header->cellH,
         header->theme,
         header->brightness);
-
-  // --- Detect Grid Spec Change & Clear Screen ---
-  static bool first_run = true;
-  static uint8_t prev_roundRect = 2;
-  static uint16_t prev_screenWidth = 0;
-  static uint16_t prev_screenHeight = 0;
-  static uint16_t prev_cellCount = 0;
-  static uint8_t prev_gridGap = 255;
-  static float prev_cellRatio = -1.0f;
-  static uint8_t prev_allowCut = 255;
-  static uint8_t prev_cols = 0;
-  static uint8_t prev_rows = 0;
-  static uint8_t prev_cellW = 0;
-  static uint8_t prev_cellH = 0;
 
   // Check if any spec affecting geometry/layout changed
   bool spec_changed = first_run ||
@@ -333,11 +334,11 @@ void SimGraph(const uint8_t *payload)
   uint16_t numCellsToDraw = header->cellCount;
 
   // Ensure theme index is valid (using header->theme)
-  uint8_t theme = header->theme;
-  if (theme >= 11)
+  colorPaletteIdx = header->theme;
+  if (colorPaletteIdx >= 11)
   {
-    log_w("SimGraph Warning: Received invalid theme index %d. Using theme 0.", theme);
-    theme = 0;
+    log_w("SimGraph Warning: Received invalid theme index %d. Using theme 0.", colorPaletteIdx);
+    colorPaletteIdx = 0;
   }
 
   uint16_t currentCellIndex = 0;
@@ -438,7 +439,7 @@ int Distance(uint16_t x, uint16_t y, int centerX, int centerY)
 
 uint32_t ColorValue(uint8_t value)
 {
-  return CRGBToUint32(ColorFromPalette(Palettes[GetColorPaletteIdx()], value, 255, BLEND));
+  return CRGBToUint32(ColorFromPalette(Palettes[colorPaletteIdx], value, 255, BLEND));
 }
 
 uint32_t CRGBToUint32(const CRGB &color)

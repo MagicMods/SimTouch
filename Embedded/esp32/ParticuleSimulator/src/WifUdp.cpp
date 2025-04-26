@@ -59,8 +59,8 @@ void SendUDP(uint8_t com[2])
 {
   udp.beginPacket(simIP, simPort);
   if (DEBUG_NET)
-    log_v("Send UDP [" + String(com[0]) + "." + String(com[1]) + "] => " + simIP.toString() + ":" + simPort);
-    udp.write(com, 2);
+    log_v("Send UDP [%d.%d] => %s:%u", com[0], com[1], simIP.toString().c_str(), simPort);
+  udp.write(com, 2);
   udp.endPacket();
 }
 

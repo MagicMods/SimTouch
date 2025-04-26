@@ -10,7 +10,6 @@
 
 uint8_t BRIGHTNESS_LED = 255;
 uint8_t BRIGHTNESS_POWMX = 255;
-int colorPaletteIdx = 0;
 
 unsigned long nowTimerReset = 0;
 unsigned long lastMillisArray = 0;
@@ -48,6 +47,7 @@ void setup()
 #endif
 
   SetupUI();
+  SetupAcc();
 }
 
 void loop()
@@ -56,6 +56,7 @@ void loop()
   EVERY_N_MILLISECONDS(1000) { TimerResetArray(); }
   // EVERY_N_MILLISECONDS(275) { Cpu(); }
   EVERY_N_MILLISECONDS(1000 / 60) { UiLoop(); }
+  
 
   ProcessIncomingData();
 }
@@ -66,19 +67,18 @@ void ProcessIncomingData()
   if (WIFI)
   {
     packetSize = udp.parsePacket();
-    if (!packetSize)
-      return;
-
-    udp.read(packetBuffer, packetSize);
+    if (packetSize != 0)
+      udp.read(packetBuffer, packetSize);
   }
-  else
+  if (!packetSize)
   {
     packetSize = Serial.available();
     if (!packetSize)
-      return;
-
-    Serial.readBytes(packetBuffer, packetSize);
+      Serial.readBytes(packetBuffer, packetSize);
   }
+
+  if (!packetSize)
+    return;
 
   if (GetPayloadSize(packetBuffer) != packetSize)
   {
@@ -127,17 +127,6 @@ void ResetArray()
   memset(packetBuffer, 0, BUFFER_SIZE);
   ClearScreen();
   ARRAY_RESETTED = true;
-}
-
-int GetColorPaletteIdx()
-{
-  return colorPaletteIdx;
-}
-
-void SetColorPaletteIdx(int idx)
-{
-  colorPaletteIdx = idx;
-  log_v("Colour Set: %d", colorPaletteIdx);
 }
 
 int GetPayloadSize(byte buffer[])
