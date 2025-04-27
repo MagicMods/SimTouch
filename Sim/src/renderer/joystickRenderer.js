@@ -1,4 +1,4 @@
-export class EmuRenderer {
+export class JoystickRenderer {
   constructor(container, emuForces, main) {
     this.emuForces = emuForces;
     this.main = main;
@@ -30,9 +30,9 @@ export class EmuRenderer {
     // Check if main has turbulenceField before accessing
     if (this.main && this.main.turbulenceField) {
       this.turbulenceField = this.main.turbulenceField;
-      if (this.debugFlag) console.log("EmuRenderer has direct access to turbulenceField via main");
+      if (this.debugFlag) console.log("JoystickRenderer has direct access to turbulenceField via main");
     } else {
-      console.warn("EmuRenderer: Main reference or turbulenceField not found on main object.");
+      console.warn("JoystickRenderer: Main reference or turbulenceField not found on main object.");
     }
   }
 
@@ -177,7 +177,7 @@ export class EmuRenderer {
   updateGravityUI() {
     // Try to find gravity through main or emuForces
     let gravity = null;
-
+    // console.log("gravity ", this.main?.particleSystem?.gravity, this.emuForces?.gravity); // Debug log
     if (this.main?.particleSystem?.gravity) {
       gravity = this.main.particleSystem.gravity;
     } else if (this.emuForces?.gravity) {
@@ -186,52 +186,49 @@ export class EmuRenderer {
 
     if (!gravity) return;
 
-    // Apply joystick input directly to gravity if EMU is not enabled
+    // Apply joystick input directly to the physics gravity object IF EMU is not enabled
     // This makes the joystick controller work independently
     if (!this.emuForces?.enabled && this.joystickActive) {
-      // Check if gravity strength is > 0 before applying
-      if (typeof this.emuForces?.accelGravityMultiplier === 'number') {
-        // If there's a strength multiplier property
-        if (this.emuForces.accelGravityMultiplier >= 0) {
-          gravity.setRawDirection(
-            this.joystickX * this.emuForces.accelGravityMultiplier, // X controls X
-            this.joystickY * this.emuForces.accelGravityMultiplier, // Y controls Y
-            -1 * this.emuForces.accelGravityMultiplier // Default Z value
-          );
-        }
-      } else {
-        // Default behavior if no multiplier found - just use the values directly
-        gravity.setRawDirection(this.joystickX, this.joystickY, -1);
+      // Use the multiplier if available, otherwise use 1.0
+      const multiplier = typeof this.emuForces?.accelGravityMultiplier === 'number'
+        ? this.emuForces.accelGravityMultiplier
+        : 1.0;
+
+      // Check if gravity strength multiplier is > 0 before applying
+      if (multiplier >= 0) {
+        gravity.setRawDirection(
+          this.joystickX * multiplier, // X controls X
+          this.joystickY * multiplier, // Y controls Y
+          gravity.directionZ // Keep existing Z or default if needed
+        );
       }
     }
 
-    // Find all gravity UI instances
-    const gravityControllers = document.querySelectorAll('.dg .c input[type="text"]');
-
-    // Loop through them to find G-X and G-Y controllers
-    gravityControllers.forEach(input => {
-      const label = input.parentElement?.parentElement?.querySelector('.property-name');
-      if (label) {
-        const name = label.textContent?.trim();
-
-        if (name === 'G-X' && gravity) {
-          // Update the X input value
-          input.value = gravity.directionX.toFixed(1);
-
-          // Trigger change event to update internal state
-          const event = new Event('change', { bubbles: true });
-          input.dispatchEvent(event);
-        }
-        else if (name === 'G-Y' && gravity) {
-          // Update the Y input value
-          input.value = gravity.directionY.toFixed(1);
-
-          // Trigger change event to update internal state
-          const event = new Event('change', { bubbles: true });
-          input.dispatchEvent(event);
+    // --- Refactored UI Update ---
+    // Update the GravityUi sliders directly via their controllers
+    const gravityUi = this.main?.ui?.gravityUi; // Assuming path is main.ui.gravityUi
+    if (gravityUi && this.joystickActive) {
+      // Update G-X slider
+      if (gravityUi.gravityXController) {
+        try {
+          // Use the current joystickX value directly, as its range (-10 to 10) matches the slider
+          gravityUi.gravityXController.setValue(this.joystickX);
+        } catch (e) {
+          console.warn("Error setting GravityUi G-X controller:", e);
         }
       }
-    });
+
+      // Update G-Y slider
+      if (gravityUi.gravityYController) {
+        try {
+          // Use the current joystickY value directly
+          gravityUi.gravityYController.setValue(this.joystickY);
+        } catch (e) {
+          console.warn("Error setting GravityUi G-Y controller:", e);
+        }
+      }
+    }
+    // --- End Refactored UI Update ---
   }
 
   updateTurbulenceBiasUI() {
@@ -572,9 +569,7 @@ export class EmuRenderer {
     return this;
   }
 
-
   updateJoystickSliders() {
-
     if (this.inputsUi) {
       if (this.inputsUi.joystickXController && this.inputsUi.joystickYController) {
         // Get the normalized values (-1 to 1 range)

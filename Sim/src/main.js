@@ -12,7 +12,7 @@ import { UiManager } from "./ui/uiManager.js";
 import { MouseForces } from "./simulation/forces/mouseForces.js";
 import { ExternalInputConnector } from "./input/externalInputConnector.js";
 import { EmuForces } from "./simulation/forces/emuForces.js";
-import { EmuRenderer } from "./renderer/emuRenderer.js";
+import { JoystickRenderer } from "./renderer/joystickRenderer.js";
 import { MicInputForces } from "./simulation/forces/micForces.js";
 import { DataVisualization } from "./renderer/dataVisualization.js";
 import { SoundVisualizer } from "./sound/soundVisualizer.js";
@@ -337,7 +337,7 @@ export class Main {
       .enable()
       .setSensitivity(0.001);
 
-    if (this.debugFlags.main) console.log("Directly connecting turbulenceField to emuRenderer and emuForces");
+    if (this.debugFlags.main) console.log("Directly connecting turbulenceField to joystickRenderer and emuForces");
     // Add direct reference to turbulenceField in emuForces
     this.externalInput.emuForces.turbulenceField = this.turbulenceField;
 
@@ -371,8 +371,8 @@ export class Main {
       await this.dataVisualization.init(); // Initialize DataVisualization asynchronously
       comManager.setDataVisualization(this.dataVisualization);
 
-      this.emuRenderer = new EmuRenderer(this.vizuContainer, this.externalInput.emuForces, this);
-      this.emuRenderer.hide();
+      this.joystickRenderer = new JoystickRenderer(this.vizuContainer, this.externalInput.emuForces, this);
+      this.joystickRenderer.hide();
 
       this.audioAnalyzer = this.micForces.analyzer;
 

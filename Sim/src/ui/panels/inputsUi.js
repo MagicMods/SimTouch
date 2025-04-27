@@ -71,9 +71,9 @@ export class InputsUi extends BaseUi {
     this.emuInputFolder = this.gui.addFolder("EMU Input");
     this.externalInputFolder = this.gui.addFolder("Touch Input");
 
-    // Set reference in emuRenderer
-    if (this.main.emuRenderer) {
-      this.main.emuRenderer.inputsUi = this;
+    // Set reference in joystickRenderer
+    if (this.main.joystickRenderer) {
+      this.main.joystickRenderer.inputsUi = this;
     }
 
     // Initialize input controls
@@ -125,14 +125,14 @@ export class InputsUi extends BaseUi {
         max: 1,
         defaultValue: 0,
         apply: (value) => {
-          if (this.main.emuRenderer) {
+          if (this.main.joystickRenderer) {
             // Update joystick X position
-            this.main.emuRenderer.joystickX = value * 10; // Convert to -10,10 range
-            this.main.emuRenderer.joystickActive = true;
+            this.main.joystickRenderer.joystickX = value * 10; // Convert to -10,10 range
+            this.main.joystickRenderer.joystickActive = true;
 
             // Update UI and physics
-            this.main.emuRenderer.updateGravityUI();
-            this.main.emuRenderer.updateTurbulenceBiasUI();
+            this.main.joystickRenderer.updateGravityUI();
+            this.main.joystickRenderer.updateTurbulenceBiasUI();
 
             // Update slider
             if (this.joystickXController && this.joystickXController.object) {
@@ -154,14 +154,14 @@ export class InputsUi extends BaseUi {
         max: 1,
         defaultValue: 0,
         apply: (value) => {
-          if (this.main.emuRenderer) {
+          if (this.main.joystickRenderer) {
             // Update joystick Y position
-            this.main.emuRenderer.joystickY = value * 10; // Convert to -10,10 range
-            this.main.emuRenderer.joystickActive = true;
+            this.main.joystickRenderer.joystickY = value * 10; // Convert to -10,10 range
+            this.main.joystickRenderer.joystickActive = true;
 
             // Update UI and physics
-            this.main.emuRenderer.updateGravityUI();
-            this.main.emuRenderer.updateTurbulenceBiasUI();
+            this.main.joystickRenderer.updateGravityUI();
+            this.main.joystickRenderer.updateTurbulenceBiasUI();
 
             // Update slider
             if (this.joystickYController && this.joystickYController.object) {
@@ -345,7 +345,7 @@ export class InputsUi extends BaseUi {
 
   initJoystickControls() {
     // Make sure EMU renderer exists before adding joystick controls
-    if (!this.main.emuRenderer) {
+    if (!this.main.joystickRenderer) {
       console.warn("EMU renderer not available for joystick controls");
       return;
     }
@@ -353,8 +353,8 @@ export class InputsUi extends BaseUi {
     // Add reset button for joystick
     const resetJoystickButton = {
       reset: () => {
-        if (this.main.emuRenderer) {
-          this.main.emuRenderer.resetJoystick();
+        if (this.main.joystickRenderer) {
+          this.main.joystickRenderer.resetJoystick();
           if (this.debug.inputs) console.log("Joystick reset to center");
         }
       }
@@ -368,22 +368,22 @@ export class InputsUi extends BaseUi {
 
 
     const joystickPosition = {
-      x: this.main.emuRenderer.joystickX / 10, // Convert from -10,10 to -1,1 range
-      y: this.main.emuRenderer.joystickY / 10
+      x: this.main.joystickRenderer.joystickX / 10, // Convert from -10,10 to -1,1 range
+      y: this.main.joystickRenderer.joystickY / 10
     };
 
 
     // Add X position slider
     this.joystickXController = this.sliderFolder.add(joystickPosition, "x", -1, 1, 0.01).name("J-X")
       .onChange((value) => {
-        if (this.main.emuRenderer) {
+        if (this.main.joystickRenderer) {
           // Update the joystick X position (scaled to -10,10 range)
-          this.main.emuRenderer.joystickX = value * 10;
-          this.main.emuRenderer.joystickActive = true;
+          this.main.joystickRenderer.joystickX = value * 10;
+          this.main.joystickRenderer.joystickActive = true;
 
           // Apply the changes immediately to both gravity and turbulence
-          this.main.emuRenderer.updateGravityUI();
-          this.main.emuRenderer.updateTurbulenceBiasUI();
+          this.main.joystickRenderer.updateGravityUI();
+          this.main.joystickRenderer.updateTurbulenceBiasUI();
 
           // If we have access to the turbulence field directly, make sure bias is updated
           if (this.main.turbulenceField) {
@@ -401,14 +401,14 @@ export class InputsUi extends BaseUi {
     // Add Y position slider
     this.joystickYController = this.sliderFolder.add(joystickPosition, "y", -1, 1, 0.01).name("J-Y")
       .onChange((value) => {
-        if (this.main.emuRenderer) {
+        if (this.main.joystickRenderer) {
           // Update the joystick Y position (scaled to -10,10 range)
-          this.main.emuRenderer.joystickY = value * 10;
-          this.main.emuRenderer.joystickActive = true;
+          this.main.joystickRenderer.joystickY = value * 10;
+          this.main.joystickRenderer.joystickActive = true;
 
           // Apply the changes immediately to both gravity and turbulence
-          this.main.emuRenderer.updateGravityUI();
-          this.main.emuRenderer.updateTurbulenceBiasUI();
+          this.main.joystickRenderer.updateGravityUI();
+          this.main.joystickRenderer.updateTurbulenceBiasUI();
 
           // If we have access to the turbulence field directly, make sure bias is updated
           if (this.main.turbulenceField) {
@@ -430,15 +430,15 @@ export class InputsUi extends BaseUi {
     }
 
     const springControl = {
-      strength: this.main.emuRenderer.springStrength || 0.05
+      strength: this.main.joystickRenderer.springStrength || 0.05
     };
 
     // Add spring strength slider
     this.sliderFolder.add(springControl, "strength", 0, 1, 0.01).name("J-SpringStrength")
       .onChange((value) => {
-        if (this.main.emuRenderer) {
-          this.main.emuRenderer.setSpringStrength(value);
-          this.main.emuRenderer.setSpringEnabled(value > 0);
+        if (this.main.joystickRenderer) {
+          this.main.joystickRenderer.setSpringStrength(value);
+          this.main.joystickRenderer.setSpringEnabled(value > 0);
         }
       });
 
@@ -488,8 +488,8 @@ export class InputsUi extends BaseUi {
     }
 
     // Force hide the joystick initially (override main.js setting)
-    if (this.main.emuRenderer) {
-      this.main.emuRenderer.hide();
+    if (this.main.joystickRenderer) {
+      this.main.joystickRenderer.hide();
     }
 
     // Monitor folder open/close state to show/hide joystick
@@ -504,11 +504,11 @@ export class InputsUi extends BaseUi {
           const isClosed = folderElement.classList.contains('closed');
 
           // Update joystick visibility based on folder state
-          if (this.main.emuRenderer) {
+          if (this.main.joystickRenderer) {
             if (isClosed) {
-              this.main.emuRenderer.hide();
+              this.main.joystickRenderer.hide();
             } else {
-              this.main.emuRenderer.show();
+              this.main.joystickRenderer.show();
             }
           }
         }
@@ -527,11 +527,11 @@ export class InputsUi extends BaseUi {
       const isClosed = folderElement.classList.contains('closed');
 
       // Set joystick visibility based on initial folder state
-      if (this.main.emuRenderer) {
+      if (this.main.joystickRenderer) {
         if (isClosed) {
-          this.main.emuRenderer.hide();
+          this.main.joystickRenderer.hide();
         } else {
-          this.main.emuRenderer.show();
+          this.main.joystickRenderer.show();
         }
       }
     }, 100);

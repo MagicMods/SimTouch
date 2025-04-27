@@ -168,7 +168,7 @@ static void lv_touchpad_read(lv_indev_drv_t *indev_driver, lv_indev_data_t *data
   {
     data->state = LV_INDEV_STATE_RELEASED;
 #if DEBUG_TOUCH
-    DebugConsole("LV_INDEV_STATE_RELEASED");
+    log_v("LV_INDEV_STATE_RELEASED");
 #endif
     setReleased(true);
     setTouching(false);
@@ -236,7 +236,7 @@ void setTouching(bool _)
 {
   TOUCHING = _;
 #if DEBUG_TOUCH
-  log_v(TOUCHING ? "TOUCHING => TRUE" : "TOUCHING => FALSE");
+  log_v("TOUCHING => %s", TOUCHING ? "TRUE" : "FALSE");
 #endif
   // HapTouch();
 }
@@ -245,7 +245,7 @@ void setReleased(bool _)
 {
   RELEASED = _;
 #if DEBUG_TOUCH
-  log_v(RELEASED ? "RELEASED => TRUE" : "RELEASED => FALSE");
+  log_v("RELEASED => %s", RELEASED ? "TRUE" : "FALSE");
 #endif
 }
 
@@ -253,7 +253,7 @@ void setReleasing(bool _)
 {
   RELEASING = _;
 #if DEBUG_TOUCH
-  log_v(RELEASING ? "RELEASING => TRUE" : "RELEASING => FALSE");
+  log_v("RELEASING => %s", RELEASING ? "TRUE" : "FALSE");
 #endif
   // HapRelease();
 }
@@ -268,6 +268,7 @@ void SimGraph(const uint8_t *payload)
 {
   // --- Cast payload to header struct ---
   const PacketHeader *header = reinterpret_cast<const PacketHeader *>(payload);
+#if DEBUG_HEADER
   log_d("SimGraph Parsed Header: Round=%d SW=%d SH=%d Cnt=%d Gap=%d CR=%.2f Cut=%d Cols=%d Rows=%d CW=%d CH=%d Thm=%d Bri=%d",
         header->roundRect,
         header->screenWidth,
@@ -282,6 +283,7 @@ void SimGraph(const uint8_t *payload)
         header->cellH,
         header->theme,
         header->brightness);
+#endif
 
   // Check if any spec affecting geometry/layout changed
   bool spec_changed = first_run ||

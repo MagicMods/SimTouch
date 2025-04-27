@@ -332,16 +332,16 @@ export class MouseForces {
     this.joystickY = normY; // Use direct normY (don't invert)
     this.joystickActive = true;
 
-    // Update the emuRenderer if it exists
-    if (this.main.emuRenderer) {
-      // EmuRenderer expects values in -10 to 10 range, so scale up
-      this.main.emuRenderer.joystickX = normX * 10;
-      this.main.emuRenderer.joystickY = normY * 10; // Use direct normY (don't invert)
-      this.main.emuRenderer.joystickActive = true;
+    // Update the joystickRenderer if it exists
+    if (this.main.joystickRenderer) {
+      // JoystickRenderer expects values in -10 to 10 range, so scale up
+      this.main.joystickRenderer.joystickX = normX * 10;
+      this.main.joystickRenderer.joystickY = normY * 10; // Use direct normY (don't invert)
+      this.main.joystickRenderer.joystickActive = true;
 
-      // Let emuRenderer update the UI and physics
-      this.main.emuRenderer.updateTurbulenceBiasUI();
-      return; // Let emuRenderer handle updates
+      // Let joystickRenderer update the UI and physics
+      this.main.joystickRenderer.updateTurbulenceBiasUI();
+      return; // Let joystickRenderer handle updates
     }
 
     // Fallback to direct turbulence field update
@@ -452,9 +452,9 @@ export class MouseForces {
 
     // Apply spring return effect for joystick if active but not being held
     if (inNoiseMode && this.joystickActive && !this.mouseState.isPressed && !this.externalMouseState.isPressed) {
-      // If emuRenderer exists and is visible, let it handle the spring return
-      if (this.main.emuRenderer && this.main.emuRenderer.visible) {
-        // Don't apply our own spring - let emuRenderer handle it
+      // If joystickRenderer exists and is visible, let it handle the spring return
+      if (this.main.joystickRenderer && this.main.joystickRenderer.visible) {
+        // Don't apply our own spring - let joystickRenderer handle it
       } else {
         this.applyJoystickSpring();
       }
@@ -478,11 +478,11 @@ export class MouseForces {
       this.joystickX = 0;
       this.joystickY = 0;
 
-      // If emuRenderer is available, update it too
-      if (this.main && this.main.emuRenderer) {
-        this.main.emuRenderer.joystickX = 0;
-        this.main.emuRenderer.joystickY = 0;
-        this.main.emuRenderer.joystickActive = false;
+      // If joystickRenderer is available, update it too
+      if (this.main && this.main.joystickRenderer) {
+        this.main.joystickRenderer.joystickX = 0;
+        this.main.joystickRenderer.joystickY = 0;
+        this.main.joystickRenderer.joystickActive = false;
       }
 
       // Reset turbulence bias when joystick returns to center
@@ -509,11 +509,11 @@ export class MouseForces {
         this.joystickActive = false;
       }
     } else {
-      // Update emuRenderer if available
-      if (this.main && this.main.emuRenderer) {
-        this.main.emuRenderer.joystickX = this.joystickX * 10; // Scale to expected range
-        this.main.emuRenderer.joystickY = this.joystickY * 10; // Don't invert Y anymore
-        this.main.emuRenderer.updateTurbulenceBiasUI(); // Let it update the UI and turbulence field
+      // Update joystickRenderer if available
+      if (this.main && this.main.joystickRenderer) {
+        this.main.joystickRenderer.joystickX = this.joystickX * 10; // Scale to expected range
+        this.main.joystickRenderer.joystickY = this.joystickY * 10; // Don't invert Y anymore
+        this.main.joystickRenderer.updateTurbulenceBiasUI(); // Let it update the UI and turbulence field
       } else {
         // Update turbulence field with new values
         this.updateTurbulenceField(this.joystickX, this.joystickY);

@@ -13,12 +13,12 @@ WiFiUDP udp;
 
 // List of desired SSIDs
 
-static const char *ssid_AP = "SimTouchScreen";
-static const char *pass_AP = "MagicMods";
+static const char *WIFI_AP_SSID = "SimTouchScreen";
+static const char *WIFI_AP_PASS = "MagicMods";
 
-const int channel = 11;
-const bool hide_SSID = false;
-const int max_connection = 1;
+const int WIFI_AP_CHANNEL = 11;
+const bool WIFI_AP_HIDE_SSID = false;
+const int WIFI_AP_MAX_CONNECTION = 2;
 
 IPAddress localIP(192, 168, 3, 100);
 IPAddress gateway(192, 168, 3, 1);
@@ -38,71 +38,19 @@ void SetupWifi()
   WiFi.setSleep(false);
   WiFi.onEvent(WiFiEvent);
   WiFi.disconnect();
-  StartAP();
-  udp.begin(udpListenPort);
-  log_v("WIFI Initialised");
-}
 
-void StartAP()
-{
   WiFi.mode(WIFI_MODE_AP);
   WiFi.softAPsetHostname("SimTouchScreen");
   log_v("AP => SimTouchScreen");
   WiFi.softAPConfig(localIP, gateway, subnet);
-  WiFi.softAP(ssid_AP, pass_AP, 11, 0);
+  WiFi.softAP(WIFI_AP_SSID, WIFI_AP_PASS, WIFI_AP_CHANNEL, WIFI_AP_HIDE_SSID, WIFI_AP_MAX_CONNECTION);
   log_v("WIFI %s", WiFi.status() ? "OK" : "FAILED");
+
+  udp.begin(udpListenPort);
+  log_v("WIFI Initialised");
 }
 
 // #region UDP
-
-void SendUDP(uint8_t com[2])
-{
-  udp.beginPacket(simIP, simPort);
-  if (DEBUG_NET)
-    log_v("Send UDP [%d.%d] => %s:%u", com[0], com[1], simIP.toString().c_str(), simPort);
-  udp.write(com, 2);
-  udp.endPacket();
-}
-
-void SendUDP(int idx, int val)
-{
-  udp.beginPacket(simIP, simPort);
-  if (DEBUG_NET)
-  {
-    // log_v("Send UDP [" + String(idx) + "." + String(val) + "] => " + simIP.toString() + ":" + simPort);
-  }
-  byte data[2];
-  data[0] = (byte)idx;
-  data[1] = (byte)val;
-  udp.write(data, 2);
-  udp.endPacket();
-}
-
-void SendUDP(int idx, float val)
-{
-  udp.beginPacket(simIP, simPort);
-  if (DEBUG_NET)
-  {
-    // log_v("Send UDP [" + String(idx) + "." + String(val) + "] => " + simIP.toString() + ":" + simPort);
-    // Serial.print("Send UDP [");
-    // Serial.print(idx);
-    // Serial.print('.');
-    // Serial.print(val);
-    // Serial.print("] ");
-    // Serial.println(senderIP.toString());
-  }
-  byte data[5];
-  byte dataFloat[4];
-  memcpy(dataFloat, &val, sizeof(float));
-  data[0] = (byte)idx;
-  data[1] = dataFloat[0];
-  data[2] = dataFloat[1];
-  data[3] = dataFloat[2];
-  data[4] = dataFloat[3];
-
-  udp.write(data, 5);
-  udp.endPacket();
-}
 
 void SEND_UDP_SimTouchInput(int x, int y)
 {
@@ -118,14 +66,14 @@ void SEND_UDP_SimTouchInput(int x, int y)
     //   memcpy(&array[0], &x, sizeof(x));  // First 2 bytes for x
     // memcpy(&array[2], &y, sizeof(y));  // Next 2 bytes for y
 
-    if (DEBUG_NET)
-    {
-      log_v("Sending Position(X:%d, Y:%d) to %s:%u",
-            static_cast<int>(x),
-            static_cast<int>(y),
-            simIP.toString().c_str(),
-            simPort);
-    }
+#if DEBUG_TOUCH
+    log_v("Sending Position(X:%d, Y:%d) to %s:%u",
+          static_cast<int>(x),
+          static_cast<int>(y),
+          simIP.toString().c_str(),
+          simPort);
+#endif
+
     udp.beginPacket(simIP, simPort);
     udp.write(array, 4);
     udp.endPacket();
@@ -150,12 +98,11 @@ void SEND_UDP_SimAcc(IMUdata accel)
     // memcpy(&array[16], &gyro.y, sizeof(gyro.y));
     // memcpy(&array[20], &gyro.z, sizeof(gyro.z));
 
-    // if (DEBUG_NET)
-    // {
-    //   log_v("Sending Accel&Gyro to %s:%u",
-    //         simIP.toString().c_str(),
-    //         simPort);
-    // }
+#if DEBUG_ACC
+    log_v("Sending Accel&Gyro to %s:%u",
+          simIP.toString().c_str(),
+          simPort);
+#endif
     udp.beginPacket(simIP, simPort);
     udp.write(array, 13);
     udp.endPacket();
@@ -166,6 +113,47 @@ void SEND_UDP_SimAcc(IMUdata accel)
   }
 }
 
+void SendUDP(uint8_t com[2])
+{
+  udp.beginPacket(simIP, simPort);
+#if DEBUG_NET
+  log_v("Send UDP [%d.%d] => %s:%u", com[0], com[1], simIP.toString().c_str(), simPort);
+#endif
+  udp.write(com, 2);
+  udp.endPacket();
+}
+
+void SendUDP(int idx, int val)
+{
+  udp.beginPacket(simIP, simPort);
+#if DEBUG_NET
+  log_v("Send UDP [%d.%d] => %s:%u", idx, val, simIP.toString().c_str(), simPort);
+#endif
+  byte data[2];
+  data[0] = (byte)idx;
+  data[1] = (byte)val;
+  udp.write(data, 2);
+  udp.endPacket();
+}
+
+void SendUDP(int idx, float val)
+{
+  udp.beginPacket(simIP, simPort);
+#if DEBUG_NET
+  log_v("Send UDP [%d.%f] => %s:%u", idx, val, simIP.toString().c_str(), simPort);
+#endif
+  byte data[5];
+  byte dataFloat[4];
+  memcpy(dataFloat, &val, sizeof(float));
+  data[0] = (byte)idx;
+  data[1] = dataFloat[0];
+  data[2] = dataFloat[1];
+  data[3] = dataFloat[2];
+  data[4] = dataFloat[3];
+
+  udp.write(data, 5);
+  udp.endPacket();
+}
 // #endregion
 
 void SetBrightnessLED(uint8_t _)
@@ -186,8 +174,10 @@ void setWIFI_CONNECTED(bool _)
 
 void WiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
 {
-  if (DEBUG)
-    log_d("[WiFi-event] event: %d\n", event);
+#if DEBUG_NET
+  log_d("[WiFi-event] event: %d\n", event);
+#endif
+
   switch (event)
   {
   case ARDUINO_EVENT_WIFI_READY:
