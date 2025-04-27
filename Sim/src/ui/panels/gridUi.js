@@ -27,20 +27,19 @@ export class GridUi extends BaseUi {
     try {
       this.gui.title("Grid");
 
-      let initialScreenTypeName = Object.keys(SCREEN_TYPES)[0];
-      let initialScreenSpec = SCREEN_TYPES[initialScreenTypeName];
+      // Use the first screen type as a default if no initial screen is provided
+      let initialScreenSpec = SCREEN_TYPES[Object.keys(SCREEN_TYPES)[0]];
 
       if (this.main.gridParams.screen) {
         const initialScreen = this.main.gridParams.screen;
+        // Attempt to find if the initial screen matches a known type, primarily for initialization.
         const foundName = Object.keys(SCREEN_TYPES).find((name) => {
           const type = SCREEN_TYPES[name];
           return type.width === initialScreen.width && type.height === initialScreen.height && type.shape === initialScreen.shape;
         });
 
-        if (foundName) {
-          initialScreenTypeName = foundName;
-          initialScreenSpec = SCREEN_TYPES[initialScreenTypeName];
-        }
+        // If found, use that spec, otherwise use the provided initialScreen directly
+        initialScreenSpec = foundName ? SCREEN_TYPES[foundName] : { ...initialScreen };
       }
 
       // Initialize internal UI state with deep copies
@@ -52,9 +51,7 @@ export class GridUi extends BaseUi {
         renderSize: { ...main.gridParams.renderSize },
         colors: { ...main.gridParams.colors }
       };
-      // Keep uiState separate for screen type dropdown
-      this.uiState = { selectedScreen: initialScreenTypeName };
-
+      // uiState is no longer needed for screen type dropdown
 
       this.initGridControls();
 
@@ -128,29 +125,6 @@ export class GridUi extends BaseUi {
     });
 
 
-
-
-
-    // this.screenShapeController = screenFolder.add(this.uiGridParams.screen, "shape").name("ScreenShape")
-    //   .onChange((value) => { eventBus.emit('gridChanged', { paramPath: 'screen.shape', value: value }); });
-    // this.screenShapeController.domElement.classList.add("full-width");
-    // screenRezContainer.appendChild(this.screenShapeController.domElement);
-
-
-    this.screenTypeController = screenFolder.add(this.uiState, "selectedScreen", Object.keys(SCREEN_TYPES)).name("Screen Type")
-      .onChange((value) => {
-        const selectedSpec = SCREEN_TYPES[value];
-        if (!selectedSpec) {
-          console.error(`Selected screen type '${value}' not found in SCREEN_TYPES.`);
-          return;
-        }
-
-        if (this.debug.grid) console.log(`Screen type changed to: ${value}`, selectedSpec);
-
-        this.uiGridParams.screen = { ...selectedSpec };
-        eventBus.emit('gridChanged', { paramPath: 'screen', value: this.uiGridParams.screen });
-      });
-    this.screenTypeController.domElement.classList.add("full-width");
 
     const offsetFolder = screenFolder.addFolder("Center Offset");
 
@@ -271,7 +245,7 @@ export class GridUi extends BaseUi {
     const targets = {};
 
     // Screen configuration controls
-    targets["Screen Type"] = this.screenTypeController;
+    targets["Screen Specs"] = this.screenRezControllerWidth;
     targets["Center X Offset"] = this.centerOffsetXController;
     targets["Center Y Offset"] = this.centerOffsetYController;
 
@@ -297,7 +271,8 @@ export class GridUi extends BaseUi {
       }
     };
 
-    safeUpdateDisplay(this.screenTypeController);
+    safeUpdateDisplay(this.screenRezControllerWidth);
+    safeUpdateDisplay(this.screenRezControllerHeight);
     safeUpdateDisplay(this.centerOffsetXController);
     safeUpdateDisplay(this.centerOffsetYController);
 
@@ -339,16 +314,9 @@ export class GridUi extends BaseUi {
     }
     // --- END REFACTOR ---
 
-    // Update screen type dropdown selection
-    const currentScreen = this.uiGridParams.screen;
-    const foundName = Object.keys(SCREEN_TYPES).find(name => {
-      const type = SCREEN_TYPES[name];
-      return type.width === currentScreen.width && type.height === currentScreen.height && type.shape === currentScreen.shape;
-    });
-    this.uiState.selectedScreen = foundName || Object.keys(SCREEN_TYPES)[0]; // Fallback if not found
-
     // Refresh lil-gui controller displays
-    this.screenTypeController?.updateDisplay();
+    this.screenRezControllerWidth?.updateDisplay();
+    this.screenRezControllerHeight?.updateDisplay();
     this.centerOffsetXController?.updateDisplay();
     this.centerOffsetYController?.updateDisplay();
     this.targetCellCountCellsController?.updateDisplay();
@@ -368,5 +336,10 @@ export class GridUi extends BaseUi {
         button.classList.toggle('active', this.uiGridParams.flags[flagName]);
       }
     });
+
+    // Update screen shape button text
+    if (this.screenShapeButton) {
+      this.screenShapeButton.textContent = this.uiGridParams.screen.shape === "rectangular" ? "R" : "C";
+    }
   }
 }

@@ -547,10 +547,11 @@ export class Main {
       this.gridParams.renderSize.maxRenderWidth,
       this.gridParams.renderSize.maxRenderHeight
     );
-    if (dimensionsChanged) {
-      if (this.debugFlags.dimensions) console.log("DimensionManager reported changes, applying updates...");
-      this.applyCurrentDimensionsAndBoundary();
-    }
+    // Always apply boundary/style settings if dimensionManager is checked,
+    // regardless of whether numeric dimensions changed, to catch shape changes.
+    this.applyCurrentDimensionsAndBoundary();
+
+    // Still return whether the numeric dimensions changed for potential callers.
     return dimensionsChanged;
   }
 

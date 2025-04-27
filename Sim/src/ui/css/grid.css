@@ -90,6 +90,10 @@
   padding: 0px;
 }
 
+.screenRez-container input[type="text"] {
+  text-align: center !important;
+}
+
 .left-input {
   margin-right: 0px !important;
 }
@@ -117,6 +121,7 @@
   margin-top: 8px !important;
   margin-bottom: 8px !important;
   margin-right: 9px !important;
+  color: var(--number-color) !important;
 }
 
 .screenShape-button .name {
