@@ -208,21 +208,28 @@ export class JoystickRenderer {
     // Update the GravityUi sliders directly via their controllers
     const gravityUi = this.main?.ui?.gravityUi; // Assuming path is main.ui.gravityUi
     if (gravityUi && this.joystickActive) {
-      // Update G-X slider
+      // Calculate the scaled values based on the multiplier
+      const multiplier = typeof this.emuForces?.accelGravityMultiplier === 'number'
+        ? this.emuForces.accelGravityMultiplier
+        : 1.0;
+      const scaledJoystickX = this.joystickX * multiplier;
+      const scaledJoystickY = this.joystickY * multiplier;
+
+      // Update G-X slider with the scaled value
       if (gravityUi.gravityXController) {
         try {
-          // Use the current joystickX value directly, as its range (-10 to 10) matches the slider
-          gravityUi.gravityXController.setValue(this.joystickX);
+          // Use the scaled joystickX value
+          gravityUi.gravityXController.setValue(scaledJoystickX);
         } catch (e) {
           console.warn("Error setting GravityUi G-X controller:", e);
         }
       }
 
-      // Update G-Y slider
+      // Update G-Y slider with the scaled value
       if (gravityUi.gravityYController) {
         try {
-          // Use the current joystickY value directly
-          gravityUi.gravityYController.setValue(this.joystickY);
+          // Use the scaled joystickY value
+          gravityUi.gravityYController.setValue(scaledJoystickY);
         } catch (e) {
           console.warn("Error setting GravityUi G-Y controller:", e);
         }
@@ -281,55 +288,14 @@ export class JoystickRenderer {
     }
 
     // If turbulenceUi is available with the updateBiasControllers method, use it
-    if (main && main.turbulenceUi) {
+    if (main && main.ui && main.ui.turbulenceUi) {
       try {
-        main.turbulenceUi.updateBiasControllers();
+        main.ui.turbulenceUi.updateBiasControllers();
         return; // We're done, no need to manually update DOM elements
       } catch (e) {
         console.warn("Error updating bias controllers:", e);
-        // Continue with fallback method
       }
     }
-
-    // Otherwise fall back to direct DOM manipulation
-    const biasControllers = document.querySelectorAll('.dg .c input[type="text"]');
-
-    // Loop through them to find T-BiasX and T-BiasY controllers
-    biasControllers.forEach(input => {
-      if (!input.parentElement || !input.parentElement.parentElement) return;
-
-      const label = input.parentElement.parentElement.querySelector('.property-name');
-      if (!label || !label.textContent) return;
-
-      const name = label.textContent.trim();
-
-      if (name === 'T-BiasX Spd') {
-        // Check if display property exists
-        if (typeof turbulenceField._displayBiasAccelX !== 'undefined') {
-          input.value = turbulenceField._displayBiasAccelX.toFixed(2);
-        } else {
-          // Fallback for older versions without display properties
-          input.value = (-turbulenceField._biasAccelX / turbulenceField.biasStrength * 5).toFixed(2);
-        }
-
-        // Trigger change event to update internal state
-        const event = new Event('change', { bubbles: true });
-        input.dispatchEvent(event);
-      }
-      else if (name === 'T-BiasY Spd') {
-        // Check if display property exists
-        if (typeof turbulenceField._displayBiasAccelY !== 'undefined') {
-          input.value = turbulenceField._displayBiasAccelY.toFixed(2);
-        } else {
-          // Fallback for older versions without display properties
-          input.value = (turbulenceField._biasAccelY / turbulenceField.biasStrength * 5).toFixed(2);
-        }
-
-        // Trigger change event to update internal state
-        const event = new Event('change', { bubbles: true });
-        input.dispatchEvent(event);
-      }
-    });
   }
 
   startAnimation() {
@@ -552,8 +518,58 @@ export class JoystickRenderer {
       this.joystickX = 0;
       this.joystickY = 0;
       this.joystickActive = false;
+
+      // --- Explicitly reset physics when snapping to zero ---
+      // Reset actual gravity if EMU is not enabled
+      let gravity = null;
+      if (this.main?.particleSystem?.gravity) {
+        gravity = this.main.particleSystem.gravity;
+      } else if (this.emuForces?.gravity) {
+        gravity = this.emuForces.gravity;
+      }
+      if (gravity && (!this.emuForces || !this.emuForces.enabled)) {
+        gravity.setRawDirection(0, 0, gravity.directionZ || -1);
+      }
+
+      // Reset turbulence bias if EMU is not enabled
+      let turbulenceField = null;
+      if (this.main && this.main.turbulenceField) {
+        turbulenceField = this.main.turbulenceField;
+      } else if (this.emuForces && this.emuForces.turbulenceField) {
+        // Note: This path might not be valid if emuForces doesn't have turbulenceField directly
+        turbulenceField = this.emuForces.turbulenceField;
+      }
+      if (turbulenceField && (!this.emuForces || !this.emuForces.enabled)) {
+        try {
+          turbulenceField.resetBias();
+        } catch (e) {
+          turbulenceField.setBiasSpeed(0, 0);
+        }
+      }
+      // --- End physics reset ---
+
+      // --- Explicitly update UI controllers to zero ---
+      const gravityUi = this.main?.ui?.gravityUi;
+      if (gravityUi) {
+        if (gravityUi.gravityXController) {
+          try {
+            gravityUi.gravityXController.setValue(0);
+          } catch (e) {
+            console.warn("Error setting GravityUi G-X controller to 0:", e);
+          }
+        }
+        if (gravityUi.gravityYController) {
+          try {
+            gravityUi.gravityYController.setValue(0);
+          } catch (e) {
+            console.warn("Error setting GravityUi G-Y controller to 0:", e);
+          }
+        }
+      }
+      // --- End UI zeroing ---
     }
 
+    // Update UI based on new spring position (potentially zeroed)
     this.updateGravityUI();
     this.updateTurbulenceBiasUI();
     this.updateJoystickSliders();
