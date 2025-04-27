@@ -2,7 +2,7 @@ export class JoystickRenderer {
   constructor(container, emuForces, main) {
     this.emuForces = emuForces;
     this.main = main;
-    this.debugFlag = this.main.debugFlags.debugEmu;
+    this.db = this.main.debugFlags;
     this.visible = false;
     this.isDragging = false;
 
@@ -30,7 +30,7 @@ export class JoystickRenderer {
     // Check if main has turbulenceField before accessing
     if (this.main && this.main.turbulenceField) {
       this.turbulenceField = this.main.turbulenceField;
-      if (this.debugFlag) console.log("JoystickRenderer has direct access to turbulenceField via main");
+      if (this.db.emu) console.log("JoystickRenderer has direct access to turbulenceField via main");
     } else {
       console.warn("JoystickRenderer: Main reference or turbulenceField not found on main object.");
     }
@@ -104,11 +104,6 @@ export class JoystickRenderer {
       this.isDragging = true;
       this.joystickActive = true;
 
-      // Set manual override flag to stop EMU data updates (only if EMU is enabled)
-      if (this.emuForces && typeof this.emuForces.setManualOverride === 'function') {
-        this.emuForces.setManualOverride(true);
-      }
-
       this.updateFromMouse(x, y);
     }
   }
@@ -126,14 +121,6 @@ export class JoystickRenderer {
   handleMouseUp() {
     if (this.isDragging) {
       this.isDragging = false;
-
-      // Don't reset joystick position when released
-      // this.joystickActive = false;
-
-      // Clear manual override flag when done dragging (only if EMU is enabled)
-      if (this.emuForces && typeof this.emuForces.setManualOverride === 'function') {
-        this.emuForces.setManualOverride(false);
-      }
     }
   }
 
@@ -374,25 +361,19 @@ export class JoystickRenderer {
 
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
-    // Get joystick data - either from EMU if enabled, or from stored joystick values
+    // Get joystick data - always use the internal joystickX/Y state now
     let accelX, accelY, accelZ;
 
-    if (this.emuForces?.enabled && !this.isDragging) {
-      // Use real EMU data if available and not currently dragging
-      const data = this.emuForces.emuData;
-      accelX = data.accelX;
-      accelY = data.accelY;
-      accelZ = data.accelZ;
-    } else if (this.joystickActive) {
+    if (this.joystickActive) {
       // Use joystick values without swapping
       accelX = this.joystickX;
       accelY = this.joystickY;
       accelZ = -1; // Smaller default Z value for better visualization
     } else {
-      // Default values if neither active
+      // Default values if joystick is not active
       accelX = 0;
       accelY = 0;
-      accelZ = -1; // Smaller default Z value for better visualization
+      accelZ = -1;
     }
 
     const data = { accelX, accelY, accelZ };
@@ -505,74 +486,78 @@ export class JoystickRenderer {
   }
 
   applySpringForce() {
-    const distX = 0 - this.joystickX;
-    const distY = 0 - this.joystickY;
+    // Spring only applies if enabled, user isn't dragging, joystick is active,
+    // AND EMU input is NOT enabled.
+    if (this.springEnabled && !this.isDragging && this.joystickActive && !this.emuForces?.enabled) {
+      const distX = 0 - this.joystickX;
+      const distY = 0 - this.joystickY;
 
-    // Apply spring force proportional to distance and spring strength
-    this.joystickX += distX * this.springStrength;
-    this.joystickY += distY * this.springStrength;
+      // Apply spring force proportional to distance and spring strength
+      this.joystickX += distX * this.springStrength;
+      this.joystickY += distY * this.springStrength;
 
-    // If close enough to center, snap to center and deactivate
-    const totalDist = Math.sqrt(this.joystickX * this.joystickX + this.joystickY * this.joystickY);
-    if (totalDist < 0.1) {
-      this.joystickX = 0;
-      this.joystickY = 0;
-      this.joystickActive = false;
+      // If close enough to center, snap to center and deactivate
+      const totalDist = Math.sqrt(this.joystickX * this.joystickX + this.joystickY * this.joystickY);
+      if (totalDist < 0.1) {
+        this.joystickX = 0;
+        this.joystickY = 0;
+        this.joystickActive = false;
 
-      // --- Explicitly reset physics when snapping to zero ---
-      // Reset actual gravity if EMU is not enabled
-      let gravity = null;
-      if (this.main?.particleSystem?.gravity) {
-        gravity = this.main.particleSystem.gravity;
-      } else if (this.emuForces?.gravity) {
-        gravity = this.emuForces.gravity;
-      }
-      if (gravity && (!this.emuForces || !this.emuForces.enabled)) {
-        gravity.setRawDirection(0, 0, gravity.directionZ || -1);
-      }
-
-      // Reset turbulence bias if EMU is not enabled
-      let turbulenceField = null;
-      if (this.main && this.main.turbulenceField) {
-        turbulenceField = this.main.turbulenceField;
-      } else if (this.emuForces && this.emuForces.turbulenceField) {
-        // Note: This path might not be valid if emuForces doesn't have turbulenceField directly
-        turbulenceField = this.emuForces.turbulenceField;
-      }
-      if (turbulenceField && (!this.emuForces || !this.emuForces.enabled)) {
-        try {
-          turbulenceField.resetBias();
-        } catch (e) {
-          turbulenceField.setBiasSpeed(0, 0);
+        // --- Explicitly reset physics when snapping to zero ---
+        // Reset actual gravity if EMU is not enabled
+        let gravity = null;
+        if (this.main?.particleSystem?.gravity) {
+          gravity = this.main.particleSystem.gravity;
+        } else if (this.emuForces?.gravity) {
+          gravity = this.emuForces.gravity;
         }
-      }
-      // --- End physics reset ---
+        if (gravity && (!this.emuForces || !this.emuForces.enabled)) {
+          gravity.setRawDirection(0, 0, gravity.directionZ || -1);
+        }
 
-      // --- Explicitly update UI controllers to zero ---
-      const gravityUi = this.main?.ui?.gravityUi;
-      if (gravityUi) {
-        if (gravityUi.gravityXController) {
+        // Reset turbulence bias if EMU is not enabled
+        let turbulenceField = null;
+        if (this.main && this.main.turbulenceField) {
+          turbulenceField = this.main.turbulenceField;
+        } else if (this.emuForces && this.emuForces.turbulenceField) {
+          // Note: This path might not be valid if emuForces doesn't have turbulenceField directly
+          turbulenceField = this.emuForces.turbulenceField;
+        }
+        if (turbulenceField && (!this.emuForces || !this.emuForces.enabled)) {
           try {
-            gravityUi.gravityXController.setValue(0);
+            turbulenceField.resetBias();
           } catch (e) {
-            console.warn("Error setting GravityUi G-X controller to 0:", e);
+            turbulenceField.setBiasSpeed(0, 0);
           }
         }
-        if (gravityUi.gravityYController) {
-          try {
-            gravityUi.gravityYController.setValue(0);
-          } catch (e) {
-            console.warn("Error setting GravityUi G-Y controller to 0:", e);
+        // --- End physics reset ---
+
+        // --- Explicitly update UI controllers to zero ---
+        const gravityUi = this.main?.ui?.gravityUi;
+        if (gravityUi) {
+          if (gravityUi.gravityXController) {
+            try {
+              gravityUi.gravityXController.setValue(0);
+            } catch (e) {
+              console.warn("Error setting GravityUi G-X controller to 0:", e);
+            }
+          }
+          if (gravityUi.gravityYController) {
+            try {
+              gravityUi.gravityYController.setValue(0);
+            } catch (e) {
+              console.warn("Error setting GravityUi G-Y controller to 0:", e);
+            }
           }
         }
+        // --- End UI zeroing ---
       }
-      // --- End UI zeroing ---
+
+      // Update UI based on new spring position (potentially zeroed)
+      this.updateGravityUI();
+      this.updateTurbulenceBiasUI();
+      this.updateJoystickSliders();
     }
-
-    // Update UI based on new spring position (potentially zeroed)
-    this.updateGravityUI();
-    this.updateTurbulenceBiasUI();
-    this.updateJoystickSliders();
   }
 
   setSpringStrength(value) {

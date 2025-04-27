@@ -322,29 +322,6 @@ export class Main {
     // Attach mouseForces to particleSystem
     this.particleSystem.mouseForces = this.mouseForces;
 
-    // Create EmuForces instance with correct reference to gravity
-    this.emuForces = new EmuForces({
-      gravity: this.particleSystem.gravity,
-      debugFlags: this.debugFlags
-    });
-
-    this.externalInput = new ExternalInputConnector(
-      this.mouseForces,
-      this.emuForces,
-      this.micForces,
-      this.debugFlags
-    )
-      .enable()
-      .setSensitivity(0.001);
-
-    if (this.debugFlags.main) console.log("Directly connecting turbulenceField to joystickRenderer and emuForces");
-    // Add direct reference to turbulenceField in emuForces
-    this.externalInput.emuForces.turbulenceField = this.turbulenceField;
-
-    // Add direct reference to main in simulation
-    if (this.externalInput.emuForces.simulation) {
-      this.externalInput.emuForces.simulation.main = this;
-    }
 
     socketManager.setDebugFlags(this.debugFlags);
     serialManager.setDebugFlags(this.debugFlags);
@@ -371,8 +348,26 @@ export class Main {
       await this.dataVisualization.init(); // Initialize DataVisualization asynchronously
       comManager.setDataVisualization(this.dataVisualization);
 
+      // Create EmuForces instance with correct reference to gravity
+      this.emuForces = new EmuForces({
+        gravity: this.particleSystem.gravity,
+        debugFlags: this.debugFlags,
+      });
+
+      this.externalInput = new ExternalInputConnector(
+        this.mouseForces,
+        this.emuForces,
+        this.micForces,
+        this.debugFlags
+      )
+        .enable()
+        .setSensitivity(0.001);
+
+
+
       this.joystickRenderer = new JoystickRenderer(this.vizuContainer, this.externalInput.emuForces, this);
-      this.joystickRenderer.hide();
+      this.emuForces.setJoystickRenderer(this.joystickRenderer);
+
 
       this.audioAnalyzer = this.micForces.analyzer;
 
