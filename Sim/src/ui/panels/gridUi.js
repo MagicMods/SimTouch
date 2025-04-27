@@ -102,6 +102,41 @@ export class GridUi extends BaseUi {
 
     // --- SCREEN CONFIGURATION ---
 
+    const screenRezContainer = document.createElement("div");
+    screenRezContainer.classList = "screenRez-container";
+    screenFolder.domElement.appendChild(screenRezContainer);
+
+    this.screenRezControllerWidth = screenFolder.add(this.uiGridParams.screen, "width").name("Screen Specs")
+      .onChange((value) => { eventBus.emit('gridChanged', { paramPath: 'screen.width', value: value }); });
+    this.screenRezControllerWidth.domElement.classList.add("left-input");
+    screenRezContainer.appendChild(this.screenRezControllerWidth.domElement);
+
+    this.screenRezControllerHeight = screenFolder.add(this.uiGridParams.screen, "height").name("X")
+      .onChange((value) => { eventBus.emit('gridChanged', { paramPath: 'screen.height', value: value }); });
+    this.screenRezControllerHeight.domElement.classList.add("right-input");
+    screenRezContainer.appendChild(this.screenRezControllerHeight.domElement);
+
+    this.screenShapeButton = document.createElement("button");
+    this.screenShapeButton.classList = "screenShape-button";
+    this.screenShapeButton.textContent = this.uiGridParams.screen.shape === "rectangular" ? "R" : "C";
+    screenRezContainer.appendChild(this.screenShapeButton);
+
+    this.screenShapeButton.addEventListener("click", () => {
+      this.uiGridParams.screen.shape = this.uiGridParams.screen.shape === "rectangular" ? "circular" : "rectangular";
+      eventBus.emit('gridChanged', { paramPath: 'screen.shape', value: this.uiGridParams.screen.shape });
+      this.screenShapeButton.textContent = this.uiGridParams.screen.shape === "rectangular" ? "R" : "C";
+    });
+
+
+
+
+
+    // this.screenShapeController = screenFolder.add(this.uiGridParams.screen, "shape").name("ScreenShape")
+    //   .onChange((value) => { eventBus.emit('gridChanged', { paramPath: 'screen.shape', value: value }); });
+    // this.screenShapeController.domElement.classList.add("full-width");
+    // screenRezContainer.appendChild(this.screenShapeController.domElement);
+
+
     this.screenTypeController = screenFolder.add(this.uiState, "selectedScreen", Object.keys(SCREEN_TYPES)).name("Screen Type")
       .onChange((value) => {
         const selectedSpec = SCREEN_TYPES[value];
