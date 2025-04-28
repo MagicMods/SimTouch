@@ -213,6 +213,7 @@ export class Main {
 
       noisePrv: false,
       dataViz: false,
+      presets: false,
     };
 
     eventBus.initDebug(this.debugFlags);

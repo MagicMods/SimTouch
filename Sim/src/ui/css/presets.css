@@ -79,6 +79,10 @@
   border-radius: 4px;
 }
 
+.preset-select option {
+  background-color: #1d1d1d !important;
+}
+
 /* Common UI component styles */
 .preset-control-button {
   width: 100%;

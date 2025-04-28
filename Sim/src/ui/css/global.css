@@ -46,6 +46,9 @@ canvas#glCanvas {
   scrollbar-color: #555 #333;
 }
 
+.select.option :hover {
+  background-color: #ffffff !important;
+}
 
 .lil-gui .title {
   padding: 0px 36px;

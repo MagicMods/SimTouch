@@ -1,14 +1,14 @@
-import c0 from "./Gradients/c0.js";
-import c1 from "./Gradients/c1.js";
-import c2 from "./Gradients/c2.js";
-import c3 from "./Gradients/c3.js";
-import c4 from "./Gradients/c4.js";
-import c5 from "./Gradients/c5.js";
-import c6 from "./Gradients/c6.js";
-import c7 from "./Gradients/c7.js";
-import c8 from "./Gradients/c8.js";
-import c9 from "./Gradients/c9.js";
-import c10 from "./Gradients/c10.js";
+import c0 from "./gradients/c0.js";
+import c1 from "./gradients/c1.js";
+import c2 from "./gradients/c2.js";
+import c3 from "./gradients/c3.js";
+import c4 from "./gradients/c4.js";
+import c5 from "./gradients/c5.js";
+import c6 from "./gradients/c6.js";
+import c7 from "./gradients/c7.js";
+import c8 from "./gradients/c8.js";
+import c9 from "./gradients/c9.js";
+import c10 from "./gradients/c10.js";
 import { comManager } from "../com/comManager.js";
 
 export class Gradients {
