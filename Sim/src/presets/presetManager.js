@@ -12,6 +12,7 @@ export class PresetManager {
     PULSE: "pulse",
     INPUT: "input",
     RANDOMIZER: "randomizer",
+    GRID: "grid",
   };
 
   constructor(uiComponents, debugFlags) {
@@ -72,7 +73,20 @@ export class PresetManager {
         ["None", "All"],
         this.debugFlags
       ),
-
+      [PresetManager.TYPES.GRID]: new SimplePresetHandler(
+        "savedGridPresets",
+        {
+          Default: {
+            screen: { width: 240, height: 240, shape: 'circular' },
+            gridSpecs: { targetCellCount: 341, gap: 1, aspectRatio: 1, scale: 1, allowCut: 3, centerOffsetX: 0, centerOffsetY: 0 },
+            shadow: { shadowIntensity: 0.17, shadowThreshold: 0, blurAmount: 0.23 },
+            flags: { showGridCells: true, showIndices: false, showCellCenters: false, showBoundary: false },
+            colors: { gradientPreset: 'c0' }
+          },
+        },
+        ["Default"],
+        this.debugFlags
+      ),
       [PresetManager.TYPES.MASTER]: new MasterPresetHandler(
         "savedPresets",
         { Default: {} },
@@ -284,9 +298,12 @@ export class PresetManager {
         return this.uiComponents.organicUi;
       case PresetManager.TYPES.RANDOMIZER:
         return this.uiComponents.randomizerUi;
+      case PresetManager.TYPES.GRID:
+        return this.uiComponents.gridUi;
       case PresetManager.TYPES.MASTER:
         return this.uiComponents;
       default:
+        console.warn(`PresetManager: No UI component mapped for type ${type}`);
         return null;
     }
   }

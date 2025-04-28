@@ -1,5 +1,6 @@
 import { BaseUi } from "../baseUi.js";
 import { eventBus } from '../../util/eventManager.js';
+import { PresetManager } from "../../presets/presetManager.js";
 
 // Define available screen types
 const SCREEN_TYPES = {
@@ -23,6 +24,8 @@ export class GridUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
     this.debug = this.main.debugFlags; // 
+    this.presetManager = null;
+    this.presetControls = null;
 
     try {
       this.gui.title("Grid");
@@ -241,6 +244,47 @@ export class GridUi extends BaseUi {
     childrenContainer.appendChild(statsFlexContainer);
   }
 
+  initWithPresetManager(presetManager) {
+    this.presetManager = presetManager;
+    if (!this.presetManager) {
+      console.error("GridUi: PresetManager instance is required for initialization.");
+      return;
+    }
+
+    const gridContainer = this.gui.domElement.querySelector(".children");
+    if (gridContainer) {
+      this.presetControls = this.presetManager.createPresetControls(
+        PresetManager.TYPES.GRID,
+        gridContainer,
+        { insertFirst: true }
+      );
+      if (!this.presetControls) {
+        console.error("GridUi: Failed to create preset controls.");
+      }
+    } else {
+      console.error("GridUi: Could not find the container element (.children) to insert preset controls.");
+    }
+  }
+
+  getControlTargets() {
+    const targets = {};
+    targets["Theme"] = this.themeController;
+    targets["Screen Width"] = this.screenRezControllerWidth;
+    targets["Screen Height"] = this.screenRezControllerHeight;
+    targets["Center X Offset"] = this.centerOffsetXController;
+    targets["Center Y Offset"] = this.centerOffsetYController;
+    targets["Target Cells"] = this.targetCellCountCellsController;
+    targets["Grid Gap"] = this.gapController;
+    targets["Cell Ratio"] = this.aspectRatioController;
+    targets["Grid Scale"] = this.scaleController;
+    targets["Allow Cut"] = this.allowCutController;
+    targets["Shadow Intensity"] = this.shadowIntensityController;
+    targets["Shadow Threshold"] = this.shadowThresholdController;
+    targets["Blur Amount"] = this.blurAmountController;
+
+    return targets;
+  }
+
   getControllers() {
     const targets = {};
 
@@ -271,6 +315,7 @@ export class GridUi extends BaseUi {
       }
     };
 
+    safeUpdateDisplay(this.themeController);
     safeUpdateDisplay(this.screenRezControllerWidth);
     safeUpdateDisplay(this.screenRezControllerHeight);
     safeUpdateDisplay(this.centerOffsetXController);
@@ -288,6 +333,24 @@ export class GridUi extends BaseUi {
     safeUpdateDisplay(this.cellWidthController);
     safeUpdateDisplay(this.cellHeightController);
     safeUpdateDisplay(this.totalCellsController);
+
+    safeUpdateDisplay(this.shadowIntensityController);
+    safeUpdateDisplay(this.shadowThresholdController);
+    safeUpdateDisplay(this.blurAmountController);
+
+    // Update toggle button active states
+    const buttons = this.gui.domElement.querySelectorAll('.toggle-button[data-flag]');
+    buttons.forEach(button => {
+      const flagName = button.dataset.flag;
+      if (flagName && typeof this.uiGridParams.flags[flagName] === 'boolean') {
+        button.classList.toggle('active', this.uiGridParams.flags[flagName]);
+      }
+    });
+
+    // Update screen shape button text
+    if (this.screenShapeButton) {
+      this.screenShapeButton.textContent = this.uiGridParams.screen.shape === "rectangular" ? "R" : "C";
+    }
   }
 
 
@@ -340,6 +403,61 @@ export class GridUi extends BaseUi {
     // Update screen shape button text
     if (this.screenShapeButton) {
       this.screenShapeButton.textContent = this.uiGridParams.screen.shape === "rectangular" ? "R" : "C";
+    }
+  }
+
+  getData() {
+    const presetData = {
+      screen: { ...this.uiGridParams.screen },
+      gridSpecs: { ...this.uiGridParams.gridSpecs },
+      shadow: { ...this.uiGridParams.shadow },
+      flags: { ...this.uiGridParams.flags },
+      colors: { gradientPreset: this.uiGridParams.colors.gradientPreset }
+    };
+    if (this.debug.preset) console.log("GridUi.getData() returning:", JSON.parse(JSON.stringify(presetData)));
+    return presetData;
+  }
+
+  setData(presetData) {
+    if (this.debug.preset) console.log("GridUi.setData() called with:", JSON.parse(JSON.stringify(presetData)));
+
+    if (!presetData) {
+      console.warn("GridUi.setData: Received null or undefined preset data. Cannot apply.");
+      return false;
+    }
+
+    try {
+      // Update internal UI state from preset data
+      if (presetData.screen) {
+        Object.assign(this.uiGridParams.screen, presetData.screen);
+      }
+      if (presetData.gridSpecs) {
+        Object.assign(this.uiGridParams.gridSpecs, presetData.gridSpecs);
+      }
+      if (presetData.shadow) {
+        Object.assign(this.uiGridParams.shadow, presetData.shadow);
+      }
+      if (presetData.flags) {
+        Object.assign(this.uiGridParams.flags, presetData.flags);
+      }
+      if (presetData.colors && presetData.colors.gradientPreset) {
+        this.uiGridParams.colors.gradientPreset = presetData.colors.gradientPreset;
+      }
+
+      // Refresh displays of all controllers/buttons
+      this.updateControllerDisplays();
+
+      // Emit events to notify main simulation of the changes
+      eventBus.emit('gridChanged', { paramPath: 'screen', value: this.uiGridParams.screen });
+      eventBus.emit('gridChanged', { paramPath: 'gridSpecs', value: this.uiGridParams.gridSpecs });
+      eventBus.emit('gridChanged', { paramPath: 'shadow', value: this.uiGridParams.shadow });
+      eventBus.emit('gridChanged', { paramPath: 'flags', value: this.uiGridParams.flags });
+      eventBus.emit('gridChanged', { paramPath: 'colors.gradientPreset', value: this.uiGridParams.colors.gradientPreset });
+
+      return true;
+    } catch (error) {
+      console.error("Error applying grid preset:", error, "Data:", presetData);
+      return false;
     }
   }
 }

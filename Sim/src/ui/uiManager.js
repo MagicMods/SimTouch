@@ -71,7 +71,7 @@ export class UiManager {
     this.turbulenceUi = new TurbulenceUi(this.main, this.rightContainer);
     this.voronoiUi = new VoronoiUi(this.main, this.rightContainer);
     this.organicUi = new OrganicUi(this.main, this.rightContainer);
-    this.GridUi = new GridUi(this.main, this.rightContainer);
+    this.gridUi = new GridUi(this.main, this.rightContainer);
 
 
     this.randomizerUi = new RandomizerUi(this.main, this.presetContainer);
@@ -135,6 +135,7 @@ export class UiManager {
       voronoiUi: this.voronoiUi,
       organicUi: this.organicUi,
       randomizerUi: this.randomizerUi,
+      gridUi: this.gridUi,
     };
 
     // Create the preset manager with all components
@@ -148,6 +149,7 @@ export class UiManager {
     this.inputModUi.initWithPresetManager(this.presetManager);
     this.presetUi.initWithPresetManager(this.presetManager);
     this.randomizerUi.initWithPresetManager(this.presetManager);
+    this.gridUi.initWithPresetManager(this.presetManager);
 
     // Finalize MasterPresetHandler initialization after all handlers are set
     this.presetManager.handlers[PresetManager.TYPES.MASTER].finalizeInitialization();
@@ -177,6 +179,7 @@ export class UiManager {
     this.comUi.dispose();
     this.presetUi.dispose();
     this.randomizerUi.dispose();
+    this.gridUi.dispose();
 
     this.stats.dom.remove();
     this.stats = null;
