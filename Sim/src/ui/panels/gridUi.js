@@ -73,12 +73,14 @@ export class GridUi extends BaseUi {
     }
 
     // Create main folders in a logical hierarchy
-    const screenFolder = this.gui.addFolder("Screen Configuration");
+
     const gridParamFolder = this.gui.addFolder("Grid Parameters");
     const statsFolder = this.gui.addFolder("Grid Statistics");
+    const offsetFolder = this.gui.addFolder("Offsets");
     const displayFolder = this.gui.addFolder("Display Options");
     const shadowFolder = this.gui.addFolder("Shadow");
     displayFolder.open(false);
+    offsetFolder.open(false);
 
 
 
@@ -104,14 +106,14 @@ export class GridUi extends BaseUi {
 
     const screenRezContainer = document.createElement("div");
     screenRezContainer.classList = "screenRez-container";
-    screenFolder.domElement.appendChild(screenRezContainer);
+    offsetFolder.domElement.appendChild(screenRezContainer);
 
-    this.screenRezControllerWidth = screenFolder.add(this.uiGridParams.screen, "width").name("Screen Specs")
+    this.screenRezControllerWidth = offsetFolder.add(this.uiGridParams.screen, "width").name("Screen Specs")
       .onChange((value) => { eventBus.emit('gridChanged', { paramPath: 'screen.width', value: value }); });
     this.screenRezControllerWidth.domElement.classList.add("left-input");
     screenRezContainer.appendChild(this.screenRezControllerWidth.domElement);
 
-    this.screenRezControllerHeight = screenFolder.add(this.uiGridParams.screen, "height").name("X")
+    this.screenRezControllerHeight = offsetFolder.add(this.uiGridParams.screen, "height").name("X")
       .onChange((value) => { eventBus.emit('gridChanged', { paramPath: 'screen.height', value: value }); });
     this.screenRezControllerHeight.domElement.classList.add("right-input");
     screenRezContainer.appendChild(this.screenRezControllerHeight.domElement);
@@ -127,9 +129,13 @@ export class GridUi extends BaseUi {
       this.screenShapeButton.textContent = this.uiGridParams.screen.shape === "rectangular" ? "R" : "C";
     });
 
+    // Add the button container to the GUI children
+    const guiChildren = this.gui.domElement.querySelector(".children");
+    if (!guiChildren) {
+      throw new Error("GUI children container not found");
+    }
 
-
-    const offsetFolder = screenFolder.addFolder("Center Offset");
+    guiChildren.insertBefore(screenRezContainer, guiChildren.firstChild);
 
     this.centerOffsetXController = offsetFolder.add(this.uiGridParams.gridSpecs, "centerOffsetX", -100, 100, 1).name("X Offset")
       .onChange(() => { eventBus.emit('gridChanged', { paramPath: 'gridSpecs.centerOffsetX', value: this.uiGridParams.gridSpecs.centerOffsetX }); });

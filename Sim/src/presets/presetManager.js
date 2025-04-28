@@ -76,7 +76,7 @@ export class PresetManager {
       [PresetManager.TYPES.GRID]: new SimplePresetHandler(
         "savedGridPresets",
         {
-          Default: {
+          "WaveShare | C | 240x240 | 338": {
             screen: { width: 240, height: 240, shape: 'circular' },
             gridSpecs: { targetCellCount: 341, gap: 1, aspectRatio: 1, scale: 1, allowCut: 3, centerOffsetX: 0, centerOffsetY: 0 },
             shadow: { shadowIntensity: 0.17, shadowThreshold: 0, blurAmount: 0.23 },
@@ -84,7 +84,7 @@ export class PresetManager {
             colors: { gradientPreset: 'c0' }
           },
         },
-        ["Default"],
+        ["WaveShare | C | 240x240 | 338"],
         this.debugFlags
       ),
       [PresetManager.TYPES.MASTER]: new MasterPresetHandler(
