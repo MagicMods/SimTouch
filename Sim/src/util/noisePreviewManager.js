@@ -45,28 +45,42 @@ export class NoisePreviewManager {
     }
 
     _updateRelevanceState() {
-        if (!this.main || !this.main.simParams) return;
+        if (!this.main || !this.main.simParams) {
+            if (this.db) console.log("NoisePreviewManager: Skipping _updateRelevanceState - main or simParams missing.");
+            return; // Guard against missing main/simParams
+        }
 
         const affectPosition = this.main.simParams.turbulence.affectPosition;
         const scaleField = this.main.simParams.turbulence.scaleField;
         const affectScale = this.main.simParams.turbulence.affectScale;
-        const isNoiseMode = this.main.simParams.rendering.gridMode === "--- NOISE ---";
+        const isNoiseMode = this.main.simParams.rendering.gridMode === "--- NOISE ---"; // Use exact string with spaces
+
+        // Log the state being checked
+        if (this.db) console.log(`NoisePreviewManager: Checking relevance state: affectPos=${affectPosition}, scaleField=${scaleField}, affectScale=${affectScale}, isNoiseMode=${isNoiseMode}`);
 
         const newRelevance = affectPosition || scaleField || affectScale || isNoiseMode;
 
         if (newRelevance !== this.isTurbulenceRelevant) {
             const wasRelevant = this.isTurbulenceRelevant;
             this.isTurbulenceRelevant = newRelevance;
-            if (this.db) console.log(`NoisePreviewManager: Turbulence relevance changed: ${wasRelevant} -> ${this.isTurbulenceRelevant}`);
+            // Log the change more clearly
+            if (this.db) console.log(`NoisePreviewManager: Relevance CHANGED: ${wasRelevant} -> ${this.isTurbulenceRelevant}`);
+            // Step 2: Trigger refresh state update when relevance changes
             this.updateRefreshState();
+        } else {
+            if (this.db) console.log(`NoisePreviewManager: Relevance unchanged (${this.isTurbulenceRelevant}).`);
         }
     }
 
     _initializeEventListeners() {
-        if (!this.main) return;
+        if (!this.main) return; // Guard
 
         const handleUiChange = (event) => {
+            // Ensure main and event are valid before proceeding
             if (!this.main || !event || !event.paramPath) return;
+
+            // Log the received event
+            if (this.db) console.log(`NoisePreviewManager: Received uiControlChanged for ${event.paramPath}`);
 
             const relevantPaths = [
                 'turbulence.affectPosition',
@@ -75,10 +89,13 @@ export class NoisePreviewManager {
                 'rendering.gridMode'
             ];
             if (relevantPaths.includes(event.paramPath)) {
+                // Log that a relevant path was detected
+                if (this.db) console.log(`NoisePreviewManager: Relevant path detected (${event.paramPath}), updating relevance state.`);
                 this._updateRelevanceState();
             }
         };
 
+        // Bind the handler to 'this' and store it
         this.boundHandleUiChange = handleUiChange.bind(this);
 
         eventBus.on('uiControlChanged', this.boundHandleUiChange);
