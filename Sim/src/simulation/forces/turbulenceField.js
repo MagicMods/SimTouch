@@ -1,6 +1,6 @@
 import { eventBus } from '../../util/eventManager.js'; // Added import
 import { TickLog } from '../../util/tickLog.js';
-
+import { debugManager } from '../../util/debugManager.js';
 export class TurbulenceField {
   constructor({
     strength = 4,
@@ -47,7 +47,7 @@ export class TurbulenceField {
     biasSmoothing = 0.8,   // 0 = no smoothing, 1 = max smoothing
     biasTune = 1,       // Fine tuning of bias responsiveness
     biasSensitivity = 0.25, // Global sensitivity multiplier (0-1)
-  } = {}, debugFlags) {
+  } = {}) {
     if (
       !boundary ||
       typeof boundary.centerX !== "number" ||
@@ -58,7 +58,6 @@ export class TurbulenceField {
         "TurbulenceField requires a valid CircularBoundary with centerX, centerY, and getRadius()"
       );
     }
-    this.db = debugFlags;
     this.boundary = boundary;
     this.strength = strength;
     this.scale = scale;
@@ -173,21 +172,25 @@ export class TurbulenceField {
     eventBus.on('physicsBoundaryRecreated', ({ physicsBoundary }) => {
       if (physicsBoundary) {
         this.boundary = physicsBoundary;
-        if (this.db.turbulence) console.log("TurbulenceField updated boundary reference.");
+        if (this.db) console.log("TurbulenceField updated boundary reference.");
       } else {
         console.error("TurbulenceField received null boundary on physicsBoundaryRecreated event.");
       }
     });
 
-    this.tick = new TickLog(1000, this.db.turbulence);
-    this.tickCoordinates = new TickLog(1000, this.db.turbulence);
+    this.tick = new TickLog(1000, this.db);
+    this.tickCoordinates = new TickLog(1000, this.db);
     this.debugRadiusData = []; // Initialize class member for debug data
   }
 
-  // --- Start Aspect Ratio Correction ---
+  get db() {
+    return debugManager.get('turbulence');
+  }
+
+  // --- Start Aspect Ratio Correction --- // TODO: REVIEW
   _getCorrectedNoiseCoordinates(nx, ny) {
-    // --- DEBUG LOGGING START ---
-    if (this.db.turbulence && this.tickCoordinates.GetTick()) { // Log occasionally
+
+    if (this.db && this.tickCoordinates.GetTick()) { // Log occasionally
       const boundaryType = this.boundary ? this.boundary.getBoundaryType ? this.boundary.getBoundaryType() : 'NO TYPE METHOD' : 'NO BOUNDARY';
       let detailsInfo = 'N/A';
       if (this.boundary && this.boundary.getBoundaryDetails) {
@@ -197,8 +200,6 @@ export class TurbulenceField {
       }
       console.log(`_getCorrectedNoiseCoordinates: BoundaryType='${boundaryType}', Details=${detailsInfo}`);
     }
-
-    // --- DEBUG LOGGING END ---
 
     if (!this.boundary || typeof this.boundary.getBoundaryType !== 'function' || !this.boundary.getBoundaryDetails) {
       // console.warn("TurbulenceField: Boundary details unavailable for aspect ratio correction.");
@@ -220,11 +221,9 @@ export class TurbulenceField {
       const normalizedHeight = details.maxY - details.minY;
 
       if (!normalizedHeight || normalizedHeight === 0 || !normalizedWidth || normalizedWidth === 0) {
-        // --- DEBUG LOGGING START ---
-        if (this.db.turbulence) {
+        if (this.db) {
           console.warn(`TurbulenceField: Boundary normalized height/width is zero or invalid (${normalizedWidth}x${normalizedHeight}), skipping aspect ratio correction.`);
         }
-        // --- DEBUG LOGGING END ---
         // console.warn("TurbulenceField: Boundary normalized height/width is zero, skipping aspect ratio correction.");
         return { nx, ny }; // Avoid division by zero or invalid dimensions
       }
@@ -294,14 +293,11 @@ export class TurbulenceField {
       this.noiseSeed = turbulenceParams.noiseSeed ?? this.noiseSeed;
       this.separation = turbulenceParams.separation ?? this.separation;
       this.domainWarp = turbulenceParams.domainWarp ?? this.domainWarp;
-
-      // ADDED: Update missing parameters
       this.domainWarpSpeed = turbulenceParams.domainWarpSpeed ?? this.domainWarpSpeed;
       this.symmetryAmount = turbulenceParams.symmetryAmount ?? this.symmetryAmount;
       this.phase = turbulenceParams.phase ?? this.phase;
       this.phaseSpeed = turbulenceParams.phaseSpeed ?? this.phaseSpeed;
       this.blurAmount = turbulenceParams.blurAmount ?? this.blurAmount;
-      // END ADDED
 
       // Handle bias acceleration mapped from display properties
       if (turbulenceParams._displayBiasAccelX !== undefined) {
@@ -315,7 +311,7 @@ export class TurbulenceField {
       // For now, let's assume no specific update method is needed beyond what happens in `update` or `applyTurbulence`
       // If issues arise, we might need to add calls like `applyPatternSpecificOffset()` here.
     }
-    // if(this.db.turbulence) console.log (`TurbulenceField updated params via event`);
+    // if(this.db) console.log (`TurbulenceField updated params via event`);
   }
 
   // Apply pattern-specific offset based on current pattern style
@@ -513,7 +509,7 @@ export class TurbulenceField {
     }
 
     // // Debug logging - randomly log some values to avoid flooding console
-    // if (this.db.turbulence && Math.random() < 0.0001) {
+    // if (this.db && Math.random() < 0.0001) {
     //   console.log(`Contrast ${this.contrast.toFixed(2)} applied:`,
     //     originalValue.toFixed(3), "->", value.toFixed(3));
     // }
@@ -1148,7 +1144,7 @@ export class TurbulenceField {
 
         // Set the particle size for this specific particle
         system.particleRadii[particleIndex] = finalSize;
-        if (this.tick.GetTick() && this.db.turbulence) {
+        if (this.tick.GetTick() && this.db) {
           console.log("Particle sizes:", system.particleRadii[0], system.particleRadii[1], system.particleRadii[2], system.particleRadii[3], system.particleRadii[4]);
         }
       }
@@ -1334,9 +1330,9 @@ export class TurbulenceField {
 
   // Debug function to help diagnose rotation issues
   debugRotation() {
-    if (this.db.turbulence) console.log("=== Turbulence Field Debug ===");
-    if (this.db.turbulence) console.log("Boundary center:", this.boundary.centerX, this.boundary.centerY);
-    if (this.db.turbulence) console.log("Current rotation:", this.rotation);
+    if (this.db) console.log("=== Turbulence Field Debug ===");
+    if (this.db) console.log("Boundary center:", this.boundary.centerX, this.boundary.centerY);
+    if (this.db) console.log("Current rotation:", this.rotation);
 
     // Test noise values at fixed points to verify rotation
     const testPoints = [
@@ -1347,10 +1343,10 @@ export class TurbulenceField {
       { x: 0.5, y: 0.5 }  // Center
     ];
 
-    if (this.db.turbulence) console.log("Testing noise values:");
+    if (this.db) console.log("Testing noise values:");
     testPoints.forEach(pt => {
       // Original coordinates
-      if (this.db.turbulence) console.log(`Point (${pt.x}, ${pt.y}): ${this.noise2D(pt.x, pt.y)}`);
+      if (this.db) console.log(`Point (${pt.x}, ${pt.y}): ${this.noise2D(pt.x, pt.y)}`);
 
       // Compute what the rotated coordinates should be
       const centerX = this.boundary.centerX;
@@ -1362,10 +1358,10 @@ export class TurbulenceField {
       const rx = tx * cos - ty * sin + centerX;
       const ry = tx * sin + ty * cos + centerY;
 
-      if (this.db.turbulence) console.log(`Should rotate to (${rx.toFixed(3)}, ${ry.toFixed(3)})`);
+      if (this.db) console.log(`Should rotate to (${rx.toFixed(3)}, ${ry.toFixed(3)})`);
     });
 
-    if (this.db.turbulence) console.log("=== End Debug ===");
+    if (this.db) console.log("=== End Debug ===");
   }
 
   resetBias() {
@@ -1389,7 +1385,7 @@ export class TurbulenceField {
 
 
 
-    if (this.db.turbulence) console.log(`Bias sensitivity set to ${(this.biasSensitivity * 100).toFixed(0)}%`);
+    if (this.db) console.log(`Bias sensitivity set to ${(this.biasSensitivity * 100).toFixed(0)}%`);
 
 
     return this.biasSensitivity;
@@ -1425,8 +1421,8 @@ export class TurbulenceField {
 
   // Debug function to analyze pullFactor behavior
   debugPullFactor() {
-    if (this.db.turbulence) console.log("=== Turbulence Pull Factor Analysis ===");
-    if (this.db.turbulence) console.log(`Current pullFactor: ${this.pullFactor.toFixed(3)}`);
+    if (this.db) console.log("=== Turbulence Pull Factor Analysis ===");
+    if (this.db) console.log(`Current pullFactor: ${this.pullFactor.toFixed(3)}`);
 
     // Sample a test point at the center
     const centerX = this.boundary.centerX;
@@ -1445,8 +1441,8 @@ export class TurbulenceField {
     // Get visualization color (0-255)
     const visualColor = Math.floor(((n + 1) * 0.5) * 255);
 
-    if (this.db.turbulence) console.log(`Noise at center: ${n.toFixed(3)} (display: RGB ${visualColor},${visualColor},${visualColor})`);
-    if (this.db.turbulence) console.log(`Gradient direction: X=${gradX.toFixed(3)}, Y=${gradY.toFixed(3)}`);
+    if (this.db) console.log(`Noise at center: ${n.toFixed(3)} (display: RGB ${visualColor},${visualColor},${visualColor})`);
+    if (this.db) console.log(`Gradient direction: X=${gradX.toFixed(3)}, Y=${gradY.toFixed(3)}`);
 
     // Show what direction particles would move
     let moveDir;
@@ -1458,7 +1454,7 @@ export class TurbulenceField {
       moveDir = "TOWARD white (gradient direction)";
     }
 
-    if (this.db.turbulence) console.log(`Particle movement: ${moveDir}`);
-    if (this.db.turbulence) console.log("=== End Analysis ===");
+    if (this.db) console.log(`Particle movement: ${moveDir}`);
+    if (this.db) console.log("=== End Analysis ===");
   }
 }

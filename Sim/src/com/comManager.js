@@ -1,7 +1,7 @@
 import { socketManager } from './udp/socketManager.js';
 import { serialManager } from './serial/serialManager.js';
 import { eventBus } from '../util/eventManager.js';
-
+import { debugManager } from '../util/debugManager.js';
 class ComManager {
     static instance;
 
@@ -12,11 +12,14 @@ class ComManager {
         return ComManager.instance;
     }
 
+    get db() {
+        return debugManager.get('com');
+    }
+
     constructor() {
         this.socket = socketManager;
         this.serial = serialManager;
         this.activeChannel = 'udp'; // Default to udp
-        this.db = null;
         this.shouldSendData = false;
         this.gridParamsRef = null; // Add reference holder
         this.dataVisualization = null; // Initialize explicitly
@@ -36,15 +39,9 @@ class ComManager {
     // Method to set the gridParams reference
     setGridParamsRef(gridParams) {
         this.gridParamsRef = gridParams;
-        if (this.db?.com) console.log("ComManager: gridParams reference set.");
+        if (this.db) console.log("ComManager: gridParams reference set.");
     }
 
-    setDebugFlags(debugFlags) {
-        this.db = debugFlags;
-        // Pass flags down to underlying managers
-        this.socket.setDebugFlags(debugFlags);
-        this.serial.setDebugFlags(debugFlags);
-    }
 
     setDataVisualization(dataVisualization) {
         this.dataVisualization = dataVisualization;
@@ -72,7 +69,7 @@ class ComManager {
         if (channel === this.activeChannel) {
             // If it's udp and not connected, try connecting (e.g., initial load)
             if (channel === 'udp' && !this.socket.isConnected) {
-                if (this.db?.com) console.log(`ComManager: Udp channel already active, ensuring connection.`);
+                if (this.db) console.log(`ComManager: Udp channel already active, ensuring connection.`);
                 this.socket.connect();
             }
             // No action needed if serial is already active (connection handled by user)
@@ -81,27 +78,27 @@ class ComManager {
 
         const oldChannel = this.activeChannel;
         this.activeChannel = channel;
-        if (this.db?.com) console.log(`ComManager: Active channel changed from ${oldChannel} to ${this.activeChannel}`);
+        if (this.db) console.log(`ComManager: Active channel changed from ${oldChannel} to ${this.activeChannel}`);
 
         // Handle connection/disconnection based on new channel
         if (this.activeChannel === 'udp') {
             // Disconnect Serial (if it was active and connected)
             if (oldChannel === 'serial' && this.serial.isConnected) {
-                if (this.db?.com) console.log("ComManager: Disconnecting Serial port...");
+                if (this.db) console.log("ComManager: Disconnecting Serial port...");
                 await this.serial.disconnect();
             }
             // Connect Socket
-            if (this.db?.com) console.log("ComManager: Connecting Socket...");
+            if (this.db) console.log("ComManager: Connecting Socket...");
             this.socket.connect();
         } else if (this.activeChannel === 'serial') {
             // Disconnect Socket (if it was active and connected)
             if (oldChannel === 'udp' && this.socket.isConnected) {
-                if (this.db?.com) console.log("ComManager: Disconnecting Socket...");
+                if (this.db) console.log("ComManager: Disconnecting Socket...");
                 this.socket.disconnect();
             }
             // Note: Serial connection is triggered by selecting a port in comUi,
             // which calls serialManager.connect() directly.
-            if (this.db?.com) console.log("ComManager: Switched to Serial channel. Waiting for user port selection/connection.");
+            if (this.db) console.log("ComManager: Switched to Serial channel. Waiting for user port selection/connection.");
         }
     }
 
@@ -140,7 +137,7 @@ class ComManager {
             if (this.dataVisualization) {
                 this.dataVisualization.updateData(cellValueArray);
             } else {
-                if (this.db?.com) console.warn("ComManager: dataVisualization reference not set, skipping update.");
+                if (this.db) console.warn("ComManager: dataVisualization reference not set, skipping update.");
             }
 
             // Check dependencies
@@ -179,7 +176,7 @@ class ComManager {
                 };
 
                 // Add log to check calculated values
-                if (this.db?.com) console.log(`ComManager Debug - Calculated Meta -> cols: ${meta.cols}, rows: ${meta.rows}, cellW: ${meta.cellW}, cellH: ${meta.cellH}`);
+                if (this.db) console.log(`ComManager Debug - Calculated Meta -> cols: ${meta.cols}, rows: ${meta.rows}, cellW: ${meta.cellW}, cellH: ${meta.cellH}`);
 
                 // Populate Header Buffer (Order: RoundRect(u8), ScreenWidth(u16), ScreenHeight(u16), CellCount(u16), GridGap(u8), CellRatio(f32), AllowCut(u8), Cols(u8), Rows(u8), CellW(u8), CellH(u8), Theme(u8), Brightness(u8))
                 let offset = 0;
@@ -203,7 +200,7 @@ class ComManager {
             }
 
             // Log the raw header bytes after population
-            if (this.db?.com) console.log("ComManager Debug - Generated headerBytes:", headerBytes);
+            if (this.db) console.log("ComManager Debug - Generated headerBytes:", headerBytes);
 
             // --- Calculate Sizes and Total Length ---
             const headerSize = headerBytes.length; // Should be 19
@@ -227,7 +224,7 @@ class ComManager {
             finalPacketBytes.set(cellValueArray, 2 + headerSize); // Copy values after header
 
             // Log the full constructed byte array details
-            if (this.db?.comSR) console.log(`ComManager: Sending Data (Total: ${totalPacketLength} bytes = 2 len + ${headerSize} header + ${valuesSize} values)`);
+            if (this.dbSR) console.log(`ComManager: Sending Data (Total: ${totalPacketLength} bytes = 2 len + ${headerSize} header + ${valuesSize} values)`);
             // console.log(this.dataVisualization);
 
             // Send the final byte array (length + header + values)
@@ -241,7 +238,7 @@ class ComManager {
     }
 
     sendBrightness(value) {
-        if (this.db?.com) console.log(`ComManager: Sending Brightness (${this.activeChannel}) = ${value}`);
+        if (this.db) console.log(`ComManager: Sending Brightness (${this.activeChannel}) = ${value}`);
         if (this.activeChannel === 'udp') {
             return this.socket.sendBrightness(value);
         } else if (this.activeChannel === 'serial') {
@@ -251,7 +248,7 @@ class ComManager {
     }
 
     sendPower(value) {
-        if (this.db?.com) console.log(`ComManager: Sending Power (${this.activeChannel}) = ${value}`);
+        if (this.db) console.log(`ComManager: Sending Power (${this.activeChannel}) = ${value}`);
         if (this.activeChannel === 'udp') {
             return this.socket.sendPower(value);
         } else if (this.activeChannel === 'serial') {

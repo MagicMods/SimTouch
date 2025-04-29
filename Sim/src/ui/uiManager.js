@@ -139,7 +139,7 @@ export class UiManager {
     };
 
     // Create the preset manager with all components
-    this.presetManager = new PresetManager(presetComponents, this.main.debugFlags);
+    this.presetManager = new PresetManager(presetComponents);
 
     // Initialize UI components with preset manager
     this.turbulenceUi.initWithPresetManager(this.presetManager);

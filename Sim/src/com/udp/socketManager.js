@@ -1,5 +1,5 @@
 import { eventBus } from '../../util/eventManager.js';
-
+import { debugManager } from '../../util/debugManager.js';
 class SocketManager {
   static instance;
 
@@ -49,7 +49,6 @@ class SocketManager {
       this.lastSentCommands[cmd.debounceKey] = { value: null, time: 0 };
     });
 
-    this.db = null;
   }
 
   connect(port = 5501) {
@@ -59,13 +58,13 @@ class SocketManager {
     }
 
     if (this.ws && (this.ws.readyState === WebSocket.CONNECTING || this.ws.readyState === WebSocket.OPEN)) {
-      if (this.db?.udp) console.log(`SocketManager Connect: Already connected or connecting to ws://localhost:${this.port}. Ignoring call.`);
+      if (this.db) console.log(`SocketManager Connect: Already connected or connecting to ws://localhost:${this.port}. Ignoring call.`);
       return;
     }
 
     this.port = port;
     try {
-      if (this.db?.udp) console.log(`Attempting WebSocket connection to ws://localhost:${port}`);
+      if (this.db) console.log(`Attempting WebSocket connection to ws://localhost:${port}`);
 
       this.ws = new WebSocket(`ws://localhost:${port}`);
       this.setupHandlers();
@@ -75,8 +74,8 @@ class SocketManager {
     }
   }
 
-  setDebugFlags(debugFlags) {
-    this.db = debugFlags;
+  get db() {
+    return debugManager.get('udp');
   }
 
   sendData(data) {
@@ -88,7 +87,7 @@ class SocketManager {
       return false;
     }
 
-    if (this.db?.udp && this.db?.comSR) console.log("Socket Sending message:", data);
+    if (this.db && this.db?.comSR) console.log("Socket Sending message:", data);
 
     this.ws.send(data);
     return true;
@@ -100,7 +99,7 @@ class SocketManager {
     }
 
     this.ws.onopen = () => {
-      if (this.db?.udp) console.log("WebSocket connection established");
+      if (this.db) console.log("WebSocket connection established");
       this.isConnected = true;
       this.retryCount = 0;
       if (this.retryTimeout) {
@@ -120,20 +119,20 @@ class SocketManager {
 
     this.ws.onclose = () => {
       const wasConnected = this.isConnected;
-      if (this.db?.udp) console.log("WebSocket connection closed.", wasConnected ? "(Previously connected)" : "(Not connected)");
+      if (this.db) console.log("WebSocket connection closed.", wasConnected ? "(Previously connected)" : "(Not connected)");
       this.isConnected = false;
       this.ws = null;
 
       if (this.explicitDisconnect) {
         this.explicitDisconnect = false;
-        if (this.db?.udp) console.log("Skipping reconnect attempt due to explicit disconnect.");
+        if (this.db) console.log("Skipping reconnect attempt due to explicit disconnect.");
       } else {
         if (wasConnected && !this.retryTimeout && this.retryCount < this.maxRetries) {
           this.retryCount++;
-          if (this.db?.udp) console.log(`Retry attempt ${this.retryCount} of ${this.maxRetries} in 3 seconds...`);
+          if (this.db) console.log(`Retry attempt ${this.retryCount} of ${this.maxRetries} in 3 seconds...`);
           this.retryTimeout = setTimeout(() => this.reconnect(), 3000);
         } else if (wasConnected && this.retryCount >= this.maxRetries) {
-          if (this.db?.udp) console.log("Max retry attempts reached. Stopping automatic reconnection.");
+          if (this.db) console.log("Max retry attempts reached. Stopping automatic reconnection.");
           this.retryCount = 0;
         }
       }
@@ -149,7 +148,7 @@ class SocketManager {
     };
 
     this.ws.onerror = (error) => {
-      if (this.db?.udp) {
+      if (this.db) {
         console.error("WebSocket error:", error);
       }
       this.callbacks.forEach((cb) => cb({ type: "error", error }));
@@ -222,7 +221,7 @@ class SocketManager {
   }
 
   reconnect() {
-    if (this.db?.udp) console.log("Attempting reconnect...");
+    if (this.db) console.log("Attempting reconnect...");
     this.connect(this.port);
   }
 
@@ -231,15 +230,15 @@ class SocketManager {
       clearTimeout(this.retryTimeout);
       this.retryTimeout = null;
       this.retryCount = 0;
-      if (this.db?.udp) console.log("Cleared pending reconnect attempts due to explicit disconnect.");
+      if (this.db) console.log("Cleared pending reconnect attempts due to explicit disconnect.");
     }
 
     if (!this.ws) {
-      if (this.db?.udp) console.log("SocketManager Disconnect: Already disconnected or not initialized.");
+      if (this.db) console.log("SocketManager Disconnect: Already disconnected or not initialized.");
       return;
     }
 
-    if (this.db?.udp) console.log("Closing WebSocket connection explicitly.");
+    if (this.db) console.log("Closing WebSocket connection explicitly.");
     try {
       this.explicitDisconnect = true;
       this.ws.close();
@@ -282,7 +281,7 @@ class SocketManager {
   }
 
   sendCommand(commandType, value) {
-    if (this.db?.udp) console.log(`>>> Socket sendCommand ENTERED with type: ${typeof commandType}`, commandType, ` | value: ${typeof value}`, value);
+    if (this.db) console.log(`>>> Socket sendCommand ENTERED with type: ${typeof commandType}`, commandType, ` | value: ${typeof value}`, value);
     const command = SocketManager.COMMANDS[commandType];
     if (!command) {
       console.error(`Invalid command type: ${commandType}`);
@@ -314,11 +313,11 @@ class SocketManager {
         }
       }, 50);
 
-      if (this.db?.udp) console.log(`Sending command ${commandType}:`, value);
+      if (this.db) console.log(`Sending command ${commandType}:`, value);
 
       return true;
     }
-    if (this.db?.udp) console.warn(`Socket sendCommand Failed: Not connected.`);
+    if (this.db) console.warn(`Socket sendCommand Failed: Not connected.`);
     return false;
   }
 }

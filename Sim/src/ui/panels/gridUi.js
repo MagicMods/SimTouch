@@ -1,7 +1,7 @@
 import { BaseUi } from "../baseUi.js";
 import { eventBus } from '../../util/eventManager.js';
 import { PresetManager } from "../../presets/presetManager.js";
-
+import { debugManager } from '../../util/debugManager.js';
 // Define available screen types
 const SCREEN_TYPES = {
   "240x240 Rnd": { width: 240, height: 240, shape: "circular" },
@@ -23,7 +23,7 @@ const SCREEN_TYPES = {
 export class GridUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-    this.debug = this.main.debugFlags; // 
+
     this.presetManager = null;
     this.presetControls = null;
 
@@ -62,6 +62,10 @@ export class GridUi extends BaseUi {
     } catch (error) {
       console.error("Error initializing GridUi:", error);
     }
+  }
+
+  get db() {
+    return debugManager.get('grid');
   }
 
   // Initialize grid configuration controls
@@ -420,12 +424,12 @@ export class GridUi extends BaseUi {
       flags: { ...this.uiGridParams.flags },
       colors: { gradientPreset: this.uiGridParams.colors.gradientPreset }
     };
-    if (this.debug.preset) console.log("GridUi.getData() returning:", JSON.parse(JSON.stringify(presetData)));
+    if (this.db) console.log("GridUi.getData() returning:", JSON.parse(JSON.stringify(presetData)));
     return presetData;
   }
 
   setData(presetData) {
-    if (this.debug.preset) console.log("GridUi.setData() called with:", JSON.parse(JSON.stringify(presetData)));
+    if (this.db) console.log("GridUi.setData() called with:", JSON.parse(JSON.stringify(presetData)));
 
     if (!presetData) {
       console.warn("GridUi.setData: Received null or undefined preset data. Cannot apply.");

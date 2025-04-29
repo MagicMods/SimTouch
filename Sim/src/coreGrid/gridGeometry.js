@@ -1,12 +1,14 @@
 import { CircularBoundaryShape } from "./boundary/circularBoundaryShape.js"; // Needed for instanceof checks
 import { RectangularBoundaryShape } from "./boundary/rectangularBoundaryShape.js"; // Needed for instanceof checks
-
+import { debugManager } from "../util/debugManager.js";
 export class GridGeometry {
-  constructor(debugFlags) {
-
-    this.debug = debugFlags;
+  constructor() {
     this.rectangles = [];
     this.geomParams = {}; // Stores cols, rows, cell dimensions (visual and physical)
+  }
+
+  get db() {
+    return debugManager.get('gridGeometry');
   }
 
   generate(gridParams, boundary, dimensions) {
@@ -62,7 +64,7 @@ export class GridGeometry {
     const maxVisualCellHeight = Math.max(30, Math.round(startCellHeight * renderScale));
 
     // Debug output to help diagnose issues
-    // if (this.debug.gridGeometry) console.log("Grid Geometry Calculations:", {
+    // if (this.db) console.log("Grid Geometry Calculations:", {
     //   physicalWidth: physicalWidth,
     //   physicalHeight: physicalHeight,
     //   renderScale: renderScale,
@@ -89,7 +91,7 @@ export class GridGeometry {
     // let bestRects = []; // Removed
 
     // --- BEGIN STEP 1: Add Boundary Type Logging ---
-    // if (this.debug.gridGeometry) console.log(`GridGeometry.generate received boundary type: ${boundary?.constructor?.name}`, {
+    // if (this.db) console.log(`GridGeometry.generate received boundary type: ${boundary?.constructor?.name}`, {
     //   isCircular: boundary instanceof CircularBoundaryShape,
     //   isRectangular: boundary instanceof RectangularBoundaryShape,
     //   radius: boundary?.getRadius ? boundary.getRadius() : 'N/A',

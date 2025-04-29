@@ -2,14 +2,13 @@ import { BaseUi } from "../baseUi.js";
 import { GridField } from "../../renderer/gridRenderModes.js";
 import { Behaviors } from "../../simulation/behaviors/organicBehavior.js";
 import { eventBus } from "../../util/eventManager.js";
-
+import { debugManager } from '../../util/debugManager.js';
 export class ParamUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
     this.presetManager = null;
     this.controls = {};
     this.gui.title("Parameters");
-    this.debug = this.main.debugFlags;
     this.initGlobalControls();
   }
 
@@ -28,7 +27,7 @@ export class ParamUi extends BaseUi {
         eventBus.emit('uiControlChanged', { paramPath: 'simulation.paused', value: intendedState });
         // Update button name based on intended state
         this.pauseButtonController.name(intendedState ? "Resume" : "Pause");
-        if (this.debug.param) console.log(`Simulation is ${intendedState ? "paused" : "running"}`);
+        if (this.db) console.log(`Simulation is ${intendedState ? "paused" : "running"}`);
       },
     };
 
@@ -65,13 +64,13 @@ export class ParamUi extends BaseUi {
       .name("FadInSpd").onChange((value) => {
         eventBus.emit('uiControlChanged', { paramPath: 'smoothing.rateIn', value });
       })
-      .onFinishChange(() => { if (this.debug.param) console.log("Smoothing in:", this.main.simParams.smoothing.rateIn); });
+      .onFinishChange(() => { if (this.db) console.log("Smoothing in:", this.main.simParams.smoothing.rateIn); });
 
     this.fadeOutSpeedController = this.gui.add(this.main.simParams.smoothing, "rateOut", 0.01, 0.5)
       .name("FadOutSpd").onChange((value) => {
         eventBus.emit('uiControlChanged', { paramPath: 'smoothing.rateOut', value });
       })
-      .onFinishChange(() => { if (this.debug.param) console.log("Smoothing out:", this.main.simParams.smoothing.rateOut); });
+      .onFinishChange(() => { if (this.db) console.log("Smoothing out:", this.main.simParams.smoothing.rateOut); });
 
     this.timeStepController = this.gui.add(this.main.simParams.simulation, "timeStep", 0.001, 0.05, 0.001)
       .name("Time Step").onChange((value) => {
@@ -84,7 +83,7 @@ export class ParamUi extends BaseUi {
         eventBus.emit('uiControlChanged', { paramPath: 'simulation.timeScale', value });
       })
       .onFinishChange((value) => {
-        if (this.debug.param) console.log(`Animation speed: ${value}x`);
+        if (this.db) console.log(`Animation speed: ${value}x`);
       });
     this.timeScaleController.domElement.style.marginBottom = "12px";
 
@@ -166,5 +165,9 @@ export class ParamUi extends BaseUi {
     safeUpdateDisplay(this.timeStepController);
     safeUpdateDisplay(this.timeScaleController);
     safeUpdateDisplay(this.ratioPicFlip);
+  }
+
+  get db() {
+    return debugManager.get('param');
   }
 }

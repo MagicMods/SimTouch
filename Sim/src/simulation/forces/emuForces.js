@@ -1,7 +1,7 @@
 import { EmuData } from "../../input/emuData.js";
-
+import { debugManager } from '../../util/debugManager.js';
 export class EmuForces {
-  constructor(simulation, debugFlags) {
+  constructor(simulation) {
     // Store reference to gravity
     this.gravity = simulation.gravity;
 
@@ -13,9 +13,10 @@ export class EmuForces {
 
     this.emuData = new EmuData();
     this.enabled = false;
+  }
 
-    // Added for debugging
-    this.db = debugFlags;
+  get db() {
+    return debugManager.get('emu');
   }
 
   // Method to set the joystick renderer after instantiation
@@ -40,19 +41,19 @@ export class EmuForces {
   }
 
   handleEmuData(accelX, accelY, accelZ) {
-    if (this.db?.emu) console.log("handleEmuData called with:", accelX, accelY, accelZ);
+    if (this.db) console.log("handleEmuData called with:", accelX, accelY, accelZ);
     this.emuData.update(accelX, accelY, accelZ);
     this._updateJoystickFromEmu(); // Update joystick after data update
   }
 
   handleBinaryData(buffer) {
-    if (this.db?.emu) console.log("handleBinaryData called.");
+    if (this.db) console.log("handleBinaryData called.");
     this.emuData.updateFromBinary(buffer);
     this._updateJoystickFromEmu(); // Update joystick after data update
   }
 
   handleStringData(dataString) {
-    if (this.db?.emu) console.log("handleStringData called with:", dataString);
+    if (this.db) console.log("handleStringData called with:", dataString);
     this.emuData.updateFromString(dataString);
     this._updateJoystickFromEmu(); // Update joystick after data update
   }
@@ -60,10 +61,10 @@ export class EmuForces {
   // Internal helper to update joystick state from EMU data
   _updateJoystickFromEmu() {
     // Add logging
-    if (this.db?.emu) console.log("_updateJoystickFromEmu called.");
+    if (this.db) console.log("_updateJoystickFromEmu called.");
 
     if (!this.enabled) {
-      if (this.db?.emu) console.log("  -> EMU not enabled, exiting.");
+      if (this.db) console.log("  -> EMU not enabled, exiting.");
       return;
     }
 
@@ -73,7 +74,7 @@ export class EmuForces {
     }
 
     if (!this.joystickRenderer) {
-      if (this.db?.emu || !this._warnedJoystickNull) {
+      if (this.db || !this._warnedJoystickNull) {
         console.warn("Attempted _updateJoystickFromEmu but this.joystickRenderer is null! Did you call setJoystickRenderer after instantiation?");
         this._warnedJoystickNull = true;
       }
@@ -88,7 +89,7 @@ export class EmuForces {
     const newJoystickY = emuX;
 
     // Log the values being processed
-    if (this.db?.emu) {
+    if (this.db) {
       console.log(`  -> Enabled: ${this.enabled}, JoystickRenderer valid: ${!!this.joystickRenderer}`);
       console.log(`  -> EmuData: accelX=${emuX?.toFixed(2)}, accelY=${emuY?.toFixed(2)}`);
       console.log(`  -> Setting joystick: X=${newJoystickX?.toFixed(2)}, Y=${newJoystickY?.toFixed(2)}`);

@@ -1,10 +1,9 @@
 import * as mat4 from "gl-matrix/mat4.js";
 import { ShaderManager } from "../shaders/shaderManager.js";
-
+import { debugManager } from '../util/debugManager.js';
 export class DataVisualization {
     constructor(container, main) {
         this.main = main;
-        this.db = main.debugFlags;
         this.canvas = document.createElement("canvas");
         this.canvas.className = "data-visualization";
 
@@ -47,6 +46,10 @@ export class DataVisualization {
         this.canvas.style.display = 'none';
     }
 
+    get db() {
+        return debugManager.get('dataViz');
+    }
+
     async init() {
         if (!this.gl || !this.shaderManager) {
             console.error("DataVisualization cannot init: GL context or ShaderManager missing.");
@@ -55,7 +58,7 @@ export class DataVisualization {
         try {
             await this.shaderManager.init();
             this._initWebGLResources();
-            if (this.db.dataViz) console.log("DataVisualization initialized successfully.");
+            if (this.db) console.log("DataVisualization initialized successfully.");
             return true;
         } catch (error) {
             console.error("DataVisualization failed to initialize:", error);
@@ -136,13 +139,13 @@ export class DataVisualization {
     }
 
     updateData(byteArray) {
-        if (this.db.dataViz) console.log('Context Lost Check (updateData):', this.gl.isContextLost());
+        if (this.db) console.log('Context Lost Check (updateData):', this.gl.isContextLost());
         const gl = this.gl;
         if (!gl || !this.ext || !this.vaoExt || !this.vao) return; // Not initialized properly
 
         if (!byteArray) {
             this.instanceData.count = 0;
-            if (this.db.dataViz) console.log('No byteArray');
+            if (this.db) console.log('No byteArray');
             this.draw();
             return;
         }
@@ -150,7 +153,7 @@ export class DataVisualization {
         // Check if it's NOT a standard array AND NOT a TypedArray
         if (!(Array.isArray(byteArray) || ArrayBuffer.isView(byteArray))) {
             this.instanceData.count = 0;
-            if (this.db.dataViz) console.log('Data is not an Array or TypedArray');
+            if (this.db) console.log('Data is not an Array or TypedArray');
             this.draw();
             return;
         }
@@ -217,11 +220,11 @@ export class DataVisualization {
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.matrixVBO);
         gl.bufferData(gl.ARRAY_BUFFER, this.instanceData.matrices, gl.DYNAMIC_DRAW);
-        if (this.db.dataViz) console.log('GL Error [after matrix upload]:', gl.getError());
+        if (this.db) console.log('GL Error [after matrix upload]:', gl.getError());
 
         gl.bindBuffer(gl.ARRAY_BUFFER, this.colorVBO);
         gl.bufferData(gl.ARRAY_BUFFER, this.instanceData.colors, gl.DYNAMIC_DRAW);
-        if (this.db.dataViz) console.log('GL Error [after color upload]:', gl.getError());
+        if (this.db) console.log('GL Error [after color upload]:', gl.getError());
 
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
 
@@ -231,7 +234,7 @@ export class DataVisualization {
     draw() {
         if (!this.isVisible) return;
 
-        if (this.db.dataViz) console.log('Context Lost Check (draw):', this.gl.isContextLost());
+        if (this.db) console.log('Context Lost Check (draw):', this.gl.isContextLost());
         const gl = this.gl;
         const ext = this.ext;
         if (!gl || !ext || !this.vaoExt || !this.vao || !this.shaderManager) return; // Ensure initialized
@@ -248,40 +251,40 @@ export class DataVisualization {
 
         // Use the barGraph shader program
         const programInfo = this.shaderManager.use('barGraph');
-        if (this.db.dataViz) console.log('Returned programInfo:', programInfo);
-        if (this.db.dataViz) console.log('Returned programInfo.program:', programInfo?.program);
+        if (this.db) console.log('Returned programInfo:', programInfo);
+        if (this.db) console.log('Returned programInfo.program:', programInfo?.program);
         if (!programInfo || !programInfo.program) {
             console.error("Failed to get valid program object from shaderManager.use");
             return;
         }
         const linkStatus = gl.getProgramParameter(programInfo.program, gl.LINK_STATUS);
-        if (this.db.dataViz) console.log(`Program [${'barGraph'}] Link Status:`, linkStatus);
+        if (this.db) console.log(`Program [${'barGraph'}] Link Status:`, linkStatus);
         if (!linkStatus) {
             console.error('Shader program linking failed:', gl.getProgramInfoLog(programInfo.program));
             return;
         }
-        if (this.db.dataViz) console.log('GL Error [after shader use]:', gl.getError());
-        if (this.db.dataViz) console.log('GL Active Program Before VAO Bind:', gl.getParameter(gl.CURRENT_PROGRAM));
+        if (this.db) console.log('GL Error [after shader use]:', gl.getError());
+        if (this.db) console.log('GL Active Program Before VAO Bind:', gl.getParameter(gl.CURRENT_PROGRAM));
 
         // Bind the VAO containing all attribute configurations
         this.vaoExt.bindVertexArrayOES(this.vao); // Use VAO extension
-        if (this.db.dataViz) console.log('GL Error [after VAO bind]:', gl.getError());
+        if (this.db) console.log('GL Error [after VAO bind]:', gl.getError());
 
         // Perform the instanced draw call
         // Draw 6 vertices (2 triangles) per instance
-        if (this.db.dataViz) console.log('Drawing instances:', this.instanceData.count);
-        if (this.db.dataViz) console.log('Actual GL Active Program Before Draw:', gl.getParameter(gl.CURRENT_PROGRAM));
+        if (this.db) console.log('Drawing instances:', this.instanceData.count);
+        if (this.db) console.log('Actual GL Active Program Before Draw:', gl.getParameter(gl.CURRENT_PROGRAM));
         ext.drawArraysInstancedANGLE(
             gl.TRIANGLES,
             0, // offset
             6, // vertex count per instance (for the base quad)
             this.instanceData.count // number of instances
         );
-        if (this.db.dataViz) console.log('GL Error [after draw call]:', gl.getError());
+        if (this.db) console.log('GL Error [after draw call]:', gl.getError());
 
         // Unbind VAO
         this.vaoExt.bindVertexArrayOES(null); // Use VAO extension
-        if (this.db.dataViz) console.log('GL Error [after VAO unbind]:', gl.getError());
+        if (this.db) console.log('GL Error [after VAO unbind]:', gl.getError());
     }
 
 

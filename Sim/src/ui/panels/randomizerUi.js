@@ -1,10 +1,10 @@
 import { BaseUi } from "../baseUi.js";
 import { PresetManager } from "../../presets/presetManager.js";
+import { debugManager } from '../../util/debugManager.js';
 
 export class RandomizerUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-    this.debug = this.main.debugFlags;
     this.presetManager = null;
     this.intensity = 0.1;
     this.includeCheckboxes = true;
@@ -50,7 +50,7 @@ export class RandomizerUi extends BaseUi {
     // Ensure we don't try to load presets before controllers are initialized
     this.presetManager.on('presetSelected', (presetName) => {
       if (Object.keys(this.controllers).length === 0 && this.modulatorManager) {
-        if (this.debug.randomizer) console.log(`RandomizerUI: Initializing controllers before loading preset "${presetName}"`);
+        if (this.db) console.log(`RandomizerUI: Initializing controllers before loading preset "${presetName}"`);
         this.initParameterTargets();
       }
     });
@@ -58,7 +58,7 @@ export class RandomizerUi extends BaseUi {
 
   setModulatorManager(modulatorManager) {
     this.modulatorManager = modulatorManager;
-    if (this.debug.randomizer) console.log("RandomizerUi initialized with preset manager");
+    if (this.db) console.log("RandomizerUi initialized with preset manager");
 
     if (this.presetManager && Object.keys(this.controllers).length === 0) {
       this.initParameterTargets();
@@ -184,7 +184,7 @@ export class RandomizerUi extends BaseUi {
     for (const targetName in this.controllers) {
       const controller = this.findControllerByName(targetName);
       if (!controller) {
-        if (this.debug.randomizer) console.warn(`RandomizerUI: Controller not found for parameter "${targetName}"`);
+        if (this.db) console.warn(`RandomizerUI: Controller not found for parameter "${targetName}"`);
         continue;
       }
       controller.updateDisplay();
@@ -199,20 +199,20 @@ export class RandomizerUi extends BaseUi {
         }
       }
     }
-    if (this.debug.randomizer) console.warn(`RandomizerUI: Controller not found with name "${name}"`);
+    if (this.db) console.warn(`RandomizerUI: Controller not found with name "${name}"`);
     return null;
   }
 
   initParameterTargets() {
     if (!this.modulatorManager) {
-      if (this.debug.randomizer) console.warn("RandomizerUI: ModulatorManager not set");
+      if (this.db) console.warn("RandomizerUI: ModulatorManager not set");
       return;
     }
 
     const targetNames = this.modulatorManager.getTargetNames();
 
     if (targetNames.length === 0) {
-      if (this.debug.randomizer) console.warn("RandomizerUI: No targets found in ModulatorManager");
+      if (this.db) console.warn("RandomizerUI: No targets found in ModulatorManager");
       return;
     }
 
@@ -237,7 +237,7 @@ export class RandomizerUi extends BaseUi {
     // Log how many parameters were excluded
     const excludedCount = targetNames.length - filteredTargetNames.length;
     if (excludedCount > 0) {
-      if (this.debug.randomizer) console.log(`RandomizerUI: Excluded ${excludedCount} parameters from randomization`);
+      if (this.db) console.log(`RandomizerUI: Excluded ${excludedCount} parameters from randomization`);
     }
 
     // Apply flex layout after creating all parameters
@@ -279,7 +279,7 @@ export class RandomizerUi extends BaseUi {
 
   randomizeAll() {
     if (!this.modulatorManager) {
-      if (this.debug.randomizer) console.error("RandomizerUI: Cannot randomize, ModulatorManager not set");
+      if (this.db) console.error("RandomizerUI: Cannot randomize, ModulatorManager not set");
       return { success: false, totalChanged: 0 };
     }
 
@@ -423,11 +423,11 @@ export class RandomizerUi extends BaseUi {
       }
       // Skip other controller types
       else {
-        if (this.debug.randomizer) console.log(`Skipping randomization for non-supported controller type: ${targetName}`);
+        if (this.db) console.log(`Skipping randomization for non-supported controller type: ${targetName}`);
       }
     }
 
-    if (this.debug.randomizer) console.log(`RandomizerUI: Randomized ${totalChanged} parameters`);
+    if (this.db) console.log(`RandomizerUI: Randomized ${totalChanged} parameters`);
     this.updateTargetSelectionButtonStyle();
     return { success: true, totalChanged };
   }
@@ -489,7 +489,7 @@ export class RandomizerUi extends BaseUi {
 
       return true;
     } catch (err) {
-      if (this.debug.randomizer) console.warn(`Error randomizing dropdown: ${err}`);
+      if (this.db) console.warn(`Error randomizing dropdown: ${err}`);
       return false;
     }
   }
@@ -531,7 +531,7 @@ export class RandomizerUi extends BaseUi {
 
       return true;
     } catch (err) {
-      if (this.debug.randomizer) console.warn(`Error randomizing ${target?.name || "unknown"}:`, err);
+      if (this.db) console.warn(`Error randomizing ${target?.name || "unknown"}:`, err);
       return false;
     }
   }
@@ -569,10 +569,10 @@ export class RandomizerUi extends BaseUi {
   }
 
   setData(data) {
-    if (this.debug.randomizer) console.log("RandomizerUI: Setting data", data);
+    if (this.db) console.log("RandomizerUI: Setting data", data);
 
     if (Object.keys(this.controllers).length === 0) {
-      if (this.debug.randomizer) console.log("RandomizerUI: Controllers not initialized yet, initializing now");
+      if (this.db) console.log("RandomizerUI: Controllers not initialized yet, initializing now");
       this.initParameterTargets();
     }
 
@@ -616,7 +616,7 @@ export class RandomizerUi extends BaseUi {
       for (const key in data.controllers) {
         if (this.controllers.hasOwnProperty(key)) {
           this.controllers[key] = data.controllers[key];
-          if (this.debug.randomizer) console.log(`RandomizerUI: Applied preset value for "${key}": ${data.controllers[key]}`);
+          if (this.db) console.log(`RandomizerUI: Applied preset value for "${key}": ${data.controllers[key]}`);
           appliedCount++;
         } else {
           // console.warn(`RandomizerUI: Preset contains controller "${key}" that doesn't exist in current setup`);
@@ -636,7 +636,7 @@ export class RandomizerUi extends BaseUi {
   }
 
   getData() {
-    if (this.debug.randomizer) console.log("RandomizerUI: Getting data from controllers");
+    if (this.db) console.log("RandomizerUI: Getting data from controllers");
 
     // Make sure we're capturing the actual state
     const controllerState = {};
@@ -644,7 +644,7 @@ export class RandomizerUi extends BaseUi {
     // Loop through all our controller references
     for (const targetName in this.controllers) {
       controllerState[targetName] = this.controllers[targetName];
-      if (this.debug.randomizer) console.log(`RandomizerUI: Saving state for "${targetName}": ${this.controllers[targetName]}`);
+      if (this.db) console.log(`RandomizerUI: Saving state for "${targetName}": ${this.controllers[targetName]}`);
     }
 
     return {
@@ -693,7 +693,7 @@ export class RandomizerUi extends BaseUi {
       controllerEls.forEach(el => {
         el.classList.add('parameter-checkbox-item');
       });
-      if (this.debug.randomizer) console.log(`Applied flex layout to folder ${folder.title}, found ${controllerEls.length} controllers`);
+      if (this.db) console.log(`Applied flex layout to folder ${folder.title}, found ${controllerEls.length} controllers`);
     });
   }
 
@@ -703,7 +703,7 @@ export class RandomizerUi extends BaseUi {
 
     // Toggle the body class for styling
     if (this.targetSelectionMode) {
-      if (this.debug.randomizer) console.log("Entering target selection mode");
+      if (this.db) console.log("Entering target selection mode");
       this.markRandomizerControls();
       document.body.classList.add('randomizer-target-selection-mode');
       this.highlightValidTargets();
@@ -712,7 +712,7 @@ export class RandomizerUi extends BaseUi {
       document.removeEventListener('click', this.handleTargetSelection, true);
       document.addEventListener('click', this.handleTargetSelection, true);
     } else {
-      if (this.debug.randomizer) console.log("Exiting target selection mode");
+      if (this.db) console.log("Exiting target selection mode");
       document.body.classList.remove('randomizer-target-selection-mode');
       this.clearTargetHighlights();
 
@@ -766,7 +766,7 @@ export class RandomizerUi extends BaseUi {
       }
     });
 
-    if (this.debug.randomizer) console.log(`Highlighted ${effectiveTargetNames.length} valid targets for selection`);
+    if (this.db) console.log(`Highlighted ${effectiveTargetNames.length} valid targets for selection`);
   }
 
   clearTargetHighlights() {
@@ -832,5 +832,9 @@ export class RandomizerUi extends BaseUi {
 
     // Stop event propagation to prevent other click handlers
     e.stopPropagation();
+  }
+
+  get db() {
+    return debugManager.get('randomizer');
   }
 }

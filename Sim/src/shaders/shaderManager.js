@@ -1,3 +1,5 @@
+import { debugManager } from '../util/debugManager.js';
+
 export class ShaderManager {
   constructor(gl) {
     if (!gl) {
@@ -6,6 +8,10 @@ export class ShaderManager {
     this.gl = gl;
     this.programs = new Map();
     this.currentProgram = null;
+  }
+
+  get db() {
+    return debugManager.get('shader');
   }
 
   async init() {
@@ -36,7 +42,7 @@ export class ShaderManager {
     // if (this.currentProgram !== program.program) { // DEBUG: Force useProgram
     this.gl.useProgram(program.program);
     this.currentProgram = program.program;
-    // if (this.main.debugFlags.debugRenderer_GridGen) console.log(`Using shader program: ${name}`);
+    if (this.db) console.log(`Using shader program: ${name}`);
     // } // DEBUG: Force useProgram
 
     return program;

@@ -3,8 +3,7 @@ import { BaseUi } from "../baseUi.js";
 export class InputsUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-    this.debug = this.main.debugFlags;
-    // Validate required dependencies
+
     this.validateDependencies();
 
     this.controls = {};
@@ -313,7 +312,7 @@ export class InputsUi extends BaseUi {
     const calibrateButton = {
       calibrate: () => {
         externalInput.calibrateEmu();
-        if (this.debug.inputs) console.log("EMU sensors calibrated");
+        if (this.db) console.log("EMU sensors calibrated");
       },
     };
 
@@ -355,7 +354,7 @@ export class InputsUi extends BaseUi {
       reset: () => {
         if (this.main.joystickRenderer) {
           this.main.joystickRenderer.resetJoystick();
-          if (this.debug.inputs) console.log("Joystick reset to center");
+          if (this.db) console.log("Joystick reset to center");
         }
       }
     };
@@ -614,5 +613,9 @@ export class InputsUi extends BaseUi {
       clearInterval(this.joystickRefreshInterval);
     }
     super.destroy && super.destroy();
+  }
+
+  get db() {
+    return debugManager.get('inputs');
   }
 }

@@ -1,76 +1,77 @@
 import { CircularBoundary } from "../simulation/boundary/circularBoundary.js";
 import { RectangularBoundary } from "../simulation/boundary/rectangularBoundary.js";
 import { eventBus } from '../util/eventManager.js';
-
+import { debugManager } from '../util/debugManager.js';
 export class BoundaryRenderer {
   container;
-  #boundaryDiv;
-  #currentBoundaryType = null;
-  boundaryManager = null;
-  canvas = null;
+  boundaryManager;
+  canvas;
 
-  constructor(containerElement, boundaryManager, canvasElement, debugFlags) {
-    // if (!containerElement || !boundaryManager || !canvasElement || !debugFlag) {
-    //   console.error("BoundaryRenderer: Container, BoundaryManager, Canvas element, and debugFlags are required.");
-    //   return;
-    // }
+  constructor(containerElement, boundaryManager, canvasElement) {
+    if (!containerElement || !boundaryManager || !canvasElement) {
+      console.error("BoundaryRenderer: Container, BoundaryManager, Canvas element.");
+      return;
+    }
     this.container = containerElement;
     this.boundaryManager = boundaryManager;
     this.canvas = canvasElement;
-    this.db = debugFlags;
     this.showBoundary = false;
     this._showBoundary = false;
     this.previousScale = 1.0;
     this.boundary = null;
 
 
-    if (this.db.boundary) console.log("BoundaryRenderer: Constructor - Creating div");
+    if (this.db) console.log("BoundaryRenderer: Constructor - Creating div");
 
     this.boundaryDiv = document.createElement("div");
     this.boundaryDiv.id = "physics-boundary-dom";
     this.boundaryDiv.classList.add("grid-boundary-overlay");
 
     this.container.appendChild(this.boundaryDiv);
-    if (this.db.boundary) console.log("BoundaryRenderer: Constructor - Appended div to container:", this.container);
+    if (this.db) console.log("BoundaryRenderer: Constructor - Appended div to container:", this.container);
 
     eventBus.on('simParamsUpdated', ({ simParams }) => {
-      if (this.db.boundary) console.log("BoundaryRenderer received simParamsUpdated event.");
+      if (this.db) console.log("BoundaryRenderer received simParamsUpdated event.");
       const physicsBoundary = this.boundaryManager.getPhysicsBoundary();
       const newScale = simParams.boundary.scale;
       const scaleChanged = newScale !== this.previousScale;
 
       if (scaleChanged) {
-        if (this.db.boundary) console.log(`BoundaryRenderer: Updating - ScaleChanged: ${scaleChanged}, Initial: ${this.previousScale}`);
+        if (this.db) console.log(`BoundaryRenderer: Updating - ScaleChanged: ${scaleChanged}, Initial: ${this.previousScale}`);
         this.update(physicsBoundary, this.canvas, this.showBoundary);
         this.previousScale = newScale;
       } else {
-        if (this.db.boundary) console.log("BoundaryRenderer: No visual change detected (scale/showBoundary). Skipping DOM update.");
+        if (this.db) console.log("BoundaryRenderer: No visual change detected (scale/showBoundary). Skipping DOM update.");
       }
     });
 
     eventBus.on('gridParamsUpdated', ({ gridParams }) => {
-      if (this.db.boundary) console.log("BoundaryRenderer received gridParamsUpdated event.");
+      if (this.db) console.log("BoundaryRenderer received gridParamsUpdated event.");
       var update = false;
 
       const physicsBoundary = this.boundaryManager.getPhysicsBoundary();
       if (physicsBoundary !== this.boundary) {
         this.boundary = physicsBoundary;
-        if (this.db.boundary) console.log("physicsBoundary change detected.");
+        if (this.db) console.log("physicsBoundary change detected.");
       }
 
       if (gridParams.flags.showBoundary !== this.showBoundary || this.showBoundary) {
         this.showBoundary = gridParams.flags.showBoundary;
-        if (this.db.boundary) console.log("showBoundary change detected.");
+        if (this.db) console.log("showBoundary change detected.");
         this.update(this.boundary, this.canvas, this.showBoundary);
-        if (this.db.boundary) console.log("BoundaryRenderer: DOM updated.");
+        if (this.db) console.log("BoundaryRenderer: DOM updated.");
       } else {
-        if (this.db.boundary) console.log("BoundaryRenderer: No visual change detected (showBoundary). Skipping DOM update.");
+        if (this.db) console.log("BoundaryRenderer: No visual change detected (showBoundary). Skipping DOM update.");
       }
     });
   }
 
+  get db() {
+    return debugManager.get('boundary');
+  }
+
   update(physicsBoundary, canvasElement, show) {
-    if (this.db.boundary) console.log("BoundaryRenderer: Update called", {
+    if (this.db) console.log("BoundaryRenderer: Update called", {
       show,
       physicsBoundary,
       canvasElement,
@@ -108,7 +109,7 @@ export class BoundaryRenderer {
     }
 
     // --- Position and Size Calculation ---
-    if (this.db.boundary) console.log("BoundaryRenderer: Checking instanceof:", {
+    if (this.db) console.log("BoundaryRenderer: Checking instanceof:", {
       isCircular: physicsBoundary instanceof CircularBoundary,
       isRectangular: physicsBoundary instanceof RectangularBoundary,
       constructorName: physicsBoundary?.constructor?.name,
@@ -116,7 +117,7 @@ export class BoundaryRenderer {
     const scrollXOffset = window.scrollX;
     const scrollYOffset = window.scrollY;
 
-    if (this.db.boundary) console.log("BoundaryRenderer: Calculation Inputs", {
+    if (this.db) console.log("BoundaryRenderer: Calculation Inputs", {
       canvasRect: canvasRect,
       centerX: physicsBoundary.centerX,
       centerY: physicsBoundary.centerY,
@@ -134,7 +135,7 @@ export class BoundaryRenderer {
       const pixelCenterX = canvasRect.left + scrollXOffset + physicsBoundary.centerX * canvasRect.width;
       const pixelCenterY = canvasRect.top + scrollYOffset + physicsBoundary.centerY * canvasRect.height;
 
-      if (this.db.boundary) console.log("BoundaryRenderer: Circular Calculation Results", {
+      if (this.db) console.log("BoundaryRenderer: Circular Calculation Results", {
         pixelDiameter,
         pixelRadius,
         pixelCenterX,
@@ -147,16 +148,16 @@ export class BoundaryRenderer {
       this.boundaryDiv.style.left = `${pixelCenterX - pixelRadius}px`;
       this.boundaryDiv.style.top = `${pixelCenterY - pixelRadius}px`;
     } else if (physicsBoundary instanceof RectangularBoundary) {
-      if (this.db.boundary) console.log(`BoundaryRenderer: Received RectangularBoundary - Width: ${physicsBoundary.width}, Height: ${physicsBoundary.height}`);
+      if (this.db) console.log(`BoundaryRenderer: Received RectangularBoundary - Width: ${physicsBoundary.width}, Height: ${physicsBoundary.height}`);
       const pixelWidth = canvasRect.width * physicsBoundary.width;
       const pixelHeight = canvasRect.height * physicsBoundary.height;
-      if (this.db.boundary) console.log(`[db] BoundaryRenderer - Rect Calc: physicsW=${physicsBoundary.width.toFixed(3)}, physicsH=${physicsBoundary.height.toFixed(3)}, canvasW=${canvasRect.width.toFixed(0)}, canvasH=${canvasRect.height.toFixed(0)}, pixelW=${pixelWidth.toFixed(1)}, pixelH=${pixelHeight.toFixed(1)}`);
+      if (this.db) console.log(`[db] BoundaryRenderer - Rect Calc: physicsW=${physicsBoundary.width.toFixed(3)}, physicsH=${physicsBoundary.height.toFixed(3)}, canvasW=${canvasRect.width.toFixed(0)}, canvasH=${canvasRect.height.toFixed(0)}, pixelW=${pixelWidth.toFixed(1)}, pixelH=${pixelHeight.toFixed(1)}`);
       const pixelCenterX = canvasRect.left + window.scrollX + canvasRect.width * physicsBoundary.centerX;
       const pixelCenterY = canvasRect.top + window.scrollY + canvasRect.height * physicsBoundary.centerY;
       const left = pixelCenterX - pixelWidth / 2;
       const top = pixelCenterY - pixelHeight / 2;
 
-      if (this.db.boundary) console.log(`BoundaryRenderer: Calculated Rect Pixel Dimensions - W: ${pixelWidth}, H: ${pixelHeight}, Left: ${left}, Top: ${top}`);
+      if (this.db) console.log(`BoundaryRenderer: Calculated Rect Pixel Dimensions - W: ${pixelWidth}, H: ${pixelHeight}, Left: ${left}, Top: ${top}`);
 
       this.boundaryDiv.style.width = `${pixelWidth}px`;
       this.boundaryDiv.style.height = `${pixelHeight}px`;
@@ -170,7 +171,7 @@ export class BoundaryRenderer {
     }
 
     // Make sure it's visible after updates
-    if (this.db.boundary) console.log("BoundaryRenderer: Setting visibility to visible");
+    if (this.db) console.log("BoundaryRenderer: Setting visibility to visible");
     this.boundaryDiv.style.visibility = "visible";
   }
 
@@ -184,6 +185,6 @@ export class BoundaryRenderer {
 
   show() {
     this.boundaryDiv.style.visibility = "visible";
-    if (this.db.boundary) console.log("BoundaryRenderer: Setting visibility to visible");
+    if (this.db) console.log("BoundaryRenderer: Setting visibility to visible");
   }
 }

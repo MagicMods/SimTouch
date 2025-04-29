@@ -1,10 +1,10 @@
 import { BaseUi } from "../baseUi.js";
 import { PresetManager } from "../../presets/presetManager.js";
+import { debugManager } from '../../util/debugManager.js';
 
 export class PresetUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-    this.debug = this.main.debugFlags;
     this.presetManager = null;
     this.presetControls = {};
     this.autoPlayActive = false;
@@ -181,7 +181,7 @@ export class PresetUi extends BaseUi {
 
     presetSelect.addEventListener("change", (e) => {
       const selected = e.target.value;
-      if (this.debug.preset) console.log(`Selected preset: ${selected}`);
+      if (this.db) console.log(`Selected preset: ${selected}`);
       this.presetManager.loadPreset(PresetManager.TYPES.MASTER, selected);
     });
 
@@ -353,5 +353,9 @@ export class PresetUi extends BaseUi {
     if (currentPreset) {
       selectElement.value = currentPreset;
     }
+  }
+
+  get db() {
+    return debugManager.get('preset');
   }
 }

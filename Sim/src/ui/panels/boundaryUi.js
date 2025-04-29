@@ -1,10 +1,8 @@
 import { BaseUi } from "../baseUi.js";
 import { eventBus } from '../../util/eventManager.js';
-
 export class BoundaryUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-    this.debugFlag = this.main.debugFlags.debugBoundary;
     // Initialize controls collection to store references
     this.controls = {};
     // Change the GUI title

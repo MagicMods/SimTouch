@@ -1,3 +1,5 @@
+import { debugManager } from '../util/debugManager.js';
+
 export const GridField = {
   NOISE: "--- NOISE ---",
   PROXIMITY: "Proximity",
@@ -11,11 +13,10 @@ export const GridField = {
 };
 
 export class GridRenderModes {
-  constructor({ gridParams, gridMap, dimensions, debugFlags }) {
+  constructor({ gridParams, gridMap, dimensions }) {
     this.gridParams = gridParams;
     this.gridMap = gridMap;
     this.dimensions = dimensions;
-    this.db = debugFlags;
 
     // Create value buffer - Use cellCount instead of target
     const initialCellCount = gridParams?.cellCount || 0;
@@ -33,21 +34,25 @@ export class GridRenderModes {
     this.modes = GridField;
     this.currentMode = this.modes.PROXIMITY; // Start with Density mode
 
-    // if (this.db.gridGenRenderer) console.log(
-    //   "GridRenderModes initialized with new params:",
-    //   JSON.stringify(
-    //     {
-    //       cells: gridParams.target,
-    //       dimensions: {
-    //         cols: gridParams.cols,
-    //         rows: gridParams.rows,
-    //       },
-    //       smoothing: this.smoothing,
-    //     },
-    //     null,
-    //     2
-    //   )
-    // );
+    if (this.db) console.log(
+      "GridRenderModes initialized with new params:",
+      JSON.stringify(
+        {
+          cells: gridParams.target,
+          dimensions: {
+            cols: gridParams.cols,
+            rows: gridParams.rows,
+          },
+          smoothing: this.smoothing,
+        },
+        null,
+        2
+      )
+    );
+  }
+
+  get db() {
+    return debugManager.get('gridRenderModes');
   }
 
   updateGrid({ gridParams, gridMap, dimensions }) {
@@ -76,7 +81,7 @@ export class GridRenderModes {
   }
 
   calculateTargetValues(particleSystem) {
-    // if(this.db.gridGenRenderer) console.log(`calculateTargetValues: Mode=${this.currentMode}`);
+    if (this.db) console.log(`calculateTargetValues: Mode=${this.currentMode}`);
     switch (this.currentMode) {
       case this.modes.PROXIMITY:
         this.calculateProximity(particleSystem);
@@ -129,7 +134,7 @@ export class GridRenderModes {
   }
 
   calculateProximity(particleSystem) {
-    // if(this.db.gridGenRenderer) console.log(`calculateProximity: particles.length = ${particles?.length ?? 'N/A'}`);
+    if (this.db) console.log(`calculateProximity: particles.length = ${particles?.length ?? 'N/A'}`);
     this.targetValues.fill(0);
     if (!particleSystem) return this.targetValues;
 
@@ -317,7 +322,7 @@ export class GridRenderModes {
 
 
   calculateDensity(particleSystem) {
-    // if (this.db.gridGenRenderer) console.log(`calculateDensity: particles.length = ${particles?.length ?? 'N/A'}`);
+    if (this.db) console.log(`calculateDensity: particles.length = ${particles?.length ?? 'N/A'}`);
     this.targetValues.fill(0);
     if (!particleSystem) return this.targetValues;
 

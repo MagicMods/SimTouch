@@ -3,8 +3,7 @@ import { eventBus } from '../../util/eventManager.js';
 
 export class ParticleUi extends BaseUi {
   constructor(main, container) {
-    super(main, container);
-    this.debug = this.main.debugFlags; // debug.particles
+    super(main, container);// debug.particles
     this.controls = {};
     this.gui.title("Particles");
     this.initParticleControls();

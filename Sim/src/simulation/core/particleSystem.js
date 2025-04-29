@@ -332,7 +332,6 @@ export class ParticleSystem {
   }
 
   updateParticles(dt) {
-    if (this.db) console.log(`Updating particles with dt: ${dt}`);
     for (let i = 0; i < this.numParticles; i++) {
       // 1. Apply velocity damping
       this.velocitiesX[i] *= this.velocityDamping;

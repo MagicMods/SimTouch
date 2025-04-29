@@ -1,11 +1,10 @@
 import { BaseUi } from "../baseUi.js";
 import { PresetManager } from "../../presets/presetManager.js";
 import { eventBus } from '../../util/eventManager.js';
-
+import { debugManager } from '../../util/debugManager.js';
 export class VoronoiUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-    this.debug = this.main.debugFlags;
     this.presetManager = null;
     this.presetControls = null;
     this.gui.title("Voronoi Field");
@@ -61,13 +60,13 @@ export class VoronoiUi extends BaseUi {
 
   getControlTargets() {
     const targets = {};
-    if (this.voronoiStrengthController) targets["V-Strength"] = this.voronoiStrengthController;
-    if (this.voronoiSpeedController) targets["V-CellSpeed"] = this.voronoiSpeedController;
-    if (this.voronoiEdgeWidthController) targets["V-EdgeWidth"] = this.voronoiEdgeWidthController;
-    if (this.voronoiAttractionController) targets["V-Attract"] = this.voronoiAttractionController;
-    if (this.voronoiCellCountController) targets["V-CellCount"] = this.voronoiCellCountController;
-    if (this.voronoiDecayRateController) targets["V-Decay"] = this.voronoiDecayRateController;
-    if (this.voronoiPullModeController) targets["V-Pull Mode"] = this.voronoiPullModeController;
+    targets["V-Strength"] = this.voronoiStrengthController;
+    targets["V-CellSpeed"] = this.voronoiSpeedController;
+    targets["V-EdgeWidth"] = this.voronoiEdgeWidthController;
+    targets["V-Attract"] = this.voronoiAttractionController;
+    targets["V-CellCount"] = this.voronoiCellCountController;
+    targets["V-Decay"] = this.voronoiDecayRateController;
+    targets["V-Pull Mode"] = this.voronoiPullModeController;
 
     return targets;
   }
@@ -109,11 +108,11 @@ export class VoronoiUi extends BaseUi {
   }
 
   setData(data) {
-    if (this.debug.voronoi) console.log("VoronoiUi.setData called with:", data);
+    if (this.db) console.log("VoronoiUi.setData called with:", data);
 
     // Handle "None" preset case
     if (!data || data === "None") {
-      if (this.debug.voronoi) console.log("Resetting voronoi to default");
+      if (this.db) console.log("Resetting voronoi to default");
 
       // Properly reset using controllers
       this.voronoiStrengthController.setValue(0);
@@ -149,7 +148,7 @@ export class VoronoiUi extends BaseUi {
         const controller = controllerMap[key];
         if (controller && typeof controller.setValue === "function") {
           controller.setValue(value);
-          if (this.debug.voronoi) console.log(`Set ${key} to ${value}`);
+          if (this.db) console.log(`Set ${key} to ${value}`);
         }
       }
 
@@ -159,5 +158,9 @@ export class VoronoiUi extends BaseUi {
       console.error("Error applying voronoi preset:", error);
       return false;
     }
+  }
+
+  get db() {
+    return debugManager.get('voronoi');
   }
 }

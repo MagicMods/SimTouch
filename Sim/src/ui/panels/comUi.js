@@ -4,6 +4,7 @@ import { socketManager } from "../../com/udp/socketManager.js";
 import { serialManager } from "../../com/serial/serialManager.js";
 import { eventBus } from '../../util/eventManager.js';
 import { comManager } from '../../com/comManager.js';
+import { debugManager } from '../../util/debugManager.js';
 
 export class ComUi extends BaseUi {
   // Define constant for the request option ID
@@ -11,7 +12,6 @@ export class ComUi extends BaseUi {
 
   constructor(main, container) {
     super(main, container);
-    this.db = this.main.debugFlags;
     this.gui.title("Com");
 
     this.uiState = {
@@ -124,6 +124,10 @@ export class ComUi extends BaseUi {
     this.gui.close();
   }
 
+  get db() {
+    return debugManager.get('com');
+  }
+
   updateGeneralStatus() {
     if (this.selectedChannel === 'udp') {
       // Use socketManager state directly
@@ -149,13 +153,13 @@ export class ComUi extends BaseUi {
 
     // Flattened Config Items
     this.udpFolder.add({ host: UdpConfig.UDP_HOST }, "host").name("UDP Host")
-      .onChange((value) => { if (this.db.udp) console.log(`UDP HOST changes ${value}`); });
+      .onChange((value) => { if (this.db) console.log(`UDP HOST changes ${value}`); });
 
     this.udpFolder.add({ port: UdpConfig.UDP_PORT }, "port", 1024, 65535, 1).name("UDP Output Port")
-      .onChange((value) => { if (this.db.udp) console.log(`UDP PORT changes ${value}`); });
+      .onChange((value) => { if (this.db) console.log(`UDP PORT changes ${value}`); });
 
     this.udpFolder.add({ port: UdpConfig.UDP_INPUT_PORT }, "port", 1024, 65535, 1).name("UDP Input Port")
-      .onChange((value) => { if (this.db.udp) console.log(`UDP input port changes ${value}`); });
+      .onChange((value) => { if (this.db) console.log(`UDP input port changes ${value}`); });
 
     // UDP Input Tracking
     const inputStatus = { lastMessage: "None", messageCount: 0 };

@@ -1,5 +1,5 @@
 import { eventBus } from '../../util/eventManager.js';
-
+import { debugManager } from '../../util/debugManager.js';
 class SerialManager {
     static instance;
 
@@ -25,7 +25,6 @@ class SerialManager {
     }
 
     constructor() {
-        this.db = null;
         this.isApiSupported = ('serial' in navigator);
         this.isConnected = false;
         this.isConnecting = false;
@@ -54,14 +53,10 @@ class SerialManager {
         eventBus.on('simParamsUpdated', this.handleParamsUpdate.bind(this));
     }
 
-    setDebugFlags(debugFlags) {
-        this.db = debugFlags;
-        if (this.isApiSupported && this.db?.serial) {
-            console.log("SerialManager: Web Serial API is supported.");
-        } else if (this.db?.serial) {
-            console.log("SerialManager: Web Serial API is NOT supported.");
-        }
+    get db() {
+        return debugManager.get('serial');
     }
+
 
     async getAvailablePortsInfo() {
         if (!this.isApiSupported) return [];
@@ -73,13 +68,13 @@ class SerialManager {
                 try {
                     portInfo = port.getInfo();
                 } catch (infoError) {
-                    if (this.db?.serial) console.warn(`Could not get info for port ${index}:`, infoError);
+                    if (this.db) console.warn(`Could not get info for port ${index}:`, infoError);
                 }
                 const name = `Port ${index}${portInfo ? ` (VID:${portInfo.usbVendorId} PID:${portInfo.usbProductId})` : ''}`;
                 return { id: index, name: name };
             }));
 
-            if (this.db?.serial) console.log('Serial Ports Updated:', portInfoArray);
+            if (this.db) console.log('Serial Ports Updated:', portInfoArray);
             eventBus.emit('serialPortsUpdated', portInfoArray);
             return portInfoArray;
         } catch (error) {
@@ -93,7 +88,7 @@ class SerialManager {
         if (!this.isApiSupported) return false;
 
         if (this.isRequestingPort) {
-            if (this.db?.serial) console.log("SerialManager: Port request already in progress.");
+            if (this.db) console.log("SerialManager: Port request already in progress.");
             return false;
         }
 
@@ -101,12 +96,12 @@ class SerialManager {
         let success = false;
         try {
             await navigator.serial.requestPort();
-            if (this.db?.serial) console.log("Serial port requested successfully.");
+            if (this.db) console.log("Serial port requested successfully.");
             await this.getAvailablePortsInfo(); // Refresh list after request
             success = true;
         } catch (error) {
             if (error.name === 'NotFoundError' || error.name === 'NotAllowedError') {
-                if (this.db?.serial) console.log("User cancelled port selection or no port selected.");
+                if (this.db) console.log("User cancelled port selection or no port selected.");
             } else {
                 console.error("Error requesting serial port:", error);
             }
@@ -123,14 +118,14 @@ class SerialManager {
             return false;
         }
         if (this.isConnecting) {
-            if (this.db?.serial) console.log("SerialManager Connect: Already attempting connection, request ignored.");
+            if (this.db) console.log("SerialManager Connect: Already attempting connection, request ignored.");
             return false;
         }
 
         // Step 5 & 6: Add cooldown check logic
         const now = Date.now();
         if ((now - this.lastConnectAttemptTime) < this.connectAttemptCooldown) {
-            // if (this.db?.serial) console.log("SerialManager Connect: Throttled due to recent failed attempt.");
+            // if (this.db) console.log("SerialManager Connect: Throttled due to recent failed attempt.");
             return false; // Exit if within cooldown period
         }
         // Update attempt time *before* trying to connect
@@ -142,19 +137,19 @@ class SerialManager {
         const port = this.availablePorts[portId];
 
         if (this.activePort === port && this.isConnected) {
-            if (this.db?.serial) console.log(`SerialManager Connect: Already connected to Port ${portId}.`);
+            if (this.db) console.log(`SerialManager Connect: Already connected to Port ${portId}.`);
             this.isConnecting = false;
             return true;
         }
 
         // Disconnect if a different port is active
         if (this.activePort && this.activePort !== port) {
-            if (this.db?.serial) console.log(`SerialManager Connect: Disconnecting from previous port before connecting to Port ${portId}.`);
+            if (this.db) console.log(`SerialManager Connect: Disconnecting from previous port before connecting to Port ${portId}.`);
             await this.disconnect();
         }
 
         try {
-            if (this.db?.serial) console.log(`SerialManager: Attempting to open Port ${portId}...`);
+            if (this.db) console.log(`SerialManager: Attempting to open Port ${portId}...`);
             await port.open({ baudRate: this.baudRate });
             this.activePort = port;
             this.isConnected = true;
@@ -164,7 +159,7 @@ class SerialManager {
             this.readLoop(); // Start reading in background
             this.lastConnectedPortId = portId;
 
-            if (this.db?.serial) console.log(`SerialManager: Successfully connected to Port ${portId}.`);
+            if (this.db) console.log(`SerialManager: Successfully connected to Port ${portId}.`);
             eventBus.emit('serialConnectionStatusChanged', { connected: true, portId });
             this.isConnecting = false;
             return true;
@@ -183,10 +178,10 @@ class SerialManager {
     async disconnect() {
         if (!this.isApiSupported) return;
         if (!this.activePort && !this.isConnected) {
-            if (this.db?.serial) console.log("SerialManager Disconnect: Already disconnected.");
+            if (this.db) console.log("SerialManager Disconnect: Already disconnected.");
             return;
         }
-        if (this.db?.serial) console.log(`SerialManager: Disconnecting from port...`);
+        if (this.db) console.log(`SerialManager: Disconnecting from port...`);
 
         this.keepReading = false; // Signal read loop to stop
 
@@ -195,9 +190,9 @@ class SerialManager {
             try {
                 await this.portReader.cancel(); // Cancel pending reads
                 this.portReader.releaseLock();
-                if (this.db?.serial) console.log("Serial port reader cancelled and lock released.");
+                if (this.db) console.log("Serial port reader cancelled and lock released.");
             } catch (error) {
-                if (this.db?.serial) console.error("Error cancelling/releasing reader:", error);
+                if (this.db) console.error("Error cancelling/releasing reader:", error);
             }
             this.portReader = null;
         }
@@ -208,18 +203,18 @@ class SerialManager {
                 // Ensure the writer is closed before releasing the lock
                 if (this.activePort?.writable && !this.activePort.writable.locked) {
                     await this.portWriter.close(); // Close the stream
-                    if (this.db?.serial) console.log("Serial port writer stream closed.");
+                    if (this.db) console.log("Serial port writer stream closed.");
                 } else if (this.portWriter.close) {
                     // Fallback if direct stream access isn't feasible but close exists
                     await this.portWriter.close();
-                    if (this.db?.serial) console.log("Serial port writer stream closed (fallback).");
+                    if (this.db) console.log("Serial port writer stream closed (fallback).");
                 }
                 this.portWriter.releaseLock();
-                if (this.db?.serial) console.log("Serial port writer lock released.");
+                if (this.db) console.log("Serial port writer lock released.");
             } catch (error) {
                 // Ignore errors if the port is already closing
                 if (error.name !== 'InvalidStateError') { // Avoid logging expected errors on close
-                    if (this.db?.serial) console.error("Error closing/releasing writer:", error);
+                    if (this.db) console.error("Error closing/releasing writer:", error);
                 }
             }
             this.portWriter = null;
@@ -229,11 +224,11 @@ class SerialManager {
         if (this.activePort) {
             try {
                 await this.activePort.close();
-                if (this.db?.serial) console.log("Serial port closed.");
+                if (this.db) console.log("Serial port closed.");
             } catch (error) {
                 // Ignore errors if the port is already closing
                 if (error.name !== 'InvalidStateError') {
-                    if (this.db?.serial) console.error("Error closing serial port:", error);
+                    if (this.db) console.error("Error closing serial port:", error);
                 }
             }
         }
@@ -246,28 +241,28 @@ class SerialManager {
 
         // Only emit event if status actually changed
         if (previouslyConnected) {
-            if (this.db?.serial) console.log("SerialManager: Disconnected. Emitting status change.");
+            if (this.db) console.log("SerialManager: Disconnected. Emitting status change.");
             eventBus.emit('serialConnectionStatusChanged', { connected: false });
         }
     }
 
     async readLoop() {
         if (!this.portReader) {
-            if (this.db?.serial) console.error("Read loop started without a reader.");
+            if (this.db) console.error("Read loop started without a reader.");
             return;
         }
-        if (this.db?.serial) console.log("Serial read loop starting...");
+        if (this.db) console.log("Serial read loop starting...");
 
         while (this.keepReading && this.isConnected) {
             try {
                 const { value, done } = await this.portReader.read();
                 if (done) {
-                    if (this.db?.serial) console.log("Read loop finished (done signal).");
+                    if (this.db) console.log("Read loop finished (done signal).");
                     this.keepReading = false;
                     break; // Exit loop
                 }
                 if (value) {
-                    if (this.db?.serial && this.db?.comSR) console.log("Serial Received:", value); // Log raw Uint8Array
+                    if (this.db && this.db?.comSR) console.log("Serial Received:", value); // Log raw Uint8Array
                     // TODO: Process received data - parse commands, etc.
                     // this.processMessage(value); // Placeholder for future parsing
                 }
@@ -278,7 +273,7 @@ class SerialManager {
             }
         }
 
-        if (this.db?.serial) console.log("Serial read loop exited.");
+        if (this.db) console.log("Serial read loop exited.");
         // Ensure cleanup happens if loop exits unexpectedly
         if (this.isConnected) {
             await this.disconnect();
@@ -293,9 +288,9 @@ class SerialManager {
             this.enable = serialParams.enabled ?? this.enable;
 
             if (this.enable !== previousEnable) {
-                if (this.db?.serial) console.log(`SerialManager: Enable state changed to ${this.enable}.`);
+                if (this.db) console.log(`SerialManager: Enable state changed to ${this.enable}.`);
                 if (!this.enable && this.isConnected) {
-                    if (this.db?.serial) console.log("SerialManager: Disabling via params, disconnecting port.");
+                    if (this.db) console.log("SerialManager: Disabling via params, disconnecting port.");
                     await this.disconnect();
                 }
             }
@@ -305,8 +300,8 @@ class SerialManager {
     // Unified command sending system - refactored for Web Serial
     async sendCommand(commandType, value) {
         if (!this.isApiSupported || !this.isConnected || !this.portWriter) {
-            if (this.db?.serial && !this.isConnected) console.warn(`Serial Send: Failed - Not connected.`);
-            if (this.db?.serial && !this.portWriter) console.warn(`Serial Send: Failed - No writer available.`);
+            if (this.db && !this.isConnected) console.warn(`Serial Send: Failed - Not connected.`);
+            if (this.db && !this.portWriter) console.warn(`Serial Send: Failed - No writer available.`);
             return false;
         }
 
@@ -333,7 +328,7 @@ class SerialManager {
         const byteArray = new Uint8Array([command.index, value]);
 
         try {
-            if (this.db?.serial && this.db?.comSR) console.log(`Serial Sending (${commandType}):`, byteArray);
+            if (this.db && this.db?.comSR) console.log(`Serial Sending (${commandType}):`, byteArray);
             await this.portWriter.write(byteArray);
             return true;
         } catch (error) {
@@ -347,8 +342,8 @@ class SerialManager {
 
     async sendRawData(byteArray) {
         if (!this.isApiSupported || !this.isConnected || !this.portWriter) {
-            if (this.db?.serial && !this.isConnected) console.warn(`Serial SendRawData: Failed - Not connected.`);
-            if (this.db?.serial && !this.portWriter) console.warn(`Serial SendRawData: Failed - No writer available.`);
+            if (this.db && !this.isConnected) console.warn(`Serial SendRawData: Failed - Not connected.`);
+            if (this.db && !this.portWriter) console.warn(`Serial SendRawData: Failed - No writer available.`);
             return false;
         }
 
@@ -358,7 +353,7 @@ class SerialManager {
         }
 
         try {
-            if (this.db?.serial && this.db?.comSR) console.log(`Serial Sending Raw Data:`, byteArray);
+            if (this.db && this.db?.comSR) console.log(`Serial Sending Raw Data:`, byteArray);
             await this.portWriter.write(byteArray);
             return true;
         } catch (error) {

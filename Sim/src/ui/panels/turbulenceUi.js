@@ -2,11 +2,11 @@ import { BaseUi } from "../baseUi.js";
 import { PresetManager } from "../../presets/presetManager.js";
 import { NoisePreviewManager } from "../../util/noisePreviewManager.js";
 import { eventBus } from '../../util/eventManager.js';
+import { debugManager } from '../../util/debugManager.js';
 
 export class TurbulenceUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-    this.debug = this.main.debugFlags;
     // Validate required dependencies
     if (!main.turbulenceField) {
       throw new Error("TurbulenceField is required in main for TurbulenceUi");
@@ -426,7 +426,6 @@ export class TurbulenceUi extends BaseUi {
       turbulenceField,
       previewSize,
       patternStyles,
-      this.main.debugFlags
     );
 
     // Check if previews folder is open
@@ -782,7 +781,7 @@ export class TurbulenceUi extends BaseUi {
 
   setData(data) {
     if (!data || data === "None") {
-      if (this.debug.turbulence) console.log("Resetting turbulence to None preset");
+      if (this.db) console.log("Resetting turbulence to None preset");
       const targets = this.getControlTargets();
 
       // Reset all numerical values
@@ -986,5 +985,9 @@ export class TurbulenceUi extends BaseUi {
   destroy() {
     // Call super.dispose if it exists from BaseUi
     super.dispose && super.dispose();
+  }
+
+  get db() {
+    return debugManager.get('turbulence');
   }
 }

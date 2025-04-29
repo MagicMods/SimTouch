@@ -1,21 +1,19 @@
+import { debugManager } from "./debugManager.js"; // Import debugManager
 class EventManager {
     constructor() {
         this._events = {}; // Use underscore for "private" convention
-        this.debugFlags = {}; // Added initialization
     }
 
-    // Added method to initialize debug flags
-    initDebug(debugFlags) {
-        this.debugFlags = debugFlags || {};
+    get db() {
+        return debugManager.get('events');
     }
-
     // Register a listener
     on(eventName, listener) {
         if (!this._events[eventName]) {
             this._events[eventName] = [];
         }
         this._events[eventName].push(listener);
-        if (this.debugFlags.events) console.log(`Listener added for: ${eventName}`);
+        if (this.db) console.log(`Listener added for: ${eventName}`);
     }
 
     // Unregister a listener
@@ -24,12 +22,12 @@ class EventManager {
             return;
         }
         this._events[eventName] = this._events[eventName].filter(listener => listener !== listenerToRemove);
-        if (this.debugFlags.events) console.log(`Listener removed for: ${eventName}`);
+        if (this.db) console.log(`Listener removed for: ${eventName}`);
     }
 
     // Emit an event to all registered listeners
     emit(eventName, data) {
-        if (this.debugFlags.events) console.log(`Emitting event: ${eventName}`, data);
+        if (this.db) console.log(`Emitting event: ${eventName}`, data);
         if (!this._events[eventName]) {
             return; // No listeners for this event
         }

@@ -1,8 +1,10 @@
+import { debugManager } from "../util/debugManager.js";
+
 export class JoystickRenderer {
   constructor(container, emuForces, main) {
     this.emuForces = emuForces;
     this.main = main;
-    this.db = this.main.debugFlags;
+
     this.visible = false;
     this.isDragging = false;
 
@@ -30,10 +32,14 @@ export class JoystickRenderer {
     // Check if main has turbulenceField before accessing
     if (this.main && this.main.turbulenceField) {
       this.turbulenceField = this.main.turbulenceField;
-      if (this.db.emu) console.log("JoystickRenderer has direct access to turbulenceField via main");
+      if (this.db) console.log("JoystickRenderer has direct access to turbulenceField via main");
     } else {
       console.warn("JoystickRenderer: Main reference or turbulenceField not found on main object.");
     }
+  }
+
+  get db() {
+    return debugManager.get('joystick');
   }
 
   setupMouseInteraction() {

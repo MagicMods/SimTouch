@@ -24,6 +24,7 @@ class DebugManager {
             gradients: false,
             gridGenRenderer: false,
             gridRenderModes: false,
+            shader: false,
 
             particles: false,
             fluidFlip: false,
@@ -54,6 +55,8 @@ class DebugManager {
             dataViz: false,
             presets: false,
             mouseForces: false,
+            joystick: false,
+            debugUi: false,
         };
         DebugManager.instance = this;
     }

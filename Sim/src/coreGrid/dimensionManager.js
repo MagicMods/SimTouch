@@ -1,3 +1,4 @@
+import { debugManager } from "../util/debugManager.js";
 export class DimensionManager {
   physicalWidth;
   physicalHeight;
@@ -10,8 +11,8 @@ export class DimensionManager {
   renderScale;
   aspectRatio;
 
-  constructor(physicalWidth, physicalHeight, maxRenderWidth, maxRenderHeight, debugFlags) {
-    this.debug = debugFlags;
+  constructor(physicalWidth, physicalHeight, maxRenderWidth, maxRenderHeight) {
+
     if (!this._validateInputs(physicalWidth, physicalHeight, maxRenderWidth, maxRenderHeight)) {
       // Use defaults if validation fails during construction
       physicalWidth = 240;
@@ -25,6 +26,10 @@ export class DimensionManager {
     this.maxRenderWidth = maxRenderWidth;
     this.maxRenderHeight = maxRenderHeight;
     this._calculateRenderDimensions();
+  }
+
+  get db() {
+    return debugManager.get('dimensions');
   }
 
   updateDimensions(physicalWidth, physicalHeight, maxRenderWidth, maxRenderHeight) {
@@ -50,7 +55,7 @@ export class DimensionManager {
       this.maxRenderWidth = maxRenderWidth;
       this.maxRenderHeight = maxRenderHeight;
       this._calculateRenderDimensions();
-      if (this.debug.dimmensions) console.log("DimensionManager: Dimensions updated and recalculated.", this.getDimensions());
+      if (this.db) console.log("DimensionManager: Dimensions updated and recalculated.", this.getDimensions());
       return true; // Indicate success
     }
     return false; // Indicate no change
@@ -153,7 +158,7 @@ export class DimensionManager {
       this.renderScale = this.renderWidth / this.physicalWidth;
     }
 
-    if (this.debug.dimmensions) console.log("DimensionManager: Recalculated dimensions:", {
+    if (this.db) console.log("DimensionManager: Recalculated dimensions:", {
       physicalWidth: this.physicalWidth,
       physicalHeight: this.physicalHeight,
       maxRenderWidth: this.maxRenderWidth,
@@ -206,7 +211,7 @@ export class DimensionManager {
     }
     canvasElement.width = this.renderWidth;
     canvasElement.height = this.renderHeight;
-    if (this.debug.dimmensions) console.log(`DimensionManager: Applied dimensions ${this.renderWidth}x${this.renderHeight} to canvas.`);
+    if (this.db) console.log(`DimensionManager: Applied dimensions ${this.renderWidth}x${this.renderHeight} to canvas.`);
   }
 
   applyCanvasStyle(canvasElement, shape) {
@@ -216,11 +221,11 @@ export class DimensionManager {
     }
     if (shape === "circular") {
       canvasElement.style.borderRadius = "50%";
-      if (this.debug.dimmensions) console.log("DimensionManager: Applied circular style to canvas.");
+      if (this.db) console.log("DimensionManager: Applied circular style to canvas.");
     } else {
       // Default to slightly rounded corners for rectangular or unspecified shapes
       canvasElement.style.borderRadius = "5px"; // Consistent with previous main.js logic
-      if (this.debug.dimmensions) console.log("DimensionManager: Applied rectangular style (5px radius) to canvas.");
+      if (this.db) console.log("DimensionManager: Applied rectangular style (5px radius) to canvas.");
     }
   }
 
@@ -230,7 +235,7 @@ export class DimensionManager {
       return;
     }
     glContext.viewport(0, 0, this.renderWidth, this.renderHeight);
-    if (this.debug.dimmensions) console.log(`DimensionManager: Applied viewport ${this.renderWidth}x${this.renderHeight}.`);
+    if (this.db) console.log(`DimensionManager: Applied viewport ${this.renderWidth}x${this.renderHeight}.`);
   }
 
   // Helper to return all dimension values

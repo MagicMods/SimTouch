@@ -2,11 +2,10 @@ import { BaseUi } from "../baseUi.js";
 import { Behaviors } from "../../simulation/behaviors/organicBehavior.js";
 import { PresetManager } from "../../presets/presetManager.js";
 import { eventBus } from '../../util/eventManager.js';
-
+import { debugManager } from '../../util/debugManager.js';
 export class OrganicUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-    this.debug = this.main.debugFlags;
     this.gui.title("Organic Behavior");
     this.initOrganicControls();
     this.gui.open(false);
@@ -147,7 +146,7 @@ export class OrganicUi extends BaseUi {
     const swarmEnabled = mode === "Swarm";
     const automataEnabled = mode === "Automata";
     const chainEnabled = mode === "Chain";
-    if (this.debug.organic) console.log(`Updating organic folders for mode: ${mode}`);
+    if (this.db) console.log(`Updating organic folders for mode: ${mode}`);
 
     const enableControllers = (folder, enabled) => {
       if (!folder || !folder.controllers) {
@@ -288,5 +287,9 @@ export class OrganicUi extends BaseUi {
     safeUpdateDisplay(this.chainBranchController);
     safeUpdateDisplay(this.chainMaxLinksController);
     safeUpdateDisplay(this.chainRepelController);
+  }
+
+  get db() {
+    return debugManager.get('organic');
   }
 }

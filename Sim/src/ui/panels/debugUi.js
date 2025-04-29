@@ -6,8 +6,6 @@ export class DebugUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
 
-    this.debugFlags = main.debugFlags;
-
     this.controls = {};
     this.gui.title("Debug");
     this.initDebugControls();
@@ -34,6 +32,7 @@ export class DebugUi extends BaseUi {
       { text: "Gradient", flag: "gradients" },
       { text: "GridGen", flag: "gridGenRenderer" },
       { text: "GridModes", flag: "gridRenderModes" },
+      { text: "Shader", flag: "shader" },
 
       { text: "Particles", flag: "particles" },
       { text: "Fluid", flag: "fluidFlip" },
@@ -68,6 +67,8 @@ export class DebugUi extends BaseUi {
       { text: "NoisePrv", flag: "noisePrv" },
       { text: "DataViz", flag: "dataViz" },
       { text: "MouseForces", flag: "mouseForces" },
+      { text: "Joystick", flag: "joystick" },
+      { text: "DebugUi", flag: "debugUi" },
 
     ];
 
@@ -90,13 +91,10 @@ export class DebugUi extends BaseUi {
         const currentState = debugManager.get(flagName);
         const newState = !currentState;
         debugManager.set(flagName, newState);
-        // --- BEGIN TEMP DEBUG ---
-        console.log(`[DebugUi] Toggled ${flagName} via manager to: ${newState}`);
-        // --- END TEMP DEBUG ---
-        clickedButton.classList.toggle("active");
 
-        // Notify change via event
-        eventBus.emit('uiControlChanged', { paramPath: 'debugFlags.' + flagName, value: newState });
+        if (debugManager.get('debugUi')) console.log(`[DebugUi] Toggled ${flagName} via manager to: ${newState}`);
+
+        clickedButton.classList.toggle("active");
       });
 
       buttonContainer.appendChild(button);

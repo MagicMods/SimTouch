@@ -1,6 +1,7 @@
+import { debugManager } from "../util/debugManager.js";
+
 export class InputModulator {
-  constructor(manager, debugFlags) {
-    this.debug = debugFlags;
+  constructor(manager) {
     this.manager = manager;
     this.enabled = true;
     this.inputSource = "mic";
@@ -21,6 +22,10 @@ export class InputModulator {
     // Replace min/max with center frequency and width
     this.customFreq = 1000; // Center frequency (Hz)
     this.customWidth = 100;  // Width of band (Hz)
+  }
+
+  get db() {
+    return debugManager.get('inputMod');
   }
 
   getDisplayName(index = 1) {
@@ -53,7 +58,7 @@ export class InputModulator {
       this.min = target.min;
       this.max = target.max;
 
-      if (this.debug.inputMod) console.log(`Set target ${targetName} with range: ${target.min} - ${target.max}`);
+      if (this.db) console.log(`Set target ${targetName} with range: ${target.min} - ${target.max}`);
     } catch (e) {
       console.warn("Could not store original value:", e);
       // Set default value as fallback
@@ -64,7 +69,7 @@ export class InputModulator {
   resetToOriginal() {
     if (this.targetController && this.originalValue !== null) {
       try {
-        if (this.debug.inputMod) console.log(`Resetting target ${this.targetName} to original value ${this.originalValue}`);
+        if (this.db) console.log(`Resetting target ${this.targetName} to original value ${this.originalValue}`);
         this.targetController.setValue(this.originalValue);
         if (this.targetController.updateDisplay) {
           this.targetController.updateDisplay();
@@ -99,7 +104,7 @@ export class InputModulator {
 
       // Debug log for high values
       if (processedValue > 0.1) {
-        if (this.debug.inputMod) console.log(`Input modulator ${this.targetName || "unnamed"}: processed value = ${processedValue.toFixed(2)}`);
+        if (this.db) console.log(`Input modulator ${this.targetName || "unnamed"}: processed value = ${processedValue.toFixed(2)}`);
       }
     }
   }
@@ -165,7 +170,7 @@ export class InputModulator {
 
           // Log significant changes
           if (normalizedValue > 0.2) {
-            if (this.debug.inputMod) console.log(`Setting ${this.targetName} to ${mappedValue.toFixed(2)} (from ${normalizedValue.toFixed(2)})`);
+            if (this.db) console.log(`Setting ${this.targetName} to ${mappedValue.toFixed(2)} (from ${normalizedValue.toFixed(2)})`);
           }
         }
       }

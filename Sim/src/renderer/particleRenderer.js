@@ -1,6 +1,6 @@
 import { BaseRenderer } from "./baseRenderer.js";
 import { eventBus } from '../util/eventManager.js'; // Added import
-
+import { debugManager } from '../util/debugManager.js';
 // Helper function (add outside the class or import)
 function hexToRgb(hex) {
   if (!hex) return null;
@@ -17,7 +17,7 @@ export class ParticleRenderer extends BaseRenderer {
   particleCount = 0; // Initialize particle count
   vertexArray = null;
 
-  constructor(gl, shaderManager, debugFlags) {
+  constructor(gl, shaderManager) {
     super(gl, shaderManager);
     if (!gl || !shaderManager) {
       throw new Error(
@@ -26,7 +26,6 @@ export class ParticleRenderer extends BaseRenderer {
     }
     this.gl = gl;
     this.shaderManager = shaderManager;
-    this.debug = debugFlags;
     this.shaderType = "particles";
     this.positionBuffer = gl.createBuffer();
     this.sizeBuffer = gl.createBuffer();
@@ -37,10 +36,12 @@ export class ParticleRenderer extends BaseRenderer {
     };
     this.particleOpacity = 0.1;
 
-    if (this.debug.particle) console.log("ParticleRenderer initialized");
-
     // Subscribe to parameter updates
     eventBus.on('simParamsUpdated', this.handleParamsUpdate.bind(this));
+  }
+
+  get db() {
+    return debugManager.get('particles');
   }
 
   // Add handler for simParams updates

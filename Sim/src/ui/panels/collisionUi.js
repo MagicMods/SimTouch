@@ -4,7 +4,6 @@ import { eventBus } from '../../util/eventManager.js';
 export class CollisionUi extends BaseUi {
   constructor(main, container) {
     super(main, container);
-    this.debugFlag = this.main.debugFlags.debugCollision;
 
     // Initialize controls collection to store references
     this.controls = {};

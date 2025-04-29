@@ -10,7 +10,7 @@ import c8 from "./gradients/c8.js";
 import c9 from "./gradients/c9.js";
 import c10 from "./gradients/c10.js";
 import { comManager } from "../com/comManager.js";
-
+import { debugManager } from '../util/debugManager.js';
 export class Gradients {
   // Use FastLED palettes as presets
   static PRESETS = {
@@ -27,9 +27,7 @@ export class Gradients {
     c10,
   };
 
-  constructor(debugFlags, presetName = "c0") {
-
-    this.db = debugFlags;
+  constructor(presetName = "c0") {
     this.currentPreset = presetName;
     this.points = [];
     this.values = new Array(256).fill(0).map(() => ({ r: 0, g: 0, b: 0 }));
@@ -37,8 +35,12 @@ export class Gradients {
     this.applyPreset(presetName);
   }
 
+  get db() {
+    return debugManager.get('gradients');
+  }
+
   applyPreset(presetName) {
-    if (this.db.gradients) console.log(`>>> applyPreset called with presetName: ${typeof presetName}`, presetName);
+    if (this.db) console.log(`>>> applyPreset called with presetName: ${typeof presetName}`, presetName);
     if (!Gradients.PRESETS[presetName]) {
       console.warn(`Preset "${presetName}" not found, using default`);
       presetName = "c0";
@@ -53,7 +55,7 @@ export class Gradients {
 
     // If preset actually changed, send notification over socket
     if (oldPreset !== presetName) {
-      if (this.db.gradients) console.log(`>>> applyPreset calling sendGradientsUpdate`);
+      if (this.db) console.log(`>>> applyPreset calling sendGradientsUpdate`);
     }
 
     return this.points;

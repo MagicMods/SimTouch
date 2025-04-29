@@ -6,15 +6,15 @@ import { eventBus } from '../util/eventManager.js';
 import { Gradients } from "../shaders/gradients.js";
 import { GridRenderModes, GridField } from "./gridRenderModes.js";
 import { comManager } from "../com/comManager.js";
+import { debugManager } from "../util/debugManager.js";
 
 export class GridGenRenderer extends BaseRenderer {
-  constructor(gl, shaderManager, gridConfig, dimensionManager, boundaryManager, particleSystem, debugFlags) {
+  constructor(gl, shaderManager, gridConfig, dimensionManager, boundaryManager, particleSystem) {
     super(gl, shaderManager);
 
     this.gl = gl;
     this.shaderManager = shaderManager;
-    this.debug = debugFlags;
-    this.gradient = new Gradients(debugFlags, "c0"); // Initialize gradient in constructor
+    this.gradient = new Gradients("c0"); // Initialize gradient in constructor
     this.dimensionManager = dimensionManager;
     this.boundaryManager = boundaryManager;
     this.particleSystem = particleSystem;
@@ -36,9 +36,10 @@ export class GridGenRenderer extends BaseRenderer {
       count: 0,
     };
 
+
     // Initialize core components and buffers
-    this.overlayManager = new OverlayManager(gl.canvas, this.debug); // Instantiate OverlayManager
-    this.gridGeometry = new GridGeometry(this.debug); // Instantiate GridGeometry + Pass debugFlags
+    this.overlayManager = new OverlayManager(gl.canvas);
+    this.gridGeometry = new GridGeometry();
 
     // Generate an initial empty gridMap to pass to GridRenderModes
     this.gridMap = []; // Initialize gridMap as empty array
@@ -107,6 +108,10 @@ export class GridGenRenderer extends BaseRenderer {
     this.comManager = comManager;
   }
 
+  get db() {
+    return debugManager.get('gridGenRenderer');
+  }
+
   initBuffers() {
     const gl = this.gl;
     // Create position buffer (used by multiple shapes now)
@@ -141,7 +146,7 @@ export class GridGenRenderer extends BaseRenderer {
 
   setGrid(newGridConfig, shapeBoundary, physicsBoundary, dimensions) {
 
-    if (this.debug.gridGenRenderer) console.log("Renderer setGrid: Received gridConfig.shadow:", JSON.stringify(newGridConfig?.shadow));
+    if (this.db) console.log("Renderer setGrid: Received gridConfig.shadow:", JSON.stringify(newGridConfig?.shadow));
 
     if (newGridConfig) {
       // Update nested objects carefully
@@ -276,7 +281,7 @@ export class GridGenRenderer extends BaseRenderer {
     // Emit event *after* renderModes is ready and potentially updated
     if (this.renderModes?.currentMode) {
       eventBus.emit('gridRenderModeChanged', { mode: this.renderModes.currentMode });
-      if (this.debug.gridGenRenderer) console.log(`Emitted gridRenderModeChanged from updateGridGeometryAndRender: ${this.renderModes.currentMode}`);
+      if (this.db) console.log(`Emitted gridRenderModeChanged from updateGridGeometryAndRender: ${this.renderModes.currentMode}`);
     }
 
     // <<< Call prepareInstanceData AFTER renderModes is ready >>>
@@ -329,7 +334,7 @@ export class GridGenRenderer extends BaseRenderer {
     const gl = this.gl;
     const instanceCount = this.instanceData.count;
 
-    if (this.debug.gridGenRenderer) console.log(`GridGenRenderer.renderCellsInstanced() called. Count: ${instanceCount}, showGridCells: ${this.grid?.flags?.showGridCells}`);
+    if (this.db) console.log(`GridGenRenderer.renderCellsInstanced() called. Count: ${instanceCount}, showGridCells: ${this.grid?.flags?.showGridCells}`);
 
     if (instanceCount === 0) return; // Nothing to draw
 
@@ -342,7 +347,7 @@ export class GridGenRenderer extends BaseRenderer {
     // --- Simplified Path (Removed diagnostic depth disable/enable) ---
     this.setupInstancedDrawing();
 
-    if (this.debug.gridGenRenderer) console.log(`GridGenRenderer.renderCellsInstanced(): About to call drawArraysInstanced. Count: ${instanceCount}`);
+    if (this.db) console.log(`GridGenRenderer.renderCellsInstanced(): About to call drawArraysInstanced. Count: ${instanceCount}`);
     gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, instanceCount);
 
     // --- Cleanup GL State --- 
@@ -362,7 +367,7 @@ export class GridGenRenderer extends BaseRenderer {
 
   prepareInstanceData(rectangles) {
 
-    if (this.debug.gridGenRenderer) console.log(`prepareInstanceData Start: this.maxDensity = ${this.maxDensity}`);
+    if (this.db) console.log(`prepareInstanceData Start: this.maxDensity = ${this.maxDensity}`);
 
     const gl = this.gl;
     const visibleRects = rectangles;
@@ -656,14 +661,14 @@ export class GridGenRenderer extends BaseRenderer {
 
   // --- Add draw method for per-frame updates ---
   draw() {
-    if (this.debug.gridGenRenderer) console.log(`GridGenRenderer.draw() called. showGridCells: ${this.grid?.flags?.showGridCells}`); // Keep log
+    if (this.db) console.log(`GridGenRenderer.draw() called. showGridCells: ${this.grid?.flags?.showGridCells}`); // Keep log
 
     const numInstances = this.instanceData.count;
     if (numInstances === 0) return;
 
     // Update colors based on latest data (runs every frame)
     this.updateInstanceColors();
-    if (this.debug.gridGenRenderer) console.log(`GridGenRenderer.draw(): Calling renderCellsInstanced. Count: ${numInstances}`);
+    if (this.db) console.log(`GridGenRenderer.draw(): Calling renderCellsInstanced. Count: ${numInstances}`);
 
     // Draw the instanced cells using pre-prepared data (including colors from prepareInstanceData)
     this.renderCellsInstanced();
@@ -689,13 +694,13 @@ export class GridGenRenderer extends BaseRenderer {
 
   // Add handler for simParams updates
   handleParamsUpdate({ simParams }) {
-    if (this.debug.gridGenRenderer) console.log('GridGenRenderer.handleParamsUpdate called');
+    if (this.db) console.log('GridGenRenderer.handleParamsUpdate called');
     if (!simParams) return;
 
     let modeChanged = false; // Track if mode actually changes
     if (simParams.rendering) {
       this.maxDensity = simParams.rendering.maxDensity ?? this.maxDensity;
-      if (this.debug.gridGenRenderer) console.log(`  Updated this.maxDensity to: ${this.maxDensity}`);
+      if (this.db) console.log(`  Updated this.maxDensity to: ${this.maxDensity}`);
       // Update render mode if needed
       if (this.renderModes && simParams.rendering.gridMode) {
         // Ensure the mode exists before assigning
@@ -704,7 +709,7 @@ export class GridGenRenderer extends BaseRenderer {
           if (this.renderModes.currentMode !== simParams.rendering.gridMode) {
             this.renderModes.currentMode = simParams.rendering.gridMode;
             modeChanged = true; // Mode actually changed
-            if (this.debug.gridGenRenderer) console.log(`GridGenRenderer: Set render mode to ${this.renderModes.currentMode}`);
+            if (this.db) console.log(`GridGenRenderer: Set render mode to ${this.renderModes.currentMode}`);
           }
         } else {
           console.warn(`GridGenRenderer: Invalid gridMode received: ${simParams.rendering.gridMode}`);
@@ -720,7 +725,7 @@ export class GridGenRenderer extends BaseRenderer {
     // Emit event ONLY if the mode actually changed
     if (modeChanged && this.renderModes?.currentMode) {
       eventBus.emit('gridRenderModeChanged', { mode: this.renderModes.currentMode });
-      if (this.debug.gridGenRenderer) console.log(`Emitted gridRenderModeChanged from handleParamsUpdate: ${this.renderModes.currentMode}`);
+      if (this.db) console.log(`Emitted gridRenderModeChanged from handleParamsUpdate: ${this.renderModes.currentMode}`);
     }
   }
 }
