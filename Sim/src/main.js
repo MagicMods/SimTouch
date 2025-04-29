@@ -22,8 +22,6 @@ import { BoundaryRenderer } from "./renderer/boundaryRenderer.js";
 import { ParticleRenderer } from "./renderer/particleRenderer.js";
 // Udp
 import { ModulatorManager } from "./input/modulatorManager.js";
-import { socketManager } from "./com/udp/socketManager.js";
-import { serialManager } from "./com/serial/serialManager.js";
 import { comManager } from "./com/comManager.js";
 import { eventBus } from "./util/eventManager.js";
 import { debugManager } from "./util/debugManager.js";

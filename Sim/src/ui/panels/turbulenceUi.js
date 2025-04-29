@@ -23,6 +23,14 @@ export class TurbulenceUi extends BaseUi {
     this.isNoiseFolderOpen = true;
     this.isPreviewsFolderOpen = true;
 
+    this.refreshEnabled = true;
+
+
+    this._modeNoise = false;
+    this._affectPosition = false;
+    this._scaleField = false;
+    this._affectScale = false;
+
     // Set up folder state observers
     this.setupFolderStateObservers();
   }
@@ -112,11 +120,12 @@ export class TurbulenceUi extends BaseUi {
     const posButton = document.createElement("button");
     posButton.textContent = "Position";
     posButton.className = "toggle-button";
-    if (turbulenceParams.affectPosition) posButton.classList.add("active");
+    if (turbulenceParams._) posButton.classList.add("active");
     posButton.addEventListener("click", () => {
       const newValue = !turbulenceParams.affectPosition;
       // Update button state immediately for responsiveness
       posButton.classList.toggle("active", newValue);
+      this.affectPosition = newValue;
       // Emit event
       eventBus.emit('uiControlChanged', { paramPath: 'turbulence.affectPosition', value: newValue });
     });
@@ -129,6 +138,8 @@ export class TurbulenceUi extends BaseUi {
     fieldButton.addEventListener("click", () => {
       const newValue = !turbulenceParams.scaleField;
       fieldButton.classList.toggle("active", newValue);
+      this.scaleField = newValue;
+      // Emit event
       eventBus.emit('uiControlChanged', { paramPath: 'turbulence.scaleField', value: newValue });
     });
 
@@ -140,6 +151,8 @@ export class TurbulenceUi extends BaseUi {
     scaleButton.addEventListener("click", () => {
       const newValue = !turbulenceParams.affectScale;
       scaleButton.classList.toggle("active", newValue);
+      this.affectScale = newValue;
+      // Emit event
       eventBus.emit('uiControlChanged', { paramPath: 'turbulence.affectScale', value: newValue });
 
       // Keep reset particle sizes logic for now, triggered directly
@@ -423,7 +436,7 @@ export class TurbulenceUi extends BaseUi {
 
     // Initialize the NoisePreviewManager
     this.previewManager = new NoisePreviewManager(
-      turbulenceField,
+      this.main,
       previewSize,
       patternStyles,
     );
