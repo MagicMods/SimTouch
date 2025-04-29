@@ -1,5 +1,7 @@
+import { debugManager } from '../../util/debugManager.js';
+
 export class NeighborSearch {
-  constructor(debugFlags) {
+  constructor() {
     // Match GridRenderer's configuration
     this.TARGET_WIDTH = 240; // TODO: Make dynamic!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     this.TARGET_HEIGHT = 240; // TODO: Make dynamic
@@ -16,12 +18,11 @@ export class NeighborSearch {
 
     // Initialize cell mapping
     this.cellMap = new Map();
-    this.debug = debugFlags; // Enable debugging
     this.cellSize = 24; // 10% of TARGET_WIDTH/HEIGHT // TODO: Make dynamic
     this.cols = Math.ceil(240 / this.cellSize);
     this.rows = Math.ceil(240 / this.cellSize);
 
-    if (this.debug.organic) console.log("NeighborSearch initialized:", {
+    if (this.db) console.log("NeighborSearch initialized:", {
       resolution: `${this.TARGET_WIDTH}x${this.TARGET_HEIGHT}`,
       cells: this.gridParams.target,
     });
@@ -40,7 +41,7 @@ export class NeighborSearch {
       const row = Math.floor(py / this.cellSize);
 
       // if (p.y > 0.7) {
-      //   if (this.debug.organic) console.log(`Mapping particle at (${px.toFixed(1)}, ${py.toFixed(1)}) to cell [${row}, ${col}]`);
+      //   if (this.db) console.log(`Mapping particle at (${px.toFixed(1)}, ${py.toFixed(1)}) to cell [${row}, ${col}]`);
       // }
 
       const cellIndex = row * this.cols + col;
@@ -149,11 +150,16 @@ export class NeighborSearch {
   }
 
   logNeighborStats(particles, particleData) {
-    if (this.debug.organic) console.log("Neighbor search:", {
+    if (this.db) console.log("Neighbor search:", {
       particles: particles.length,
       mappedParticles: particleData.size,
       activeCells: this.cellMap.size,
       averagePerCell: particleData.size / this.cellMap.size,
     });
   }
+
+  get db() {
+    return debugManager.get('neighbors');
+  }
+
 }

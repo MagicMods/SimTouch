@@ -1,9 +1,8 @@
+import { debugManager } from '../../util/debugManager.js';
 export class AutomataRules {
-  constructor(debugFlags) {
+  constructor() {
     this.particleStates = new Map();
     this.stateColors = new Map();
-    this.debugEnabled = false;
-    this.debug = debugFlags;
   }
 
   initializeStates(particles) {
@@ -45,5 +44,9 @@ export class AutomataRules {
 
   getParticleState(idx) {
     return this.particleStates.get(idx) || 0.5;
+  }
+
+  get db() {
+    return debugManager.get('automataRules');
   }
 }

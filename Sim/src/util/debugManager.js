@@ -37,6 +37,7 @@ class DebugManager {
             noise: false,
             voronoi: false,
             organic: false,
+            automataRules: false,
 
             modManager: false,
             pulseMod: false,
@@ -52,6 +53,7 @@ class DebugManager {
             noisePrv: false,
             dataViz: false,
             presets: false,
+            mouseForces: false,
         };
         DebugManager.instance = this;
     }

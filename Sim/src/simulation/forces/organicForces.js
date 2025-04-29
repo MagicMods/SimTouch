@@ -1,9 +1,10 @@
+import { debugManager } from '../../util/debugManager.js';
+
 export class OrganicForces {
-  constructor(forceScales, debugFlags) {
+  constructor(forceScales) {
     this.TARGET_WIDTH = 240;
     this.TARGET_HEIGHT = 240;
     this.forceScales = forceScales;
-    this.debug = debugFlags;
     this.forceDamping = 0.85;
   }
 
@@ -21,7 +22,7 @@ export class OrganicForces {
     const pixelParticle = this.toPixelSpace(particle);
     const maxForce = 0.5; // Limit maximum force magnitude
 
-    if (this.debug.organic && particle.y > 0.7) {
+    if (this.db && particle.y > 0.7) {
       console.log(`Computing fluid forces for particle at y=${particle.y.toFixed(3)}`);
       console.log(`Neighbor count: ${neighbors.length}`);
     }
@@ -60,7 +61,7 @@ export class OrganicForces {
         force.x = Math.max(-maxForce, Math.min(maxForce, force.x + fx + relVelX));
         force.y = Math.max(-maxForce, Math.min(maxForce, force.y + fy + relVelY));
 
-        // if (this.debug.organic && particle.y > 0.7) {
+        // if (this.db && particle.y > 0.7) {
         //   console.log(`Applied force: (${force.x.toFixed(3)}, ${force.y.toFixed(3)})`);
         // }
       }
@@ -195,7 +196,7 @@ export class OrganicForces {
       force.y *= this.forceDamping;
     }
 
-    if (this.debug.organic) {
+    if (this.db) {
       console.log(`Swarm force for particle at (${particle.x.toFixed(2)}, ${particle.y.toFixed(2)}):`, {
         force: `(${force.x.toFixed(3)}, ${force.y.toFixed(3)})`,
         neighbors: count,
@@ -213,7 +214,7 @@ export class OrganicForces {
     const maxForce = 0.5;
     let totalForce = { x: 0, y: 0 };
 
-    if (this.debug.organic) {
+    if (this.db) {
       console.log(`Automata force calculation for particle ${particle.index}:`, {
         state: particle.state,
         neighbors: neighbors.length
@@ -263,14 +264,14 @@ export class OrganicForces {
     force.x *= this.forceDamping;
     force.y *= this.forceDamping;
 
-    if (this.debug.organic) console.log(`Applied automata force: (${force.x.toFixed(3)}, ${force.y.toFixed(3)})`);
+    if (this.db) console.log(`Applied automata force: (${force.x.toFixed(3)}, ${force.y.toFixed(3)})`);
 
   }
 
   calculateChainForces(particle, neighbors, force, params) {
     if (!neighbors.length) return;
 
-    if (this.debug.organic) console.log("CHAIN FORCES:", {
+    if (this.db) console.log("CHAIN FORCES:", {
       particleIndex: particle.index,
       neighbors: neighbors.length,
       params: params
@@ -444,5 +445,9 @@ export class OrganicForces {
       direction: `${force.x.toFixed(3)},${force.y.toFixed(3)}`,
       neighbors: neighborCount,
     });
+  }
+
+  get db() {
+    return debugManager.get('organic');
   }
 }

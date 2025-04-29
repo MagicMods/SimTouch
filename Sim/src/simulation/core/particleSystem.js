@@ -46,7 +46,7 @@ export class ParticleSystem {
     this.noiseFieldResolution = 20;
 
     // Initialize TickLog for logging
-    this.logTick = new TickLog(1000, this.db);
+    this.logTick = new TickLog(1000);
 
     // Particle arrays
     this.particles = new Float32Array(particleCount * 2);
@@ -91,10 +91,10 @@ export class ParticleSystem {
     });
 
     // Initialize mouse forces
-    this.mouseForces = new MouseForces({}, this.db);
+    this.mouseForces = new MouseForces({});
 
     // Initialize organic behavior
-    this.organicBehavior = new OrganicBehavior(this.db);
+    this.organicBehavior = new OrganicBehavior();
 
     this.initializeParticles();
 
@@ -453,11 +453,9 @@ export class ParticleSystem {
         // Use the determined rawRadius for size calculation
         size: rawRadius * this.renderScale,
       };
-      // --- DEBUG LOG with TickLog ---
       if (i < 9 && this.logTick.GetTick() && this.db) {
         console.log(`ParticleSystem.getParticles - P[${i}] | Radius(raw): ${this.particleRadii[i].toFixed(6)} | Size(scaled): ${particleData.size.toFixed(3)}`);
       }
-      // --- END DEBUG ---
       return particleData;
     });
     return particlesData;

@@ -46,6 +46,7 @@ export class DebugUi extends BaseUi {
       { text: "Turb", flag: "turbulence" },
       { text: "Voronoi", flag: "voronoi" },
       { text: "Organic", flag: "organic" },
+      { text: "Automata", flag: "automataRules" },
 
       { text: "ModMgr", flag: "modManager" },
       { text: "PulseM", flag: "pulseMod" },
@@ -66,6 +67,8 @@ export class DebugUi extends BaseUi {
       { text: "Main", flag: "main" },
       { text: "NoisePrv", flag: "noisePrv" },
       { text: "DataViz", flag: "dataViz" },
+      { text: "MouseForces", flag: "mouseForces" },
+
     ];
 
     // Create buttons from config

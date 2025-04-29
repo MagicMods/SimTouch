@@ -1,5 +1,6 @@
 import { eventBus } from "../../util/eventManager.js"; // Import eventBus
 import { GridField } from "../../renderer/gridRenderModes.js"; // Import GridField
+import { debugManager } from '../../util/debugManager.js';
 
 export class MouseForces {
   constructor({
@@ -7,7 +8,7 @@ export class MouseForces {
     impulseMag = 0.111,
     overrideRadius = 0.2, // Inner zone where mouse completely overrides other forces
     overrideStrength = 3.0, // How strongly to override other forces
-  } = {}, debugFlag) {
+  } = {}) {
     // Force parameters
     this.impulseRadius = impulseRadius;
     this.impulseMag = impulseMag;
@@ -44,14 +45,13 @@ export class MouseForces {
     this.joystickActive = false;
     this.joystickX = 0;
     this.joystickY = 0;
-    this.debugFlag = debugFlag;
     this.isNoiseModeActive = false; // Initialize noise mode flag
 
     // Listen for grid mode changes
     eventBus.on('gridRenderModeChanged', ({ mode }) => {
       this.isNoiseModeActive = (mode === GridField.NOISE);
       // Optional: Log mode change for debugging
-      // if(this.debugFlag?.inputs) console.log(`MouseForces received grid mode: ${mode}, isNoiseModeActive: ${this.isNoiseModeActive}`);
+      if (this.db) console.log(`MouseForces received grid mode: ${mode}, isNoiseModeActive: ${this.isNoiseModeActive}`);
     });
   }
 
@@ -709,5 +709,9 @@ export class MouseForces {
     if (this.main && this.main.ui && this.main.ui.turbulenceUi) {
       this.main.ui.turbulenceUi.updateControllerDisplays();
     }
+  }
+
+  get db() {
+    return debugManager.get('mouseForces');
   }
 }
