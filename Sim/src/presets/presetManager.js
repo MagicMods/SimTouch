@@ -2,6 +2,10 @@ import { MasterPresetHandler } from "./masterPresetHandler.js";
 import { SimplePresetHandler } from "./simplePresetHandler.js";
 import { ModulatorPresetHandler } from "./modulatorPresetHandler.js";
 import { RandomizerPresetHandler } from "./randomizerPresetHandler.js";
+import { defaultPresets as factoryDefaultPresetsData } from './default/defaultPresets.js';
+
+const factoryDefaultPresets = factoryDefaultPresetsData.presets;
+
 import { debugManager } from "../util/debugManager.js";
 export class PresetManager {
   static TYPES = {
@@ -17,71 +21,69 @@ export class PresetManager {
 
   constructor(uiComponents) {
 
+
     this.uiComponents = uiComponents;
     this.presetControls = {};
     this.eventListeners = {};
 
+    // Define minimal defaults (used if storage is empty AND factory defaults are missing for type)
+    const minimalTurbulenceDefaults = { Default: { controllers: {} } };
+    const minimalVoronoiDefaults = { Default: { controllers: {} } };
+    const minimalOrganicDefaults = { Default: { controllers: {} } };
+    const minimalPulseDefaults = { None: { modulators: [] } };
+    const minimalInputDefaults = { None: { modulators: [] } };
+    const minimalRandomizerDefaults = { None: { paramTargets: {} }, All: { paramTargets: {} } };
+    const minimalGridDefaults = {
+      "WaveShare|240x240|C|341|1": { // Keep one essential default structure
+        screen: { width: 240, height: 240, shape: 'circular' },
+        gridSpecs: { targetCellCount: 341, gap: 1, aspectRatio: 1, scale: 1, allowCut: 3, centerOffsetX: 0, centerOffsetY: 0 },
+        shadow: { shadowIntensity: 0.17, shadowThreshold: 0, blurAmount: 0.23 },
+        flags: { showGridCells: true, showIndices: false, showCellCenters: false, showBoundary: false },
+        colors: { gradientPreset: 'c0' }
+      }
+    };
+    const minimalMasterDefaults = { Default: {} };
+
     this.handlers = {
       [PresetManager.TYPES.TURBULENCE]: new SimplePresetHandler(
         "savedTurbulencePresets",
-        {
-          Default: { controllers: {} },
-        },
-        ["None"]
+        minimalTurbulenceDefaults, // Pass minimal
+        ["Default"], // Protected
       ),
       [PresetManager.TYPES.VORONOI]: new SimplePresetHandler(
         "savedVoronoiPresets",
-        {
-          Default: { controllers: {} },
-        },
-        ["None"]
+        minimalVoronoiDefaults, // Pass minimal
+        ["Default", "None"], // Protected
       ),
       [PresetManager.TYPES.ORGANIC]: new SimplePresetHandler(
         "savedOrganicPresets",
-        {
-          Default: { controllers: {} },
-        },
-        ["None"]
+        minimalOrganicDefaults, // Pass minimal
+        ["Default", "None"], // Protected
       ),
       [PresetManager.TYPES.PULSE]: new ModulatorPresetHandler(
         "savedPulsePresets",
-        {
-          None: { modulators: [] },
-        },
-        ["None"]
+        minimalPulseDefaults, // Pass minimal
+        ["None"], // Protected
       ),
       [PresetManager.TYPES.INPUT]: new ModulatorPresetHandler(
-        "savedMicPresets",
-        {
-          None: { modulators: [] },
-        },
-        ["None"]
+        "savedMicPresets", // Note: Key is savedMicPresets
+        minimalInputDefaults, // Pass minimal
+        ["None"], // Protected
       ),
       [PresetManager.TYPES.RANDOMIZER]: new RandomizerPresetHandler(
         "savedRandomizerPresets",
-        {
-          None: { paramTargets: {} },
-          All: { paramTargets: {} }
-        },
-        ["None", "All"]
+        minimalRandomizerDefaults, // Pass minimal
+        ["None", "All"], // Protected
       ),
       [PresetManager.TYPES.GRID]: new SimplePresetHandler(
         "savedGridPresets",
-        {
-          "WaveShare | C | 240x240 | 338": {
-            screen: { width: 240, height: 240, shape: 'circular' },
-            gridSpecs: { targetCellCount: 341, gap: 1, aspectRatio: 1, scale: 1, allowCut: 3, centerOffsetX: 0, centerOffsetY: 0 },
-            shadow: { shadowIntensity: 0.17, shadowThreshold: 0, blurAmount: 0.23 },
-            flags: { showGridCells: true, showIndices: false, showCellCenters: false, showBoundary: false },
-            colors: { gradientPreset: 'c0' }
-          },
-        },
-        ["WaveShare | C | 240x240 | 338"],
+        minimalGridDefaults, // Pass minimal
+        // ["Default"], // Protected (Adjust if more grid presets are essential)
       ),
       [PresetManager.TYPES.MASTER]: new MasterPresetHandler(
-        "savedPresets",
-        { Default: {} },
-        ["Default"]
+        "savedPresets", // Note: Key is savedPresets
+        minimalMasterDefaults, // Pass minimal
+        ["Default"], // Protected
       ),
     };
 
