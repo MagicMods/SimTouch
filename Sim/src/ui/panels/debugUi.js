@@ -1,5 +1,6 @@
 import { BaseUi } from "../baseUi.js";
 import { eventBus } from "../../util/eventManager.js";
+import { debugManager } from '../../util/debugManager.js';
 
 export class DebugUi extends BaseUi {
   constructor(main, container) {
@@ -38,6 +39,8 @@ export class DebugUi extends BaseUi {
       { text: "Fluid", flag: "fluidFlip" },
       { text: "Velocity", flag: "velocity" },
       { text: "Collision", flag: "collision" },
+      { text: "Gravity", flag: "gravity" },
+      { text: "Noise", flag: "noise" },
 
       { text: "Neighbors", flag: "neighbors" },
       { text: "Turb", flag: "turbulence" },
@@ -73,7 +76,7 @@ export class DebugUi extends BaseUi {
       button.dataset.flag = config.flag; // Store flag name on button
 
       // Set initial active state
-      if (this.main.debugFlags[config.flag]) button.classList.add("active");
+      if (debugManager.get(config.flag)) button.classList.add("active");
 
       // Add event listener
       button.addEventListener("click", (event) => {
@@ -81,14 +84,16 @@ export class DebugUi extends BaseUi {
         const flagName = clickedButton.dataset.flag;
 
         // Update internal UI state first
-        this.main.debugFlags[flagName] = !this.main.debugFlags[flagName];
+        const currentState = debugManager.get(flagName);
+        const newState = !currentState;
+        debugManager.set(flagName, newState);
         // --- BEGIN TEMP DEBUG ---
-        console.log(`[DebugUi] Toggled ${flagName} directly to: ${this.main.debugFlags[flagName]}`);
+        console.log(`[DebugUi] Toggled ${flagName} via manager to: ${newState}`);
         // --- END TEMP DEBUG ---
         clickedButton.classList.toggle("active");
 
         // Notify change via event
-        eventBus.emit('uiControlChanged', { paramPath: 'debugFlags.' + flagName, value: this.main.debugFlags[flagName] });
+        eventBus.emit('uiControlChanged', { paramPath: 'debugFlags.' + flagName, value: newState });
       });
 
       buttonContainer.appendChild(button);

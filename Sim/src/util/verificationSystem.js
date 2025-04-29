@@ -1,8 +1,7 @@
 export class VerificationSystem {
-  constructor(enabled = false, debugFlags) {
+  constructor(enabled = false) {
     this.enabled = enabled;
     this.errors = [];
-    this.debug = debugFlags;
   }
 
   enable() {

@@ -26,7 +26,6 @@ import { socketManager } from "./com/udp/socketManager.js";
 import { serialManager } from "./com/serial/serialManager.js";
 import { comManager } from "./com/comManager.js";
 import { eventBus } from "./util/eventManager.js";
-import { TickLog } from "./util/tickLog.js";
 
 export class Main {
   constructor() {
@@ -298,7 +297,6 @@ export class Main {
       turbulence: this.turbulenceField,
       voronoi: this.voronoiField,
       boundaryManager: this.boundaryManager,
-      debugFlags: this.debugFlags
     });
 
     this.modulatorManager = new ModulatorManager(this.debugFlags);

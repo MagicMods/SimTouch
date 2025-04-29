@@ -1,7 +1,6 @@
 export class TickLog {
-    constructor(timer = 1000, debugFlags) {
+    constructor(timer = 1000) {
         this.timer = timer;
-        this.debugFlags = debugFlags;
         this.tick = false;
         this.lastTick = Date.now();
         this.intervalId = null;
