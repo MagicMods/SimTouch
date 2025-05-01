@@ -182,7 +182,10 @@ export class InputsUi extends BaseUi {
         max: 1,
         defaultValue: 1.0,
         apply: (value) => {
-          if (this.joystickGravityStrengthController && this.joystickGravityStrengthController.object) {
+          if (this.main.joystickRenderer) {
+            this.main.joystickRenderer.setGravityInfluenceMultiplier(value);
+          }
+          if (this.joystickGravityStrengthController) {
             this.joystickGravityStrengthController.setValue(value);
           }
         }
@@ -198,7 +201,10 @@ export class InputsUi extends BaseUi {
         max: 1,
         defaultValue: 0.3,
         apply: (value) => {
-          if (this.joystickBiasStrengthController && this.joystickBiasStrengthController.object) {
+          if (this.main.joystickRenderer) {
+            this.main.joystickRenderer.setTurbulenceBiasInfluenceMultiplier(value);
+          }
+          if (this.joystickBiasStrengthController) {
             this.joystickBiasStrengthController.setValue(value);
           }
         }
@@ -383,17 +389,6 @@ export class InputsUi extends BaseUi {
           // Apply the changes immediately to both gravity and turbulence
           this.main.joystickRenderer.updateGravityUI();
           this.main.joystickRenderer.updateTurbulenceBiasUI();
-
-          // If we have access to the turbulence field directly, make sure bias is updated
-          if (this.main.turbulenceField) {
-            // For turbulence field, the biasAccel X is inverted in the UI
-            this.main.turbulenceField._displayBiasAccelX = -value * this.main.turbulenceField.biasStrength;
-
-            // Update the turbulence UI controllers if they exist
-            if (this.main.turbulenceUi && typeof this.main.turbulenceUi.updateBiasControllers === 'function') {
-              this.main.turbulenceUi.updateBiasControllers();
-            }
-          }
         }
       });
 
@@ -408,17 +403,6 @@ export class InputsUi extends BaseUi {
           // Apply the changes immediately to both gravity and turbulence
           this.main.joystickRenderer.updateGravityUI();
           this.main.joystickRenderer.updateTurbulenceBiasUI();
-
-          // If we have access to the turbulence field directly, make sure bias is updated
-          if (this.main.turbulenceField) {
-            // For turbulence field, the biasAccel Y is not inverted
-            this.main.turbulenceField._displayBiasAccelY = value * this.main.turbulenceField.biasStrength;
-
-            // Update the turbulence UI controllers if they exist
-            if (this.main.turbulenceUi && typeof this.main.turbulenceUi.updateBiasControllers === 'function') {
-              this.main.turbulenceUi.updateBiasControllers();
-            }
-          }
         }
       });
 
@@ -433,7 +417,7 @@ export class InputsUi extends BaseUi {
     };
 
     // Add spring strength slider
-    this.sliderFolder.add(springControl, "strength", 0, 1, 0.01).name("J-SpringStrength")
+    this.sliderFolder.add(springControl, "strength", 0, 1, 0.01).name("J-Spring")
       .onChange((value) => {
         if (this.main.joystickRenderer) {
           this.main.joystickRenderer.setSpringStrength(value);
@@ -442,49 +426,36 @@ export class InputsUi extends BaseUi {
       });
 
     // Add gravity strength control to joystick folder
-    if (this.main.externalInput && this.main.externalInput.emuForces) {
-      const emuForces = this.main.externalInput.emuForces;
-      this.joystickGravityStrengthController = this.sliderFolder
-        .add(
-          { multiplier: emuForces.accelGravityMultiplier || 1.0 },
-          "multiplier",
-          0,
-          1.0,
-          0.1
-        )
-        .name("J-G-Strength")
-        .onChange((value) => {
-          // Update the EMU forces
-          emuForces.setAccelGravityMultiplier(value);
-        });
-    }
+    this.joystickGravityStrengthController = this.sliderFolder
+      .add(
+        { multiplier: this.main.joystickRenderer.gravityInfluenceMultiplier || 0.1 },
+        "multiplier",
+        0,
+        1.0,
+        0.1
+      )
+      .name("J-G-Strength")
+      .onChange((value) => {
+        if (this.main.joystickRenderer) {
+          this.main.joystickRenderer.setGravityInfluenceMultiplier(value);
+        }
+      });
 
     // Add turbulence bias strength control to joystick folder
-    if (this.main && this.main.turbulenceField) {
-      const turbulenceField = this.main.turbulenceField;
-
-      this.joystickBiasStrengthController = this.sliderFolder
-        .add(
-          { strength: turbulenceField.biasStrength },
-          "strength",
-          0,
-          1.0,
-          0.1
-        )
-        .name("J-T-BiasStrength")
-        .onChange((value) => {
-          turbulenceField.biasStrength = value;
-
-          // If EMU input is active, reapply current values to update immediately
-          if (this.main.externalInput?.emuForces?.enabled) {
-            this.main.externalInput.emuForces.apply(0.016);
-          }
-
-          if (this.main.turbulenceUi && typeof this.main.turbulenceUi.updateBiasControllers === 'function') {
-            this.main.turbulenceUi.updateBiasControllers();
-          }
-        });
-    }
+    this.joystickBiasStrengthController = this.sliderFolder
+      .add(
+        { strength: this.main.joystickRenderer.turbulenceBiasInfluenceMultiplier || 0.3 },
+        "strength",
+        0,
+        1.0,
+        0.1
+      )
+      .name("J-T-BiasStrength")
+      .onChange((value) => {
+        if (this.main.joystickRenderer) {
+          this.main.joystickRenderer.setTurbulenceBiasInfluenceMultiplier(value);
+        }
+      });
 
     // Force hide the joystick initially (override main.js setting)
     if (this.main.joystickRenderer) {

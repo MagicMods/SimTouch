@@ -13,6 +13,7 @@ export class EmuForces {
 
     this.emuData = new EmuData();
     this.enabled = false;
+    this.accelGravityMultiplier = 1.0;
   }
 
   get db() {
@@ -106,6 +107,7 @@ export class EmuForces {
   }
 
   setAccelGravityMultiplier(value) {
+    this.accelGravityMultiplier = value;
     return this;
   }
 

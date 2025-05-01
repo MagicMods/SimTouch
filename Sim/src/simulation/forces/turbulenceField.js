@@ -46,7 +46,7 @@ export class TurbulenceField {
     biasFriction = 0.05,   // Friction coefficient for bias movement (0-1)
     biasSmoothing = 0.8,   // 0 = no smoothing, 1 = max smoothing
     biasTune = 1,       // Fine tuning of bias responsiveness
-    biasSensitivity = 0.25, // Global sensitivity multiplier (0-1)
+    biasSensitivity = 0.5, // Global sensitivity multiplier (0-1)
   } = {}) {
     if (
       !boundary ||
@@ -1179,8 +1179,8 @@ export class TurbulenceField {
       this._biasVelocityY += this._biasAccelY * 4.0 * dt * dt * 60;
 
       // Apply friction using linear interpolation towards zero
-      this._biasVelocityX = this._biasVelocityX * frictionFactor;
-      this._biasVelocityY = this._biasVelocityY * frictionFactor;
+      this._biasVelocityX = this._biasVelocityX * frictionFactor * this.biasSensitivity;
+      this._biasVelocityY = this._biasVelocityY * frictionFactor * this.biasSensitivity;
 
       // Apply velocity to position (scaled by dt)
       this._currentBiasOffsetX += this._biasVelocityX * dt * 60;
@@ -1391,11 +1391,7 @@ export class TurbulenceField {
     return this.biasSensitivity;
   }
 
-  /**
-   * Set bias acceleration based on joystick input
-   * The joystick values x and y are in the range -1 to 1
-   * We'll use these as acceleration values instead of direct speed
-   */
+
   setBiasSpeed(x, y) {
     // Clamp values to -1..1 range
     const clampedX = Math.max(-1, Math.min(1, x || 0));
@@ -1403,8 +1399,8 @@ export class TurbulenceField {
 
     // Scale down the acceleration for smoother response
     // Reduce multiplier from 0.2 to 0.05 for significantly lower sensitivity
-    this._biasAccelX = -clampedX * this.biasStrength * 0.05 * this.biasTune;
-    this._biasAccelY = clampedY * this.biasStrength * 0.05 * this.biasTune;
+    this._biasAccelX = -clampedX * this.biasStrength * this.biasTune;
+    this._biasAccelY = clampedY * this.biasStrength * this.biasTune;
 
     // Also reduce direction bias sensitivity to match the reduced acceleration
     // Reduce from 0.5 to 0.15 for better balance

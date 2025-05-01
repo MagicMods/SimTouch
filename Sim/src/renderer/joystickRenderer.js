@@ -12,8 +12,12 @@ export class JoystickRenderer {
     this.joystickX = 0;
     this.joystickY = 0;
 
-    this.springStrength = 0.5;
+    this.springStrength = 0.1;
     this.springEnabled = true;
+
+    this.gravityInfluenceMultiplier = 0.1;
+    this.turbulenceBiasInfluenceMultiplier = 0.3;
+    this.turbulenceBiasSensitivityFactor = 0.5; // Tuning factor
 
     // Create overlay canvas
     this.canvas = document.createElement("canvas");
@@ -147,18 +151,6 @@ export class JoystickRenderer {
     this.joystickX = clampedX;
     this.joystickY = clampedY;
 
-    // Only update EMU data if EMU forces are available
-    if (this.emuForces) {
-      // Update EMU data without swapping axes
-      this.emuForces.emuData.accelX = clampedX; // Use X for X
-      this.emuForces.emuData.accelY = clampedY; // Use Y for Y
-
-      // Apply to gravity immediately (if EMU is enabled)
-      if (this.emuForces.enabled) {
-        this.emuForces.apply(0.016); // Apply with default timestep
-      }
-    }
-
     // Always update the UI regardless of EMU being enabled
     this.updateGravityUI();
     this.updateTurbulenceBiasUI();
@@ -179,13 +171,11 @@ export class JoystickRenderer {
 
     if (!gravity) return;
 
-    // Apply joystick input directly to the physics gravity object IF EMU is not enabled
+    // Apply joystick input directly to the physics gravity object
     // This makes the joystick controller work independently
-    if (!this.emuForces?.enabled && this.joystickActive) {
-      // Use the multiplier if available, otherwise use 1.0
-      const multiplier = typeof this.emuForces?.accelGravityMultiplier === 'number'
-        ? this.emuForces.accelGravityMultiplier
-        : 1.0;
+    if (this.joystickActive) {
+      // Use the dedicated influence multiplier
+      const multiplier = this.gravityInfluenceMultiplier;
 
       // Check if gravity strength multiplier is > 0 before applying
       if (multiplier >= 0) {
@@ -202,16 +192,13 @@ export class JoystickRenderer {
     const gravityUi = this.main?.ui?.gravityUi; // Assuming path is main.ui.gravityUi
     if (gravityUi && this.joystickActive) {
       // Calculate the scaled values based on the multiplier
-      const multiplier = typeof this.emuForces?.accelGravityMultiplier === 'number'
-        ? this.emuForces.accelGravityMultiplier
-        : 1.0;
+      const multiplier = this.gravityInfluenceMultiplier;
       const scaledJoystickX = this.joystickX * multiplier;
       const scaledJoystickY = this.joystickY * multiplier;
 
       // Update G-X slider with the scaled value
       if (gravityUi.gravityXController) {
         try {
-          // Use the scaled joystickX value
           gravityUi.gravityXController.setValue(scaledJoystickX);
         } catch (e) {
           console.warn("Error setting GravityUi G-X controller:", e);
@@ -221,7 +208,6 @@ export class JoystickRenderer {
       // Update G-Y slider with the scaled value
       if (gravityUi.gravityYController) {
         try {
-          // Use the scaled joystickY value
           gravityUi.gravityYController.setValue(scaledJoystickY);
         } catch (e) {
           console.warn("Error setting GravityUi G-Y controller:", e);
@@ -266,18 +252,17 @@ export class JoystickRenderer {
       return; // Turbulence field not found
     }
 
-    // Normalize joystick values to -1 to 1 range for bias controls
-    const biasX = Math.max(-1, Math.min(1, this.joystickX / 10)); // X controls X
-    const biasY = Math.max(-1, Math.min(1, -this.joystickY / 10)); // Invert Y for correct direction
-
-    // Apply joystick input directly to turbulence bias if EMU is not enabled
-    // This makes the joystick controller work independently
+    // Apply joystick input directly to turbulence bias
     if (this.joystickActive) {
-      // Only apply if biasStrength > 0
-      if (turbulenceField.biasStrength > 0) {
-        // Use the physics model's acceleration setter - this will handle the implementation details
-        turbulenceField.setBiasSpeed(biasX, biasY);
-      }
+      // Normalize joystick values to -1 to 1 range for bias controls
+      const baseBiasX = this.joystickX / 10; // X controls X
+      const baseBiasY = -this.joystickY / 10; // Invert Y for correct direction
+
+      const effectiveBiasX = baseBiasX * this.turbulenceBiasInfluenceMultiplier * this.turbulenceBiasSensitivityFactor;
+      const effectiveBiasY = baseBiasY * this.turbulenceBiasInfluenceMultiplier * this.turbulenceBiasSensitivityFactor;
+
+      // Use the physics model's acceleration setter - this will handle the implementation details
+      turbulenceField.setBiasSpeed(effectiveBiasX, effectiveBiasY);
     }
 
     // If turbulenceUi is available with the updateBiasControllers method, use it
@@ -335,7 +320,7 @@ export class JoystickRenderer {
       gravity = this.emuForces.gravity;
     }
 
-    if (gravity && (!this.emuForces || !this.emuForces.enabled)) {
+    if (gravity) {
       gravity.setRawDirection(0, 0, gravity.directionZ || -1);
     }
 
@@ -347,7 +332,7 @@ export class JoystickRenderer {
       turbulenceField = this.emuForces.turbulenceField;
     }
 
-    if (turbulenceField && (!this.emuForces || !this.emuForces.enabled)) {
+    if (turbulenceField) {
       try {
         // Call the resetBias method which fully resets the physics model
         turbulenceField.resetBias();
@@ -603,4 +588,13 @@ export class JoystickRenderer {
       }
     }
   }
+
+  // <<< NEW SETTERS START
+  setGravityInfluenceMultiplier(value) {
+    this.gravityInfluenceMultiplier = Math.max(0, value); // Ensure non-negative
+  }
+  setTurbulenceBiasInfluenceMultiplier(value) {
+    this.turbulenceBiasInfluenceMultiplier = Math.max(0, value); // Ensure non-negative
+  }
+  // >>> NEW SETTERS END
 }
