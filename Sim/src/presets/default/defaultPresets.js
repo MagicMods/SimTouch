@@ -2,7 +2,7 @@ export const defaultPresets = {
   "_meta": {
     "version": "1.0",
     "exportDate": "2025-04-28T16:26:45.500Z",
-    "appName": "Svibe_FlipSim"
+    "appName": "SimTouch"
   },
   "presets": {
     "turbulence": {
@@ -92,63 +92,6 @@ export const defaultPresets = {
       "Default": {
         "controllers": {}
       },
-      "None": {
-        "controllers": {}
-      },
-      "Zero": {
-        "controllers": {
-          "O-Force": 5,
-          "F-Radius": 5,
-          "F-SurfaceT": 0,
-          "F-Visco": 0,
-          "F-Damp": 0,
-          "S-Radius": 5,
-          "S-Cohesion": 0,
-          "S-Align": 0,
-          "S-Separation": 0,
-          "S-MaxSpeed": 0,
-          "A-Radius": 5,
-          "A-Repulse": 0,
-          "A-Attract": 0,
-          "A-Threshold": 0
-        }
-      },
-      "Max": {
-        "controllers": {
-          "O-Force": 5,
-          "F-Radius": 50,
-          "F-SurfaceT": 1,
-          "F-Visco": 1,
-          "F-Damp": 1,
-          "S-Radius": 50,
-          "S-Cohesion": 2,
-          "S-Align": 2,
-          "S-Separation": 2,
-          "S-MaxSpeed": 1,
-          "A-Radius": 200,
-          "A-Repulse": 2,
-          "A-Attract": 10,
-          "A-Threshold": 1
-        }
-      },
-      "Test": {
-        "controllers": {
-          "O-Force": 5,
-          "F-Radius": 26.46,
-          "F-SurfaceT": 0.46,
-          "F-Visco": 0.468,
-          "F-Damp": 0.443,
-          "S-Radius": 25.695,
-          "S-Cohesion": 1,
-          "S-Align": 0.954,
-          "S-Separation": 1.004,
-          "S-MaxSpeed": 0.5,
-          "A-Radius": 104.52,
-          "A-Repulse": 0.936,
-          "A-Attract": 4.26,
-          "A-Threshold": 0.502
-        }
-      }
     },
     "pulse": {
       "None": {
@@ -296,7 +239,7 @@ export const defaultPresets = {
       }
     },
     "input": {
-      "None": {
+      "Default": {
         "modulators": []
       },
       "Test_01": {
@@ -645,36 +588,6 @@ export const defaultPresets = {
           "gradientPreset": "c0"
         }
       },
-      "Default": {
-        "screen": {
-          "width": 240,
-          "height": 240,
-          "shape": "circular"
-        },
-        "gridSpecs": {
-          "targetCellCount": 341,
-          "gap": 1,
-          "aspectRatio": 1,
-          "scale": 1,
-          "allowCut": 3,
-          "centerOffsetX": 0,
-          "centerOffsetY": 0
-        },
-        "shadow": {
-          "shadowIntensity": 0.17,
-          "shadowThreshold": 0,
-          "blurAmount": 0.23
-        },
-        "flags": {
-          "showGridCells": true,
-          "showIndices": false,
-          "showCellCenters": false,
-          "showBoundary": false
-        },
-        "colors": {
-          "gradientPreset": "c0"
-        }
-      },
       "WaveShare | R | 170x320 | 338": {
         "screen": {
           "width": 170,
@@ -707,46 +620,46 @@ export const defaultPresets = {
       }
     },
     "master": {
-      "Default": {
+      "3BouncingBall": {
         "paramUi": {
           "controllers": {
-            "Mode": "Proximity",
-            "Density": 2.1,
+            "Mode": "Velocity",
+            "Density": 1.7,
             "FadInSpd": 0.1,
             "FadOutSpd": 0.05,
-            "Time Step": 0.016666666666666666,
+            "Time Step": 0.032,
             "SimSpeed": 1,
-            "PicFlipRatio": 0
+            "PicFlipRatio": 1
           }
         },
         "particleUi": {
           "controllers": {
-            "P-Count": 500,
-            "P-Size": 0.01,
+            "P-Count": 3,
+            "P-Size": 0.05,
             "P-VeloMax": 1,
             "P-VeloDamp": 1,
-            "P-Opacity": 0.1,
+            "P-Opacity": 0.65,
             "P-Color": "FFFFFF"
           }
         },
         "gravityUi": {
           "controllers": {
             "G-X": 0,
-            "G-Y": 0
+            "G-Y": -1
           }
         },
         "collisionUi": {
           "controllers": {
-            "C-Repulse": 0.5,
-            "C-GridRez": 10,
-            "C-Bounce": 0.8,
-            "C-RestDens": 2
+            "C-Repulse": 4,
+            "C-GridRez": 16,
+            "C-Bounce": 1,
+            "C-RestDens": 3.6
           }
         },
         "boundaryUi": {
           "controllers": {
             "B-Mode": "BOUNCE",
-            "B-Scale": 1.03,
+            "B-Scale": 1,
             "B-Repulse": 0,
             "B-Friction": 0.8,
             "B-Bounce": 1
@@ -756,7 +669,7 @@ export const defaultPresets = {
           "modulators": []
         },
         "inputModUi": {
-          "enabled": false,
+          "enabled": true,
           "sensitivity": 5,
           "modulators": []
         },
@@ -764,7 +677,7 @@ export const defaultPresets = {
           "controllers": {
             "T-AfPosition": false,
             "T-AfScaleF": false,
-            "T-AfScale": true,
+            "T-AfScale": false,
             "T-Strength": 4,
             "T-Scale": 3,
             "T-Speed": 1,
@@ -772,7 +685,7 @@ export const defaultPresets = {
             "T-Max Size": 0.03,
             "T-Rot": 0,
             "T-RotSpd": 0,
-            "T-Decay": 1,
+            "T-Decay": 0.99,
             "T-DirX": 0,
             "T-DirY": 0,
             "T-DomWarp": 0,
@@ -911,36 +824,6 @@ export const defaultPresets = {
             "J-T-BiasStrength": false,
             "Enable External": false,
             "Enable EMU": false
-          }
-        },
-        "gridUi": {
-          "screen": {
-            "width": 240,
-            "height": 240,
-            "shape": "circular"
-          },
-          "gridSpecs": {
-            "targetCellCount": 341,
-            "gap": 1,
-            "aspectRatio": 1,
-            "scale": 1,
-            "allowCut": 3,
-            "centerOffsetX": 0,
-            "centerOffsetY": 0
-          },
-          "shadow": {
-            "shadowIntensity": 0.17,
-            "shadowThreshold": 0,
-            "blurAmount": 0.23
-          },
-          "flags": {
-            "showGridCells": true,
-            "showIndices": false,
-            "showCellCenters": false,
-            "showBoundary": false
-          },
-          "colors": {
-            "gradientPreset": "c0"
           }
         }
       },
@@ -1567,214 +1450,11 @@ export const defaultPresets = {
           }
         }
       },
-      "Swipe_02": {
-        "paramUi": {
-          "controllers": {
-            "Mode": "--- NOISE ---",
-            "Density": 2,
-            "FadInSpd": 0.3234,
-            "FadOutSpd": 0.01568,
-            "Time Step": 0.016666666666666666,
-            "SimSpeed": 1,
-            "PicFlipRatio": 0
-          }
-        },
-        "particleUi": {
-          "controllers": {
-            "P-Count": 0,
-            "P-Size": 0.007,
-            "P-VeloMax": 1,
-            "P-VeloDamp": 1,
-            "P-Opacity": 0.1,
-            "P-Color": "FFFFFF"
-          }
-        },
-        "gravityUi": {
-          "controllers": {
-            "G-X": 0,
-            "G-Y": 0
-          }
-        },
-        "collisionUi": {
-          "controllers": {
-            "C-Repulse": 0.5,
-            "C-GridRez": 10,
-            "C-Bounce": 0.8,
-            "C-RestDens": 2
-          }
-        },
-        "boundaryUi": {
-          "controllers": {
-            "B-Mode": "BOUNCE",
-            "B-Scale": 1,
-            "B-Repulse": 0.1,
-            "B-Friction": 0.95,
-            "B-Bounce": 0.8
-          }
-        },
-        "pulseModUi": {
-          "modulators": []
-        },
-        "inputModUi": {
-          "enabled": true,
-          "sensitivity": 5,
-          "modulators": []
-        },
-        "turbulenceUi": {
-          "controllers": {
-            "T-AfPosition": true,
-            "T-AfScaleF": false,
-            "T-AfScale": false,
-            "T-Strength": 4,
-            "T-Scale": 5.400000000000002,
-            "T-Speed": 0.596,
-            "T-Min Size": 0.008,
-            "T-Max Size": 0.025,
-            "T-Rot": 3.918705699489003,
-            "T-RotSpd": 0.092,
-            "T-Decay": 0.99,
-            "T-DirX": 0,
-            "T-DirY": 0,
-            "T-DomWarp": 0.189,
-            "T-DomWarpSp": 0.6,
-            "T-Pull Mode": 1,
-            "T-PatternStyle": "ripples",
-            "T-Freq": 0.8,
-            "T-PhaseSp": -1,
-            "T-Phase": 0,
-            "T-Symmetry": 0,
-            "T-Blur": 0.81,
-            "T-OffsetX": 0,
-            "T-OffsetY": 0,
-            "T-BiasX Spd": 0,
-            "T-BiasY Spd": 0,
-            "T-Bias Amt": 0.3,
-            "T-Contrast": 0.5,
-            "T-Quantize": 0
-          }
-        },
-        "voronoiUi": {
-          "controllers": {
-            "V-Strength": 0,
-            "V-CellSpeed": 0.2,
-            "V-EdgeWidth": 0.3,
-            "V-Attract": 1,
-            "V-CellCount": 10,
-            "V-Decay": 0.99,
-            "V-Pull Mode": false
-          }
-        },
-        "organicUi": {
-          "controllers": {
-            "O-Behavior": "None",
-            "O-Force": 5,
-            "O-Radius": 30,
-            "F-SurfaceT": 0.5,
-            "F-Visco": 0.2,
-            "F-Damp": 0.98,
-            "S-Cohesion": 1,
-            "S-Align": 0.7,
-            "S-Separation": 1.2,
-            "S-MaxSpeed": 0.5,
-            "A-Repulse": 0.8,
-            "A-Attract": 0.5,
-            "A-Threshold": 0.2,
-            "Ch-LinkDist": 0,
-            "Ch-LinkStr": 10,
-            "Ch-Align": 0.5,
-            "Ch-Branch": 2,
-            "Ch-MaxLinks": 10
-          }
-        },
-        "randomizerUi": {
-          "controllers": {
-            "Mode": false,
-            "Density": false,
-            "FadInSpd": false,
-            "FadOutSpd": false,
-            "SimSpeed": false,
-            "PicFlipRatio": false,
-            "P-Count": false,
-            "P-Size": false,
-            "P-VeloMax": false,
-            "P-VeloDamp": false,
-            "P-Opacity": false,
-            "P-Color": false,
-            "G-X": false,
-            "G-Y": false,
-            "C-Repulse": false,
-            "C-GridRez": false,
-            "C-Bounce": false,
-            "C-RestDens": false,
-            "B-Mode": false,
-            "B-Scale": false,
-            "B-Repulse": false,
-            "B-Friction": false,
-            "B-Bounce": false,
-            "T-AfPosition": false,
-            "T-AfScaleF": false,
-            "T-AfScale": false,
-            "T-Strength": false,
-            "T-Scale": false,
-            "T-Speed": false,
-            "T-Min Size": false,
-            "T-Max Size": false,
-            "T-Rot": false,
-            "T-RotSpd": false,
-            "T-Decay": false,
-            "T-DirX": false,
-            "T-DirY": false,
-            "T-DomWarp": false,
-            "T-DomWarpSp": false,
-            "T-Pull Mode": false,
-            "T-PatternStyle": false,
-            "T-Freq": false,
-            "T-PhaseSp": false,
-            "T-Phase": false,
-            "T-Symmetry": false,
-            "T-Blur": false,
-            "T-OffsetX": false,
-            "T-OffsetY": false,
-            "T-BiasX Spd": false,
-            "T-BiasY Spd": false,
-            "T-Bias Amt": false,
-            "T-Contrast": false,
-            "T-Quantize": false,
-            "V-Strength": false,
-            "V-CellSpeed": false,
-            "V-EdgeWidth": false,
-            "V-Attract": false,
-            "V-CellCount": false,
-            "V-Decay": false,
-            "V-Pull Mode": false,
-            "O-Behavior": false,
-            "O-Force": false,
-            "O-Radius": false,
-            "F-SurfaceT": false,
-            "F-Visco": false,
-            "F-Damp": false,
-            "S-Cohesion": false,
-            "S-Align": false,
-            "S-Separation": false,
-            "S-MaxSpeed": false,
-            "A-Repulse": false,
-            "A-Attract": false,
-            "A-Threshold": false,
-            "Ch-LinkDist": false,
-            "Ch-LinkStr": false,
-            "Ch-Align": false,
-            "Ch-Branch": false,
-            "Ch-MaxLinks": false,
-            "J-G-Strength": false,
-            "J-T-BiasStrength": false
-          }
-        }
-      },
       "Joystick": {
         "paramUi": {
           "controllers": {
             "Mode": "Proximity",
-            "Density": 2.1,
+            "Density": 4.4,
             "FadInSpd": 0.15,
             "FadOutSpd": 0.08,
             "Time Step": 0.016666666666666666,
@@ -4459,8 +4139,8 @@ export const defaultPresets = {
       "Chain_01": {
         "paramUi": {
           "controllers": {
-            "Mode": "Proximity",
-            "Density": 2.8,
+            "Mode": "Velocity",
+            "Density": 0.4,
             "FadInSpd": 0.1,
             "FadOutSpd": 0.05,
             "Time Step": 0.016666666666666666,
@@ -4470,12 +4150,12 @@ export const defaultPresets = {
         },
         "particleUi": {
           "controllers": {
-            "P-Count": 215,
-            "P-Size": 0.009,
+            "P-Count": 146,
+            "P-Size": 0.013,
             "P-VeloMax": 1,
             "P-VeloDamp": 0.912,
-            "P-Opacity": 0.1,
-            "P-Color": "FFFFFF"
+            "P-Opacity": 0.71,
+            "P-Color": "#000000"
           }
         },
         "gravityUi": {
@@ -4489,7 +4169,7 @@ export const defaultPresets = {
             "C-Repulse": 1.25,
             "C-GridRez": 10,
             "C-Bounce": 0.8,
-            "C-RestDens": 14.7
+            "C-RestDens": 14.1
           }
         },
         "boundaryUi": {
@@ -4654,412 +4334,6 @@ export const defaultPresets = {
             "Ch-Align": false,
             "Ch-Branch": false,
             "Ch-MaxLinks": false,
-            "J-G-Strength": false,
-            "J-T-BiasStrength": false
-          }
-        }
-      },
-      "Defaut": {
-        "paramUi": {
-          "controllers": {
-            "Mode": "Proximity",
-            "Density": 2.1,
-            "FadInSpd": 0.1,
-            "FadOutSpd": 0.05,
-            "Time Step": 0.016666666666666666,
-            "SimSpeed": 1,
-            "PicFlipRatio": 0
-          }
-        },
-        "particleUi": {
-          "controllers": {
-            "P-Count": 500,
-            "P-Size": 0.01,
-            "P-VeloMax": 1,
-            "P-VeloDamp": 0.98,
-            "P-Opacity": 0.1,
-            "P-Color": "FFFFFF"
-          }
-        },
-        "gravityUi": {
-          "controllers": {
-            "G-X": 0,
-            "G-Y": 0
-          }
-        },
-        "collisionUi": {
-          "controllers": {
-            "C-Repulse": 0.5,
-            "C-GridRez": 10,
-            "C-Bounce": 0.8,
-            "C-RestDens": 2
-          }
-        },
-        "boundaryUi": {
-          "controllers": {
-            "B-Mode": "BOUNCE",
-            "B-Scale": 1,
-            "B-Repulse": 0,
-            "B-Friction": 0.8,
-            "B-Bounce": 1
-          }
-        },
-        "pulseModUi": {
-          "modulators": []
-        },
-        "inputModUi": {
-          "enabled": true,
-          "sensitivity": 5,
-          "modulators": []
-        },
-        "turbulenceUi": {
-          "controllers": {
-            "T-AfPosition": false,
-            "T-AfScaleF": false,
-            "T-AfScale": false,
-            "T-Strength": 4,
-            "T-Scale": 3,
-            "T-Speed": 1,
-            "T-Min Size": 0.008,
-            "T-Max Size": 0.03,
-            "T-Rot": 0,
-            "T-RotSpd": 0,
-            "T-Decay": 0.99,
-            "T-DirX": 0,
-            "T-DirY": 0,
-            "T-DomWarp": 0,
-            "T-DomWarpSp": 0,
-            "T-Pull Mode": 1,
-            "T-PatternStyle": "checkerboard",
-            "T-Freq": 2,
-            "T-PhaseSp": -1,
-            "T-Phase": 0,
-            "T-Symmetry": 0,
-            "T-Blur": 0.8,
-            "T-OffsetX": 0.5,
-            "T-OffsetY": -0.5,
-            "T-BiasX Spd": 0,
-            "T-BiasY Spd": 0,
-            "T-Bias Amt": 0.3,
-            "T-Contrast": 0.5,
-            "T-Quantize": 0
-          }
-        },
-        "voronoiUi": {
-          "controllers": {
-            "V-Strength": 0,
-            "V-CellSpeed": 0.2,
-            "V-EdgeWidth": 0.3,
-            "V-Attract": 1,
-            "V-CellCount": 10,
-            "V-Decay": 0.99,
-            "V-Pull Mode": false
-          }
-        },
-        "organicUi": {
-          "controllers": {
-            "O-Behavior": "None",
-            "O-Force": 0.1,
-            "O-Radius": 30,
-            "F-SurfaceT": 0.5,
-            "F-Visco": 0.2,
-            "F-Damp": 0.98,
-            "S-Cohesion": 1,
-            "S-Align": 0.7,
-            "S-Separation": 1.2,
-            "S-MaxSpeed": 0.5,
-            "A-Repulse": 0.8,
-            "A-Attract": 0.5,
-            "A-Threshold": 0.2,
-            "Ch-LinkDist": 0,
-            "Ch-LinkStr": 10,
-            "Ch-Align": 0.5,
-            "Ch-Branch": 2,
-            "Ch-MaxLinks": 10
-          }
-        },
-        "randomizerUi": {
-          "controllers": {
-            "Mode": false,
-            "Density": false,
-            "FadInSpd": false,
-            "FadOutSpd": false,
-            "SimSpeed": false,
-            "PicFlipRatio": false,
-            "P-Count": false,
-            "P-Size": false,
-            "P-VeloMax": false,
-            "P-VeloDamp": false,
-            "P-Opacity": false,
-            "P-Color": false,
-            "G-X": false,
-            "G-Y": false,
-            "C-Repulse": false,
-            "C-GridRez": false,
-            "C-Bounce": false,
-            "C-RestDens": false,
-            "B-Mode": false,
-            "B-Scale": false,
-            "B-Repulse": false,
-            "B-Friction": false,
-            "B-Bounce": false,
-            "T-AfPosition": false,
-            "T-AfScaleF": false,
-            "T-AfScale": false,
-            "T-Strength": false,
-            "T-Scale": false,
-            "T-Speed": false,
-            "T-Min Size": false,
-            "T-Max Size": false,
-            "T-Rot": false,
-            "T-RotSpd": false,
-            "T-Decay": false,
-            "T-DirX": false,
-            "T-DirY": false,
-            "T-DomWarp": false,
-            "T-DomWarpSp": false,
-            "T-Pull Mode": false,
-            "T-PatternStyle": false,
-            "T-Freq": false,
-            "T-PhaseSp": false,
-            "T-Phase": false,
-            "T-Symmetry": false,
-            "T-Blur": false,
-            "T-OffsetX": false,
-            "T-OffsetY": false,
-            "T-BiasX Spd": false,
-            "T-BiasY Spd": false,
-            "T-Bias Amt": false,
-            "T-Contrast": false,
-            "T-Quantize": false,
-            "V-Strength": false,
-            "V-CellSpeed": false,
-            "V-EdgeWidth": false,
-            "V-Attract": false,
-            "V-CellCount": false,
-            "V-Decay": false,
-            "V-Pull Mode": false,
-            "O-Behavior": false,
-            "O-Force": false,
-            "O-Radius": false,
-            "F-SurfaceT": false,
-            "F-Visco": false,
-            "F-Damp": false,
-            "S-Cohesion": false,
-            "S-Align": false,
-            "S-Separation": false,
-            "S-MaxSpeed": false,
-            "A-Repulse": false,
-            "A-Attract": false,
-            "A-Threshold": false,
-            "Ch-LinkDist": false,
-            "Ch-LinkStr": false,
-            "Ch-Align": false,
-            "Ch-Branch": false,
-            "Ch-MaxLinks": false,
-            "J-G-Strength": false,
-            "J-T-BiasStrength": false
-          }
-        }
-      },
-      "PingBounce_01": {
-        "paramUi": {
-          "controllers": {
-            "Mode": "Velocity",
-            "Density": 1.7,
-            "FadInSpd": 0.1,
-            "FadOutSpd": 0.05,
-            "Time Step": 0.032,
-            "SimSpeed": 1,
-            "PicFlipRatio": 1
-          }
-        },
-        "particleUi": {
-          "controllers": {
-            "P-Count": 4,
-            "P-Size": 0.048,
-            "P-VeloMax": 1,
-            "P-VeloDamp": 1,
-            "P-Opacity": 0.65,
-            "P-Color": "FFFFFF"
-          }
-        },
-        "gravityUi": {
-          "controllers": {
-            "G-X": 0,
-            "G-Y": -1
-          }
-        },
-        "collisionUi": {
-          "controllers": {
-            "C-Repulse": 4,
-            "C-GridRez": 16,
-            "C-Bounce": 1,
-            "C-RestDens": 3.6
-          }
-        },
-        "boundaryUi": {
-          "controllers": {
-            "B-Mode": "BOUNCE",
-            "B-Scale": 1,
-            "B-Repulse": 0,
-            "B-Friction": 0.8,
-            "B-Bounce": 1
-          }
-        },
-        "pulseModUi": {
-          "modulators": []
-        },
-        "inputModUi": {
-          "enabled": true,
-          "sensitivity": 5,
-          "modulators": []
-        },
-        "turbulenceUi": {
-          "controllers": {
-            "T-AfPosition": false,
-            "T-AfScaleF": false,
-            "T-AfScale": false,
-            "T-Strength": 4,
-            "T-Scale": 3,
-            "T-Speed": 1,
-            "T-Min Size": 0.008,
-            "T-Max Size": 0.03,
-            "T-Rot": 0,
-            "T-RotSpd": 0,
-            "T-Decay": 0.99,
-            "T-DirX": 0,
-            "T-DirY": 0,
-            "T-DomWarp": 0,
-            "T-DomWarpSp": 0,
-            "T-Pull Mode": 1,
-            "T-PatternStyle": "checkerboard",
-            "T-Freq": 2,
-            "T-PhaseSp": -1,
-            "T-Phase": 0,
-            "T-Symmetry": 0,
-            "T-Blur": 0.8,
-            "T-OffsetX": 0.5,
-            "T-OffsetY": -0.5,
-            "T-BiasX Spd": 0,
-            "T-BiasY Spd": 0,
-            "T-Bias Amt": 0.3,
-            "T-Contrast": 0.5,
-            "T-Quantize": 0
-          }
-        },
-        "voronoiUi": {
-          "controllers": {
-            "V-Strength": 0,
-            "V-CellSpeed": 0.2,
-            "V-EdgeWidth": 0.3,
-            "V-Attract": 1,
-            "V-CellCount": 10,
-            "V-Decay": 0.99,
-            "V-Pull Mode": false
-          }
-        },
-        "organicUi": {
-          "controllers": {
-            "O-Behavior": "None",
-            "O-Force": 0.1,
-            "O-Radius": 30,
-            "F-SurfaceT": 0.5,
-            "F-Visco": 0.2,
-            "F-Damp": 0.98,
-            "S-Cohesion": 1,
-            "S-Align": 0.7,
-            "S-Separation": 1.2,
-            "S-MaxSpeed": 0.5,
-            "A-Repulse": 0.8,
-            "A-Attract": 0.5,
-            "A-Threshold": 0.2,
-            "Ch-LinkDist": 0,
-            "Ch-LinkStr": 10,
-            "Ch-Align": 0.5,
-            "Ch-Branch": 2,
-            "Ch-MaxLinks": 10
-          }
-        },
-        "randomizerUi": {
-          "controllers": {
-            "Mode": false,
-            "Density": false,
-            "FadInSpd": false,
-            "FadOutSpd": false,
-            "SimSpeed": false,
-            "PicFlipRatio": false,
-            "P-Count": false,
-            "P-Size": false,
-            "P-VeloMax": false,
-            "P-VeloDamp": false,
-            "P-Opacity": false,
-            "P-Color": false,
-            "G-X": false,
-            "G-Y": false,
-            "C-Repulse": false,
-            "C-GridRez": false,
-            "C-Bounce": false,
-            "C-RestDens": false,
-            "B-Mode": false,
-            "B-Scale": false,
-            "B-Repulse": false,
-            "B-Friction": false,
-            "B-Bounce": false,
-            "T-AfPosition": false,
-            "T-AfScaleF": false,
-            "T-AfScale": false,
-            "T-Strength": false,
-            "T-Scale": false,
-            "T-Speed": false,
-            "T-Min Size": false,
-            "T-Max Size": false,
-            "T-Rot": false,
-            "T-RotSpd": false,
-            "T-Decay": false,
-            "T-DirX": false,
-            "T-DirY": false,
-            "T-DomWarp": false,
-            "T-DomWarpSp": false,
-            "T-Pull Mode": false,
-            "T-PatternStyle": false,
-            "T-Freq": false,
-            "T-PhaseSp": false,
-            "T-Phase": false,
-            "T-Symmetry": false,
-            "T-Blur": false,
-            "T-OffsetX": false,
-            "T-OffsetY": false,
-            "T-BiasX Spd": false,
-            "T-BiasY Spd": false,
-            "T-Bias Amt": false,
-            "T-Contrast": false,
-            "T-Quantize": false,
-            "V-Strength": false,
-            "V-CellSpeed": false,
-            "V-EdgeWidth": false,
-            "V-Attract": false,
-            "V-CellCount": false,
-            "V-Decay": false,
-            "V-Pull Mode": false,
-            "O-Behavior": false,
-            "O-Force": false,
-            "O-Radius": false,
-            "F-SurfaceT": false,
-            "F-Visco": false,
-            "F-Damp": false,
-            "S-Cohesion": false,
-            "S-Align": false,
-            "S-Separation": false,
-            "S-MaxSpeed": false,
-            "A-Repulse": false,
-            "A-Attract": false,
-            "A-Threshold": false,
-            "Ch-LinkDist": false,
-            "Ch-LinkStr": false,
-            "Ch-Align": false,
-            "Ch-Branch": false,
-            "Ch-MaxLinks": false,
             "J-X": false,
             "J-Y": false,
             "J-G-Strength": false,
@@ -5067,8 +4341,39 @@ export const defaultPresets = {
             "Enable External": false,
             "Enable EMU": false
           }
+        },
+        "gridUi": {
+          "screen": {
+            "width": 240,
+            "height": 240,
+            "shape": "circular"
+          },
+          "gridSpecs": {
+            "targetCellCount": 341,
+            "gap": 1,
+            "aspectRatio": 1,
+            "scale": 1,
+            "allowCut": 3,
+            "centerOffsetX": 0,
+            "centerOffsetY": 0
+          },
+          "shadow": {
+            "shadowIntensity": 0.17,
+            "shadowThreshold": 0,
+            "blurAmount": 0.23
+          },
+          "flags": {
+            "showGridCells": true,
+            "showIndices": false,
+            "showCellCenters": false,
+            "showBoundary": false
+          },
+          "colors": {
+            "gradientPreset": "c0"
+          }
         }
       }
-    }
+
+    },
   }
 };

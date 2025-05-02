@@ -47,43 +47,42 @@ export class PresetManager {
     this.handlers = {
       [PresetManager.TYPES.TURBULENCE]: new SimplePresetHandler(
         "savedTurbulencePresets",
-        minimalTurbulenceDefaults, // Pass minimal
-        ["Default"], // Protected
+        minimalTurbulenceDefaults,
+        ["Default"],
       ),
       [PresetManager.TYPES.VORONOI]: new SimplePresetHandler(
         "savedVoronoiPresets",
-        minimalVoronoiDefaults, // Pass minimal
-        ["Default", "None"], // Protected
+        minimalVoronoiDefaults,
+        ["Default", "None"],
       ),
       [PresetManager.TYPES.ORGANIC]: new SimplePresetHandler(
         "savedOrganicPresets",
-        minimalOrganicDefaults, // Pass minimal
-        ["Default", "None"], // Protected
+        minimalOrganicDefaults,
+        ["Default", "None"],
       ),
       [PresetManager.TYPES.PULSE]: new ModulatorPresetHandler(
         "savedPulsePresets",
-        minimalPulseDefaults, // Pass minimal
-        ["None"], // Protected
+        minimalPulseDefaults,
+        ["None"],
       ),
       [PresetManager.TYPES.INPUT]: new ModulatorPresetHandler(
-        "savedMicPresets", // Note: Key is savedMicPresets
-        minimalInputDefaults, // Pass minimal
-        ["None"], // Protected
+        "savedInputPresets",
+        minimalInputDefaults,
+        ["None"],
       ),
       [PresetManager.TYPES.RANDOMIZER]: new RandomizerPresetHandler(
         "savedRandomizerPresets",
-        minimalRandomizerDefaults, // Pass minimal
-        ["None", "All"], // Protected
+        minimalRandomizerDefaults,
+        ["None", "All"],
       ),
       [PresetManager.TYPES.GRID]: new SimplePresetHandler(
         "savedGridPresets",
-        minimalGridDefaults, // Pass minimal
-        // ["Default"], // Protected (Adjust if more grid presets are essential)
+        minimalGridDefaults,
       ),
       [PresetManager.TYPES.MASTER]: new MasterPresetHandler(
-        "savedPresets", // Note: Key is savedPresets
-        minimalMasterDefaults, // Pass minimal
-        ["Default"], // Protected
+        "savedMasterPresets",
+        minimalMasterDefaults,
+        ["Default"],
       ),
     };
 

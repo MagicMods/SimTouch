@@ -5,7 +5,7 @@ class DebugManager {
         }
         this.debugFlags = {
             main: false,
-            preset: false,
+            preset: true,
             param: false,
             state: false,
             events: false,

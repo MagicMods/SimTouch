@@ -166,7 +166,6 @@ export class Main {
 
     };
 
-
     this.gridParams = {
       screen: {
         width: 240,
