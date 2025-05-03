@@ -104,6 +104,10 @@ Then open your browser to `http://localhost:8080/sim.html` to view the simulatio
 - `README.md` - This file
 - `.cursor/rules` - Cursor IDE AI enabled specific rules, derived from [RIPER-5](https://forum.cursor.com/t/i-created-an-amazing-mode-called-riper-5-mode-fixes-claude-3-7-drastically/65516) and [cursorkleosr](https://github.com/kleosr/cursorkleosr/). Still under development but good base to start with. It enables tight control over AI model's behavior and agentic workflow effectively dramatically boosting productivity. You need to tune it to your own workflow and logic. Use the model to reflect on it's own failures and figure out a strategy to correct it's own behavior via rules and memoLTM/learnings.md. Experimental but very effective. Works great with geminy2.5 pro and Claude3.7
 
+## Inspirations
+
+Heavily inspired by [mitxela](https://mitxela.com/projects/fluid-pendant) and he's amzing fluid pendant as well as [Ten Minute Physics](https://matthias-research.github.io/pages/tenMinutePhysics/index.html) for his high quality recources and informations.
+
 ## License
 
 This project is licensed under the Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International License (CC BY-NC-SA 4.0).
