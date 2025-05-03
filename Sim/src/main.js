@@ -1,4 +1,4 @@
-import { ShaderManager } from "./shaders/shaderManager.js";
+import { ShaderManager } from "./shader/shaderManager.js";
 // Simulation
 import { ParticleSystem } from "./simulation/core/particleSystem.js";
 import { TurbulenceField } from "./simulation/forces/turbulenceField.js";

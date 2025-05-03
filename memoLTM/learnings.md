@@ -1,6 +1,6 @@
 # Project Learnings
 
-## Learned Principle: Enhanced Verification from Phase 0 (2024-04-06)
+## Learned Principle: Enhanced Verification from Phase 0
 
 **Objective:** Document process refinements based on the shader alignment refactoring experience.
 
@@ -17,37 +17,37 @@
 
 **Impact:** Applying these refinements will increase the rigor of the `[PLAN]` and `[CHECK]` modes, aiming to catch subtle integration issues earlier and reduce debugging cycles during complex phases, thereby supporting the goal of parallel integration without breaking the pipeline.
 
-## Coordinate System Consistency (2024-08-01)
+## Coordinate System Consistency
 
 **Experience:** Debugging the `Sim` project integration revealed inconsistencies between the normalized [0,1] physics space, the pixel-based rendering space, and outlier components using fixed 240x240 pixel spaces (e.g., `neighborSearch.js`). This complicated data flow and debugging.
 
 **Learning:** Explicitly analyze, document, and standardize coordinate systems early during integration. Define canonical spaces (e.g., simulation, render) and enforce consistent conversion logic. Refactor outlier components to conform. Mismatched coordinate systems lead to hard-to-trace bugs.
 
-## Stateless Component Design for Portability (2024-08-01)
+## Stateless Component Design for Portability
 
 **Experience:** Comparing stateful (`Sim`) vs. stateless (`Grid`) `DimensionManager` implementations highlighted the benefits of statelessness for C# porting. Components tightly coupled to JS-specific context (canvas, GL context) are harder to port.
 
 **Learning:** For core logic intended for reuse or porting (e.g., `GridGeometry`), favor stateless design. Pass required data (dimensions, config) explicitly into methods. Avoid storing external context (like canvas elements or GL contexts) within the component instance. This improves testability, reduces hidden dependencies, and simplifies cross-platform adaptation.
 
-## Deceptive Module Loading Errors (404s) (2024-08-01)
+## Deceptive Module Loading Errors (404s)
 
 **Experience:** A persistent 404 error for `gridRenderModes.js` occurred despite correct import paths in the source code. The browser requested the file from an incorrect path (`.../simulation/renderer/...` instead of `.../renderer/...`).
 
 **Learning:** Persistent 404 errors for correctly located files, especially when requested via incorrect paths, often indicate issues external to the module's code (e.g., browser cache, server configuration, base URL resolution, build tool artifacts, source maps). Use browser network tools ("Initiator" tab) to trace the faulty request origin. Consider cache invalidation, server restarts, and build cleans as diagnostic steps.
 
-## Parameter Centralization Scope (2024-08-01)
+## Parameter Centralization Scope
 
 **Experience:** Consolidating parameters into `main.gridParams` showed that including highly specific configurations for complex components (like `TurbulenceField`'s ~30+ params) bloats the global state object.
 
 **Learning:** Distinguish between globally relevant parameters (physics, screen size) and component-specific configuration. For complex components, prefer passing a dedicated configuration object during instantiation (e.g., `params.config`) rather than merging all their settings into the global state object (e.g., `gridParams.turbulence`). This maintains clarity and prevents the global state from becoming unmanageable.
 
-## Explicit Update Cycles for Dependent Components (2024-08-01)
+## Explicit Update Cycles for Dependent Components
 
 **Experience:** The DOM-based `BoundaryRenderer` failed to update because its `update()` method wasn't called in the main application loop (`main.js::setGridParams`) after its data source (`BoundaryManager`) was updated.
 
 **Learning:** Components that passively visualize or react to state managed elsewhere must have their update logic explicitly triggered within the correct phase of the main application loop, _after_ their data dependencies have been updated. Document the required update order.
 
-## Accurate DOM Element Positioning (getBoundingClientRect) (2024-08-01)
+## Accurate DOM Element Positioning (getBoundingClientRect)
 
 **Experience:** HTML overlays were incorrectly positioned/scaled because calculations relied on canvas `width`/`height` attributes or `offsetTop/offsetLeft`, which didn't reflect the actual rendered size influenced by CSS and aspect ratio changes.
 

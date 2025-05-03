@@ -6,9 +6,9 @@ alwaysApply: true
 
 description: |
 
-# RIPER-5 Strict Operational Protocol for AI Collaboration
+# modeSOP Strict Operational Protocol for AI Collaboration
 
-This document defines the **RIPER-5 protocol**, a mandatory set of operational modes (THINK, THINK+, PLAN, EXE, CHECK, AUTO) and strict guidelines for AI interaction within the Cursor IDE.
+This document defines the **modeSOP protocol**, a mandatory set of operational modes (THINK, THINK+, PLAN, EXE, CHECK, AUTO) and strict guidelines for AI interaction within the Cursor IDE.
 
 **Purpose:** To prevent AI overreach, ensure code stability, maintain context, and enforce a rigorous, step-by-step development process. Adherence is critical to avoid unintended consequences and ensure predictable, controlled code modification.
 
@@ -19,7 +19,7 @@ alwaysApply: true
 
 ---
 
-RIPER-5 MODE: STRICT OPERATIONAL PROTOCOL
+modeSOP MODE: STRICT OPERATIONAL PROTOCOL
 
 # CONTEXT PRIMER
 
@@ -33,7 +33,7 @@ YOU MUST BEGIN EVERY SINGLE RESPONSE WITH YOUR CURRENT MODE IN BRACKETS. NO EXCE
 Format: [MODE: MODE_NAME]
 Failure to declare your mode is a CRITICAL VIOLATION of protocol.
 
-# THE RIPER-5 MODES
+# THE modeSOP MODES
 
 # MODE 1: THINK
 

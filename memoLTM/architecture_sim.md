@@ -1,4 +1,4 @@
-# Architecture: Sim (Pre-Migration State - 2024-08-01)
+# Architecture: Sim (Pre-Migration State)
 
 This document describes the Sim project's characteristics and the strategy for migrating the Grid rendering system into it.
 
@@ -76,7 +76,7 @@ This document describes the Sim project's characteristics and the strategy for m
   - Contains physics boundary definitions (`*Ps.js` files).
 - **`shader/` (Migrated from Grid Structure):**
   - `shaderManager.js` (Grid version): Manages shaders.
-  - `shaders/`: Contains JS modules for shaders (`gridCell.js`, potentially adapted `particles.js`, and shaders needed for `particleRenderer`, `debugRenderer`, etc.).
+  - `shader/`: Contains JS modules for shaders (`gridCell.js`, potentially adapted `particles.js`, and shaders needed for `particleRenderer`, `debugRenderer`, etc.).
 - **`input/`, `network/`, `presets/`, `sound/`, `ui/`, `util/` (Existing Sim):** Retained, interfaces potentially updated for migrated components and event bus integration (e.g., `UiManager` subscribes to `simParamsUpdated`, `SocketManager` may subscribe/emit events).
 
 **Key Migration Tasks:**

@@ -104,7 +104,7 @@ graph LR
         Grid_OverlayManager -- Reads --> Grid_Dimensions
         Grid_OverlayManager -- Interacts --> Grid_Canvas
 
-        Grid_ShaderManager -- Loads --> Grid_Shaders[/shader/]
+        Grid_ShaderManager -- Loads --> Grid_shader[/shader/]
     end
 ```
 

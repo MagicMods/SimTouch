@@ -1,5 +1,5 @@
 import * as mat4 from "gl-matrix/mat4.js";
-import { ShaderManager } from "../shaders/shaderManager.js";
+import { ShaderManager } from "../shader/shaderManager.js";
 import { debugManager } from '../util/debugManager.js';
 export class DataVisualization {
     constructor(container, main) {

@@ -3,7 +3,7 @@ import * as mat4 from "gl-matrix/mat4.js";
 import { GridGeometry } from "../coreGrid/gridGeometry.js";
 import { OverlayManager } from "./overlayRenderer.js";
 import { eventBus } from '../util/eventManager.js';
-import { Gradients } from "../shaders/gradients.js";
+import { Gradients } from "../shader/gradients.js";
 import { GridRenderModes, GridField } from "./gridRenderModes.js";
 import { comManager } from "../com/comManager.js";
 import { debugManager } from "../util/debugManager.js";

@@ -10,11 +10,11 @@ The project follows a two-phase strategy:
 
 - **Phase 1: JavaScript Prototyping Environment (`Sim` Project)**
 
-  - **Objective:** Develop and rapidly iterate on simulation mechanics, force interactions, input modulation, and core algorithms within a browser-based JavaScript application (`Sim/src/`).
+  - **Objective:** Develop and rapidly iterate on simulation mechanics, force interactions, input modulation, presets and core algorithms within a browser-based JavaScript application (`Sim/src/`).
   - **Purpose:** This JS application serves primarily as a functional specification, a fast prototyping tool, and a visual debugger for the logic intended for the embedded system.
 
-- **Phase 2: C# Embedded Implementation**
-  - **Objective:** Create a C# version of the core simulation engine, derived from the validated JS prototype, suitable for embedded deployment.
+- **Phase 2: C#/C++ Embedded Implementation**
+  - **Objective:** Create a C# or C++/Arduino version of the core simulation engine, derived from the validated JS prototype, suitable for embedded deployment.
 
 ## Core Architectural Principles (for Embedded Target & JS Prototype)
 

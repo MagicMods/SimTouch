@@ -26,11 +26,10 @@ The `Main` class is the entry point and coordinates all simulation components. I
 
 - **TurbulenceField**: Applies noise-based forces to particles
   - Requires: `CircularBoundary`
-  
 - **VoronoiField**: Creates voronoi cell-based forces
   - Requires: `CircularBoundary`
-  
 - **MouseForces**: Handles user interaction with particles
+
   - Requires: Direct reference to `Main` and `ParticleSystem`
 
 - **EmuForces**: Applies external EMU device forces
@@ -38,13 +37,16 @@ The `Main` class is the entry point and coordinates all simulation components. I
 
 ### Rendering
 
-- **ShaderManager**: Manages WebGL shaders and programs
+- **ShaderManager**: Manages WebGL shader and programs
+
   - Requires: WebGL context
 
 - **ParticleRenderer**: Draws particles
+
   - Requires: WebGL context, `ShaderManager`
 
 - **GridRenderer**: Handles grid visualization modes
+
   - Requires: WebGL context, `ShaderManager`
 
 - **DebugRenderer**: Visualizes force fields and debug info
@@ -53,6 +55,7 @@ The `Main` class is the entry point and coordinates all simulation components. I
 ### UI System
 
 - **UiManager**: Coordinates all UI components
+
   - Requires: `Main` reference
   - Manages: ModulatorManager, PresetManager
 
@@ -68,25 +71,25 @@ The `Main` class is the entry point and coordinates all simulation components. I
 
 Main
 ├── ParticleSystem
-│   ├── TurbulenceField
-│   ├── VoronoiField
-│   ├── CircularBoundary
-│   ├── MouseForces
-│   ├── CollisionSystem
-│   └── GravityForces
+│ ├── TurbulenceField
+│ ├── VoronoiField
+│ ├── CircularBoundary
+│ ├── MouseForces
+│ ├── CollisionSystem
+│ └── GravityForces
 ├── Renderers
-│   ├── ParticleRenderer
-│   ├── GridRenderer
-│   ├── DebugRenderer
-│   └── EmuRenderer
+│ ├── ParticleRenderer
+│ ├── GridRenderer
+│ ├── DebugRenderer
+│ └── EmuRenderer
 ├── Input
-│   ├── ExternalInputConnector
-│   ├── ModulatorManager
-│   └── MicInputForces
+│ ├── ExternalInputConnector
+│ ├── ModulatorManager
+│ └── MicInputForces
 └── UI
-    └── UiManager
-        ├── Various UI Panels
-        └── PresetManager
+└── UiManager
+├── Various UI Panels
+└── PresetManager
 
 ## Error Handling
 
@@ -112,7 +115,7 @@ Components are designed to fail explicitly when required dependencies are missin
    ```javascript
    // BAD
    this.main?.turbulenceField?.update();
-   
+
    // GOOD
    this.main.turbulenceField.update();
    ```
@@ -124,7 +127,7 @@ Components are designed to fail explicitly when required dependencies are missin
    if (typeof controller.getValue === "function") {
      controller.getValue();
    }
-   
+
    // GOOD
    controller.getValue(); // Validate at initialization time
    ```
@@ -133,9 +136,8 @@ Components are designed to fail explicitly when required dependencies are missin
 
    ```javascript
    // BAD
-   const field = this.main?.turbulenceField || 
-                 this.particleSystem?.main?.turbulenceField;
-   
+   const field = this.main?.turbulenceField || this.particleSystem?.main?.turbulenceField;
+
    // GOOD
    const field = this.main.turbulenceField; // Documented dependency
    ```

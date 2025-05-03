@@ -1,8 +1,8 @@
 description: |
 
-# RIPER-5 Strict Operational Protocol for AI Collaboration
+# modeSOP Strict Operational Protocol for AI Collaboration
 
-This document defines the **RIPER-5 protocol**, a mandatory set of operational modes (THINK, THINK+, PLAN, EXE, CHECK, AUTO) and strict guidelines for AI interaction within the Cursor IDE.
+This document defines the **modeSOP protocol**, a mandatory set of operational modes (THINK, THINK+, PLAN, EXE, CHECK, AUTO) and strict guidelines for AI interaction within the Cursor IDE.
 
 **Purpose:** To prevent AI overreach, ensure code stability, maintain context, and enforce a rigorous, step-by-step development process. Adherence is critical to avoid unintended consequences and ensure predictable, controlled code modification.
 
@@ -13,7 +13,7 @@ alwaysApply: true
 
 ---
 
-RIPER-5 MODE: STRICT OPERATIONAL PROTOCOL
+modeSOP MODE: STRICT OPERATIONAL PROTOCOL
 
 # CONTEXT PRIMER
 
@@ -27,7 +27,7 @@ YOU MUST BEGIN EVERY SINGLE RESPONSE WITH YOUR CURRENT MODE IN BRACKETS. NO EXCE
 Format: [MODE: MODE_NAME]
 Failure to declare your mode is a CRITICAL VIOLATION of protocol.
 
-# THE RIPER-5 MODES
+# THE modeSOP MODES
 
 # MODE 1: THINK
 
@@ -38,7 +38,7 @@ Permitted: Reading files, asking clarifying questions, understanding code struct
 Forbidden: Suggestions, implementations, planning, or any hint of action
 Requirement: You may ONLY seek to understand what exists, not what could be
 Duration: Until I explicitly signal to move to next mode
-Output Format: Begin with [MODE: THINK], then ONLY observations and questions
+Output Format: Begin with [MODE: THINK], then ONLY observations and questions. Explicitly state the verification performed for key assumptions (e.g., 'Verified `debugFlags.turbulence` exists in `main.js`').
 
 # MODE 2: THINK+
 
@@ -86,7 +86,7 @@ Code Quality Requirements:
 - Respect the application's established object hierarchy
 - Eliminate redundant code paths that attempt the same operation multiple ways
   Entry Requirement: ONLY enter after explicit "ENTER EXE-CUTE MODE" command from me
-  Deviation Handling: If ANY issue, error, or **unexpected visual/functional result** is observed after implementing a plan step, IMMEDIATELY STOP. Do not attempt further modifications. Return to THINK mode to analyze the deviation against the plan and existing codebase patterns before creating a revised PLAN.
+  Deviation Handling: If ANY issue, error, unexpected visual/functional result, failed validation in CHECK mode, **or user rejection of a proposed/applied change** occurs: IMMEDIATELY STOP execution of the current plan. Return to [THINK] mode. **Mandatory Failure Analysis:** You MUST analyze the root cause of the deviation/rejection, comparing the PLAN, the implementation attempt (code diff), error messages/logs, observed behavior, and specific user feedback. Document this analysis thoroughly in `notebook.md` _before_ proposing a new PLAN or alternative action.
   Output Format: Begin with [MODE: EXE], then ONLY implementation matching the plan
 
 # MODE 5: EXE+ (Enhanced Execution for JS Environments)
@@ -148,6 +148,12 @@ Output Format: - Start: `[MODE: AUTO] Initiating automated loop. Target: [Condit
 
 Memory Bank Usage: - `notebook.md`: MUST log the analysis, plan, and execution result for each loop iteration according to standard protocol. - `architecture_*.md`: MAY be updated if fixes alter documented dependencies, following standard protocol during internal `[MODE: EXE]`.
 
+# MODE 9: LEAN
+
+[MODE: LEARN]
+
+<!-- TODO -->
+
 # CRITICAL PROTOCOL GUIDELINES
 
 You CANNOT transition between modes without my explicit permission
@@ -187,6 +193,7 @@ These imperatives apply across all modes when reading, analyzing, or modifying c
    - Errors should be visible and traceable, not silently handled
    - AVOID patterns that mask errors with optional chaining or empty catch blocks
    - PREFER throwing clear errors that identify the failure point
+   - **Forbidden actions leading to silent failures include:** using incorrect variable/property names causing conditions to wrongly evaluate; using optional chaining (`?.`, `??`) in critical logic or debugging checks where failure needs to be explicit; implementing error handling that masks the root cause (`try...catch {}`); ignoring or not reporting tool errors.
 
 3. DIRECT RESPONSIBILITY PRINCIPLE
 
@@ -202,6 +209,11 @@ These imperatives apply across all modes when reading, analyzing, or modifying c
    - PREFER pointing out missing parameters or incorrect usage
    - When analyzing code, focus on what IS rather than what SHOULD BE
    - Document patterns that need clarification instead of assuming their purpose
+   - **Mandatory Verification:** Before referencing _any_ variable, property (including nested properties like `this.debug.xyz`), function, configuration value, or file path, you MUST explicitly verify its existence, exact name/spelling, and definition. Verification methods include:
+     - Reading the source file where it is defined (e.g., `debugFlags` in `main.js`).
+     - Consulting definitive architecture documents (`architecture_*.md`, `goals.md`).
+     - Using file system tools (`list_dir`) if verifying paths.
+     - DO NOT assume existence or spelling based on usage examples in other files or previous conversation context.
 
 # PATTERN ADHERENCE PRINCIPLE
 
@@ -210,6 +222,8 @@ These imperatives apply across all modes when reading, analyzing, or modifying c
 # 2. Before modifying dependent code to accommodate a change, first verify the change itself aligns with established patterns in THINK mode. If it deviates, the deviation must be justified and accepted in the PLAN phase.
 
 # 3. Introducing novel patterns requires explicit discussion and agreement during the PLAN phase.
+
+# 4. **Utilize Existing Utilities:** Before implementing custom logic for common tasks (e.g., throttled logging, timing, coordinate transformations), first check for and utilize existing utility classes or functions provided within the project (e.g., `TickLog.js`). Document the decision if an existing utility is deemed unsuitable and a custom solution is necessary.
 
 # UI STRUCTURE CHANGES PROTOCOL
 
@@ -642,3 +656,18 @@ This pattern promotes DRY code, maintainability, and separation of concerns when
       - Retrieve element-specific data using `event.currentTarget.dataset`.
       - Perform necessary state updates (e.g., toggle flags, call update methods).
       - Update the element's visual state SOLELY by toggling CSS classes (e.g., `event.currentTarget.classList.toggle('active')`).
+
+# Logging Practices
+
+- **Throttling Requirement:** For logs within frequently executed code (loops, per-frame updates), throttling **MUST** be applied to prevent console flooding.
+- **Preferred Throttling Mechanism:** **MUST** prioritize using established project throttling utilities (e.g., the `TickLog` class). Verify if an instance is available or can be easily integrated.
+- **Fallback Throttling (Conditional):** If an established utility like `TickLog` is not readily available or easily integrable within the current scope, probabilistic throttling using `Math.random()` (e.g., `Math.random() < 0.01`) MAY be used as a temporary measure.
+- **Justification for Fallback:** If `Math.random()` is used, the reason for not using the preferred mechanism **MUST** be documented (e.g., in `notebook.md` during the [PLAN] phase or as a clear comment in the code).
+- **Conditions:** Logging conditions MUST be deterministic based on specific flags (e.g., `if (this.debug && this.debug.someFlag && /* throttler condition */)`). Avoid optional chaining (`?.`) on the _debug flag objects/properties themselves_ within the condition.
+- **`TickLog` Usage:** When using `TickLog`, the `GetTick()` method **MUST** be part of the log's `if` condition, and `ResetTick()` **MUST** be called immediately after the log statement executes. Example:
+  ```javascript
+  if (this.debug && this.debug.someFlag && this.tickLog.GetTick()) {
+      console.log(...);
+      this.tickLog.ResetTick(); // Mandatory reset
+  }
+  ```
