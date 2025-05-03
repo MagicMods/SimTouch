@@ -1,4 +1,4 @@
-# SimTouch: JS Prototyping Environment for Embedded Particle Simulation and Actuator Array Control.
+# [SimTouch](https://magicmods.net/SimTouch/src/sim.html): JS Prototyping Environment for Embedded Particle Simulation and Actuator Array Control.
 
 ## Overview
 
