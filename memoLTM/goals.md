@@ -1,7 +1,5 @@
 # Project Goals
 
-## Overarching Vision: Embedded Hardware Particle Simulator
-
 **The ultimate goal is to create a core particle simulation engine suitable for deployment on CPU-only embedded systems. This engine will be used to animate and drive external hardware devices based on simulation state and modulated inputs.**
 
 ## Development Strategy: JS Prototyping -> C# Embedded

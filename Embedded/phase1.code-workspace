@@ -1,12 +1,12 @@
 {
-	"folders": [
-		{
-			"path": "esp32/ParticuleSimulator"
-		}
-	],
-	"settings": {
-		"files.associations": {
-			"cstdint": "cpp"
-		}
-	}
+  "folders": [
+    {
+      "path": "esp32/Phase1"
+    }
+  ],
+  "settings": {
+    "files.associations": {
+      "cstdint": "cpp"
+    }
+  }
 }

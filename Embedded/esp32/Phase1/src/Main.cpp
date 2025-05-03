@@ -6,7 +6,7 @@
 #include "Graphics.h"
 #include "Wire.h"
 #include "Acc.h"
-#include "FastLED.h"
+#include "FastLED.h" // FastLed isn't necassary for phase1 of this project but since it is needed for Phase2, we will make use of it's tools.
 
 uint8_t BRIGHTNESS_LED = 255;
 uint8_t BRIGHTNESS_POWMX = 255;
@@ -45,7 +45,6 @@ void setup()
 #if WIFI
   SetupWifi();
 #endif
-
   SetupUI();
   SetupAcc();
 }
@@ -56,7 +55,6 @@ void loop()
   EVERY_N_MILLISECONDS(1000) { TimerResetArray(); }
   // EVERY_N_MILLISECONDS(275) { Cpu(); }
   EVERY_N_MILLISECONDS(1000 / 60) { UiLoop(); }
-  
 
   ProcessIncomingData();
 }

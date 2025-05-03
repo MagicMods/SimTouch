@@ -2,7 +2,7 @@
 
 ## Overview
 
-This project's aim is to develop a particle simulation engine designed to generate organic and coherent control signals for actuator arrays (servos, LEDs, etc.) on touch-enabled embedded systems. It serves as an addon to a parent Haptic/VR project but could be used for wildy different purpose such as a movement reactive pendant (emu/graphics), sound reactive art installation (hardware/audio/PWM) etc. But most importantly, it is a rapid protyping development/testing platform.
+This project's aim is to develop a particle simulation engine designed to generate organic and coherent control signals for actuator arrays (servos, LEDs, etc.) on touch-enabled embedded systems. It serves as an addon to a parent Haptic/VR project but could be used for wildy different purpose such as a movement reactive pendant (emu/graphics), sound reactive art installation (hardware/audio/PWM) etc. But most importantly, it enables rapid protyping development/testing platform for embedded devices.
 
 The development follows a **two-phase strategy**:
 
