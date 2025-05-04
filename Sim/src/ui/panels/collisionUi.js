@@ -16,7 +16,7 @@ export class CollisionUi extends BaseUi {
 
   initCollisionControls() {
 
-    this.collisionRepulsionController = this.gui.add(this.main.simParams.collision, "repulsion", 0, 4, 0.01).name("C-Repulse")
+    this.collisionRepulsionController = this.gui.add(this.main.simParams.collision, "repulsion", 0, 5, 0.01).name("C-Repulse")
       .onChange((value) => { eventBus.emit('uiControlChanged', { paramPath: 'collision.repulsion', value }); });
 
     this.collisionBounceController = this.gui.add(this.main.simParams.collision, "particleRestitution", 0.0, 1.0, 0.05).name("C-Bounce")

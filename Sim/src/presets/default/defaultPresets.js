@@ -650,7 +650,7 @@ export const defaultPresets = {
         },
         "collisionUi": {
           "controllers": {
-            "C-Repulse": 4,
+            "C-Repulse": 5,
             "C-GridRez": 16,
             "C-Bounce": 1,
             "C-RestDens": 3.6
