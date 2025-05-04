@@ -1,4 +1,4 @@
-# Architecture: Grid (Template - Verified 2024-08-03)
+# Architecture: Grid
 
 **Purpose:** Definitive state and principles of the `Grid` project, serving as the template for migration.
 
@@ -108,7 +108,7 @@ graph LR
     end
 ```
 
-## Component Dependency Diagrams (Mermaid Syntax - 2024-04-06)
+## Component Dependency Diagrams
 
 **Grid Project Dependencies:**
 

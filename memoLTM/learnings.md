@@ -53,7 +53,7 @@
 
 **Learning:** To accurately position/scale DOM elements relative to a canvas, use `canvas.getBoundingClientRect()` to obtain the actual rendered dimensions and viewport position. Use these measurements for sizing containers and calculating scaling factors. Account for page scroll (`window.scrollX/Y`) when calculating absolute positions if necessary.
 
-## Shader Dependency Verification (2024-08-02)
+## Shader Dependency Verification
 
 **Experience:** While attempting to remove the `basic` shader from `Sim/shaderManager.js`, initial checks showed its usage was removed from `gridRenderer.js` (due to stencil removal). However, a later check revealed it was still potentially used by `debugRenderer.js` in the `drawNoiseField` method. Although removing it didn't cause immediate errors (likely due to `drawNoiseField` not being active), this highlighted a potential pitfall.
 
@@ -65,31 +65,31 @@
 
 **Learning:** The upstream grid generation logic (`generateRectangles` and `classifyCells`) already filtered the cells to only include those within the desired boundary. The stencil pass was therefore redundant. Regularly review the end-to-end rendering pipeline. Optimizations or refactoring in one stage (e.g., geometry generation) can make subsequent stages (e.g., masking) unnecessary, offering opportunities for simplification and performance improvement.
 
-## State Object References and UI Binding (`lil-gui`) (2024-08-03)
+## State Object References and UI Binding (`lil-gui`)
 
 **Experience:** Fixing unresponsive UI elements (shadow sliders, statistics displays) controlled by `lil-gui` revealed issues caused by replacing state object instances (`uiGridParams` in `newGridUi`, `this.grid` in `gridGenRenderer`) instead of updating their properties.
 
 **Learning:** `lil-gui`'s `.listen()` method binds to a specific JavaScript object instance. If this instance is replaced entirely (e.g., `this.state = newStateObject`), the binding breaks. To maintain reactivity for UI elements using `.listen()`, the properties of the _original_ state object instance must be updated (e.g., using `Object.assign(this.state, newStateObject)` or `this.state.property = value`). Replacing the object reference invalidates the listener.
 
-## Dependency Injection for Event Subscribers (2024-08-03)
+## Dependency Injection for Event Subscribers
 
 **Experience:** Refactoring `BoundaryRenderer` and `GridGenRenderer` to subscribe to the `gridParamsUpdated` event revealed they needed access to other dependencies (`BoundaryManager`, `DimensionManager`, `canvas`) within their event handlers to perform their updates correctly.
 
 **Learning:** Event subscribers often require access to collaborators or context beyond the event payload itself. Use dependency injection (e.g., passing dependencies via the constructor and storing references) to ensure subscribers have the necessary resources available when their event handlers are triggered.
 
-## Instantiation Order & Dependencies (2024-08-03)
+## Instantiation Order & Dependencies
 
 **Experience:** Injecting `BoundaryManager` into `BoundaryRenderer` forced a reordering of the component instantiation sequence in `Main.js`, as `BoundaryManager` had to be created before `BoundaryRenderer`.
 
 **Learning:** Implementing dependency injection necessitates careful consideration of the application's initialization order. Ensure dependencies are created and available _before_ the components that require them are instantiated.
 
-## Event Payload Design (Balancing Act) (2024-08-03)
+## Event Payload Design (Balancing Act)
 
 **Experience:** The `gridParamsUpdated` event payload was initially designed to contain only `gridParams`. It was later modified to include `dimensions` because multiple subscribers (`BoundaryManager`, `GridGenRenderer`) required this data, and having the emitter (`Main`) provide it was simpler than having each subscriber fetch it independently.
 
 **Learning:** Carefully design event payloads. Include data commonly needed by subscribers to simplify their logic. However, avoid excessively large payloads. Find a balance between subscriber convenience and emitter responsibility. Providing frequently needed, closely related state (like `dimensions` alongside `gridParams`) in the payload can be beneficial.
 
-## UI Binding Property Existence (`lil-gui` Addendum) (2024-08-03)
+## UI Binding Property Existence (`lil-gui` Addendum)
 
 **Experience:** A `lil-gui` error occurred when trying to `.add()` a listener for `cellCount`, which was calculated _after_ the UI was initialized. Pre-initializing the property with a default value in the state object resolved the issue.
 
