@@ -58,7 +58,7 @@ export class UiManager {
     const logoImg = document.createElement('img');
     logoImg.id = 'app-logo'; // Keep the ID for styling
     // Use relative path from ui/ to image/
-    logoImg.src = '../image/MagicMods-brush-extended_200W.png';
+    logoImg.src = '../src/image/MagicMods-brush-extended_200W.png';
     logoImg.alt = 'Magic Mods Logo - Link to GitHub'; // Update alt text
 
     logoLink.appendChild(logoImg); // Place the image inside the link
