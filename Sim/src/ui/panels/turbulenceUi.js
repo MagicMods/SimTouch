@@ -263,6 +263,7 @@ export class TurbulenceUi extends BaseUi {
     // Create Pattern Control folder
     const patternControlsFolder = noiseFolder.addFolder("Pattern Control");
     this.patternControlsFolder = patternControlsFolder;
+    patternControlsFolder.open(false);
 
     // Pattern styles for preview thumbnails
     const patternStyles = {

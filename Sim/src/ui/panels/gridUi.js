@@ -2,23 +2,24 @@ import { BaseUi } from "../baseUi.js";
 import { eventBus } from '../../util/eventManager.js';
 import { PresetManager } from "../../presets/presetManager.js";
 import { debugManager } from '../../util/debugManager.js';
+
 // Define available screen types
-const SCREEN_TYPES = {
-  "240x240 Rnd": { width: 240, height: 240, shape: "circular" },
-  "412x412 Rnd": { width: 412, height: 412, shape: "circular" },
-  "360x360 Rnd": { width: 360, height: 360, shape: "circular" },
-  "480x480 Rnd": { width: 480, height: 480, shape: "circular" },
-  "72x420 Rect": { width: 72, height: 420, shape: "rectangular" },
-  "170x320 Rect": { width: 170, height: 320, shape: "rectangular" },
-  "172x320 Rect": { width: 172, height: 320, shape: "rectangular" },
-  "240x280 Rect": { width: 240, height: 380, shape: "rectangular" },
-  "320x170 Rect": { width: 320, height: 170, shape: "rectangular" },
-  "368x448 Rect": { width: 368, height: 448, shape: "rectangular" },
-  "480x480 Rect": { width: 480, height: 480, shape: "rectangular" },
-  "800x480 Rect": { width: 800, height: 480, shape: "rectangular" },
-  "1024x600 Rect": { width: 1024, height: 600, shape: "rectangular" },
-  // Add more predefined types here as needed
-};
+// const SCREEN_TYPES = {
+//   "240x240 Rnd": { width: 240, height: 240, shape: "circular" },
+//   "412x412 Rnd": { width: 412, height: 412, shape: "circular" },
+//   "360x360 Rnd": { width: 360, height: 360, shape: "circular" },
+//   "480x480 Rnd": { width: 480, height: 480, shape: "circular" },
+//   "72x420 Rect": { width: 72, height: 420, shape: "rectangular" },
+//   "170x320 Rect": { width: 170, height: 320, shape: "rectangular" },
+//   "172x320 Rect": { width: 172, height: 320, shape: "rectangular" },
+//   "240x280 Rect": { width: 240, height: 380, shape: "rectangular" },
+//   "320x170 Rect": { width: 320, height: 170, shape: "rectangular" },
+//   "368x448 Rect": { width: 368, height: 448, shape: "rectangular" },
+//   "480x480 Rect": { width: 480, height: 480, shape: "rectangular" },
+//   "800x480 Rect": { width: 800, height: 480, shape: "rectangular" },
+//   "1024x600 Rect": { width: 1024, height: 600, shape: "rectangular" },
+//   // Add more predefined types here as needed
+// };
 
 export class GridUi extends BaseUi {
   constructor(main, container) {
@@ -30,32 +31,17 @@ export class GridUi extends BaseUi {
     try {
       this.gui.title("Grid");
 
-      // Use the first screen type as a default if no initial screen is provided
-      let initialScreenSpec = SCREEN_TYPES[Object.keys(SCREEN_TYPES)[0]];
-
-      if (this.main.gridParams.screen) {
-        const initialScreen = this.main.gridParams.screen;
-        // Attempt to find if the initial screen matches a known type, primarily for initialization.
-        const foundName = Object.keys(SCREEN_TYPES).find((name) => {
-          const type = SCREEN_TYPES[name];
-          return type.width === initialScreen.width && type.height === initialScreen.height && type.shape === initialScreen.shape;
-        });
-
-        // If found, use that spec, otherwise use the provided initialScreen directly
-        initialScreenSpec = foundName ? SCREEN_TYPES[foundName] : { ...initialScreen };
-      }
-
       // Initialize internal UI state with deep copies
       this.uiGridParams = {
-        screen: { ...initialScreenSpec },
+        screen: { ...main.gridParams.screen },
         gridSpecs: { ...main.gridParams.gridSpecs },
         shadow: { ...main.gridParams.shadow },
         flags: { ...main.gridParams.flags },
         renderSize: { ...main.gridParams.renderSize },
         colors: { ...main.gridParams.colors }
       };
-      // uiState is no longer needed for screen type dropdown
 
+      // this.viewScale = 1.0;
       this.initGridControls();
 
       this.gui.open(true);
@@ -76,8 +62,13 @@ export class GridUi extends BaseUi {
       return;
     }
 
-    // Create main folders in a logical hierarchy
 
+
+    // this.screenScaleController = this.gui.add(this, "viewScale", 0.1, 1, 0.01).name("View Scale")
+    //   .onChange((value) => { this.viewScale = value; });
+
+
+    // Create main folders in a logical hierarchy
     const gridParamFolder = this.gui.addFolder("Grid Parameters");
     const statsFolder = this.gui.addFolder("Grid Statistics");
     const offsetFolder = this.gui.addFolder("Offsets");
@@ -85,6 +76,7 @@ export class GridUi extends BaseUi {
     const shadowFolder = this.gui.addFolder("Shadow");
     displayFolder.open(false);
     offsetFolder.open(false);
+    shadowFolder.open(false);
 
 
 
@@ -140,6 +132,11 @@ export class GridUi extends BaseUi {
     }
 
     guiChildren.insertBefore(screenRezContainer, guiChildren.firstChild);
+
+
+
+
+
 
     this.centerOffsetXController = offsetFolder.add(this.uiGridParams.gridSpecs, "centerOffsetX", -100, 100, 1).name("X Offset")
       .onChange(() => { eventBus.emit('gridChanged', { paramPath: 'gridSpecs.centerOffsetX', value: this.uiGridParams.gridSpecs.centerOffsetX }); });
