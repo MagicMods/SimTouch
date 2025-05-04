@@ -7,10 +7,10 @@ This project's aim is to develop a particle simulation engine designed to genera
 The development follows a **two-phase strategy**:
 
 1.  **Phase 1 (Current): JavaScript Prototyping Environment (`Sim/`)**
-    - This environment uses JavaScript and WebGL2 for rapid development and visualization of the core simulation algorithms. It leverages the immediate feedback loop ("causality") of web development for efficient tuning of physics and behaviors, which is difficult in typical embedded workflows (compile, flash, test).
-    - The core simulation logic is written with portability in mind, minimizing external dependencies.
+    - This environment uses JavaScript and WebGL2 for rapid development and visualization of the core simulation algorithms. It leverages the immediate feedback loop of web development for efficient tuning of physics and behaviors, which is difficult in typical embedded workflows (compile, upload, flash).
+    - The core simulation logic is written with portability in mind, minimizing external dependencies, suitable for refactoring to C++/embedded environments.
 2.  **Phase 2 (Future): Embedded Deployment**
-    - The validated core logic from Phase 1 will be ported to a target embedded system (likely C++/Arduino). The embedded device will run the simulation autonomously.
+    - The validated core logic from Phase 1 will be ported to a target embedded system C++/Arduino. The touch-enabled embedded device will run the simulation natively to create novel, organic control methods for actuator arrays (LEDs, servos, etc.).
 
 While the [Waveshare ESP32-S3-Touch-LCD-1.28](https://www.waveshare.com/wiki/ESP32-S3-Touch-LCD-1.28) is used as the default reference target for parameters, the simulation core is designed for any touch-enabled devices.
 
@@ -36,27 +36,22 @@ While the [Waveshare ESP32-S3-Touch-LCD-1.28](https://www.waveshare.com/wiki/ESP
 - **Modulation:** Includes a Pulse Modulator system synced on a Beat Per Minutes.
 - **Embedded device:** Simple firmware, acting as slave, mirroring Sim's grid and sending back Touch and Emu data via UDP. Serial is used for runtime debugging.
 
-## Phase 2: Embedded System (Future Goal)
+## Phase 2: Embedded System
 
-- **Objective:** Port the core simulation logic (developed in Phase 1) to a target embedded system (e.g., ESP32-S3).
+- **Objective:** Port the core simulation logic (developed in Phase 1) to a target embedded system (e.g., ESP32-S3) providing a flexible system adaptable to various embedded targets and actuator types.
+
 - **Functionality:**
   - The embedded device runs the simulation natively.
   - Handles inputs directly (touchscreen, sensors like IMU, audio).
   - Outputs control signals for connected actuator arrays.
   - The JS application (`Sim/`) transitions to a remote control/configuration tool via UDP/API.
 
-## Goals
-
-- **Phase 1:** Develop and validate a portable, core particle simulation engine in JavaScript suitable for refactoring to C++/embedded environments.
-- **Phase 2:** Deploy the simulation onto a touch-enabled microcontroller to create novel, organic control methods for actuator arrays (LEDs, servos, etc.).
-- **Overall:** Provide a flexible system adaptable to various embedded targets and actuator types.
-
-## Requirements (for Phase 1 JS Environment)
+## Requirements
 
 - Node.js (v14+)
 - Modern web browser with WebGL2 support
 
-## Installation (Phase 1 JS)
+## Installation
 
 ```bash
 # Clone the repository
@@ -69,7 +64,7 @@ cd Sim
 npm install
 ```
 
-## Running the Simulation (Phase 1 JS)
+## Running the Simulation
 
 ```bash
 # Start both server and client
