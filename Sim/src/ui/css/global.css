@@ -122,3 +122,14 @@ canvas#glCanvas {
   /* font-weight: 700; */
   background-color: rgb(5, 5, 5) !important;
 }
+
+/* Add new rules at the end */
+#app-logo {
+    position: fixed;
+    bottom: 33px;
+    left: 60px;
+    width: 100px;
+    height: auto;
+    z-index: 9;
+    opacity: 0.1;
+}

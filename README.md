@@ -24,7 +24,7 @@ While the [Waveshare ESP32-S3-Touch-LCD-1.28](https://www.waveshare.com/wiki/ESP
   - Noise driven effect field.
   - Boundary interactions
   - Organic behaviors (Swarm, Automata, Chain - planned/experimental)
-- **Rendering:** WebGL2 rendering for visualization and debugging (Particles, Grid, Boundaries, Data Vizu) and use instantiation for grid rendering performance.
+- **Rendering:** WebGL2 rendering for visualization and debugging (Particles, Grid, Boundaries, Data) and use instantiation for grid rendering performance.
 - **Portability Focus:** Core simulation logic is separated from web-specific rendering/UI components. (See `memoLTM/goals.md` for detailed scope).
 - **Input Handling:**
   - Mouse interaction (simulating touch input + receive UDP)

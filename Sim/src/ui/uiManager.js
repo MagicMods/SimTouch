@@ -49,6 +49,21 @@ export class UiManager {
       }
     });
 
+    // Create and add the linked logo
+    const logoLink = document.createElement('a');
+    logoLink.href = 'https://github.com/MagicMods/SimTouch/tree/phase1';
+    logoLink.target = '_blank'; // Open in new tab
+    logoLink.rel = 'noopener noreferrer'; // Security best practice
+
+    const logoImg = document.createElement('img');
+    logoImg.id = 'app-logo'; // Keep the ID for styling
+    // Use relative path from ui/ to image/
+    logoImg.src = '../image/MagicMods-brush-extended_200W.png';
+    logoImg.alt = 'Magic Mods Logo - Link to GitHub'; // Update alt text
+
+    logoLink.appendChild(logoImg); // Place the image inside the link
+    document.body.appendChild(logoLink); // Append the link (containing the image)
+
   }
 
   initializeUIComponents() {
