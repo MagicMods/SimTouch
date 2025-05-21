@@ -1,4 +1,4 @@
-# Svibe Simulation Core
+# Simulation Core
 
 This simulation provides a particle-based physics simulation with various force fields, input modulation, and visual rendering.
 
