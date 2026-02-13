@@ -148,7 +148,7 @@ Output Format: - Start: `[MODE: AUTO] Initiating automated loop. Target: [Condit
 
 Memory Bank Usage: - `notebook.md`: MUST log the analysis, plan, and execution result for each loop iteration according to standard protocol. - `architecture_*.md`: MAY be updated if fixes alter documented dependencies, following standard protocol during internal `[MODE: EXE]`.
 
-# MODE 9: LEAN
+# MODE 9: LEARN
 
 [MODE: LEARN]
 

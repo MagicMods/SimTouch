@@ -1,0 +1,12 @@
+{
+  "folders": [
+    {
+      "path": "esp32/Phase2"
+    }
+  ],
+  "settings": {
+    "files.associations": {
+      "cstdint": "cpp"
+    }
+  }
+}

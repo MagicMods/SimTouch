@@ -1,0 +1,29 @@
+---
+description: Project conventions for the Svibe SimTouch firmware migration
+globs:
+alwaysApply: true
+---
+
+# Project Conventions
+
+## Documentation & Plans
+
+- All migration plans and documentation must be stored in `Sim/doc/migration/`.
+- The canonical migration plan is `Sim/doc/migration/migration-plan.md`. Always read and update this file -- never rely on Cursor's internal plans directory.
+- When creating new planning documents, place them in `Sim/doc/migration/` (e.g., `Sim/doc/migration/phase2a-notes.md`).
+
+## Project Structure
+
+- Phase 1 firmware: `Embedded/esp32/Phase1/`
+- Phase 2 firmware (migration target): `Embedded/esp32/Phase2/`
+- JavaScript simulation source: `Sim/src/`
+- Project documentation: `Sim/doc/`
+- Migration docs: `Sim/doc/migration/`
+
+## Code Style (ESP32 C++)
+
+- Use fixed-size arrays, no dynamic allocation (`new`, `malloc`)
+- Use `float` not `double` (ESP32 has no FPU for double)
+- Use `constexpr` for compile-time constants
+- All simulation logic in normalized [0,1] coordinate space
+- Pixel-space conversion only at the rendering boundary

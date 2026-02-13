@@ -101,7 +101,7 @@ Then open your browser to `http://localhost:8080/sim.html` to view the simulatio
 
 ## Inspirations
 
-Heavily inspired by [mitxela](https://mitxela.com/projects/fluid-pendant) and he's amzing fluid pendant as well as [Ten Minute Physics](https://matthias-research.github.io/pages/tenMinutePhysics/index.html) for his high quality recources and informations.
+Heavily inspired by [mitxela](https://mitxela.com/projects/fluid-pendant) and he's amazing fluid pendant as well as [Ten Minute Physics](https://matthias-research.github.io/pages/tenMinutePhysics/index.html) for his high quality recources and informations.
 
 ## License
 
