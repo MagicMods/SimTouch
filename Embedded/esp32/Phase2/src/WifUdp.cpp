@@ -31,7 +31,7 @@ static bool applySimpleCommand(uint8_t idx, uint8_t value, SimConfig &cfg)
   switch (idx)
   {
   case 50:
-    cfg.timeScale = 0.1f + (value / 255.0f) * 2.9f;
+    cfg.timeScale = 0.1f + (value / 255.0f) * 7.9f;
     return true;
   case 53:
     cfg.particleCount = 50 + (uint16_t)((value / 255.0f) * 450.0f);
@@ -52,7 +52,7 @@ static bool applySimpleCommand(uint8_t idx, uint8_t value, SimConfig &cfg)
     cfg.touchStrength = (value / 255.0f) * 0.2f;
     return true;
   case 121:
-    cfg.touchRadius = 0.01f + (value / 255.0f) * 0.49f;
+    cfg.touchRadius = 0.01f + (value / 255.0f) * 1.19f;
     return true;
   case 140:
     cfg.gridMode = value;

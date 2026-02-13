@@ -40,16 +40,17 @@ struct SimConfig
   float smoothRateOut = 0.08f;
 
   uint16_t targetCellCount = 338;
-  uint8_t gridGap = 1;
-  uint8_t theme = 0;
+  uint8_t gridGap = 0;
+  uint8_t theme = 1;
 
   float touchStrength = 0.1f;
-  float touchRadius = 0.16f;
+  float touchRadius = 0.6f;
   uint8_t touchMode = 0;
 
   float imuSensitivity = 0.5f;
   float imuSmoothing = 0.12f;
-  bool imuEnabled = true;
+  // UI gravity is authoritative by default in Phase2.
+  bool imuEnabled = false;
 
   // Turbulence defaults to off so idle scene is calm.
   float turbStrength = 0.0f;
@@ -70,7 +71,7 @@ struct ParamDef
 };
 
 static const ParamDef kParamRegistry[] = {
-    {50, "Time Scale", "Simulation", PARAM_FLOAT, 0.1f, 3.0f, 0.01f, (uint16_t)offsetof(SimConfig, timeScale)},
+    {50, "Time Scale", "Simulation", PARAM_FLOAT, 0.1f, 8.0f, 0.01f, (uint16_t)offsetof(SimConfig, timeScale)},
     {51, "Velocity Damping", "Simulation", PARAM_FLOAT, 0.8f, 1.0f, 0.001f, (uint16_t)offsetof(SimConfig, velocityDamping)},
     {52, "Max Velocity", "Simulation", PARAM_FLOAT, 0.1f, 8.0f, 0.1f, (uint16_t)offsetof(SimConfig, maxVelocity)},
     {53, "Particle Count", "Simulation", PARAM_UINT16, 50.0f, 500.0f, 1.0f, (uint16_t)offsetof(SimConfig, particleCount)},
@@ -84,7 +85,7 @@ static const ParamDef kParamRegistry[] = {
     {91, "Collision Grid Size", "Collision", PARAM_UINT8, 4.0f, 16.0f, 1.0f, (uint16_t)offsetof(SimConfig, collisionGridSize)},
     {92, "Collision Repulsion", "Collision", PARAM_FLOAT, 0.0f, 2.0f, 0.01f, (uint16_t)offsetof(SimConfig, collisionRepulsion)},
     {120, "Touch Strength", "Touch", PARAM_FLOAT, 0.0f, 0.2f, 0.001f, (uint16_t)offsetof(SimConfig, touchStrength)},
-    {121, "Touch Radius", "Touch", PARAM_FLOAT, 0.01f, 0.5f, 0.005f, (uint16_t)offsetof(SimConfig, touchRadius)},
+    {121, "Touch Radius", "Touch", PARAM_FLOAT, 0.01f, 1.2f, 0.005f, (uint16_t)offsetof(SimConfig, touchRadius)},
     {122, "Touch Mode", "Touch", PARAM_UINT8, 0.0f, 1.0f, 1.0f, (uint16_t)offsetof(SimConfig, touchMode)},
     {130, "IMU Sensitivity", "IMU", PARAM_FLOAT, 0.0f, 2.0f, 0.01f, (uint16_t)offsetof(SimConfig, imuSensitivity)},
     {131, "IMU Smoothing", "IMU", PARAM_FLOAT, 0.0f, 1.0f, 0.01f, (uint16_t)offsetof(SimConfig, imuSmoothing)},

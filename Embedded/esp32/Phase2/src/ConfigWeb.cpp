@@ -28,7 +28,7 @@ static bool SetParam(const String &key, float value)
 {
   if (key == "timeScale")
   {
-    gConfig->timeScale = constrain(value, 0.1f, 3.0f);
+    gConfig->timeScale = constrain(value, 0.1f, 8.0f);
     return true;
   }
   if (key == "particleCount")
@@ -53,7 +53,7 @@ static bool SetParam(const String &key, float value)
   }
   if (key == "touchRadius")
   {
-    gConfig->touchRadius = constrain(value, 0.01f, 0.6f);
+    gConfig->touchRadius = constrain(value, 0.01f, 1.2f);
     return true;
   }
   if (key == "maxDensity")
@@ -102,12 +102,12 @@ static const char kIndexHtml[] PROGMEM = R"HTML(
   <div class="card" id="controls"></div>
   <script>
     const defs = [
-      ["timeScale",0.1,3,0.01],
+      ["timeScale",0.1,8,0.01],
       ["particleCount",50,300,1],
       ["gravityX",-2,2,0.01],
       ["gravityY",-2,2,0.01],
       ["touchStrength",0,0.3,0.001],
-      ["touchRadius",0.01,0.6,0.005],
+      ["touchRadius",0.01,1.2,0.005],
       ["maxDensity",0.1,64,0.1],
       ["collisionRepulsion",0,2,0.01],
       ["turbStrength",0,2,0.01],
