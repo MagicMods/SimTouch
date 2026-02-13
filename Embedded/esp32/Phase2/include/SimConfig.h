@@ -14,11 +14,11 @@ enum ParamType : uint8_t
 
 struct SimConfig
 {
-  float timeStep = 1.0f / 30.0f;
+  float timeStep = 1.0f / 60.0f;
   float timeScale = 1.0f;
   float velocityDamping = 0.995f;
   float maxVelocity = 2.0f;
-  uint16_t particleCount = 10;
+  uint16_t particleCount = 200;
   float particleRadius = 0.01f;
 
   uint8_t boundaryMode = 0;
@@ -39,7 +39,7 @@ struct SimConfig
   float smoothRateIn = 0.15f;
   float smoothRateOut = 0.08f;
 
-  uint16_t targetCellCount = 200;
+  uint16_t targetCellCount = 338;
   uint8_t gridGap = 1;
   uint8_t theme = 0;
 

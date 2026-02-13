@@ -1,6 +1,7 @@
 #include <Arduino.h>
 
 #include "Acc.h"
+#include "ConfigWeb.h"
 #include "FluidFLIP.h"
 #include "Graphics.h"
 #include "GridGeometry.h"
@@ -49,6 +50,7 @@ void setup()
                 "v8");
 #endif
   SetupWifi();
+  SetupConfigWeb(gConfig);
   SetupUI();
   SetupAcc();
   gGridGeometry.rebuild();
@@ -104,9 +106,14 @@ void loop()
 {
   LoopAcc();
   UiLoop();
+  LoopConfigWeb();
   ProcessIncomingData();
+  if (ConsumeConfigGridDirtyFlag())
+  {
+    gGridGeometry.rebuild();
+  }
 
-  EVERY_N_MILLISECONDS(1000 / 30)
+  EVERY_N_MILLISECONDS(1000 / 60)
   {
     // Touch -> force mapping
     gTouchForces.setTouchPixels(getTouchX(), getTouchY(), getTouching());
