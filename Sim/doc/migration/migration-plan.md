@@ -312,6 +312,12 @@ This registry serves double duty:
 
 **Implementation**: The `ParamRegistry` array in `SimConfig.h` will use these indices. WebSocket `applyParam(index, data, len)` uses `offsetof(SimConfig, field)` to write directly to the config struct.
 
+**Status update (Phase2 implementation):**
+
+- `Embedded/esp32/Phase2/include/SimConfig.h` now includes the missing core fields and expanded `kParamRegistry` for simulation, boundary, collision, turbulence, and grid/render controls.
+- Added `PARAM_INT8` to support signed offset parameters (`gridCenterOffsetX/Y`).
+- Particle display is still deferred on ESP32 for performance reasons; particle color is represented as a simple boolean (`particleColorWhite`) and opacity is kept as a placeholder parameter for future rendering support.
+
 #### 2. Touch Mapping (CST816S → Simulation Space)
 
 **Hardware**: CST816S I2C touch controller reports pixel coordinates (0–240, 0–240) for single touch.
