@@ -3,7 +3,9 @@
 #include <Arduino.h>
 #include <math.h>
 #include <string.h>
+#include <stdlib.h>
 #include "Palettes.h"
+#include "GridGeometry.h"
 #include <FastLED.h>
 
 #if TARGET_LILYGO
@@ -19,6 +21,13 @@ static bool gTouching = false;
 #if TARGET_LILYGO
 static LilyGo_RGBPanel gPanel;
 static uint16_t sRowBuffer[512];
+static uint16_t sCellBuffer[32 * 32];
+static uint8_t sPrevCellValues[MAX_GRID_CELLS];
+static bool sPrevCellsInitialized = false;
+static uint16_t sPrevDrawCount = 0;
+static uint8_t sPrevCols = 0;
+static uint8_t sPrevRows = 0;
+static uint8_t sPrevGap = 0;
 
 static inline uint16_t rgb565FromCRGB(const CRGB &c)
 {
@@ -49,6 +58,20 @@ static void drawSolidRect565(int x, int y, int w, int h, uint16_t color)
     return;
   }
 
+  // Fast path: single draw call per cell like Slave SimGraph style.
+  const int maxCellW = 32;
+  const int maxCellH = 32;
+  if (rw <= maxCellW && rh <= maxCellH)
+  {
+    const int pixels = rw * rh;
+    for (int i = 0; i < pixels; ++i)
+    {
+      sCellBuffer[i] = color;
+    }
+    gPanel.pushColors((uint16_t)sx, (uint16_t)sy, (uint16_t)ex, (uint16_t)ey, sCellBuffer);
+    return;
+  }
+
   for (int i = 0; i < rw; ++i)
   {
     sRowBuffer[i] = color;
@@ -58,6 +81,7 @@ static void drawSolidRect565(int x, int y, int w, int h, uint16_t color)
     gPanel.pushColors((uint16_t)sx, (uint16_t)(sy + yy), (uint16_t)(sx + rw), (uint16_t)(sy + yy + 1), sRowBuffer);
   }
 }
+
 #endif
 
 bool isLilyGoBackend()
@@ -81,6 +105,12 @@ void SetupUI()
   }
   beginLvglHelper(gPanel, false);
   gPanel.setBrightness(16);
+  memset(sPrevCellValues, 0xFF, sizeof(sPrevCellValues));
+  sPrevCellsInitialized = true;
+  sPrevDrawCount = 0;
+  sPrevCols = 0;
+  sPrevRows = 0;
+  sPrevGap = 0;
   drawSolidRect565(0, 0, gPanel.width(), gPanel.height(), 0x0000);
   Serial.println("[Phase2] UI init (LilyGo)");
 #else
@@ -91,6 +121,7 @@ void SetupUI()
 void UiLoop()
 {
 #if TARGET_LILYGO
+  static uint32_t lastLvglMs = 0;
   int16_t x = 0;
   int16_t y = 0;
   gTouching = gPanel.getPoint(&x, &y, 1) > 0;
@@ -99,7 +130,13 @@ void UiLoop()
     gTouchX = (uint16_t)x;
     gTouchY = (uint16_t)y;
   }
-  lv_timer_handler();
+  // Align with Slave cadence (avoid running LVGL every raw loop iteration).
+  const uint32_t now = millis();
+  if (now - lastLvglMs >= 33)
+  {
+    lastLvglMs = now;
+    lv_timer_handler();
+  }
 #else
   // Non-LilyGo fallback touch pattern for board-agnostic simulation testing.
   const float t = millis() * 0.001f;
@@ -124,45 +161,57 @@ uint16_t getTouchY()
   return gTouchY;
 }
 
-void renderGrid(const uint8_t *cells, uint16_t count, uint8_t cols, uint8_t rows)
+void renderGrid(const uint8_t *cells, uint16_t count, uint8_t cols, uint8_t rows, uint8_t gapPx)
 {
 #if TARGET_LILYGO
-  const int screenW = (int)gPanel.width();
-  const int screenH = (int)gPanel.height();
-  if (cols > 0 && rows > 0 && count > 0)
+  if (cols > 0 && rows > 0)
   {
-    const int gap = 1;
-    int cellW = (screenW - ((int)cols - 1) * gap) / (int)cols;
-    int cellH = (screenH - ((int)rows - 1) * gap) / (int)rows;
-    if (cellW < 1)
-      cellW = 1;
-    if (cellH < 1)
-      cellH = 1;
-    const int gridW = (cellW * cols) + gap * ((int)cols - 1);
-    const int gridH = (cellH * rows) + gap * ((int)rows - 1);
-    const int originX = (screenW - gridW) / 2;
-    const int originY = (screenH - gridH) / 2;
-
-    uint16_t idx = 0;
-    for (uint8_t r = 0; r < rows; ++r)
+    const uint16_t totalSlots = (uint16_t)cols * (uint16_t)rows;
+    const uint16_t drawCount = totalSlots > MAX_GRID_CELLS ? MAX_GRID_CELLS : totalSlots;
+    if (!sPrevCellsInitialized)
     {
-      for (uint8_t c = 0; c < cols; ++c)
+      memset(sPrevCellValues, 0xFF, sizeof(sPrevCellValues));
+      sPrevCellsInitialized = true;
+      sPrevDrawCount = 0;
+    }
+    if (drawCount != sPrevDrawCount || cols != sPrevCols || rows != sPrevRows || gapPx != sPrevGap)
+    {
+      memset(sPrevCellValues, 0xFF, sizeof(sPrevCellValues));
+      sPrevDrawCount = drawCount;
+      sPrevCols = cols;
+      sPrevRows = rows;
+      sPrevGap = gapPx;
+      drawSolidRect565(0, 0, gPanel.width(), gPanel.height(), 0x0000);
+    }
+
+    const int panelW = (int)gPanel.width();
+    const int panelH = (int)gPanel.height();
+    const int totalGapW = (int)gapPx * (int)(cols - 1);
+    const int totalGapH = (int)gapPx * (int)(rows - 1);
+    int contentW = panelW - totalGapW;
+    int contentH = panelH - totalGapH;
+    if (contentW < cols)
+      contentW = cols;
+    if (contentH < rows)
+      contentH = rows;
+
+    for (uint16_t i = 0; i < drawCount; ++i)
+    {
+      const uint8_t v = (i < count) ? cells[i] : 0;
+      if (sPrevCellValues[i] == v)
       {
-        if (idx >= count)
-        {
-          break;
-        }
-        uint8_t v = cells[idx++];
-        const CRGB color = ColorFromPalette(Palettes[0], v, 255, NOBLEND);
-        const uint16_t c565 = rgb565FromCRGB(color);
-        int x = originX + (int)c * (cellW + gap);
-        int y = originY + (int)r * (cellH + gap);
-        drawSolidRect565(x, y, cellW, cellH, c565);
+        continue;
       }
-      if (idx >= count)
-      {
-        break;
-      }
+      sPrevCellValues[i] = v;
+      const CRGB color = ColorFromPalette(Palettes[0], v, 255, NOBLEND);
+      const uint16_t c565 = rgb565FromCRGB(color);
+      const uint16_t r = i / cols;
+      const uint16_t c = i % cols;
+      const int x0 = ((int)c * contentW) / (int)cols + (int)c * (int)gapPx;
+      const int x1 = ((int)(c + 1) * contentW) / (int)cols + (int)c * (int)gapPx;
+      const int y0 = ((int)r * contentH) / (int)rows + (int)r * (int)gapPx;
+      const int y1 = ((int)(r + 1) * contentH) / (int)rows + (int)r * (int)gapPx;
+      drawSolidRect565(x0, y0, x1 - x0, y1 - y0, c565);
     }
   }
 #endif

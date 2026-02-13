@@ -5,7 +5,7 @@
 
 void SetupUI();
 void UiLoop();
-void renderGrid(const uint8_t *cells, uint16_t count, uint8_t cols, uint8_t rows);
+void renderGrid(const uint8_t *cells, uint16_t count, uint8_t cols, uint8_t rows, uint8_t gapPx);
 bool isLilyGoBackend();
 
 bool getTouching();

@@ -2,6 +2,7 @@
 
 #include "GravityForces.h"
 
+#include <Arduino.h>
 #include <math.h>
 
 SimCore::SimCore(SimConfig *cfg) : config_(cfg), boundary_(cfg), collision_(cfg), turbulence_(cfg) {}
@@ -13,15 +14,59 @@ void SimCore::init()
   {
     count_ = MAX_PARTICLES;
   }
-  for (uint16_t i = 0; i < count_; ++i)
+  const bool circular = config_->boundaryShape == 0;
+  if (circular)
   {
-    float t = (float)i / (float)count_;
-    float a = t * 6.2831853f;
-    float r = 0.1f + 0.35f * t;
-    x_[i] = 0.5f + cosf(a) * r;
-    y_[i] = 0.5f + sinf(a) * r;
-    vx_[i] = 0.0f;
-    vy_[i] = 0.0f;
+    const uint16_t rings = (uint16_t)ceilf(sqrtf((float)count_));
+    const uint16_t particlesPerRing = (uint16_t)ceilf((float)count_ / (float)rings);
+    const float spawnRadius = boundary_.getRadius() * 0.95f;
+    uint16_t idx = 0;
+
+    for (uint16_t ring = 0; ring < rings && idx < count_; ++ring)
+    {
+      const float ringRadius = spawnRadius * ((float)(ring + 1) / (float)rings);
+      uint16_t ringParticles = (uint16_t)floorf((particlesPerRing * (ring + 1)) / 2.0f);
+      if (ringParticles < 1)
+        ringParticles = 1;
+      if (ringParticles > (uint16_t)(count_ - idx))
+        ringParticles = (uint16_t)(count_ - idx);
+
+      for (uint16_t i = 0; i < ringParticles && idx < count_; ++i)
+      {
+        const float angle = ((float)i / (float)ringParticles) * 6.2831853f;
+        x_[idx] = 0.5f + cosf(angle) * ringRadius;
+        y_[idx] = 0.5f + sinf(angle) * ringRadius;
+        vx_[idx] = 0.0f;
+        vy_[idx] = 0.0f;
+        ++idx;
+      }
+    }
+    return;
+  }
+
+  const uint16_t side = (uint16_t)ceilf(sqrtf((float)count_));
+  const float width = 0.95f;
+  const float height = 0.95f;
+  const float halfW = width * 0.5f;
+  const float halfH = height * 0.5f;
+  const float cellW = width / (float)side;
+  const float cellH = height / (float)side;
+  const float jitter = 0.2f;
+  uint16_t idx = 0;
+  for (uint16_t row = 0; row < side && idx < count_; ++row)
+  {
+    for (uint16_t col = 0; col < side && idx < count_; ++col)
+    {
+      const float jx = ((float)random(0, 10000) / 10000.0f - 0.5f) * jitter;
+      const float jy = ((float)random(0, 10000) / 10000.0f - 0.5f) * jitter;
+      const float cellX = (col + 0.5f + jx) * cellW;
+      const float cellY = (row + 0.5f + jy) * cellH;
+      x_[idx] = 0.5f - halfW + cellX;
+      y_[idx] = 0.5f - halfH + cellY;
+      vx_[idx] = 0.0f;
+      vy_[idx] = 0.0f;
+      ++idx;
+    }
   }
 }
 
@@ -57,7 +102,7 @@ void SimCore::step(float dt, float timeSec)
 {
   if (count_ != config_->particleCount && config_->particleCount <= MAX_PARTICLES)
   {
-    count_ = config_->particleCount;
+    init();
   }
 
   GravityForces::apply(config_->gravityX, config_->gravityY, dt, vx_, vy_, count_);

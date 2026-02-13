@@ -34,6 +34,14 @@ static uint8_t gCellValues[MAX_GRID_CELLS];
 static bool gValidatedParticles = false;
 static bool gValidatedTouch = false;
 static bool gValidatedBoundary = false;
+static uint32_t gPerfSimFrameCount = 0;
+static uint32_t gPerfRenderFrameCount = 0;
+static uint32_t gPerfWindowStartMs = 0;
+static uint32_t gLastFrameUs = 0;
+static float gAvgFrameMs = 0.0f;
+static uint32_t gLoopLastUs = 0;
+static float gSimAccumMs = 0.0f;
+static uint32_t gLastRenderMs = 0;
 
 void setup()
 {
@@ -56,6 +64,11 @@ void setup()
   gGridGeometry.rebuild();
   gSimCore.init();
   memset(gCellValues, 0, sizeof(gCellValues));
+  gPerfWindowStartMs = millis();
+  gLastFrameUs = micros();
+  gLoopLastUs = micros();
+  gSimAccumMs = 0.0f;
+  gLastRenderMs = millis();
 }
 
 void ProcessIncomingData()
@@ -113,16 +126,47 @@ void loop()
     gGridGeometry.rebuild();
   }
 
-  EVERY_N_MILLISECONDS(1000 / 60)
+  const uint32_t nowUs = micros();
+  float loopDeltaMs = (nowUs - gLoopLastUs) / 1000.0f;
+  gLoopLastUs = nowUs;
+  if (loopDeltaMs < 0.0f)
   {
+    loopDeltaMs = 0.0f;
+  }
+  if (loopDeltaMs > 100.0f)
+  {
+    loopDeltaMs = 100.0f;
+  }
+  gSimAccumMs += loopDeltaMs;
+
+  const float simStepMs = 1000.0f / 60.0f;
+  uint8_t simStepsThisLoop = 0;
+  while (gSimAccumMs >= simStepMs && simStepsThisLoop < 4)
+  {
+    const uint32_t stepUs = micros();
+    const float frameMs = (stepUs - gLastFrameUs) / 1000.0f;
+    gLastFrameUs = stepUs;
+    if (gPerfSimFrameCount == 0)
+    {
+      gAvgFrameMs = frameMs;
+    }
+    else
+    {
+      gAvgFrameMs = gAvgFrameMs * 0.92f + frameMs * 0.08f;
+    }
+    ++gPerfSimFrameCount;
+
     // Touch -> force mapping
     gTouchForces.setTouchPixels(getTouchX(), getTouchY(), getTouching());
     gTouchForces.apply(gSimCore);
 
-    // IMU -> gravity mapping
-    const AccelData a = GetAccelData();
-    gImuForces.setAccel(a.x, a.y, a.z);
-    gImuForces.apply();
+    // IMU gravity is opt-in; UI gravity remains authoritative until IMU mode is enabled.
+    if (gConfig.imuEnabled)
+    {
+      const AccelData a = GetAccelData();
+      gImuForces.setAccel(a.x, a.y, a.z);
+      gImuForces.apply();
+    }
 
     // Core simulation step
     const float nowSec = millis() * 0.001f;
@@ -134,10 +178,30 @@ void loop()
     gFlip.step(gConfig.timeStep);
     gOrganic.applySwarm(gSimCore, gConfig.timeStep);
 
-    // Grid output
-    gGridModes.computeProximity(gSimCore, gGridGeometry, gCellValues, MAX_GRID_CELLS);
-    renderGrid(gCellValues, gGridGeometry.getCellCount(), gGridGeometry.getCols(), gGridGeometry.getRows());
-
     validatePhase2A();
+    gSimAccumMs -= simStepMs;
+    ++simStepsThisLoop;
+  }
+
+  // Render decoupled from sim; run independently at target cadence.
+  const uint32_t nowMs = millis();
+  if (nowMs - gLastRenderMs >= (1000 / 20))
+  {
+    gLastRenderMs = nowMs;
+    gGridModes.computeProximity(gSimCore, gGridGeometry, gCellValues, MAX_GRID_CELLS);
+    renderGrid(gCellValues, gGridGeometry.getCellCount(), gGridGeometry.getCols(), gGridGeometry.getRows(), gConfig.gridGap);
+    ++gPerfRenderFrameCount;
+  }
+
+  if (nowMs - gPerfWindowStartMs >= 1000)
+  {
+    const float seconds = (nowMs - gPerfWindowStartMs) / 1000.0f;
+    const float simFps = seconds > 0.0f ? (gPerfSimFrameCount / seconds) : 0.0f;
+    const float renderFps = seconds > 0.0f ? (gPerfRenderFrameCount / seconds) : 0.0f;
+    Serial.printf("[Phase2 FPS] sim %.1f | render %.1f | avg frame %.2f ms | cells=%u\n",
+                  simFps, renderFps, gAvgFrameMs, (unsigned)gGridGeometry.getCellCount());
+    gPerfWindowStartMs = nowMs;
+    gPerfSimFrameCount = 0;
+    gPerfRenderFrameCount = 0;
   }
 }
