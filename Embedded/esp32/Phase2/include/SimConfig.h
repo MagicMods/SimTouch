@@ -19,8 +19,8 @@ struct SimConfig
   float timeScale = 1.0f;
   float velocityDamping = 0.995f;
   float maxVelocity = 2.0f;
-  uint16_t particleCount = 200;
-  float particleRadius = 0.01f;
+  uint16_t particleCount = 50;
+  float particleRadius = 0.03f;
   float restDensity = 2.0f;
   float picFlipRatio = 0.0f;
 

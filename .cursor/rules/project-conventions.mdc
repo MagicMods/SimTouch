@@ -6,6 +6,13 @@ alwaysApply: true
 
 # Project Conventions
 
+## Agent Scope: Phase2 Only
+
+- **All firmware work targets Phase2 only.** The active codebase is `Embedded/esp32/Phase2/`.
+- Do not modify, reference, or propose changes to Phase1 (`Embedded/esp32/Phase1/`) or other legacy firmware paths.
+- When editing embedded code, build configs, or firmware-related files, work exclusively within `Embedded/esp32/Phase2/`.
+- Sim (`Sim/`) and shared docs may be used for reference or coordination, but firmware changes stay in Phase2.
+
 ## Documentation & Plans
 
 - All migration plans and documentation must be stored in `Sim/doc/migration/`.

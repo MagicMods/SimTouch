@@ -161,9 +161,10 @@ uint16_t getTouchY()
   return gTouchY;
 }
 
-void renderGrid(const uint8_t *cells, uint16_t count, uint8_t cols, uint8_t rows, uint8_t gapPx)
+void renderGrid(const uint8_t *cells, uint16_t count, uint8_t cols, uint8_t rows, uint8_t gapPx, uint8_t theme)
 {
 #if TARGET_LILYGO
+  const uint8_t paletteIndex = (uint8_t)(theme % 11);
   if (cols > 0 && rows > 0)
   {
     const uint16_t totalSlots = (uint16_t)cols * (uint16_t)rows;
@@ -203,7 +204,7 @@ void renderGrid(const uint8_t *cells, uint16_t count, uint8_t cols, uint8_t rows
         continue;
       }
       sPrevCellValues[i] = v;
-      const CRGB color = ColorFromPalette(Palettes[0], v, 255, NOBLEND);
+      const CRGB color = ColorFromPalette(Palettes[paletteIndex], v, 255, NOBLEND);
       const uint16_t c565 = rgb565FromCRGB(color);
       const uint16_t r = i / cols;
       const uint16_t c = i % cols;

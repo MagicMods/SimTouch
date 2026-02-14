@@ -125,6 +125,13 @@ void loop()
   {
     gGridGeometry.rebuild();
   }
+  if (ConsumeConfigRestartFlag())
+  {
+    gGridGeometry.rebuild();
+    gSimCore.init();
+    memset(gCellValues, 0, sizeof(gCellValues));
+    Serial.println("[Phase2] Restart requested from ConfigWeb");
+  }
 
   const uint32_t nowUs = micros();
   float loopDeltaMs = (nowUs - gLoopLastUs) / 1000.0f;
@@ -189,7 +196,7 @@ void loop()
   {
     gLastRenderMs = nowMs;
     gGridModes.computeProximity(gSimCore, gGridGeometry, gCellValues, MAX_GRID_CELLS);
-    renderGrid(gCellValues, gGridGeometry.getCellCount(), gGridGeometry.getCols(), gGridGeometry.getRows(), gConfig.gridGap);
+    renderGrid(gCellValues, gGridGeometry.getCellCount(), gGridGeometry.getCols(), gGridGeometry.getRows(), gConfig.gridGap, gConfig.theme);
     ++gPerfRenderFrameCount;
   }
 

@@ -6,6 +6,7 @@
 static WebServer gServer(80);
 static SimConfig *gConfig = nullptr;
 static bool gGridDirty = false;
+static bool gRestartRequested = false;
 
 static String BuildConfigJson()
 {
@@ -428,6 +429,11 @@ static const char kIndexHtml[] PROGMEM = R"HTML(
   <title>Phase2 Sim Config</title>
   <style>
     body { font-family: sans-serif; background:#121212; color:#eee; margin:0; padding:16px; }
+    .toolbar { margin-bottom:12px; display:flex; gap:8px; }
+    .btn { border:1px solid #444; background:#2a2a2a; color:#eee; border-radius:8px; padding:10px 14px; cursor:pointer; }
+    .btn:hover { background:#343434; }
+    .btn.danger { border-color:#7a2d2d; background:#552222; }
+    .btn.danger:hover { background:#663030; }
     .fold-card { background:#1e1e1e; border-radius:10px; margin-bottom:12px; border:1px solid #2a2a2a; overflow:hidden; }
     .fold-card > summary { list-style:none; cursor:pointer; padding:12px; font-weight:600; background:#202020; user-select:none; }
     .fold-card > summary::-webkit-details-marker { display:none; }
@@ -436,11 +442,15 @@ static const char kIndexHtml[] PROGMEM = R"HTML(
     .row { margin:10px 0; }
     label { display:block; font-size:13px; margin-bottom:4px; }
     input[type=range] { width:100%; }
+    select { width:100%; background:#2a2a2a; color:#eee; border:1px solid #444; border-radius:6px; padding:8px; }
     .val { font-size:12px; opacity:.8; float:right; }
   </style>
 </head>
 <body>
   <h2>Phase2 Sim Config</h2>
+  <div class="toolbar">
+    <button id="restartSimBtn" class="btn danger">Restart Sim</button>
+  </div>
   <div id="controls"></div>
   <script>
     const groupedDefs = [
@@ -473,15 +483,11 @@ static const char kIndexHtml[] PROGMEM = R"HTML(
         ["gridAllowCut",0,3,1],
         ["gridCenterOffsetX",-100,100,1],
         ["gridCenterOffsetY",-100,100,1],
-        ["shadowIntensity",0,1,0.01],
-        ["shadowThreshold",0,0.5,0.01],
-        ["shadowBlurAmount",0,1,0.01],
         ["particleColorWhite",0,1,1],
         ["particleOpacity",0,1,0.01]
       ]],
       ["Boundary", [
         ["boundaryMode",0,1,1],
-        ["boundaryShape",0,1,1],
         ["boundaryScale",0.6,1.2,0.01],
         ["boundaryDamping",0,1,0.01],
         ["boundaryRestitution",0,1,0.05],
@@ -531,6 +537,33 @@ static const char kIndexHtml[] PROGMEM = R"HTML(
       .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2")
       .replace(/_/g, " ");
 
+    const selectorOptions = {
+      gridMode: [
+        [0, "Noise"],
+        [1, "Proximity"],
+        [2, "Proximity B"],
+        [3, "Density"],
+        [4, "Velocity"],
+        [5, "Pressure"],
+        [6, "Vorticity"],
+        [7, "Collision"],
+        [8, "Overlap"]
+      ],
+      theme: [
+        [0, "C0"],
+        [1, "C1"],
+        [2, "C2"],
+        [3, "C3"],
+        [4, "C4"],
+        [5, "C5"],
+        [6, "C6"],
+        [7, "C7"],
+        [8, "C8"],
+        [9, "C9"],
+        [10, "C10"]
+      ]
+    };
+
     groupedDefs.forEach(([groupName, defs], groupIndex) => {
       const card = document.createElement("details");
       card.className = "fold-card";
@@ -547,27 +580,68 @@ static const char kIndexHtml[] PROGMEM = R"HTML(
       defs.forEach(([k,min,max,step]) => {
         const row = document.createElement("div");
         row.className = "row";
-        row.innerHTML = `<label>${prettyLabel(k)}<span class="val" id="v_${k}"></span></label>
-          <input id="${k}" type="range" min="${min}" max="${max}" step="${step}"/>`;
+        const isSelector = selectorOptions[k] !== undefined;
+        if (isSelector) {
+          row.innerHTML = `<label>${prettyLabel(k)}<span class="val" id="v_${k}"></span></label>
+            <select id="${k}"></select>`;
+        } else {
+          row.innerHTML = `<label>${prettyLabel(k)}<span class="val" id="v_${k}"></span></label>
+            <input id="${k}" type="range" min="${min}" max="${max}" step="${step}"/>`;
+        }
         content.appendChild(row);
         const el = row.querySelector(`#${k}`);
         const v = row.querySelector(`#v_${k}`);
-        el.addEventListener("input", async () => {
-          v.textContent = el.value;
-          await fetch(`/api/set?k=${encodeURIComponent(k)}&v=${encodeURIComponent(el.value)}`, {method:"POST"});
-        });
+        if (isSelector) {
+          selectorOptions[k].forEach(([value, label]) => {
+            const option = document.createElement("option");
+            option.value = String(value);
+            option.textContent = label;
+            el.appendChild(option);
+          });
+          el.addEventListener("change", async () => {
+            const selected = selectorOptions[k].find(([value]) => String(value) === el.value);
+            v.textContent = selected ? selected[1] : el.value;
+            await fetch(`/api/set?k=${encodeURIComponent(k)}&v=${encodeURIComponent(el.value)}`, {method:"POST"});
+          });
+        } else {
+          el.addEventListener("input", async () => {
+            v.textContent = el.value;
+            await fetch(`/api/set?k=${encodeURIComponent(k)}&v=${encodeURIComponent(el.value)}`, {method:"POST"});
+          });
+        }
         inputs[k] = [el,v];
       });
 
       root.appendChild(card);
+    });
+
+    const restartBtn = document.getElementById("restartSimBtn");
+    restartBtn.addEventListener("click", async () => {
+      restartBtn.disabled = true;
+      const prevText = restartBtn.textContent;
+      restartBtn.textContent = "Restarting...";
+      try {
+        await fetch("/api/restart", { method: "POST" });
+      } finally {
+        setTimeout(() => {
+          restartBtn.textContent = prevText;
+          restartBtn.disabled = false;
+        }, 400);
+      }
     });
     async function pull(){
       const r = await fetch("/api/config");
       const c = await r.json();
       Object.keys(inputs).forEach(k => {
         if (c[k] !== undefined){
-          inputs[k][0].value = c[k];
-          inputs[k][1].textContent = c[k];
+          const [el, valEl] = inputs[k];
+          el.value = c[k];
+          if (selectorOptions[k]) {
+            const selected = selectorOptions[k].find(([value]) => Number(value) === Number(c[k]));
+            valEl.textContent = selected ? selected[1] : c[k];
+          } else {
+            valEl.textContent = c[k];
+          }
         }
       });
     }
@@ -598,6 +672,10 @@ void SetupConfigWeb(SimConfig &config)
     }
     gServer.send(200, "application/json", BuildConfigJson());
   });
+  gServer.on("/api/restart", HTTP_POST, []() {
+    gRestartRequested = true;
+    gServer.send(200, "application/json", "{\"ok\":true}");
+  });
   gServer.begin();
   Serial.println("[Phase2] ConfigWeb started on http://192.168.4.1/");
 }
@@ -611,5 +689,12 @@ bool ConsumeConfigGridDirtyFlag()
 {
   bool v = gGridDirty;
   gGridDirty = false;
+  return v;
+}
+
+bool ConsumeConfigRestartFlag()
+{
+  bool v = gRestartRequested;
+  gRestartRequested = false;
   return v;
 }
