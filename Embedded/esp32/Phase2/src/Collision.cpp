@@ -45,6 +45,7 @@ void Collision::resolve(float *x, float *y, float *vx, float *vy, uint16_t count
   const float minDist = particleRadius * 2.0f;
   const float minDistSq = minDist * minDist;
   const float strength = config_->collisionRepulsion;
+  const float damping = config_->collisionDamping;
 
   for (uint16_t i = 0; i < count; ++i)
   {
@@ -83,10 +84,11 @@ void Collision::resolve(float *x, float *y, float *vx, float *vy, uint16_t count
           y[i] -= nyn * overlap;
           x[j] += nxn * overlap;
           y[j] += nyn * overlap;
-          vx[i] -= nxn * overlap * strength;
-          vy[i] -= nyn * overlap * strength;
-          vx[j] += nxn * overlap * strength;
-          vy[j] += nyn * overlap * strength;
+          const float impulse = overlap * strength;
+          vx[i] -= nxn * impulse * damping;
+          vy[i] -= nyn * impulse * damping;
+          vx[j] += nxn * impulse * damping;
+          vy[j] += nyn * impulse * damping;
         }
       }
     }

@@ -43,12 +43,12 @@ struct SimConfig
 
   uint8_t gridMode = 1;
   // Keep idle output darker; touch/forces should drive highlights.
-  float maxDensity = 16.0f;
-  float smoothRateIn = 0.15f;
-  float smoothRateOut = 0.08f;
+  float maxDensity = 5.0f;
+  float smoothRateIn = 0.5f;
+  float smoothRateOut = 0.5f;
 
   uint16_t targetCellCount = 338;
-  uint8_t gridGap = 0;
+  uint8_t gridGap = 1;
   uint8_t theme = 0;
   float gridAspectRatio = 1.0f;
   float gridScale = 1.0f;
@@ -117,8 +117,8 @@ static const ParamDef kParamRegistry[] = {
     {50, "Time Scale", "Simulation", PARAM_FLOAT, 0.1f, 8.0f, 0.01f, (uint16_t)offsetof(SimConfig, timeScale)},
     {51, "Velocity Damping", "Simulation", PARAM_FLOAT, 0.8f, 1.0f, 0.001f, (uint16_t)offsetof(SimConfig, velocityDamping)},
     {52, "Max Velocity", "Simulation", PARAM_FLOAT, 0.1f, 8.0f, 0.1f, (uint16_t)offsetof(SimConfig, maxVelocity)},
-    {53, "Particle Count", "Simulation", PARAM_UINT16, 50.0f, 500.0f, 1.0f, (uint16_t)offsetof(SimConfig, particleCount)},
-    {55, "Particle Radius", "Simulation", PARAM_FLOAT, 0.002f, 0.05f, 0.001f, (uint16_t)offsetof(SimConfig, particleRadius)},
+    {53, "Particle Count", "Simulation", PARAM_UINT16, 2.0f, 200.0f, 1.0f, (uint16_t)offsetof(SimConfig, particleCount)},
+    {55, "Particle Radius", "Simulation", PARAM_FLOAT, 0.002f, 0.15f, 0.001f, (uint16_t)offsetof(SimConfig, particleRadius)},
     {56, "Rest Density", "Simulation", PARAM_FLOAT, 0.0f, 40.0f, 0.1f, (uint16_t)offsetof(SimConfig, restDensity)},
     {57, "PicFlipRatio", "Simulation", PARAM_FLOAT, 0.0f, 1.0f, 0.01f, (uint16_t)offsetof(SimConfig, picFlipRatio)},
 

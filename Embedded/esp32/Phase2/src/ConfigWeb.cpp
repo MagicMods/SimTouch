@@ -105,12 +105,12 @@ static bool SetParam(const String &key, float value)
   }
   if (key == "particleCount")
   {
-    gConfig->particleCount = (uint16_t)constrain((int)value, 50, 500);
+    gConfig->particleCount = (uint16_t)constrain((int)value, 2, 200);
     return true;
   }
   if (key == "particleRadius")
   {
-    gConfig->particleRadius = constrain(value, 0.002f, 0.05f);
+    gConfig->particleRadius = constrain(value, 0.002f, 0.15f);
     return true;
   }
   if (key == "restDensity")
