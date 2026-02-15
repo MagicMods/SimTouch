@@ -124,6 +124,10 @@ SimTouch is a **dual-phase project** that creates organic, physics-driven contro
 5. **Upload**: `pio run -t upload -e phase2_lilygo`
 6. **Monitor**: `pio device monitor -b 115200`
 
+**Note**: If `pio` command is not found, use the full path to PlatformIO:
+- **Windows**: `%USERPROFILE%\.platformio\penv\Scripts\platformio.exe`
+- **Linux/Mac**: Add `~/.platformio/penv/bin` to PATH or use `python -m platformio`
+
 ### Testing Web Config
 1. Connect to WiFi AP: `ParticleSimulator` (password: `MagicMods`)
 2. Open browser: `http://192.168.3.100`

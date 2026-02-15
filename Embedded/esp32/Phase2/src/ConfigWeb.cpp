@@ -8,6 +8,14 @@ static SimConfig *gConfig = nullptr;
 static bool gGridDirty = false;
 static bool gRestartRequested = false;
 
+// Web-based debug system
+#define MAX_DEBUG_MESSAGES 40
+static bool gDebugEnabled = false;
+static char gDebugMessages[MAX_DEBUG_MESSAGES][128];
+static uint16_t gDebugHead = 0;
+static uint16_t gDebugCount = 0;
+static uint32_t gDebugMessageIndex = 0;
+
 static String BuildConfigJson()
 {
   String s = "{";
@@ -435,6 +443,54 @@ void ResetConfigToDefaults()
   gGridDirty = true;
 }
 
+void WebDebugLog(const char* message)
+{
+  if (!gDebugEnabled) return;
+  
+  // Copy message to circular buffer
+  strncpy(gDebugMessages[gDebugHead], message, 127);
+  gDebugMessages[gDebugHead][127] = '\0';
+  
+  gDebugHead = (gDebugHead + 1) % MAX_DEBUG_MESSAGES;
+  if (gDebugCount < MAX_DEBUG_MESSAGES) {
+    gDebugCount++;
+  }
+  gDebugMessageIndex++;
+}
+
+bool IsWebDebugEnabled()
+{
+  return gDebugEnabled;
+}
+
+static String BuildDebugJson()
+{
+  String s = "{\"enabled\":";
+  s += gDebugEnabled ? "true" : "false";
+  s += ",\"messages\":[";
+  
+  // Build array of messages in chronological order (oldest to newest)
+  uint16_t startIdx = (gDebugCount < MAX_DEBUG_MESSAGES) ? 0 : gDebugHead;
+  for (uint16_t i = 0; i < gDebugCount; i++) {
+    uint16_t idx = (startIdx + i) % MAX_DEBUG_MESSAGES;
+    if (i > 0) s += ",";
+    s += "\"";
+    
+    // Escape quotes and backslashes in message
+    const char* msg = gDebugMessages[idx];
+    for (uint16_t j = 0; msg[j] != '\0' && j < 127; j++) {
+      if (msg[j] == '"' || msg[j] == '\\') {
+        s += '\\';
+      }
+      s += msg[j];
+    }
+    s += "\"";
+  }
+  
+  s += "]}";
+  return s;
+}
+
 static const char kIndexHtml[] PROGMEM = R"HTML(
 <!doctype html>
 <html>
@@ -449,6 +505,8 @@ static const char kIndexHtml[] PROGMEM = R"HTML(
     .btn:hover { background:#343434; }
     .btn.danger { border-color:#7a2d2d; background:#552222; }
     .btn.danger:hover { background:#663030; }
+    .btn.active { border-color:#4a7a4a; background:#2a4a2a; }
+    .btn.active:hover { background:#335533; }
     .fold-card { background:#1e1e1e; border-radius:10px; margin-bottom:12px; border:1px solid #2a2a2a; overflow:hidden; }
     .fold-card > summary { list-style:none; cursor:pointer; padding:12px; font-weight:600; background:#202020; user-select:none; }
     .fold-card > summary::-webkit-details-marker { display:none; }
@@ -459,6 +517,13 @@ static const char kIndexHtml[] PROGMEM = R"HTML(
     input[type=range] { width:100%; }
     select { width:100%; background:#2a2a2a; color:#eee; border:1px solid #444; border-radius:6px; padding:8px; }
     .val { font-size:12px; opacity:.8; float:right; }
+    .debug-section { margin-top:24px; background:#1a1a1a; border-radius:10px; padding:16px; border:1px solid #2a2a2a; }
+    .debug-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; }
+    .debug-header h3 { margin:0; font-size:16px; }
+    .debug-messages { background:#0a0a0a; border:1px solid #333; border-radius:6px; padding:8px; height:200px; overflow-y:auto; font-family:monospace; font-size:11px; }
+    .debug-messages .msg { padding:4px 0; border-bottom:1px solid #1a1a1a; }
+    .debug-messages .msg:last-child { border-bottom:none; }
+    .debug-disabled { color:#666; font-style:italic; text-align:center; padding:80px 0; }
   </style>
 </head>
 <body>
@@ -468,6 +533,17 @@ static const char kIndexHtml[] PROGMEM = R"HTML(
     <button id="resetBtn" class="btn">Reset to Defaults</button>
   </div>
   <div id="controls"></div>
+  
+  <div class="debug-section">
+    <div class="debug-header">
+      <h3>Debug Console</h3>
+      <button id="debugToggleBtn" class="btn">Enable Debug</button>
+    </div>
+    <div class="debug-messages" id="debugMessages">
+      <div class="debug-disabled">Debug is disabled. Click "Enable Debug" to start logging.</div>
+    </div>
+  </div>
+  
   <script>
     const groupedDefs = [
       ["Simulation", [
@@ -679,8 +755,50 @@ static const char kIndexHtml[] PROGMEM = R"HTML(
         }
       });
     }
+    
+    let debugEnabled = false;
+    const debugToggleBtn = document.getElementById("debugToggleBtn");
+    const debugMessages = document.getElementById("debugMessages");
+    
+    async function updateDebugMessages() {
+      if (!debugEnabled) return;
+      try {
+        const r = await fetch("/api/debug/messages");
+        const data = await r.json();
+        if (data.messages && data.messages.length > 0) {
+          debugMessages.innerHTML = data.messages.map(msg => 
+            `<div class="msg">${msg}</div>`
+          ).join('');
+          // Auto-scroll to bottom
+          debugMessages.scrollTop = debugMessages.scrollHeight;
+        } else if (debugEnabled) {
+          debugMessages.innerHTML = '<div class="debug-disabled">No debug messages yet...</div>';
+        }
+      } catch (e) {
+        console.error("Failed to fetch debug messages:", e);
+      }
+    }
+    
+    debugToggleBtn.addEventListener("click", async () => {
+      debugEnabled = !debugEnabled;
+      debugToggleBtn.textContent = debugEnabled ? "Disable Debug" : "Enable Debug";
+      debugToggleBtn.classList.toggle("active", debugEnabled);
+      
+      try {
+        await fetch(`/api/debug/enable?enabled=${debugEnabled}`, { method: "POST" });
+        if (!debugEnabled) {
+          debugMessages.innerHTML = '<div class="debug-disabled">Debug is disabled. Click "Enable Debug" to start logging.</div>';
+        } else {
+          debugMessages.innerHTML = '<div class="debug-disabled">Waiting for messages...</div>';
+        }
+      } catch (e) {
+        console.error("Failed to toggle debug:", e);
+      }
+    });
+    
     pull();
     setInterval(pull, 1500);
+    setInterval(updateDebugMessages, 500);
   </script>
 </body>
 </html>
@@ -714,6 +832,27 @@ void SetupConfigWeb(SimConfig &config)
     ResetConfigToDefaults();
     gRestartRequested = true;
     gServer.send(200, "application/json", BuildConfigJson());
+  });
+  gServer.on("/api/debug/enable", HTTP_POST, []() {
+    if (!gServer.hasArg("enabled"))
+    {
+      gServer.send(400, "text/plain", "missing enabled");
+      return;
+    }
+    gDebugEnabled = gServer.arg("enabled") == "true" || gServer.arg("enabled") == "1";
+    
+    // Clear debug buffer when enabling
+    if (gDebugEnabled) {
+      gDebugHead = 0;
+      gDebugCount = 0;
+      gDebugMessageIndex = 0;
+      WebDebugLog("[Web Debug] Enabled");
+    }
+    
+    gServer.send(200, "application/json", BuildDebugJson());
+  });
+  gServer.on("/api/debug/messages", HTTP_GET, []() {
+    gServer.send(200, "application/json", BuildDebugJson());
   });
   gServer.begin();
   Serial.println("[Phase2] ConfigWeb started on http://192.168.4.1/");

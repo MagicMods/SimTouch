@@ -108,10 +108,15 @@ static void validatePhase2A()
   if (millis() - lastLogMs > 2500)
   {
     lastLogMs = millis();
-    Serial.printf("[Phase2A Validate] particles=%u touch=%u boundary=%u\n",
-                  (unsigned)gValidatedParticles,
-                  (unsigned)gValidatedTouch,
-                  (unsigned)gValidatedBoundary);
+    if (IsWebDebugEnabled())
+    {
+      char buf[128];
+      snprintf(buf, sizeof(buf), "[Validate] particles=%u touch=%u boundary=%u",
+               (unsigned)gValidatedParticles,
+               (unsigned)gValidatedTouch,
+               (unsigned)gValidatedBoundary);
+      WebDebugLog(buf);
+    }
   }
 }
 
@@ -131,6 +136,10 @@ void loop()
     gSimCore.init();
     memset(gCellValues, 0, sizeof(gCellValues));
     Serial.println("[Phase2] Restart requested from ConfigWeb");
+    if (IsWebDebugEnabled())
+    {
+      WebDebugLog("[Phase2] Simulation restarted");
+    }
   }
 
   const uint32_t nowUs = micros();
@@ -207,6 +216,15 @@ void loop()
     const float renderFps = seconds > 0.0f ? (gPerfRenderFrameCount / seconds) : 0.0f;
     Serial.printf("[Phase2 FPS] sim %.1f | render %.1f | avg frame %.2f ms | cells=%u\n",
                   simFps, renderFps, gAvgFrameMs, (unsigned)gGridGeometry.getCellCount());
+    
+    if (IsWebDebugEnabled())
+    {
+      char buf[128];
+      snprintf(buf, sizeof(buf), "[FPS] sim %.1f | render %.1f | frame %.2f ms | cells=%u",
+               simFps, renderFps, gAvgFrameMs, (unsigned)gGridGeometry.getCellCount());
+      WebDebugLog(buf);
+    }
+    
     gPerfWindowStartMs = nowMs;
     gPerfSimFrameCount = 0;
     gPerfRenderFrameCount = 0;

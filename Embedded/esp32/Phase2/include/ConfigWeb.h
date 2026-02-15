@@ -8,5 +8,7 @@ void LoopConfigWeb();
 bool ConsumeConfigGridDirtyFlag();
 bool ConsumeConfigRestartFlag();
 void ResetConfigToDefaults();
+void WebDebugLog(const char* message);
+bool IsWebDebugEnabled();
 
 #endif

@@ -6,6 +6,24 @@
 
 ## 🔧 Build & Deploy
 
+### PlatformIO Command Notes
+
+**If `pio` command is not found**, use one of these alternatives:
+
+```bash
+# Windows: Full path to PlatformIO executable
+%USERPROFILE%\.platformio\penv\Scripts\platformio.exe run -t upload -e phase2_lilygo
+
+# Linux/Mac: Python module invocation
+python -m platformio run -t upload -e phase2_lilygo
+
+# Or add PlatformIO to PATH (recommended)
+# Windows: Add %USERPROFILE%\.platformio\penv\Scripts to PATH
+# Linux/Mac: Typically already in PATH after installation
+```
+
+For brevity, the examples below use `pio` as shorthand. Replace with full path if needed.
+
 ### Build Commands
 ```bash
 # LilyGo T-RGB 2.1 (primary target, LVGL v8)
@@ -18,13 +36,16 @@ pio run -e phase2_lilygo_v9
 pio run -e phase2_waveshare
 
 # Clean build
-pio run -t clean
+pio run -t clean -e phase2_lilygo
 ```
 
 ### Upload Commands
 ```bash
-# Upload firmware
+# Upload firmware (auto-detects COM port)
 pio run -t upload -e phase2_lilygo
+
+# Upload to specific COM port (if auto-detect fails)
+pio run -t upload -e phase2_lilygo --upload-port COM3
 
 # Upload filesystem (LittleFS web UI assets)
 pio run -t uploadfs -e phase2_lilygo
@@ -43,6 +64,8 @@ pio device monitor -b 250000
 
 # Monitor specific port
 pio device monitor -p COM3 -b 115200
+
+# Exit monitor: Ctrl+C
 ```
 
 ---
