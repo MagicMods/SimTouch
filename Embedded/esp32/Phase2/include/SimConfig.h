@@ -41,7 +41,7 @@ struct SimConfig
   float particleRestitution = 0.8f;
   float collisionDamping = 0.98f;
 
-  uint8_t gridMode = 0;
+  uint8_t gridMode = 1;
   // Keep idle output darker; touch/forces should drive highlights.
   float maxDensity = 16.0f;
   float smoothRateIn = 0.15f;
@@ -49,7 +49,7 @@ struct SimConfig
 
   uint16_t targetCellCount = 338;
   uint8_t gridGap = 0;
-  uint8_t theme = 1;
+  uint8_t theme = 0;
   float gridAspectRatio = 1.0f;
   float gridScale = 1.0f;
   uint8_t gridAllowCut = 3;

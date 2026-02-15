@@ -143,6 +143,11 @@ static bool SetParam(const String &key, float value)
     gConfig->touchRadius = constrain(value, 0.01f, 1.2f);
     return true;
   }
+  if (key == "gridMode")
+  {
+    gConfig->gridMode = (uint8_t)constrain((int)value, 0, 8);
+    return true;
+  }
   if (key == "maxDensity")
   {
     gConfig->maxDensity = constrain(value, 0.1f, 8.0f);

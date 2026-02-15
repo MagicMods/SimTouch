@@ -1,12 +1,15 @@
 {
-  "folders": [
-    {
-      "path": "esp32/Phase2"
-    }
-  ],
-  "settings": {
-    "files.associations": {
-      "cstdint": "cpp"
-    }
-  }
+	"folders": [
+		{
+			"path": ".."
+		},
+		{
+			"path": "../../Svibe_Firmware_Slave"
+		},
+		{
+			"name": "Phase2",
+			"path": "esp32/Phase2"
+		}
+	],
+	"settings": {}
 }

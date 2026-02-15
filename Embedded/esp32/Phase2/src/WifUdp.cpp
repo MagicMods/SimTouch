@@ -55,7 +55,7 @@ static bool applySimpleCommand(uint8_t idx, uint8_t value, SimConfig &cfg)
     cfg.touchRadius = 0.01f + (value / 255.0f) * 1.19f;
     return true;
   case 140:
-    cfg.gridMode = value;
+    cfg.gridMode = value > 8 ? 8 : value;
     return true;
   case 146:
     cfg.theme = value % 11;

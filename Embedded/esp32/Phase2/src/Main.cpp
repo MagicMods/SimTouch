@@ -192,10 +192,10 @@ void loop()
 
   // Render decoupled from sim; run independently at target cadence.
   const uint32_t nowMs = millis();
-  if (nowMs - gLastRenderMs >= (1000 / 20))
+  if (nowMs - gLastRenderMs >= (1000 / 60))
   {
     gLastRenderMs = nowMs;
-    gGridModes.computeProximity(gSimCore, gGridGeometry, gCellValues, MAX_GRID_CELLS);
+    gGridModes.compute(gSimCore, gGridGeometry, gCellValues, MAX_GRID_CELLS);
     renderGrid(gCellValues, gGridGeometry.getCellCount(), gGridGeometry.getCols(), gGridGeometry.getRows(), gConfig.gridGap, gConfig.theme);
     ++gPerfRenderFrameCount;
   }
