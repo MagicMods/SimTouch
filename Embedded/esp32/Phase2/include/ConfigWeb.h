@@ -7,5 +7,6 @@ void SetupConfigWeb(SimConfig &config);
 void LoopConfigWeb();
 bool ConsumeConfigGridDirtyFlag();
 bool ConsumeConfigRestartFlag();
+void ResetConfigToDefaults();
 
 #endif

@@ -425,6 +425,16 @@ static bool SetParam(const String &key, float value)
   return false;
 }
 
+void ResetConfigToDefaults()
+{
+  if (!gConfig) return;
+  
+  // Create a temporary default config and copy it
+  SimConfig defaultConfig;
+  *gConfig = defaultConfig;
+  gGridDirty = true;
+}
+
 static const char kIndexHtml[] PROGMEM = R"HTML(
 <!doctype html>
 <html>
@@ -455,6 +465,7 @@ static const char kIndexHtml[] PROGMEM = R"HTML(
   <h2>Phase2 Sim Config</h2>
   <div class="toolbar">
     <button id="restartSimBtn" class="btn danger">Restart Sim</button>
+    <button id="resetBtn" class="btn">Reset to Defaults</button>
   </div>
   <div id="controls"></div>
   <script>
@@ -634,6 +645,24 @@ static const char kIndexHtml[] PROGMEM = R"HTML(
         }, 400);
       }
     });
+
+    const resetBtn = document.getElementById("resetBtn");
+    resetBtn.addEventListener("click", async () => {
+      if (!confirm("Reset all parameters to default values?")) return;
+      resetBtn.disabled = true;
+      const prevText = resetBtn.textContent;
+      resetBtn.textContent = "Resetting...";
+      try {
+        await fetch("/api/reset", { method: "POST" });
+        await pull();
+      } finally {
+        setTimeout(() => {
+          resetBtn.textContent = prevText;
+          resetBtn.disabled = false;
+        }, 400);
+      }
+    });
+
     async function pull(){
       const r = await fetch("/api/config");
       const c = await r.json();
@@ -680,6 +709,11 @@ void SetupConfigWeb(SimConfig &config)
   gServer.on("/api/restart", HTTP_POST, []() {
     gRestartRequested = true;
     gServer.send(200, "application/json", "{\"ok\":true}");
+  });
+  gServer.on("/api/reset", HTTP_POST, []() {
+    ResetConfigToDefaults();
+    gRestartRequested = true;
+    gServer.send(200, "application/json", BuildConfigJson());
   });
   gServer.begin();
   Serial.println("[Phase2] ConfigWeb started on http://192.168.4.1/");
