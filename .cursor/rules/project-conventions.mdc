@@ -6,6 +6,18 @@ alwaysApply: true
 
 # Project Conventions
 
+## 🚀 Quick Start for New Sessions
+
+**CRITICAL: Read these files FIRST at the start of each chat session:**
+
+1. **START_HERE.md** (root) - Quick project orientation, 5-minute read
+2. **Sim/doc/ARCHITECTURE.md** - Detailed Phase2 architecture reference
+3. **Sim/doc/GLOSSARY.md** - Domain-specific terms, abbreviations, concepts
+4. **Sim/doc/QUICK_REFERENCE.md** - Command cheat sheet and troubleshooting
+5. **Sim/doc/migration/migration-plan.md** - Comprehensive migration strategy (may be slightly outdated)
+
+These documents provide essential context about the project structure, current state, design decisions, terminology, and common workflows.
+
 ## Agent Scope: Phase2 Only
 
 - **All firmware work targets Phase2 only.** The active codebase is `Embedded/esp32/Phase2/`.
@@ -13,24 +25,204 @@ alwaysApply: true
 - When editing embedded code, build configs, or firmware-related files, work exclusively within `Embedded/esp32/Phase2/`.
 - Sim (`Sim/`) and shared docs may be used for reference or coordination, but firmware changes stay in Phase2.
 
+## Project Architecture (Phase2)
+
+### Core Structure
+```
+Embedded/esp32/Phase2/
+├── include/          # Module headers (SimCore, Boundary, Collision, Turbulence, etc.)
+├── src/              # Implementation files (1:1 with headers)
+├── data/             # LittleFS web assets (HTML/CSS/JS for config UI)
+└── platformio.ini    # Build configs (phase2_lilygo, phase2_waveshare, phase2_lilygo_v9)
+```
+
+### Key Modules
+- **SimCore.cpp**: Central particle system (50-200 particles, 60Hz fixed timestep)
+- **Boundary.cpp**: Circular/rectangular constraint enforcement
+- **Collision.cpp**: Spatial grid-based collision detection (8×8 grid)
+- **Turbulence.cpp**: Noise-driven force fields (Perlin/Simplex)
+- **TouchForces.cpp**: Screen touch → attraction/repulsion forces
+- **ImuForces.cpp**: IMU accelerometer → gravity direction (opt-in)
+- **GridModes.cpp**: Particles → cell values (proximity/velocity/density algorithms)
+- **GridGeometry.cpp**: Grid cell layout computation (338 cells default)
+- **ConfigWeb.cpp**: AsyncWebServer + WebSocket configuration interface
+- **SimConfig.h**: Central config struct + 81-parameter registry
+
+### Data Flow
+```
+Input (Touch/IMU) → Forces → SimCore.step() → Particles [0,1] space
+    → GridModes → Cell values [0-255] → Display/Haptics
+```
+
+### Coordinate Spaces
+- **Simulation**: Normalized [0,1] (all physics)
+- **Screen**: Pixel space (240×240 Waveshare, 480×480 LilyGo)
+- **Grid**: Dynamic cells (typically 338 for suit compatibility)
+
 ## Documentation & Plans
 
+- **START_HERE.md** (root): Quick orientation guide for AI agents and new developers
+- **Sim/doc/ARCHITECTURE.md**: Detailed Phase2 architecture, module reference, data flow
+- **Sim/doc/migration/migration-plan.md**: Comprehensive migration strategy, hardware specs, design decisions
 - All migration plans and documentation must be stored in `Sim/doc/migration/`.
-- The canonical migration plan is `Sim/doc/migration/migration-plan.md`. Always read and update this file -- never rely on Cursor's internal plans directory.
 - When creating new planning documents, place them in `Sim/doc/migration/` (e.g., `Sim/doc/migration/phase2a-notes.md`).
 
 ## Project Structure
 
-- Phase 1 firmware: `Embedded/esp32/Phase1/`
-- Phase 2 firmware (migration target): `Embedded/esp32/Phase2/`
-- JavaScript simulation source: `Sim/src/`
-- Project documentation: `Sim/doc/`
-- Migration docs: `Sim/doc/migration/`
+- **Phase 1 firmware**: `Embedded/esp32/Phase1/` (legacy, reference-only)
+- **Phase 2 firmware**: `Embedded/esp32/Phase2/` (active development, migration target)
+- **JavaScript simulation**: `Sim/src/` (reference for porting algorithms)
+- **Project documentation**: `Sim/doc/`
+- **Migration docs**: `Sim/doc/migration/`
+
+## Configuration System
+
+### Parameter Registry
+- **SimConfig.h**: Single source of truth for all 81 parameters
+- **Indices 50-255**: SimTouch parameters (avoid 0-49, reserved for Unity/system)
+- **WebSocket protocol**: Binary `[paramIndex, ...valueBytes]` format
+- **Types**: PARAM_FLOAT, PARAM_UINT8, PARAM_UINT16, PARAM_INT8, PARAM_BOOL
+- **Web UI**: Auto-generated from kParamRegistry metadata
+
+### Adding New Parameters
+1. Add field to `SimConfig` struct in `SimConfig.h`
+2. Add entry to `kParamRegistry` array with index, type, range, offset
+3. Use parameter in relevant module (SimCore, Boundary, etc.)
+4. Web UI auto-updates on next load (no manual UI code needed)
 
 ## Code Style (ESP32 C++)
 
+### Memory Management
 - Use fixed-size arrays, no dynamic allocation (`new`, `malloc`)
-- Use `float` not `double` (ESP32 has no FPU for double)
+- Example: `float particles[MAX_PARTICLES]` not `float* particles = new float[count]`
 - Use `constexpr` for compile-time constants
+- No `std::vector`, `std::string`, Arduino `String` (use `const char*` or fixed `char[]`)
+
+### Floating Point
+- Use `float` not `double` (ESP32 has no FPU for double precision)
+- Use `sqrtf`, `cosf`, `sinf`, `atan2f`, `powf` (not `sqrt`, `cos`, etc.)
+- Example: `float dist = sqrtf(dx*dx + dy*dy);` not `sqrt(...)`
+
+### Coordinate Spaces
 - All simulation logic in normalized [0,1] coordinate space
-- Pixel-space conversion only at the rendering boundary
+- Pixel-space conversion only at the rendering boundary (Graphics.cpp)
+- Touch input: Convert pixels → [0,1] in TouchForces.cpp
+- Grid output: Cell values computed in [0,1] space, rendered at screen resolution
+
+### Code Organization
+- One class per file (SimCore.h/cpp, Boundary.h/cpp, etc.)
+- Header files: Class declaration, public API, minimal includes
+- Implementation files: All method definitions, implementation details
+- Use forward declarations to minimize header dependencies
+
+### Naming Conventions
+- Classes: PascalCase (e.g., `SimCore`, `GridModes`)
+- Functions: camelCase (e.g., `applyForces`, `getCellCount`)
+- Member variables: camelCase with trailing underscore (e.g., `count_`, `config_`)
+- Constants: kCamelCase (e.g., `kMaxParticles`, `kParamRegistry`)
+- Enums: UPPER_CASE (e.g., `BOUNDARY_CIRCULAR`, `PARAM_FLOAT`)
+
+## Hardware Targets
+
+### Primary: LilyGo T-RGB 2.1 (Phase2 Development)
+- Display: ST7701 RGB 480×480 half-circle
+- Build: `pio run -e phase2_lilygo`
+- Define: `TARGET_LILYGO=1`, `LVGL_VERSION_8=1`
+
+### Secondary: Waveshare ESP32-S3-Touch-LCD-1.28
+- Display: GC9A01 240×240 round
+- Build: `pio run -e phase2_waveshare`
+- Define: `TARGET_WAVESHARE=1`, `LVGL_VERSION_8=1`
+
+### Shared Hardware
+- MCU: ESP32-S3 dual-core @ 240MHz, 320KB SRAM + 2MB PSRAM
+- IMU: QMI8658 (6-axis, I2C)
+- WiFi: AP mode, SSID `ParticleSimulator`, password `MagicMods`
+- Flash: 16MB (LittleFS for web UI assets)
+
+## Performance Guidelines
+
+### Targets
+- **Simulation**: 60 FPS (60Hz fixed timestep)
+- **Rendering**: 60 FPS (decoupled from simulation)
+- **Frame budget**: ~16.67ms (10ms sim + 5ms render + margin)
+- **Particle count**: 50-200 (tunable, impacts performance)
+- **Cell count**: 338 default (suit module count)
+
+### Optimization
+- Reduce `particleCount` if FPS drops below 50
+- Reduce `collisionGridSize` if collision is bottleneck
+- Turbulence is expensive; `turbStrength=0` disables it
+- Grid rendering scales with `targetCellCount`
+
+## Common Workflows
+
+### Making Code Changes
+1. Edit relevant module in `include/*.h` and `src/*.cpp`
+2. If adding parameters, update `SimConfig.h` (struct + registry)
+3. Build: `pio run -e phase2_lilygo`
+4. Upload: `pio run -t upload -e phase2_lilygo`
+5. Monitor: `pio device monitor -b 115200`
+
+### Testing Configuration Changes
+1. Connect to WiFi AP: `ParticleSimulator` (password: `MagicMods`)
+2. Open browser: `http://192.168.3.100`
+3. Adjust parameters in web UI (real-time updates via WebSocket)
+4. Monitor serial output for FPS and validation logs
+
+### Validating Against JS Sim
+1. Run JS Sim: `cd Sim && npm run dev` → `http://localhost:8080/sim.html`
+2. Set identical parameters in both JS and ESP32 web UI
+3. Visually compare particle behavior and grid output
+4. Check that physics matches (boundary enforcement, collision, forces)
+
+## Debugging
+
+### Serial Output
+- Baud rate: `115200` (LilyGo), `250000` (Waveshare)
+- FPS stats printed every 1 second: `[Phase2 FPS] sim 59.8 | render 60.1 | avg frame 16.52 ms | cells=338`
+- Validation checks every 2.5s: `[Phase2A Validate] particles=1 touch=1 boundary=1`
+
+### Common Issues
+- **Particles stuck/escaping**: Check boundary enforcement in `Boundary.cpp`, verify `boundaryScale < 1.1`
+- **Low FPS**: Reduce `particleCount`, `collisionGridSize`, or `targetCellCount`
+- **Touch not working**: Verify `getTouching()`, check touch driver init in `Graphics.cpp`
+- **WebSocket disconnect**: Check WiFi connection, browser console, ESP32 serial logs
+
+## Integration Roadmap
+
+### Phase 2 (Current): Standalone ESP32 Simulation
+- ✅ Core particle system (SimCore, Boundary, Collision, Gravity)
+- ✅ Input forces (Touch, IMU, Turbulence)
+- ✅ Grid rendering (GridModes, GridGeometry, Graphics)
+- ✅ Web configuration (ConfigWeb, AsyncWebServer, WebSocket)
+- 🚧 Advanced features (Voronoi, FLIP, Organic behaviors - scaffolded)
+
+### Phase 3 (Future): Svibe_Firmware_Slave Integration
+- Package simulation as PlatformIO library (`lib/SimTouch/`)
+- Add `UpdateModulesFromSim()` bridge to suit's `Modules.cpp`
+- Add `SIM_LOCAL` mode alongside Unity/remote sim modes
+- Route touch/IMU to `SimEngine` in suit firmware
+- Map 338 cell values → 338 haptic modules (1:1 direct mapping)
+
+## Best Practices
+
+### When Starting a Task
+1. Read `START_HERE.md` and `Sim/doc/ARCHITECTURE.md` for context
+2. Check `git status` and `git log -5` for recent changes
+3. Identify which modules are affected by the task
+4. Read relevant header files before editing implementation files
+
+### When Adding Features
+1. Check if JS Sim has reference implementation in `Sim/src/`
+2. Port algorithms to C++ following memory constraints (fixed-size arrays)
+3. Add configuration parameters to `SimConfig.h` if needed
+4. Test incrementally (build, upload, monitor serial output)
+5. Validate against JS Sim with identical parameters
+
+### When Debugging
+1. Check serial output for errors, FPS drops, validation failures
+2. Add temporary `Serial.printf()` statements for tracing
+3. Reduce `particleCount` to isolate performance vs logic issues
+4. Test with minimal config (disable turbulence, collision, etc.)
+5. Use web UI to adjust parameters in real-time (no reflashing needed)
